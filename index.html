@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0D1117">
@@ -1196,7 +1197,41 @@ function defaultState() {
   };
 }
 
-let S = {}; // app state
+// --- CONFIGURAZIONE DATABASE CLOUD ---
+const SB_URL = "https://saoghfehqrjgobcpiebz.supabase.co"; // Incolla il tuo Project URL
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhb2doZmVocXJqZ29iY3BpZWJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzgwMTcsImV4cCI6MjA4OTE1NDAxN30.3i6bHXbdmKppLt8r2n4YCD5rgeFnm6veeFPmReDmOMY";     // Incolla la tua Anon Key
+const _supabase = supabase.createClient(SB_URL, SB_KEY);
+
+let S = {}; // Lo stato inizialmente è vuoto
+
+// --- FUNZIONE PER CARICARE I DATI ALL'AVVIO ---
+async function loadStateFromCloud() {
+    console.log("Connessione al database in corso...");
+    try {
+        const { data, error } = await _supabase
+            .from('app_data')
+            .select('content')
+            .eq('id', 1)
+            .single();
+
+        if (error) throw error;
+
+        if (data && data.content) {
+            S = data.content;
+            console.log("Dati caricati correttamente!");
+            
+            // IMPORTANTE: Qui devi chiamare la funzione che avvia la tua interfaccia.
+            // Nel tuo codice originale probabilmente si chiama init() o renderDashboard()
+            init(); 
+        }
+    } catch (err) {
+        console.error("Errore nel caricamento:", err.message);
+        alert("Errore nel collegamento al database. Controlla la console.");
+    }
+}
+
+// Avvia il caricamento non appena la pagina è pronta
+document.addEventListener('DOMContentLoaded', loadStateFromCloud);
 let currentUser = null;
 let currentView = '';
 let selectedCategoryId = null; // context for dirigente
