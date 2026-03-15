@@ -3,169 +3,70 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SportTrackPro</title>
+<title>SportTrackPro - Login</title>
 <style>
-body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f4f4f4; }
-header { background:#004080; color:white; padding:10px 20px; display:flex; justify-content:space-between; align-items:center; }
-header h1 { margin:0; font-size:1.5em; }
-nav button { margin-left:10px; padding:5px 10px; cursor:pointer; }
-#login-screen { display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; }
-#login-screen input { margin:5px; padding:5px; width:200px; }
-#login-screen button { padding:5px 10px; }
-#app { display:none; padding:20px; }
-.view { display:none; margin-top:20px; background:white; padding:15px; border-radius:5px; box-shadow:0 0 5px rgba(0,0,0,0.1); }
-table { width:100%; border-collapse:collapse; margin-top:10px; }
-table th, table td { border:1px solid #ddd; padding:8px; text-align:left; }
-table th { background:#eee; }
-input, select { padding:5px; margin:2px 0; }
-button { padding:5px 10px; margin:2px; }
-.form-inline { display:flex; align-items:center; gap:5px; margin-top:5px; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin:0; padding:0;
+    background: linear-gradient(135deg,#1f4068,#2980b9);
+    height:100vh; display:flex; justify-content:center; align-items:center;
+  }
+  #login-card {
+    background:white;
+    border-radius:10px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.3);
+    padding:40px 30px;
+    width:320px;
+    text-align:center;
+  }
+  #login-card h2 { margin-bottom:20px; color:#004080; }
+  #login-card input {
+    width:100%; padding:10px; margin:10px 0;
+    border:1px solid #ccc; border-radius:5px;
+    font-size:1em;
+  }
+  #login-card button {
+    width:100%; padding:10px; margin-top:10px;
+    background:#004080; color:white; border:none;
+    border-radius:5px; font-size:1em; cursor:pointer;
+  }
+  #login-card button:hover { background:#0059b3; }
+  #login-msg { color:red; margin-top:10px; min-height:18px; font-size:0.9em; }
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div id="login-screen">
-  <h2>Login SportTrackPro</h2>
+<div id="login-card">
+  <h2>SportTrackPro</h2>
   <input type="text" id="login-user" placeholder="Username">
   <input type="password" id="login-pass" placeholder="Password">
-  <button id="login-btn">Login</button>
-  <div id="login-msg" style="color:red; margin-top:10px;"></div>
-</div>
-
-<!-- APP -->
-<div id="app">
-  <header>
-    <h1>SportTrackPro</h1>
-    <nav id="topnav"></nav>
-  </header>
-
-  <div id="views">
-    <div id="view-sport" class="view"><h3>Sport</h3><div id="sport-table"></div></div>
-    <div id="view-societies" class="view"><h3>Società</h3><div id="societies-table"></div></div>
-    <div id="view-teams" class="view"><h3>Squadre</h3><div id="teams-table"></div></div>
-    <div id="view-categories" class="view"><h3>Categorie</h3><div id="categories-table"></div></div>
-    <div id="view-staff" class="view"><h3>Staff/Utenti</h3><div id="staff-table"></div></div>
-    <div id="view-activities" class="view"><h3>Attività/Performance</h3><div id="activities-table"></div></div>
-    <div id="view-seasons" class="view"><h3>Stagioni</h3><div id="seasons-table"></div></div>
-  </div>
+  <button id="login-btn">Accedi</button>
+  <div id="login-msg"></div>
 </div>
 
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SUPABASE_URL = 'https://<PROJECT_REF>.supabase.co';
+// Inserisci qui le tue chiavi reali Supabase
+const SUPABASE_URL = 'https://jvcplfgozdqirzqfqwox.supabase.co';
 const SUPABASE_ANON_KEY = '<ANON_KEY>';
 window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// HELPERS
-function showView(viewId){
-  document.querySelectorAll('.view').forEach(v=>v.style.display='none');
-  const el = document.getElementById(viewId);
-  if(el) el.style.display='block';
-}
-function toast(msg){ alert(msg); }
-
-// Topnav
-function buildTopnavMenu(){
-  const nav = document.getElementById('topnav');
-  nav.innerHTML='';
-  const views = [
-    {id:'view-sport', label:'Sport'},
-    {id:'view-societies', label:'Società'},
-    {id:'view-teams', label:'Squadre'},
-    {id:'view-categories', label:'Categorie'},
-    {id:'view-staff', label:'Staff/Utenti'},
-    {id:'view-activities', label:'Attività/Performance'},
-    {id:'view-seasons', label:'Stagioni'}
-  ];
-  views.forEach(v=>{
-    const btn = document.createElement('button');
-    btn.textContent=v.label;
-    btn.onclick=()=>loadAndShow(v.id);
-    nav.appendChild(btn);
-  });
-}
-
-// LOGIN
 async function doLogin(){
-  const email=document.getElementById('login-user').value+'@olimpia.it';
-  const password=document.getElementById('login-pass').value;
-  const {data,error}=await supabase.auth.signInWithPassword({email,password});
-  const msgEl=document.getElementById('login-msg');
-  if(error){ msgEl.textContent=error.message; return; }
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='block';
-  buildTopnavMenu();
-  loadAndShow('view-sport');
+  const email = document.getElementById('login-user').value + '@olimpia.it';
+  const password = document.getElementById('login-pass').value;
+  const msgEl = document.getElementById('login-msg');
+
+  if(!email || !password){ msgEl.textContent='Compila tutti i campi'; return; }
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){ msgEl.textContent = error.message; return; }
+
+  msgEl.style.color='green';
+  msgEl.textContent='Login avvenuto con successo!';
+  setTimeout(()=>{ window.location.href='app.html'; }, 800); // redirect alla pagina principale
 }
 
-// CRUD MINIMO PER TABELLE
-async function loadAndShow(viewId){
-  showView(viewId);
-  switch(viewId){
-    case 'view-sport': await renderTable('sports','sport-table',['nome']); break;
-    case 'view-societies': await renderTable('societies','societies-table',['nome']); break;
-    case 'view-teams': await renderTable('teams','teams-table',['nome','society_id']); break;
-    case 'view-categories': await renderTable('categories','categories-table',['nome','team_id']); break;
-    case 'view-staff': await renderTable('users','staff-table',['email','role']); break;
-    case 'view-activities': await renderTable('activities','activities-table',['nome']); break;
-    case 'view-seasons': await renderTable('seasons','seasons-table',['nome']); break;
-  }
-}
-
-// Funzione generica per renderizzare tabelle e form inline
-async function renderTable(table, containerId, fields){
-  const {data,error} = await supabase.from(table).select('*');
-  if(error){ document.getElementById(containerId).innerText=error.message; return; }
-  const container=document.getElementById(containerId);
-  container.innerHTML='';
-
-  // FORM inline per inserimento
-  const form=document.createElement('div');
-  form.className='form-inline';
-  const inputs=fields.map(f=>{
-    const i=document.createElement('input');
-    i.placeholder=f;
-    i.dataset.field=f;
-    return i;
-  });
-  inputs.forEach(i=>form.appendChild(i));
-  const btnAdd=document.createElement('button'); btnAdd.textContent='Aggiungi';
-  form.appendChild(btnAdd);
-  container.appendChild(form);
-
-  btnAdd.onclick=async ()=>{
-    const obj={};
-    inputs.forEach(i=>obj[i.dataset.field]=i.value);
-    const {data:insData,error:insErr}=await supabase.from(table).insert([obj]).select();
-    if(insErr) { toast(insErr.message); return; }
-    loadAndShow(containerId.replace('-table','').replace('view-','view-')); // reload tabella
-  };
-
-  // TABELLA dati
-  const tbl=document.createElement('table');
-  const thead=document.createElement('thead');
-  const trh=document.createElement('tr');
-  fields.forEach(f=>{ const th=document.createElement('th'); th.textContent=f; trh.appendChild(th); });
-  const thDel=document.createElement('th'); thDel.textContent='Cancella'; trh.appendChild(thDel);
-  thead.appendChild(trh); tbl.appendChild(thead);
-
-  const tbody=document.createElement('tbody');
-  data.forEach(r=>{
-    const tr=document.createElement('tr');
-    fields.forEach(f=>{ const td=document.createElement('td'); td.textContent=r[f]; tr.appendChild(td); });
-    const tdDel=document.createElement('td');
-    const btnDel=document.createElement('button'); btnDel.textContent='X';
-    btnDel.onclick=async ()=>{ await supabase.from(table).delete().eq('id',r.id); loadAndShow(containerId.replace('-table','').replace('view-','view-')); };
-    tdDel.appendChild(btnDel); tr.appendChild(tdDel);
-    tbody.appendChild(tr);
-  });
-  tbl.appendChild(tbody);
-  container.appendChild(tbl);
-}
-
-// Event login button
 document.getElementById('login-btn').addEventListener('click', doLogin);
 </script>
 
