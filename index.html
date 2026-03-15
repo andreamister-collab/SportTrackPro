@@ -959,10 +959,35 @@ const DB = {
     const email = username.includes('@') ? username : username + '@sporttrackpro.it';
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
-    // Carica profilo utente
-    const { data: profile, error: pe } = await sb
-      .from('users').select('*').eq('id', data.user.id).single();
-    if (pe) throw new Error('Profilo non trovato');
+
+    // Carica profilo — prova prima con RPC (bypassa RLS), poi diretto, poi fallback
+    let profile = null;
+
+    // Tentativo 1: RPC get_my_profile (SECURITY DEFINER, bypassa RLS)
+    try {
+      const { data: rpcData, error: rpcErr } = await sb.rpc('get_my_profile');
+      if (!rpcErr && rpcData) { profile = rpcData; }
+    } catch(e) {}
+
+    // Tentativo 2: lettura diretta (funziona se RLS è disabilitato o policy ok)
+    if (!profile) {
+      const { data: direct } = await sb
+        .from('users').select('*').eq('id', data.user.id).maybeSingle();
+      if (direct) profile = direct;
+    }
+
+    // Tentativo 3: fallback dai metadati auth
+    if (!profile) {
+      profile = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.user_metadata?.name || data.user.email.split('@')[0],
+        username: data.user.user_metadata?.username || data.user.email.split('@')[0],
+        role: data.user.user_metadata?.role || 'admin',
+        society_id: data.user.user_metadata?.society_id || null,
+      };
+    }
+
     return profile;
   },
 
@@ -1847,13 +1872,21 @@ async function doLogin() {
     await loadStateFromDB();
     _afterLogin();
   } catch(sbErr) {
+    console.error('Supabase login error:', sbErr);
     // Fallback localStorage
     const user = (S.users||[]).find(x => x.username === u && x.password === p);
-    if (!user) {
-      toast('Credenziali non valide: ' + sbErr.message, 'error');
-    } else {
+    if (user) {
+      DB_MODE = 'local';
       currentUser = user;
       _afterLogin();
+      toast('Connesso in modalità locale (offline)', 'warning');
+    } else {
+      // Mostra errore specifico
+      let msg = sbErr.message || 'Errore sconosciuto';
+      if (msg.includes('Invalid login credentials')) msg = 'Username o password errati';
+      else if (msg.includes('Email not confirmed')) msg = 'Email non confermata — controlla la tua casella';
+      else if (msg.includes('schema')) msg = 'Errore DB: RLS non configurato. Vedi istruzioni setup.';
+      toast('❌ ' + msg, 'error');
     }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Accedi →'; }
