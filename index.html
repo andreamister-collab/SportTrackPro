@@ -1007,8 +1007,8 @@ const DB = {
       athletes, athleteSeasons, seasons,
       sessions, attendances, matches, convocati, performances
     ] = await Promise.all([
-      sb.from('sports').select('*'),
-      sb.from('societies').select('*'),
+      sb.from('sports').select('*'),                                              // globale
+      sb.from('societies').select('*'),                                           // globale
       sb.from('teams').select('*'),
       sb.from('categories').select('*'),
       sb.from('users').select('*'),
@@ -1024,8 +1024,8 @@ const DB = {
 
     // Converti snake_case → camelCase per compatibilità con il codice esistente
     return {
-      sports:         (sports.data||[]).map(r => r),
-      societies:      (societies.data||[]).map(r => r),
+      sports:         (sports.data||[]).map(r => ({ id:r.id, name:r.name, icon:r.icon||'⚽' })),
+      societies:      (societies.data||[]).map(r => ({ id:r.id, name:r.name, sportId:r.sport_id, city:r.city||'', email:r.email||'' })),
       teams:          (teams.data||[]).map(r => ({ ...r, societyId: r.society_id, sportId: r.sport_id })),
       categories:     (categories.data||[]).map(r => ({
         ...r, societyId: r.society_id, sportId: r.sport_id,
@@ -1187,6 +1187,11 @@ const DB = {
       email: u.email||'', role: u.role, profession: u.profession||'',
       phone: u.phone||'', society_id: u.societyId||null
     });
+  },
+
+  // ── SAVE SPORT ────────────────────────────────────────────────
+  async saveSport(s) {
+    return this.upsert('sports', { id: s.id, name: s.name, icon: s.icon||'⚽' });
   },
 
   // ── SAVE SEASON ───────────────────────────────────────────────
@@ -2356,7 +2361,14 @@ async function flushToSupabase() {
 
     // Process upserts
     for (const [table, objs] of _dirtyQueue.entries()) {
-      const rows = [...objs.values()].map(obj => toSnakeCase(table, obj));
+      const rows = [...objs.values()].map(obj => {
+        const row = toSnakeCase(table, obj);
+        // Rimuovi campi non presenti in tabelle globali
+        if (table === 'sports') {
+          delete row.society_id;
+        }
+        return row;
+      });
       if (rows.length > 0) {
         const { error } = await sb.from(table).upsert(rows, { onConflict: 'id' });
         if (error) console.error('Supabase upsert error:', table, error);
@@ -2373,6 +2385,12 @@ async function flushToSupabase() {
 }
 
 // Converte oggetto camelCase → snake_case per la tabella specifica
+// Tables with fixed column lists (no society_id)
+const TABLE_COLUMNS = {
+  sports:    ['id','name','icon'],
+  societies: ['id','name','sport_id','city','email'],
+};
+
 function toSnakeCase(table, obj) {
   const maps = {
     athletes: {
@@ -2419,6 +2437,13 @@ function toSnakeCase(table, obj) {
     // Skip internal/derived fields not in DB
     if (['password','role_label','gradient'].includes(sk)) continue;
     out[sk] = v;
+  }
+  // Whitelist per tabelle globali senza society_id
+  const whitelist = TABLE_COLUMNS[table];
+  if (whitelist) {
+    const filtered = {};
+    for (const k of whitelist) { if (k in out) filtered[k] = out[k]; }
+    return filtered;
   }
   return out;
 }
