@@ -44,30 +44,43 @@
   <div id="login-msg"></div>
 </div>
 
-<script type="module">
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+<!-- Supabase UMD bundle -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js" defer></script>
+<script defer>
+  window.addEventListener('DOMContentLoaded', () => {
 
-// Inserisci qui le tue chiavi reali Supabase
-const SUPABASE_URL = 'https://jvcplfgozdqirzqfqwox.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
-window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Inserisci qui le tue chiavi reali Supabase
+    const SUPABASE_URL = 'https://jvcplfgozdqirzqfqwox.supabase.co';
+    const SUPABASE_ANON_KEY = '<ANON_KEY>'; // Sostituisci con la tua chiave anon
 
-async function doLogin(){
-  const email = document.getElementById('login-user').value + '@olimpia.it';
-  const password = document.getElementById('login-pass').value;
-  const msgEl = document.getElementById('login-msg');
+    // Crea client Supabase
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  if(!email || !password){ msgEl.textContent='Compila tutti i campi'; return; }
+    const msgEl = document.getElementById('login-msg');
+    const btn = document.getElementById('login-btn');
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if(error){ msgEl.textContent = error.message; return; }
+    btn.addEventListener('click', async () => {
+      const email = document.getElementById('login-user').value + '@olimpia.it';
+      const password = document.getElementById('login-pass').value;
 
-  msgEl.style.color='green';
-  msgEl.textContent='Login avvenuto con successo!';
-  setTimeout(()=>{ window.location.href='app.html'; }, 800); // redirect alla pagina principale
-}
+      if(!email || !password){ msgEl.textContent='Compila tutti i campi'; return; }
 
-document.getElementById('login-btn').addEventListener('click', doLogin);
+      msgEl.style.color='red';
+      msgEl.textContent='Verifico login...';
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if(error){
+        msgEl.textContent = error.message;
+        return;
+      }
+
+      msgEl.style.color='green';
+      msgEl.textContent='Login avvenuto con successo!';
+      setTimeout(()=>{ window.location.href='app.html'; }, 800); // redirect alla pagina principale
+    });
+
+  });
 </script>
 
 </body>
