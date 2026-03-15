@@ -1,8 +1,26 @@
 :root {
-  --ink: #0D1117; --ink-2: #1C2331; --ink-3: #2D3748; --mist: #F0F4F8; --mist-2: #E2E8F0; --mist-3: #CBD5E0;
-  --white: #FFFFFF; --accent: #1A56DB; --accent-h: #1648C1; --accent-l: #EBF1FF; --gold: #D97706; --gold-l: #FEF3C7;
-  --green: #059669; --green-l: #D1FAE5; --red: #DC2626; --red-l: #FEE2E2; --teal: #0891B2; --teal-l: #CFFAFE;
-  --purple: #7C3AED; --purple-l: #EDE9FE; --sport-a: #1A56DB; --sport-p: #D97706; --sport-i: #059669; --sport-ps: #7C3AED;
-  --radius: 10px; --radius-lg: 16px; --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
-  /* ... TUTTI i CSS rules fino a fine <style> - copia dal tuo file tra <style> e </style> */
+  --ink: #0D1117;
+  --accent: #38BDF8;
+  --white: #FFFFFF;
 }
+
+body {
+  background: var(--ink);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  margin: 0;
+}
+
+.login-card {
+  max-width: 400px;
+  margin: 100px auto;
+  padding: 2rem;
+  background: #1C2331;
+  border-radius: 20px;
+}
+
+input {
+  display: block; width: 100%; margin: 10px 0;
+  padding: 12px; background: #2D3748; border: none; color: white;
+}
+/* Aggiungi qui il resto del tuo CSS originale */
