@@ -1,60 +1,11 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SportTrackPro - Login</title>
-<style>
-  body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    margin:0; padding:0;
-    background: linear-gradient(135deg,#1f4068,#2980b9);
-    height:100vh; display:flex; justify-content:center; align-items:center;
-  }
-  #login-card {
-    background:white;
-    border-radius:10px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.3);
-    padding:40px 30px;
-    width:320px;
-    text-align:center;
-  }
-  #login-card h2 { margin-bottom:20px; color:#004080; }
-  #login-card input {
-    width:100%; padding:10px; margin:10px 0;
-    border:1px solid #ccc; border-radius:5px;
-    font-size:1em;
-  }
-  #login-card button {
-    width:100%; padding:10px; margin-top:10px;
-    background:#004080; color:white; border:none;
-    border-radius:5px; font-size:1em; cursor:pointer;
-  }
-  #login-card button:hover { background:#0059b3; }
-  #login-msg { color:red; margin-top:10px; min-height:18px; font-size:0.9em; }
-</style>
-</head>
-<body>
-
-<div id="login-card">
-  <h2>SportTrackPro</h2>
-  <input type="text" id="login-user" placeholder="Username">
-  <input type="password" id="login-pass" placeholder="Password">
-  <button id="login-btn">Accedi</button>
-  <div id="login-msg"></div>
-</div>
-
-<!-- Supabase UMD bundle -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js" defer></script>
 <script defer>
-  window.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('load', () => {
 
-    // Inserisci qui le tue chiavi reali Supabase
+    // Ora Supabase è già definito
     const SUPABASE_URL = 'https://jvcplfgozdqirzqfqwox.supabase.co';
-    const SUPABASE_ANON_KEY = '<ANON_KEY>'; // Sostituisci con la tua chiave anon
-
-    // Crea client Supabase
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SUPABASE_ANON_KEY = '<ANON_KEY>'; // sostituisci con la tua chiave anon
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const msgEl = document.getElementById('login-msg');
     const btn = document.getElementById('login-btn');
@@ -77,11 +28,8 @@
 
       msgEl.style.color='green';
       msgEl.textContent='Login avvenuto con successo!';
-      setTimeout(()=>{ window.location.href='app.html'; }, 800); // redirect alla pagina principale
+      setTimeout(()=>{ window.location.href='app.html'; }, 800);
     });
 
   });
 </script>
-
-</body>
-</html>
