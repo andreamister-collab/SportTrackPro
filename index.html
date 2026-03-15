@@ -2,19 +2,27 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>SportTrack Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SportTrack Pro — Cloud Setup</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header>
-        <nav>
-            <button onclick="showView('setup')">Setup</button>
-            <button onclick="showView('athletes')">Atleti</button>
-        </nav>
-    </header>
+    <div id="app">
+        <header>
+            <div class="logo">SPORTTRACK PRO</div>
+            <nav id="top-nav">
+                <button onclick="showView('setup')">⚙️ Config Base</button>
+                <button onclick="showView('staff')">👥 Staff & Squadre</button>
+                <button onclick="showView('athletes')">🏃 Atleti</button>
+                <button onclick="showView('sessions')">⚽ Sessioni</button>
+            </nav>
+        </header>
 
-    <main id="main-content">
+        <main id="main-content">
+            <div class="loader">Caricamento connessione Supabase...</div>
         </main>
+    </div>
 
     <script type="module" src="script.js"></script>
 </body>
