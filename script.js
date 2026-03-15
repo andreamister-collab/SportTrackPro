@@ -1,8 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // DEFINIZIONE COSTANTI (Assicurati che siano in cima al file)
-const SB_URL = 'https://tuo-id.supabase.co';
-const SB_KEY = 'tua-chiave-anon';
+const SB_URL = 'https://jvcplfgozdqirzqfqwox.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
 
 // Inizializzazione
 window.supabase = createClient(SB_URL, SB_KEY);
