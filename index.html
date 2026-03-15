@@ -1864,30 +1864,73 @@ async function doLogin() {
   const btn = document.querySelector('#login-screen .btn-primary');
   if (btn) { btn.disabled = true; btn.textContent = 'Connessione...'; }
 
+  // Costruisci email dall'username
+  const email = u.includes('@') ? u : u + '@sporttrackpro.it';
+
   try {
-    // Prova prima Supabase
-    const profile = await DB.login(u, p);
-    currentUser = { ...profile, societyId: profile.society_id };
-    // Carica tutti i dati della società
-    await loadStateFromDB();
-    _afterLogin();
-  } catch(sbErr) {
-    console.error('Supabase login error:', sbErr);
-    // Fallback localStorage
-    const user = (S.users||[]).find(x => x.username === u && x.password === p);
-    if (user) {
-      DB_MODE = 'local';
-      currentUser = user;
-      _afterLogin();
-      toast('Connesso in modalità locale (offline)', 'warning');
-    } else {
-      // Mostra errore specifico
-      let msg = sbErr.message || 'Errore sconosciuto';
-      if (msg.includes('Invalid login credentials')) msg = 'Username o password errati';
-      else if (msg.includes('Email not confirmed')) msg = 'Email non confermata — controlla la tua casella';
-      else if (msg.includes('schema')) msg = 'Errore DB: RLS non configurato. Vedi istruzioni setup.';
+    // Step 1: autenticazione Supabase
+    console.log('[Login] Tentativo auth:', email);
+    const { data: authData, error: authErr } = await sb.auth.signInWithPassword({ email, password: p });
+
+    if (authErr) {
+      console.error('[Login] Auth error:', authErr);
+      // Fallback localStorage
+      const localUser = (S.users||[]).find(x => x.username === u && x.password === p);
+      if (localUser) {
+        DB_MODE = 'local';
+        currentUser = localUser;
+        _afterLogin();
+        toast('Connesso in modalità locale', 'warning');
+        return;
+      }
+      let msg = authErr.message || 'Errore autenticazione';
+      if (msg.includes('Invalid login')) msg = 'Username o password errati';
+      else if (msg.includes('Email not confirmed')) msg = 'Conferma la tua email prima di accedere';
       toast('❌ ' + msg, 'error');
+      return;
     }
+
+    console.log('[Login] Auth ok, uid:', authData.user.id);
+
+    // Step 2: carica profilo da public.users
+    let profile = null;
+    const { data: profileData, error: profileErr } = await sb
+      .from('users').select('*').eq('id', authData.user.id).maybeSingle();
+
+    if (profileErr) {
+      console.warn('[Login] Profile error:', profileErr.message);
+    } else if (profileData) {
+      profile = profileData;
+      console.log('[Login] Profile loaded:', profile.username, profile.role);
+    }
+
+    // Fallback: costruisci profilo dai metadati auth
+    if (!profile) {
+      console.warn('[Login] Profilo non in public.users, uso metadati auth');
+      profile = {
+        id: authData.user.id,
+        email: authData.user.email,
+        name: authData.user.user_metadata?.name || u,
+        username: u,
+        role: 'admin',
+        society_id: null,
+      };
+    }
+
+    currentUser = { ...profile, societyId: profile.society_id };
+
+    // Step 3: carica dati dal DB
+    try {
+      await loadStateFromDB();
+    } catch(dbErr) {
+      console.warn('[Login] DB load error (uso localStorage):', dbErr);
+    }
+
+    _afterLogin();
+
+  } catch(e) {
+    console.error('[Login] Unexpected error:', e);
+    toast('❌ Errore imprevisto: ' + e.message, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Accedi →'; }
   }
