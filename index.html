@@ -1266,8 +1266,22 @@ function loadState() {
     if (S.sessionTypePerfParams === undefined) S.sessionTypePerfParams = null;
   } catch { S = defaultState(); }
 }
-function saveState() {
+async function saveState() {
+  // 1. Continuiamo a salvare in locale (come backup di emergenza)
   localStorage.setItem(STORE_KEY, JSON.stringify(S));
+
+  // 2. Salviamo sul Database Cloud (Supabase) per tutti gli altri
+  try {
+    const { error } = await _supabase
+      .from('app_data') // Il nome della tabella su Supabase
+      .update({ content: S })
+      .eq('id', 1);
+
+    if (error) throw error;
+    console.log("Sincronizzazione Cloud completata!");
+  } catch (err) {
+    console.error("Errore sincronizzazione:", err.message);
+  }
 }
 function resetState() {
   S = defaultState();
