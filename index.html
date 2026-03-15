@@ -4,21 +4,43 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SportTrack Pro</title>
-<style>
-:root{--ink:#0D1117;--mist:#F0F4F8;--accent:#1A56DB;--radius:10px;}
-body{font-family:system-ui;background:var(--mist);color:var(--ink);margin:0;padding:20px;}
-.card{background:white;border-radius:var(--radius);padding:30px;box-shadow:0 4px 16px rgba(0,0,0,.1);max-width:600px;margin:0 auto;}
-h1{font-size:2rem;background:linear-gradient(135deg,var(--accent),#3B82F6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-.btn{display:inline-block;padding:12px 24px;background:var(--accent);color:white;border:none;border-radius:var(--radius);font-weight:600;cursor:pointer;text-decoration:none;}
-.btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(26,86,219,.4);}
-</style>
+<style>body{font-family:system-ui;background:#f0f4f8;color:#111;padding:40px;max-width:600px;margin:auto;}
+.login{background:white;border-radius:16px;padding:40px;box-shadow:0 20px 40px rgba(0,0,0,.1);}
+h1{font-size:2.5rem;background:linear-gradient(135deg,#1a56db,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+input{width:100%;padding:12px;margin:8px 0;border:2px solid #e2e8f0;border-radius:8px;font-size:16px;}
+.btn{width:100%;padding:14px;background:#1a56db;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;}
+.btn:hover{background:#1648c1;transform:translateY(-1px);}</style>
 </head>
 <body>
-<div class="card">
+<div class="login" id="login">
 <h1>🏆 SportTrack Pro</h1>
-<p>✅ Deployment riuscito! App sportiva completa pronta per Supabase.</p>
-<a href="#" class="btn" onclick="alert('Prossimo: configura Supabase!')">Avvia Config</a>
-<p><small>Menu completi, dashboard, presenze, convocati tutti funzionanti.</small></p>
+<input id="username" placeholder="Username (es. admin)">
+<input id="password" type="password" placeholder="Password">
+<button class="btn" onclick="login()">Accedi</button>
+<div id="status"></div>
 </div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+const supabase = createClient('https://saoghfehqrjgobcpiebz.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhb2doZmVocXJqZ29iY3BpZWJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzgwMTcsImV4cCI6MjA4OTE1NDAxN30.3i6bHXbdmKppLt8r2n4YCD5rgeFnm6veeFPmReDmOMY')
+
+async function login() {
+  const username = document.getElementById('username').value
+  const password = document.getElementById('password').value
+  document.getElementById('status').innerHTML = 'Connessione...'
+  
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: username + '@sporttrackpro.it',
+    password
+  })
+  
+  if (error) {
+    document.getElementById('status').innerHTML = '❌ ' + error.message
+  } else {
+    document.getElementById('status').innerHTML = '✅ Login OK! Vai a Supabase per role=admin'
+    document.getElementById('login').innerHTML += '<p style="color:green">Utente: ' + username + '</p>'
+  }
+}
+</script>
 </body>
 </html>
