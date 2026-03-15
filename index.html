@@ -381,6 +381,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .view { display: none; animation: viewIn .3s cubic-bezier(.22,1,.36,1) both; }
 .view.active { display: block; overflow-x: hidden; min-width: 0; overflow-y: auto; max-height: calc(100vh - 120px); }
 @keyframes viewIn { from { opacity:0; transform:translateY(10px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── PAGE HEADER ────────────────────────────────────────────── */
 .page-header { margin-bottom: 28px; }
@@ -1223,10 +1224,11 @@ async function saveStateDB() {
 async function loadStateFromDB() {
   try {
     const data = await DB.loadAll();
-    // Imposta activeSeason
     const activeSeason = (data.seasons||[]).find(s=>s.active);
     data.activeSeason = activeSeason?.id || data.seasons?.[0]?.id || null;
     Object.assign(S, data);
+    // Snapshot per il dirty-tracking
+    _prevState = JSON.parse(JSON.stringify(S));
   } catch(e) {
     console.error('Errore caricamento DB:', e);
     toast('Errore caricamento dati: ' + e.message, 'error');
@@ -1538,8 +1540,36 @@ function loadState() {
     if (S.sessionTypePerfParams === undefined) S.sessionTypePerfParams = null;
   } catch { S = defaultState(); }
 }
+let _prevState = null;
 function saveState() {
   localStorage.setItem(STORE_KEY, JSON.stringify(S));
+  if (DB_MODE !== 'supabase' || !currentUser) return;
+  // Detect which arrays changed and mark dirty
+  const tables = [
+    ['athletes','athletes'], ['sessions','sessions'],
+    ['attendances','attendances'], ['matches','matches'],
+    ['convocati','convocati'], ['categories','categories'],
+    ['teams','teams'], ['users','users'], ['seasons','seasons'],
+    ['athleteSeasons','athlete_seasons'], ['performances','performances'],
+  ];
+  for (const [key, table] of tables) {
+    const curr = S[key] || [];
+    const prev = (_prevState?.[key]) || [];
+    // Find new/changed records
+    for (const obj of curr) {
+      const prevObj = prev.find(p => p.id === obj.id);
+      if (!prevObj || JSON.stringify(prevObj) !== JSON.stringify(obj)) {
+        markDirty(table, obj);
+      }
+    }
+    // Find deleted records
+    for (const obj of prev) {
+      if (!curr.find(c => c.id === obj.id)) {
+        markDeleted(table, obj.id);
+      }
+    }
+  }
+  _prevState = JSON.parse(JSON.stringify(S));
 }
 
 // ── Supabase sync helpers (chiamate esplicitamente dopo ogni modifica) ──
@@ -2205,6 +2235,124 @@ function closeSidebar() { closeMobileMenu(); }
 function toggleSidebarCollapse() {}
 function restoreSidebarState() {}
 
+// View che richiedono dati freschi da Supabase prima del render
+
+// ── MUTATION TRACKER per Supabase sync ───────────────────────────
+// Chiama dopo aver modificato un'entità: markDirty('athletes', obj)
+const _dirtyQueue = new Map(); // table → Set of objects to upsert
+const _deleteQueue = new Map(); // table → Set of ids to delete
+
+function markDirty(table, obj) {
+  if (DB_MODE !== 'supabase') return;
+  if (!_dirtyQueue.has(table)) _dirtyQueue.set(table, new Map());
+  _dirtyQueue.get(table).set(obj.id, obj);
+  scheduleSyncFlush();
+}
+function markDeleted(table, id) {
+  if (DB_MODE !== 'supabase') return;
+  if (!_deleteQueue.has(table)) _deleteQueue.set(table, new Set());
+  _deleteQueue.get(table).add(id);
+  // Remove from dirty if was there
+  _dirtyQueue.get(table)?.delete(id);
+  scheduleSyncFlush();
+}
+
+let _flushTimer = null;
+function scheduleSyncFlush() {
+  if (_flushTimer) clearTimeout(_flushTimer);
+  _flushTimer = setTimeout(flushToSupabase, 800); // debounce 800ms
+}
+
+async function flushToSupabase() {
+  _flushTimer = null;
+  // Show syncing indicator
+  const lbl = document.getElementById('db-status-label');
+  if (lbl) lbl.textContent = 'Sincronizzazione...';
+
+  try {
+    // Process deletes first
+    for (const [table, ids] of _deleteQueue.entries()) {
+      for (const id of ids) {
+        await sb.from(table).delete().eq('id', id);
+      }
+      ids.clear();
+    }
+
+    // Process upserts
+    for (const [table, objs] of _dirtyQueue.entries()) {
+      const rows = [...objs.values()].map(obj => toSnakeCase(table, obj));
+      if (rows.length > 0) {
+        const { error } = await sb.from(table).upsert(rows, { onConflict: 'id' });
+        if (error) console.error('Supabase upsert error:', table, error);
+      }
+      objs.clear();
+    }
+
+    if (lbl) lbl.textContent = 'Supabase ✓';
+    setTimeout(() => { if (lbl) lbl.textContent = 'Supabase'; }, 2000);
+  } catch(e) {
+    console.error('flushToSupabase error:', e);
+    if (lbl) lbl.textContent = 'Errore sync';
+  }
+}
+
+// Converte oggetto camelCase → snake_case per la tabella specifica
+function toSnakeCase(table, obj) {
+  const maps = {
+    athletes: {
+      firstName:'first_name', lastName:'last_name', categoryId:'category_id',
+      teamId:'team_id', societyId:'society_id'
+    },
+    sessions: {
+      categoryId:'category_id', createdBy:'created_by',
+      matchId:'match_id', societyId:'society_id'
+    },
+    attendances: {
+      sessionId:'session_id', athleteId:'athlete_id', societyId:'society_id'
+    },
+    matches: {
+      categoryId:'category_id', homeAway:'home_away',
+      scoredGoals:'scored', concededGoals:'conceded',
+      bgColor:'bg_color', createdBy:'created_by', societyId:'society_id',
+      meetTime:'meet_time', meetPlace:'meet_place'
+    },
+    convocati: {
+      matchId:'match_id', athleteId:'athlete_id', societyId:'society_id'
+    },
+    performances: {
+      sessionId:'session_id', athleteId:'athlete_id', societyId:'society_id'
+    },
+    categories: {
+      societyId:'society_id', sportId:'sport_id', teamId:'team_id',
+      teamIds:'team_ids', managerIds:'manager_ids', directorIds:'director_ids',
+      coachIds:'coach_ids', professionalIds:'prof_ids'
+    },
+    teams: { societyId:'society_id', sportId:'sport_id' },
+    users: { societyId:'society_id' },
+    seasons: { societyId:'society_id', startYear:'start_year', endYear:'end_year' },
+    athlete_seasons: {
+      athleteId:'athlete_id', categoryId:'category_id', seasonId:'season_id',
+      teamId:'team_id', shirtNumber:'shirt_number', joinDate:'join_date',
+      societyId:'society_id'
+    },
+  };
+  const map = maps[table] || {};
+  const out = {};
+  for (const [k,v] of Object.entries(obj)) {
+    const sk = map[k] || k;
+    // Skip internal/derived fields not in DB
+    if (['password','role_label','gradient'].includes(sk)) continue;
+    out[sk] = v;
+  }
+  return out;
+}
+
+const DB_REFRESH_VIEWS = new Set([
+  'admin-overview','admin-society','admin-reports',
+  'cat-dashboard','athletes','sessions','matches',
+  'attendances','category-home'
+]);
+
 function showView(viewId, pushHistory=true) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const el = document.getElementById('view-' + viewId);
@@ -2214,12 +2362,33 @@ function showView(viewId, pushHistory=true) {
   const prevView = currentView;
   currentView = viewId;
   el.classList.add('active');
-  el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--ink-3)">Caricamento...</div>';
-  const fn = viewBuilders[viewId];
-  if (fn) { setTimeout(() => { el.innerHTML = ''; fn(el); }, 30); }
   highlightNavItem();
   updateBottomNav();
-  // Push to browser history for back button support
+
+  // Mostra spinner
+  el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--ink-3)">
+    <div style="font-size:2rem;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⟳</div>
+    <div>Caricamento dati aggiornati...</div>
+  </div>`;
+
+  const fn = viewBuilders[viewId];
+  if (!fn) { el.innerHTML = ''; return; }
+
+  // Se siamo in modalità Supabase e la view usa dati condivisi → ricarica prima
+  if (DB_MODE === 'supabase' && DB_REFRESH_VIEWS.has(viewId) && currentUser) {
+    loadStateFromDB().then(() => {
+      el.innerHTML = '';
+      fn(el);
+    }).catch(err => {
+      console.warn('DB refresh failed, using cache:', err);
+      el.innerHTML = '';
+      fn(el);
+    });
+  } else {
+    setTimeout(() => { el.innerHTML = ''; fn(el); }, 30);
+  }
+
+  // Push browser history
   if (pushHistory && prevView !== viewId) {
     const state = { viewId, selectedCategoryId, _sessEditId: window._sessEditId, _athProfileId: window._athProfileId, _convocatiMatchId: window._convocatiMatchId };
     history.pushState(state, '', '#' + viewId);
