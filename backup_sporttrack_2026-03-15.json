@@ -1,0 +1,1095 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "username": "admin",
+      "password": "admin123",
+      "role": "admin",
+      "name": "Amministratore",
+      "profession": "",
+      "phone": "",
+      "email": "admin@olimpia.it"
+    },
+    {
+      "id": "u2",
+      "username": "ONOFRIO",
+      "password": "onofrio123",
+      "role": "dirigente",
+      "name": "Onofrio D'Amico",
+      "profession": "Dirigente Sportivo",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "u4",
+      "username": "DANIELE",
+      "password": "daniele123",
+      "role": "allenatore",
+      "name": "Daniele Pollone",
+      "profession": "Organizzatore",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "u5",
+      "username": "STEFANO",
+      "password": "stefano123",
+      "role": "dirigente",
+      "name": "Stefano Ribone",
+      "profession": "Sciatore",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "id_1773516527936_yhfp9",
+      "username": "DANIEL",
+      "password": "daniel123",
+      "role": "allenatore",
+      "name": "Daniel Bresciani",
+      "profession": "Mister",
+      "phone": "",
+      "email": ""
+    },
+    {
+      "id": "id_1773518927895_31dsu",
+      "username": "TBD",
+      "password": "tbd123",
+      "role": "professionista",
+      "name": "TBD",
+      "profession": "Psicomotricità",
+      "phone": "",
+      "email": ""
+    }
+  ],
+  "sports": [
+    {
+      "id": "s1",
+      "name": "Calcio",
+      "icon": "⚽"
+    }
+  ],
+  "societies": [
+    {
+      "id": "soc1",
+      "name": "ASD Santena 2014",
+      "sportId": "s1",
+      "city": "Santena",
+      "email": ""
+    }
+  ],
+  "teams": [
+    {
+      "id": "t2",
+      "name": "PULCINI MISTI 2015/2016",
+      "societyId": "soc1",
+      "sportId": "s1"
+    },
+    {
+      "id": "id_1773532076818_q1q1o",
+      "name": "Allievi",
+      "societyId": "soc1",
+      "sportId": "s1"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat1",
+      "name": "UNDER_10",
+      "teamId": "t2",
+      "societyId": "soc1",
+      "sportId": "s1",
+      "directorIds": [
+        "u2",
+        "u5"
+      ],
+      "managerIds": [],
+      "coachIds": [
+        "u4",
+        "id_1773516527936_yhfp9"
+      ],
+      "professionalIds": [
+        "id_1773518927895_31dsu"
+      ],
+      "teamIds": [
+        "t2"
+      ]
+    },
+    {
+      "id": "id_1773532051163_7t892",
+      "name": "Under_14",
+      "sportId": "s1",
+      "societyId": "soc1",
+      "teamId": "id_1773532076818_q1q1o",
+      "teamIds": [
+        "id_1773532076818_q1q1o"
+      ],
+      "directorIds": [],
+      "managerIds": [],
+      "coachIds": [],
+      "professionalIds": []
+    }
+  ],
+  "athletes": [
+    {
+      "id": "id_1773516578261_o8kdu",
+      "firstName": "Mattia",
+      "lastName": "Barba",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 8,
+      "role": "Difensore",
+      "notes": "",
+      "nickname": "Tres Jolie",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773516687829_87zzd",
+      "firstName": "Samuele",
+      "lastName": "Amorelli",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 11,
+      "role": "Difensore",
+      "notes": "",
+      "nickname": "Andrea",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773516751590_tbwwi",
+      "firstName": "Manuel",
+      "lastName": "Bresciani",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 4,
+      "role": "Centrocampista",
+      "notes": "",
+      "nickname": "Melo",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773516796319_rqaya",
+      "firstName": "Federico",
+      "lastName": "Brossa",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 19,
+      "role": "Attaccante",
+      "notes": "",
+      "nickname": "Puma",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773516835173_duw6v",
+      "firstName": "Alessandro",
+      "lastName": "Cramia",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 1,
+      "role": "Portiere",
+      "notes": "",
+      "nickname": "Ragno",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773516880186_0edsw",
+      "firstName": "Federico",
+      "lastName": "Cavaglià",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 5,
+      "role": "Ala",
+      "notes": "",
+      "nickname": "Pippo",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773516918495_l9gzx",
+      "firstName": "Francesco",
+      "lastName": "Costamagna",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 17,
+      "role": "Difensore",
+      "notes": "",
+      "nickname": "The Wall",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773516949951_puyqn",
+      "firstName": "Pietro",
+      "lastName": "Piras",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 2,
+      "role": "Difensore",
+      "notes": "",
+      "nickname": "Pirata",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773516984084_qnd3b",
+      "firstName": "Christian",
+      "lastName": "Pollone",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 14,
+      "role": "Ala",
+      "notes": "",
+      "nickname": "Cri Cri",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773517047883_f397t",
+      "firstName": "Samuele",
+      "lastName": "Ribone",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 9,
+      "role": "Centrocampista",
+      "notes": "",
+      "nickname": "Bip Bip",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773517071538_6jutg",
+      "firstName": "Riccardo",
+      "lastName": "Spampinato",
+      "categoryId": "cat1",
+      "dob": "",
+      "number": 12,
+      "role": "Portiere",
+      "notes": "",
+      "nickname": "Fluo",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773517163803_nhuqs",
+      "firstName": "Christian",
+      "lastName": "Terebinti",
+      "dob": "",
+      "number": 10,
+      "role": "Attaccante",
+      "notes": "",
+      "categoryId": "cat1",
+      "nickname": "Granata",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773517195789_th6uu",
+      "firstName": "Domenico",
+      "lastName": "Trimboli",
+      "dob": "",
+      "number": 16,
+      "role": "Ala",
+      "notes": "",
+      "categoryId": "cat1",
+      "nickname": "Don",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773517227276_r0yyp",
+      "firstName": "Jospeh",
+      "lastName": "D'Amico",
+      "dob": "",
+      "number": 18,
+      "role": "Attaccante",
+      "notes": "",
+      "categoryId": "cat1",
+      "nickname": "Jojo",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773517262985_v4ich",
+      "firstName": "Pietro",
+      "lastName": "Trimboli",
+      "dob": "",
+      "number": 3,
+      "role": "Difensore",
+      "notes": "",
+      "categoryId": "cat1",
+      "nickname": "Maciste",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773517289155_3u69k",
+      "firstName": "Alberto",
+      "lastName": "Stirparo",
+      "dob": "",
+      "number": 7,
+      "role": "Ala",
+      "notes": "",
+      "categoryId": "cat1",
+      "nickname": "Maniciolo",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773517300999_8r55u",
+      "firstName": "Massimo",
+      "lastName": "Togni",
+      "dob": "",
+      "number": 6,
+      "role": "Centrocampista",
+      "notes": "",
+      "categoryId": "cat1",
+      "nickname": "Bidello",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773517344464_p18w2",
+      "firstName": "Samuele",
+      "lastName": "Pantone",
+      "dob": "",
+      "number": 9,
+      "role": "Attaccante",
+      "notes": "",
+      "categoryId": "cat1",
+      "nickname": "Speedy",
+      "teamId": "t2"
+    },
+    {
+      "id": "id_1773532109849_95k02",
+      "firstName": "mario",
+      "lastName": "mario",
+      "categoryId": "id_1773532051163_7t892",
+      "teamId": "id_1773532076818_q1q1o",
+      "nickname": "",
+      "dob": "",
+      "number": 10,
+      "role": "Attaccante",
+      "notes": ""
+    }
+  ],
+  "sessions": [
+    {
+      "id": "id_1773516125939_dax36",
+      "categoryId": "cat1",
+      "date": "2026-03-16",
+      "type": "A",
+      "notes": "",
+      "createdBy": "u1"
+    },
+    {
+      "id": "id_1773521768752_1j6si",
+      "categoryId": "cat1",
+      "date": "2026-03-14",
+      "type": "P",
+      "notes": "Partita vs Victoria Academy",
+      "createdBy": "u1",
+      "matchId": "id_1773521768752_rq677"
+    },
+    {
+      "id": "id_1773533165696_o78a8",
+      "categoryId": "cat1",
+      "date": "2026-03-18",
+      "type": "A",
+      "notes": "",
+      "createdBy": "u1"
+    }
+  ],
+  "attendances": [
+    {
+      "id": "id_1773517463441_60sbb",
+      "sessionId": "${sessId}",
+      "athleteId": "${ath.id}",
+      "status": "A",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773519685592_y02tn",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773516578261_o8kdu",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773519706630_h7zy0",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773517300999_8r55u",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361046_j6bv3",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773516687829_87zzd",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361046_fmlh0",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773516751590_tbwwi",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361047_5fjua",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773516796319_rqaya",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361047_czsoi",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773516835173_duw6v",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361047_rg32z",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773516880186_0edsw",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361048_podhm",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773516918495_l9gzx",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361048_7cnlp",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773516949951_puyqn",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361048_gp86m",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773516984084_qnd3b",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361049_c5zc8",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773517047883_f397t",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361049_snspn",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773517071538_6jutg",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361049_fqh92",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773517163803_nhuqs",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361049_axogk",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773517195789_th6uu",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361049_rloah",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773517227276_r0yyp",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361049_9wtip",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773517262985_v4ich",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361050_2mi3z",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773517289155_3u69k",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773520361050_h9667",
+      "sessionId": "id_1773516125939_dax36",
+      "athleteId": "id_1773517344464_p18w2",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521816343_3csf5",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773516578261_o8kdu",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521818717_6bfty",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773516687829_87zzd",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521820397_5t2u1",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773516751590_tbwwi",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521822034_jegia",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773516796319_rqaya",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521828168_4stx3",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773516835173_duw6v",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521829948_fwogj",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773516880186_0edsw",
+      "status": "A",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521832024_c19wb",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773516918495_l9gzx",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521834170_2zwl4",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773516949951_puyqn",
+      "status": "A",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521837466_dopsk",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773516984084_qnd3b",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521841240_n5p7f",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773517047883_f397t",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521843344_i1vgs",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773517071538_6jutg",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521845204_lklmm",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773517163803_nhuqs",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521846919_s3we6",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773517195789_th6uu",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521850142_gdsnk",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773517227276_r0yyp",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521852406_30a7d",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773517262985_v4ich",
+      "status": "P",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521855675_5d440",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773517289155_3u69k",
+      "status": "G",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521856328_vg9jt",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773517300999_8r55u",
+      "status": "G",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    },
+    {
+      "id": "id_1773521856960_dw2bq",
+      "sessionId": "id_1773521768752_1j6si",
+      "athleteId": "id_1773517344464_p18w2",
+      "status": "G",
+      "perf": {
+        "tecnica": 0,
+        "fisico": 0,
+        "tattica": 0,
+        "mentale": 0,
+        "comunicazione": 0
+      },
+      "notes": ""
+    }
+  ],
+  "managers": [],
+  "matches": [
+    {
+      "id": "id_1773521768752_rq677",
+      "opponent": "Victoria Academy",
+      "homeAway": "home",
+      "date": "2026-03-14",
+      "time": "11:00",
+      "meetTime": "10:00",
+      "meetPlace": "Via Trinità 10, Santena (To)",
+      "result": "L",
+      "scoredGoals": 0,
+      "concededGoals": 3,
+      "notes": "",
+      "bgColor": "#1A3A5C",
+      "categoryId": "cat1",
+      "createdBy": "u1",
+      "sessionId": "id_1773521768752_1j6si",
+      "linkedSessionId": "id_1773530940338_p75kw"
+    }
+  ],
+  "convocati": [
+    {
+      "id": "id_1773521778034_yo8zn",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773516578261_o8kdu",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521780487_seqiz",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773516687829_87zzd",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521781667_i4qaf",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773516751590_tbwwi",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521783692_a8mgb",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773516796319_rqaya",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521786752_hsowg",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773516835173_duw6v",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521788142_7u6ag",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773516880186_0edsw",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521788998_uz6gk",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773516918495_l9gzx",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521790902_zn3sj",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773516949951_puyqn",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521793314_jwqjz",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773516984084_qnd3b",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521795240_i991i",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773517047883_f397t",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521797136_s7jin",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773517071538_6jutg",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521798528_joap6",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773517163803_nhuqs",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521799756_0vr5k",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773517195789_th6uu",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521801592_1juip",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773517227276_r0yyp",
+      "status": "convocato",
+      "notes": ""
+    },
+    {
+      "id": "id_1773521802862_c31wh",
+      "matchId": "id_1773521768752_rq677",
+      "athleteId": "id_1773517262985_v4ich",
+      "status": "convocato",
+      "notes": ""
+    }
+  ],
+  "athleteRoles": {
+    "cat1": [
+      "Portiere",
+      "Difensore",
+      "Terzino",
+      "Centrocampista",
+      "Ala",
+      "Attaccante"
+    ]
+  },
+  "seasons": [
+    {
+      "id": "seas2",
+      "name": "2025/2026",
+      "startYear": 2025,
+      "endYear": 2026,
+      "active": true
+    }
+  ],
+  "activeSeason": "seas2",
+  "staffHistory": [],
+  "athleteSeasons": [],
+  "trainings": [],
+  "attendance": [],
+  "activityTypes": {
+    "A": {
+      "label": "Allenamento",
+      "emoji": "🏃",
+      "color": "blue",
+      "cls": "act-A"
+    },
+    "P": {
+      "label": "Partita",
+      "emoji": "⚽",
+      "color": "gold",
+      "cls": "act-P"
+    },
+    "I": {
+      "label": "Individual",
+      "emoji": "🎯",
+      "color": "green",
+      "cls": "act-I"
+    },
+    "PS": {
+      "label": "Psicomotricità",
+      "emoji": "🧠",
+      "color": "purple",
+      "cls": "act-PS"
+    },
+    "T": {
+      "label": "Palestra",
+      "emoji": "🏋️",
+      "color": "teal",
+      "cls": "act-T"
+    }
+  },
+  "perfParams": null,
+  "sessionTypePerfParams": null
+}
