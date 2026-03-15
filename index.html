@@ -1,80 +1,167 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SportTrackPro</title>
-  <style>
-    /* Stili minimi per layout */
-    body { font-family: sans-serif; margin:0; padding:0; }
-    #login-screen { display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; }
-    #app { display:none; padding:20px; }
-    .view { display:none; }
-    .visible { display:block; }
-    input, button { margin:5px; padding:5px; }
-    nav { margin-bottom:20px; }
-    nav button { margin-right:5px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SportTrackPro</title>
+<style>
+  body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f4f4f4; }
+  header { background:#004080; color:white; padding:10px 20px; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { margin:0; font-size:1.5em; }
+  nav button { margin-left:10px; padding:5px 10px; cursor:pointer; }
+  #login-screen { display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; }
+  #login-screen input { margin:5px; padding:5px; width:200px; }
+  #login-screen button { padding:5px 10px; }
+  #app { display:none; padding:20px; }
+  .view { display:none; margin-top:20px; background:white; padding:15px; border-radius:5px; box-shadow:0 0 5px rgba(0,0,0,0.1); }
+  label { display:block; margin-top:10px; }
+  input, select { padding:5px; width:200px; }
+  .form-group { margin-bottom:10px; }
+</style>
 </head>
 <body>
 
-  <!-- LOGIN SCREEN -->
-  <div id="login-screen">
-    <h2>Login SportTrackPro</h2>
-    <input type="text" id="login-user" placeholder="Username">
-    <input type="password" id="login-pass" placeholder="Password">
-    <button onclick="doLogin()">Login</button>
-    <div id="login-msg"></div>
-  </div>
+<!-- LOGIN -->
+<div id="login-screen">
+  <h2>Login SportTrackPro</h2>
+  <input type="text" id="login-user" placeholder="Username">
+  <input type="password" id="login-pass" placeholder="Password">
+  <button id="login-btn">Login</button>
+  <div id="login-msg" style="color:red; margin-top:10px;"></div>
+</div>
 
-  <!-- APP PRINCIPALE -->
-  <div id="app" class="">
-    <!-- Top navigation per cambiare vista -->
+<!-- APP -->
+<div id="app">
+  <header>
+    <h1>SportTrackPro</h1>
     <nav id="topnav"></nav>
+  </header>
 
-    <!-- Contenitore viste -->
-    <div id="views">
-      <div id="view-sport" class="view"></div>
-      <div id="view-societies" class="view"></div>
-      <div id="view-teams" class="view"></div>
-      <div id="view-categories" class="view"></div>
-      <div id="view-staff" class="view"></div>
-      <div id="view-activities" class="view"></div>
-      <div id="view-seasons" class="view"></div>
+  <!-- Viste -->
+  <div id="views">
+    <div id="view-sport" class="view"></div>
+    <div id="view-societies" class="view"></div>
+    <div id="view-teams" class="view"></div>
+    <div id="view-categories" class="view"></div>
+    <div id="view-staff" class="view"></div>
+    <div id="view-activities" class="view"></div>
+    <div id="view-seasons" class="view"></div>
+
+    <!-- Form creazione Società → Squadra → Categoria -->
+    <div id="view-create" class="view">
+      <h3>Crea Società → Squadra → Categoria</h3>
+      <div class="form-group">
+        <label>Nome Società</label>
+        <input type="text" id="input-societa">
+      </div>
+      <div class="form-group">
+        <label>Nome Squadra</label>
+        <input type="text" id="input-squadra">
+      </div>
+      <div class="form-group">
+        <label>Nome Categoria</label>
+        <input type="text" id="input-categoria">
+      </div>
+      <button id="btn-create">Crea Tutto</button>
+      <div id="create-msg" style="margin-top:10px;"></div>
     </div>
   </div>
+</div>
 
-  <!-- Script JS -->
-  <script type="module" src="script.js"></script>
+<!-- Script Supabase -->
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-  <script type="module">
-    // Mini helper per costruire menu topnav
-    window.buildTopnavMenu = function() {
-      const nav = document.getElementById('topnav');
-      nav.innerHTML = '';
-      const views = [
-        { id:'view-sport', label:'Sport' },
-        { id:'view-societies', label:'Società' },
-        { id:'view-teams', label:'Squadre' },
-        { id:'view-categories', label:'Categorie' },
-        { id:'view-staff', label:'Staff/Utenti' },
-        { id:'view-activities', label:'Attività/Performance' },
-        { id:'view-seasons', label:'Stagioni' }
-      ];
-      views.forEach(v => {
-        const btn = document.createElement('button');
-        btn.textContent = v.label;
-        btn.onclick = () => showView(v.id);
-        nav.appendChild(btn);
-      });
-    }
+// Inietta le chiavi direttamente se non usi env vars
+const SUPABASE_URL = 'https://<PROJECT_REF>.supabase.co';
+const SUPABASE_ANON_KEY = '<ANON_KEY>';
+window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    window.showView = function(viewId) {
-      document.querySelectorAll('.view').forEach(v => v.style.display='none');
-      const el = document.getElementById(viewId);
-      if(el) el.style.display='block';
-    }
-  </script>
+// Helpers
+function showView(viewId) {
+  document.querySelectorAll('.view').forEach(v=>v.style.display='none');
+  const el = document.getElementById(viewId);
+  if(el) el.style.display='block';
+}
+
+function toast(msg, type='info') {
+  alert(msg);
+}
+
+// Costruisci topnav
+function buildTopnavMenu() {
+  const nav = document.getElementById('topnav');
+  nav.innerHTML = '';
+  const views = [
+    {id:'view-sport', label:'Sport'},
+    {id:'view-societies', label:'Società'},
+    {id:'view-teams', label:'Squadre'},
+    {id:'view-categories', label:'Categorie'},
+    {id:'view-staff', label:'Staff/Utenti'},
+    {id:'view-activities', label:'Attività/Performance'},
+    {id:'view-seasons', label:'Stagioni'},
+    {id:'view-create', label:'Crea Tutto'}
+  ];
+  views.forEach(v=>{
+    const btn = document.createElement('button');
+    btn.textContent = v.label;
+    btn.onclick = ()=>showView(v.id);
+    nav.appendChild(btn);
+  });
+}
+
+// LOGIN
+async function doLogin() {
+  const email = document.getElementById('login-user').value + '@olimpia.it';
+  const password = document.getElementById('login-pass').value;
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const msgEl = document.getElementById('login-msg');
+  if(error) { msgEl.textContent = error.message; return; }
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  buildTopnavMenu();
+}
+
+// CREAZIONE SOCIETÀ → SQUADRA → CATEGORIA
+document.getElementById('btn-create').addEventListener('click', async ()=>{
+  const societaNome = document.getElementById('input-societa').value.trim();
+  const squadraNome = document.getElementById('input-squadra').value.trim();
+  const categoriaNome = document.getElementById('input-categoria').value.trim();
+  const msgEl = document.getElementById('create-msg');
+
+  if(!societaNome || !squadraNome || !categoriaNome){
+    msgEl.textContent = 'Compila tutti i campi';
+    return;
+  }
+
+  try {
+    // Crea Società
+    let { data: societaData, error: errS } = await supabase.from('societies').insert([{ nome: societaNome }]).select();
+    if(errS) throw errS;
+    const societaId = societaData[0].id;
+
+    // Crea Squadra
+    let { data: squadraData, error: errT } = await supabase.from('teams').insert([{ nome: squadraNome, society_id: societaId }]).select();
+    if(errT) throw errT;
+    const squadraId = squadraData[0].id;
+
+    // Crea Categoria
+    let { data: categoriaData, error: errC } = await supabase.from('categories').insert([{ nome: categoriaNome, team_id: squadraId }]).select();
+    if(errC) throw errC;
+
+    msgEl.style.color='green';
+    msgEl.textContent = 'Tutti i record creati correttamente!';
+
+  } catch(e) {
+    console.error(e);
+    msgEl.style.color='red';
+    msgEl.textContent = e.message;
+  }
+});
+
+// Login button
+document.getElementById('login-btn').addEventListener('click', doLogin);
+</script>
 
 </body>
 </html>
