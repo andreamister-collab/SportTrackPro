@@ -1,5 +1,5 @@
 -- ============================================================
--- SportTrack Pro — DROP COMPLETO
+-- SportTrack Pro — DROP COMPLETO 
 -- Esegui questo script nel SQL Editor di Supabase
 -- per eliminare tutte le tabelle, policy, funzioni e tipi
 -- ATTENZIONE: operazione irreversibile, tutti i dati verranno persi
