@@ -2193,6 +2193,10 @@ async function doLogin() {
 }
 
 function _afterLogin() {
+  // Svuota localStorage per forzare caricamento fresco da Supabase
+  if (DB_MODE === 'supabase') {
+    localStorage.removeItem(STORE_KEY);
+  }
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   updateSidebarUser();
@@ -2604,6 +2608,24 @@ const TABLE_COLUMNS = {
   societies: ['id','name','sport_id','city','email'],
 };
 
+// Colonne reali per ogni tabella (da schema Supabase verificato)
+const TABLE_REAL_COLUMNS = {
+  sports:          ['id','name','icon'],
+  societies:       ['id','name','sport_id','city','email'],
+  teams:           ['id','name','society_id'],
+  seasons:         ['id','name','start_year','end_year','active','society_id'],
+  users:           ['id','name','username','email','role','profession','phone','society_id'],
+  categories:      ['id','name','sport_id','society_id','team_id','team_ids','director_ids','manager_ids','coach_ids','prof_ids'],
+  athletes:        ['id','first_name','last_name','dob','nickname','category_id','team_id','number','role','notes'],
+  athlete_seasons: ['id','athlete_id','category_id','season_id','team_id','role','shirt_number','join_date','notes','society_id'],
+  sessions:        ['id','category_id','date','type','notes','created_by','match_id','society_id'],
+  attendances:     ['id','session_id','athlete_id','status','society_id'],
+  performances:    ['id','session_id','athlete_id','params','notes','society_id'],
+  matches:         ['id','category_id','date','time','meet_time','meet_place','opponent','home_away','result','scored','conceded','notes','bg_color','created_by','society_id'],
+  convocati:       ['id','match_id','athlete_id','status','notes','society_id'],
+  config:          ['key','value'],
+};
+
 function toSnakeCase(table, obj) {
   const maps = {
     athletes: {
@@ -2647,15 +2669,14 @@ function toSnakeCase(table, obj) {
   const out = {};
   for (const [k,v] of Object.entries(obj)) {
     const sk = map[k] || k;
-    // Skip internal/derived fields not in DB
-    if (['password','role_label','gradient'].includes(sk)) continue;
+    if (['password','role_label','gradient','password_hash'].includes(sk)) continue;
     out[sk] = v;
   }
-  // Whitelist per tabelle globali senza society_id
-  const whitelist = TABLE_COLUMNS[table];
-  if (whitelist) {
+  // Filtra solo le colonne realmente presenti nel DB per questa tabella
+  const realCols = TABLE_REAL_COLUMNS[table];
+  if (realCols) {
     const filtered = {};
-    for (const k of whitelist) { if (k in out) filtered[k] = out[k]; }
+    for (const k of realCols) { if (k in out) filtered[k] = out[k]; }
     return filtered;
   }
   return out;
