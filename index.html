@@ -948,7 +948,7 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // ── CONFIGURAZIONE SUPABASE ─────────────────────────────────
 // Sostituisci questi valori con le tue credenziali Supabase:
 // Supabase Dashboard → Settings → API
-const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
+const SUPABASE_URL  = 'https://saoghfehqrjgobcpiebz.supabase.co;
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -2193,10 +2193,8 @@ async function doLogin() {
 }
 
 function _afterLogin() {
-  // Svuota localStorage per forzare caricamento fresco da Supabase
-  if (DB_MODE === 'supabase') {
-    localStorage.removeItem(STORE_KEY);
-  }
+  // Svuota SEMPRE il localStorage al login per forzare caricamento fresco da DB
+  localStorage.removeItem(STORE_KEY);
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   updateSidebarUser();
@@ -4923,7 +4921,7 @@ function createSession() {
   if (!date) { toast('Data obbligatoria','error'); return; }
   if (!catId) { toast('Seleziona una categoria','error'); return; }
   if (!canEditSessions(catId)) { toast('Non hai i permessi','error'); return; }
-  const sess = { id: uid(), categoryId: catId, date, type, notes, createdBy: currentUser.id };
+  const sess = { id: uid(), categoryId: catId, date, type, notes, createdBy: currentUser.id, societyId: currentUser.societyId || null };
   if (teamId) sess.teamId = teamId;
   S.sessions.push(sess);
   // Sync filter state
