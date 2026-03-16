@@ -948,7 +948,7 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // ── CONFIGURAZIONE SUPABASE ─────────────────────────────────
 // Sostituisci questi valori con le tue credenziali Supabase:
 // Supabase Dashboard → Settings → API
-const SUPABASE_URL  = 'https://saoghfehqrjgobcpiebz.supabase.co';
+const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -7420,33 +7420,33 @@ function saveStaffHistoryEntry(userId) {
 
 // ── ADMIN RESET PASSWORD ─────────────────────────────────────
 function openAdminResetPasswordModal(userId, userName) {
-  openModal(`
-    <div class="modal-header">
-      <h3>🔑 Reset Password — ${esc(userName)}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div style="background:var(--gold-l);border-radius:var(--radius);padding:10px 14px;font-size:.82rem;color:#7a4a00;margin-bottom:16px">
-      ⚠️ Stai impostando una nuova password per <strong>${esc(userName)}</strong>. L'utente potrà cambiarla al prossimo accesso.
-    </div>
-    <div class="form-field" style="margin-bottom:4px">
-      <label>Nuova Password Temporanea</label>
-      <div style="display:flex;gap:6px">
-        <input id="ar-pass" type="password" placeholder="••••••••" style="flex:1"
-          oninput="_updatePwStrengthUI(this.value,'ar-pass');_updatePwConfirmUI(this.value,document.getElementById('ar-pass-confirm').value)">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="fillGeneratedPassword('ar-pass')" title="Genera password sicura" style="padding:8px 10px">🎲</button>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePwVisibility('ar-pass','eye-ar')" style="padding:8px 10px"><span id="eye-ar">👁</span></button>
-      </div>
-      ${pwStrengthHTML('ar-pass','ar-pass-confirm')}
-    </div>
-    <div class="form-field" style="margin-top:10px">
-      <label>Conferma Password</label>
-      <input id="ar-pass-confirm" type="password" placeholder="••••••••"
-        oninput="_updatePwConfirmUI(document.getElementById('ar-pass').value,this.value)">
-    </div>
-    <div class="form-actions" style="margin-top:16px">
-      <button class="btn btn-accent" onclick="adminResetPassword('${userId}','${userName}')">🔑 Imposta Password</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
-    </div>\`);
+  const html = '<div class="modal-header">'
+    + '<h3>🔑 Reset Password — ' + esc(userName) + '</h3>'
+    + '<button class="modal-close" onclick="closeModal()">✕</button>'
+    + '</div>'
+    + '<div style="background:var(--gold-l);border-radius:var(--radius);padding:10px 14px;font-size:.82rem;color:#7a4a00;margin-bottom:16px">'
+    + '⚠️ Stai impostando una nuova password per <strong>' + esc(userName) + '</strong>.'
+    + '</div>'
+    + '<div class="form-field" style="margin-bottom:4px">'
+    + '<label>Nuova Password Temporanea</label>'
+    + '<div style="display:flex;gap:6px">'
+    + '<input id="ar-pass" type="password" placeholder="••••••••" style="flex:1"'
+    + ' oninput="_updatePwStrengthUI(this.value,\'ar-pass\');_updatePwConfirmUI(this.value,document.getElementById(\'ar-pass-confirm\').value)">'
+    + '<button type="button" class="btn btn-ghost btn-sm" onclick="fillGeneratedPassword(\'ar-pass\')" style="padding:8px 10px">🎲</button>'
+    + '<button type="button" class="btn btn-ghost btn-sm" onclick="togglePwVisibility(\'ar-pass\',\'eye-ar\')" style="padding:8px 10px"><span id="eye-ar">👁</span></button>'
+    + '</div>'
+    + pwStrengthHTML('ar-pass','ar-pass-confirm')
+    + '</div>'
+    + '<div class="form-field" style="margin-top:10px">'
+    + '<label>Conferma Password</label>'
+    + '<input id="ar-pass-confirm" type="password" placeholder="••••••••"'
+    + ' oninput="_updatePwConfirmUI(document.getElementById(\'ar-pass\').value,this.value)">'
+    + '</div>'
+    + '<div class="form-actions" style="margin-top:16px">'
+    + '<button class="btn btn-accent" onclick="adminResetPassword(\''+userId+'\',\''+userName+'\')">🔑 Imposta Password</button>'
+    + '<button class="btn btn-ghost" onclick="closeModal()">Annulla</button>'
+    + '</div>';
+  openModal(html);
 }
 
 async function adminResetPassword(userId, userName) {
