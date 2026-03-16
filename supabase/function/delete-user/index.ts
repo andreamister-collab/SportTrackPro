@@ -1,4 +1,4 @@
-// supabase/functions/delete-user/index.ts
+// supabase/functions/delete-user/index.ts 
 // Elimina un utente da Supabase Auth e da public.users
 // Richiede: Authorization: Bearer <JWT dell'admin loggato>
 // Body JSON: { user_id }
