@@ -1,4 +1,4 @@
-// supabase/functions/create-user/index.ts
+// supabase/functions/create-user/index.ts 
 // Crea un utente in Supabase Auth + riga in public.users
 // Richiede: Authorization: Bearer <JWT dell'admin loggato>
 // Body JSON: { username, password, name, role, email, profession, phone, society_id }
