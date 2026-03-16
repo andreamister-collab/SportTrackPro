@@ -1,16 +1,44 @@
-:root {
-    --ink: #0D1117; --ink-2: #1C2331; --ink-3: #2D3748;
-    --accent: #38BDF8; --white: #FFFFFF; --safe: #10B981;
+body{
+font-family:Arial;
+margin:0;
+background:#f4f6f8;
 }
-body { background: var(--ink); color: var(--white); font-family: 'DM Sans', sans-serif; margin: 0; }
-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: var(--ink-2); border-bottom: 1px solid #333; }
-.logo { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--accent); letter-spacing: -1px; }
-nav button { background: transparent; border: 1px solid #444; color: #aaa; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.3s; margin-left: 5px; }
-nav button:hover { border-color: var(--accent); color: white; }
-main { padding: 2rem; max-width: 1100px; margin: 0 auto; }
-.form-box { background: var(--ink-2); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid #333; }
-.form-box h3 { margin-top: 0; color: var(--accent); font-size: 0.9rem; text-transform: uppercase; }
-input, select { background: var(--ink-3); border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; margin: 5px 0; width: 100%; box-sizing: border-box; }
-.btn-add { background: var(--accent); color: var(--ink); border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
-.card { background: var(--ink-2); padding: 1rem; border-radius: 10px; border-left: 4px solid var(--accent); }
+
+.login-box{
+width:300px;
+margin:120px auto;
+padding:30px;
+background:white;
+border-radius:10px;
+box-shadow:0 10px 30px rgba(0,0,0,0.1);
+}
+
+input{
+width:100%;
+padding:10px;
+margin:10px 0;
+}
+
+button{
+padding:10px;
+width:100%;
+background:#0077ff;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+.sidebar{
+width:220px;
+height:100vh;
+background:#111;
+color:white;
+padding:20px;
+position:fixed;
+}
+
+.content{
+margin-left:240px;
+padding:40px;
+}
