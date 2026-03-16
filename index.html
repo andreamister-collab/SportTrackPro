@@ -1110,7 +1110,7 @@ const DB = {
       sessions, attendances, matches, convocati, performances
     ] = await Promise.all([
       sb.from('sports').select('*'),                                              // globale
-      sb.from('societies').select('*'),                                           // globale
+      sb.from('societies').select('*').then(r => { console.log('[RAW societies]', r.data, r.error); return r; }),  // globale
       sb.from('teams').select('*'),
       sb.from('categories').select('*'),
       sb.from('users').select('*'),
