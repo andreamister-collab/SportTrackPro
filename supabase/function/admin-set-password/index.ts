@@ -1,4 +1,4 @@
-// supabase/functions/admin-set-password/index.ts
+// supabase/functions/admin-set-password/index.ts 
 // Permette all'admin di impostare la password di un utente qualsiasi
 // Body JSON: { user_id, new_password }
 
