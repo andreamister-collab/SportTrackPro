@@ -1,44 +1,163 @@
+*{
+box-sizing:border-box;
+}
+
 body{
-font-family:Arial;
+font-family:Arial, Helvetica, sans-serif;
 margin:0;
 background:#f4f6f8;
+color:#333;
+}
+
+/* LOGIN */
+
+.login-wrapper{
+height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+background:linear-gradient(135deg,#1e3c72,#2a5298);
 }
 
 .login-box{
-width:300px;
-margin:120px auto;
-padding:30px;
+width:340px;
+padding:35px;
 background:white;
-border-radius:10px;
-box-shadow:0 10px 30px rgba(0,0,0,0.1);
+border-radius:12px;
+box-shadow:0 15px 40px rgba(0,0,0,0.2);
+text-align:center;
+}
+
+.login-box h1{
+margin-bottom:20px;
+font-size:22px;
 }
 
 input{
 width:100%;
-padding:10px;
+padding:12px;
 margin:10px 0;
+border-radius:6px;
+border:1px solid #ccc;
+font-size:14px;
+transition:0.2s;
+}
+
+input:focus{
+border-color:#0077ff;
+outline:none;
+box-shadow:0 0 5px rgba(0,119,255,0.3);
 }
 
 button{
-padding:10px;
+padding:12px;
 width:100%;
 background:#0077ff;
 color:white;
 border:none;
-border-radius:5px;
+border-radius:6px;
+font-size:15px;
 cursor:pointer;
+transition:0.2s;
 }
 
+button:hover{
+background:#005fd1;
+}
+
+/* LAYOUT APP */
+
 .sidebar{
-width:220px;
+width:230px;
 height:100vh;
-background:#111;
+background:#111827;
 color:white;
-padding:20px;
+padding:25px 20px;
 position:fixed;
+left:0;
+top:0;
+}
+
+.sidebar h2{
+margin-top:0;
+margin-bottom:30px;
+font-size:18px;
+}
+
+.sidebar a{
+display:block;
+color:#cbd5e1;
+text-decoration:none;
+padding:10px;
+border-radius:6px;
+margin-bottom:5px;
+transition:0.2s;
+}
+
+.sidebar a:hover{
+background:#1f2937;
+color:white;
 }
 
 .content{
-margin-left:240px;
+margin-left:250px;
 padding:40px;
+}
+
+/* CARD DASHBOARD */
+
+.card{
+background:white;
+padding:25px;
+border-radius:10px;
+box-shadow:0 8px 20px rgba(0,0,0,0.05);
+margin-bottom:25px;
+}
+
+/* TABELLE */
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+border-radius:8px;
+overflow:hidden;
+box-shadow:0 4px 10px rgba(0,0,0,0.05);
+}
+
+th,td{
+padding:12px;
+border-bottom:1px solid #eee;
+text-align:left;
+}
+
+th{
+background:#f1f5f9;
+}
+
+/* BOTTONI SECONDARI */
+
+.btn-secondary{
+background:#6b7280;
+}
+
+.btn-secondary:hover{
+background:#4b5563;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:900px){
+
+.sidebar{
+position:relative;
+width:100%;
+height:auto;
+}
+
+.content{
+margin-left:0;
+padding:20px;
+}
+
 }
