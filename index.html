@@ -1503,6 +1503,8 @@ async function saveStateDB() {
 async function loadStateFromDB() {
   try {
     const data = await DB.loadAll();
+    // Pulisci localStorage prima di aggiornare S con dati freschi dal DB
+    localStorage.removeItem(STORE_KEY);
     const activeSeason = (data.seasons||[]).find(s=>s.active);
     data.activeSeason = activeSeason?.id || data.seasons?.[0]?.id || null;
     Object.assign(S, data);
@@ -1794,7 +1796,19 @@ let selectedCategoryId = null; // context for dirigente
 function loadState() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    S = raw ? JSON.parse(raw) : defaultState();
+    // In modalità Supabase: se non c'è cache locale usa stato minimo (non defaultState)
+    // I dati reali verranno caricati da loadStateFromDB dopo il login
+    if (!raw) {
+      S = {
+        users:[], sports:[], societies:[], teams:[], categories:[],
+        athletes:[], sessions:[], attendances:[], matches:[], convocati:[],
+        seasons:[], athleteSeasons:[], staffHistory:[],
+        activityTypes:null, perfParams:null, sessionTypePerfParams:null,
+        activeSeason:null, athleteRoles:{}
+      };
+      return;
+    }
+    S = JSON.parse(raw);
     // Ensure new fields exist for users loading old data
     if (!S.matches)        S.matches = [];
     if (!S.convocati)      S.convocati = [];
@@ -2193,8 +2207,15 @@ async function doLogin() {
 }
 
 function _afterLogin() {
-  // Svuota SEMPRE il localStorage al login per forzare caricamento fresco da DB
+  // Svuota localStorage e resetta S per forzare caricamento fresco da DB
   localStorage.removeItem(STORE_KEY);
+  S = {
+    users:[], sports:[], societies:[], teams:[], categories:[],
+    athletes:[], sessions:[], attendances:[], matches:[], convocati:[],
+    seasons:[], athleteSeasons:[], staffHistory:[],
+    activityTypes:null, perfParams:null, sessionTypePerfParams:null,
+    activeSeason:null, athleteRoles:{}
+  };
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   updateSidebarUser();
@@ -2882,7 +2903,7 @@ viewBuilders['admin-overview'] = (el) => {
       <div class="stat-card blue" style="cursor:pointer" onclick="showView('admin-athletes')" title="Vai a Censimento Atleti"><div class="accent-bar"></div><div class="label">Atleti Totali</div><div class="value">${totalAthletes}</div><div class="sub">in ${totalCategories} categorie</div></div>
       <div class="stat-card green" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">Sessioni Registrate</div><div class="value">${totalSessions}</div><div class="sub">tutte le categorie</div></div>
       <div class="stat-card gold" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">% Presenze Global</div><div class="value">${globalPct}%</div><div class="sub">${presentAtts}/${totalAtts} totali</div></div>
-      <div class="stat-card teal" style="cursor:pointer" onclick="showAdminConfig('societies')" title="Vai a Società"><div class="accent-bar"></div><div class="label">Società</div><div class="value">${totalSocieties}</div><div class="sub">${S.sports.length} sport</div></div>
+      <div class="stat-card teal" style="cursor:pointer" onclick="showAdminConfig('society')" title="Vai a Società"><div class="accent-bar"></div><div class="label">Società</div><div class="value">${totalSocieties}</div><div class="sub">${S.sports.length} sport</div></div>
       <div class="stat-card purple" style="cursor:pointer" onclick="showAdminConfig('category')" title="Vai a Categorie"><div class="accent-bar"></div><div class="label">Categorie</div><div class="value">${totalCategories}</div><div class="sub">attive</div></div>
       <div class="stat-card blue" style="cursor:pointer" onclick="showAdminConfig('users')" title="Vai a Utenti"><div class="accent-bar"></div><div class="label">Staff Totale</div><div class="value">${S.users.filter(u=>u.role!=='admin').length}</div><div class="sub">utenti registrati</div></div>
       <div class="stat-card purple" style="cursor:pointer" onclick="showAdminConfig('users')" title="Vai a Utenti"><div class="accent-bar"></div><div class="label">Responsabili</div><div class="value">${S.users.filter(u=>u.role==='responsabile').length}</div><div class="sub">registrati</div></div>
