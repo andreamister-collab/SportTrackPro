@@ -956,6 +956,98 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 // ── INIT CLIENT ────────────────────────────────────────────────
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+// ── SERVICE ROLE CLIENT (solo admin, key salvata in localStorage) ─
+// La service_role key NON è nel codice — l'admin la inserisce una volta
+// nelle Impostazioni e viene salvata SOLO nel suo browser locale
+const SRK_STORE = 'stp_srk';
+function getSRK() { return localStorage.getItem(SRK_STORE) || ''; }
+function setSRK(k) { localStorage.setItem(SRK_STORE, k); }
+
+function getSbAdmin() {
+  const srk = getSRK();
+  if (!srk) return null;
+  return supabase.createClient(SUPABASE_URL, srk, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
+
+async function requireSbAdmin() {
+  const adm = getSbAdmin();
+  if (!adm) {
+    const key = prompt('🔑 Inserisci la Service Role Key di Supabase\n(la trovi in Dashboard → Settings → API → service_role)\n\nViene salvata solo in questo browser.');
+    if (!key || !key.startsWith('eyJ')) {
+      toast('❌ Service Role Key non valida', 'error');
+      return null;
+    }
+    setSRK(key);
+    return getSbAdmin();
+  }
+  return adm;
+}
+
+
+
+function openSrkModal() {
+  const cur = getSRK();
+  openModal(
+    '<div class="modal-header">' +
+    '<h3>🔑 Configura Service Role Key</h3>' +
+    '<button class="modal-close" onclick="closeModal()">✕</button>' +
+    '</div>' +
+    '<div style="background:var(--gold-l);border-radius:var(--radius);padding:10px 14px;font-size:.82rem;color:#7a4a00;margin-bottom:16px">' +
+    '⚠️ La Service Role Key ha accesso completo al database. Viene salvata <b>solo nel tuo browser</b>.' +
+    '</div>' +
+    '<div class="form-field">' +
+    '<label>Service Role Key</label>' +
+    '<div style="display:flex;gap:6px">' +
+    '<input id="srk-input" type="password" placeholder="eyJ..." style="flex:1;font-family:var(--font-mono);font-size:.78rem" value="' + cur + '">' +
+    '<button class="btn btn-ghost btn-sm" onclick="togglePwVisibility(\'srk-input\',\'eye-srk\')" style="padding:8px 10px"><span id="eye-srk">👁</span></button>' +
+    '</div>' +
+    '<div style="font-size:.75rem;color:var(--ink-3);margin-top:4px">Supabase Dashboard → Settings → API → <b>service_role (secret)</b> → Reveal → Copia</div>' +
+    '</div>' +
+    '<div class="form-actions" style="margin-top:16px">' +
+    '<button class="btn btn-accent" onclick="saveSrkKey()">💾 Salva nel Browser</button>' +
+    '<button class="btn btn-ghost" onclick="closeModal()">Annulla</button>' +
+    '</div>'
+  );
+}
+
+function saveSrkKey() {
+  const key = document.getElementById('srk-input').value.trim();
+  if (!key || !key.startsWith('eyJ')) { toast('❌ Key non valida', 'error'); return; }
+  setSRK(key);
+  closeModal();
+  buildAdminConfigTab('settings');
+  toast('✅ Service Role Key salvata nel browser', 'success');
+}
+
+async function adminCreateAuthUser(email, password, name, username, role) {
+  const adm = await requireSbAdmin();
+  if (!adm) return null;
+  const { data, error } = await adm.auth.admin.createUser({
+    email, password, email_confirm: true,
+    user_metadata: { name, username, role }
+  });
+  if (error) throw new Error(error.message);
+  return data.user;
+}
+
+async function adminDeleteAuthUser(userId) {
+  const adm = await requireSbAdmin();
+  if (!adm) throw new Error('Service Role Key non configurata');
+  const { error } = await adm.auth.admin.deleteUser(userId);
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+async function adminSetAuthPassword(userId, newPassword) {
+  const adm = await requireSbAdmin();
+  if (!adm) throw new Error('Service Role Key non configurata');
+  const { error } = await adm.auth.admin.updateUserById(userId, { password: newPassword });
+  if (error) throw new Error(error.message);
+  return true;
+}
+
 // ── MODALITÀ: 'supabase' o 'local' (fallback localStorage) ────
 let DB_MODE = 'supabase';
 
@@ -1274,16 +1366,48 @@ async function sbSync(table, objOrId, isDelete = false) {
       return;
     }
     const rows = Array.isArray(objOrId) ? objOrId : [objOrId];
-    const mapped = rows.map(obj => toSnakeCase(table, obj));
+    // Assicura che society_id sia valorizzato per tabelle che lo richiedono
+    const TABLES_WITH_SOCIETY = ['categories','athletes','sessions','matches',
+      'attendances','performances','convocati','athlete_seasons','seasons','teams'];
+    const fallbackSocId = currentUser.societyId || S.societies?.[0]?.id || null;
+    const enriched = rows.map(obj => {
+      if (TABLES_WITH_SOCIETY.includes(table) && !obj.societyId && !obj.society_id) {
+        return { ...obj, societyId: fallbackSocId };
+      }
+      return obj;
+    });
+    const mapped = enriched.map(obj => toSnakeCase(table, obj));
     if (mapped.length === 0) return;
     console.log(`[sbSync] UPSERT ${table}`, mapped);
-    const { error } = await sb.from(table).upsert(mapped, { onConflict: 'id' });
+    // Upsert robusto: prova upsert, se 409/23505 fa update esplicito
+    const { error } = await sb.from(table).upsert(mapped, {
+      onConflict: 'id',
+      ignoreDuplicates: false
+    });
     if (error) {
+      // 409 o 23505 = record già esistente → prova UPDATE esplicito
+      if (error.code === '23505' || error.status === 409 || (error.message||'').includes('409')) {
+        console.warn(`[sbSync] Upsert conflict su ${table}, provo UPDATE esplicito...`);
+        let updateOk = true;
+        for (const row of mapped) {
+          const { id, ...fields } = row;
+          if (!id) continue;
+          const { error: updErr } = await sb.from(table).update(fields).eq('id', id);
+          if (updErr) {
+            console.error(`[sbSync] UPDATE fallito su ${table} id=${id}:`, updErr.message);
+            updateOk = false;
+          }
+        }
+        if (updateOk) {
+          console.log(`[sbSync] UPDATE ${table} OK ✅`);
+          const lbl = document.getElementById('db-status-label');
+          if (lbl) { lbl.textContent = 'Salvato ✓'; setTimeout(() => { lbl.textContent = 'Supabase'; }, 2000); }
+          return;
+        }
+      }
       console.error(`[sbSync] ERRORE ${table}:`, error);
-      // Messaggio dettagliato per RLS
       let msg = error.message;
-      if (error.code === '42501') msg = `Permesso negato su "${table}" — controlla le RLS policies in Supabase`;
-      if (error.code === '23505') msg = `Duplicato su "${table}" — record già esistente`;
+      if (error.code === '42501') msg = `Permesso negato su "${table}" — controlla RLS policies`;
       if (error.code === 'PGRST301') msg = `JWT scaduto — rieffettua il login`;
       toast(`❌ DB ${table}: ${msg}`, 'error');
       return;
@@ -1306,23 +1430,37 @@ async function sbSyncDeleteWhere(table, col, val) {
   } catch(e) { console.error(e); }
 }
 // ══════════════════════════════════════════════════════════════════
-//  EDGE FUNCTIONS — chiamate sicure con service_role lato server
+//  RPC HELPERS — chiamate a funzioni PostgreSQL SECURITY DEFINER
 // ══════════════════════════════════════════════════════════════════
-async function callEdgeFunction(fnName, body) {
-  const session = (await sb.auth.getSession()).data.session;
-  if (!session) throw new Error('Non autenticato');
-  const url = SUPABASE_URL + '/functions/v1/' + fnName;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + session.access_token,
-      'apikey': SUPABASE_ANON,
-    },
-    body: JSON.stringify(body),
+async function rpcCreateUser(params) {
+  const { data, error } = await sb.rpc('create_app_user', {
+    p_email:      params.email,
+    p_password:   params.password,
+    p_name:       params.name,
+    p_username:   params.username,
+    p_role:       params.role,
+    p_profession: params.profession || '',
+    p_phone:      params.phone || '',
+    p_society_id: params.society_id || null,
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Errore Edge Function');
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function rpcResetPassword(userId, newPassword) {
+  const { data, error } = await sb.rpc('admin_reset_password', {
+    p_user_id:     userId,
+    p_new_password: newPassword,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function rpcDeleteUser(userId) {
+  const { data, error } = await sb.rpc('delete_app_user', {
+    p_user_id: userId,
+  });
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -2457,45 +2595,7 @@ function scheduleSyncFlush() {
   _flushTimer = setTimeout(flushToSupabase, 800); // debounce 800ms
 }
 
-async function flushToSupabase() {
-  _flushTimer = null;
-  // Show syncing indicator
-  const lbl = document.getElementById('db-status-label');
-  if (lbl) lbl.textContent = 'Sincronizzazione...';
-
-  try {
-    // Process deletes first
-    for (const [table, ids] of _deleteQueue.entries()) {
-      for (const id of ids) {
-        await sb.from(table).delete().eq('id', id);
-      }
-      ids.clear();
-    }
-
-    // Process upserts
-    for (const [table, objs] of _dirtyQueue.entries()) {
-      const rows = [...objs.values()].map(obj => {
-        const row = toSnakeCase(table, obj);
-        // Rimuovi campi non presenti in tabelle globali
-        if (table === 'sports') {
-          delete row.society_id;
-        }
-        return row;
-      });
-      if (rows.length > 0) {
-        const { error } = await sb.from(table).upsert(rows, { onConflict: 'id' });
-        if (error) console.error('Supabase upsert error:', table, error);
-      }
-      objs.clear();
-    }
-
-    if (lbl) lbl.textContent = 'Supabase ✓';
-    setTimeout(() => { if (lbl) lbl.textContent = 'Supabase'; }, 2000);
-  } catch(e) {
-    console.error('flushToSupabase error:', e);
-    if (lbl) lbl.textContent = 'Errore sync';
-  }
-}
+async function flushToSupabase() { return; } // Disabilitato: usa sbSync diretto
 
 // Converte oggetto camelCase → snake_case per la tabella specifica
 // Tables with fixed column lists (no society_id)
@@ -3666,11 +3766,9 @@ function saveUser(id) {
     // Aggiorna profilo su Supabase
     sbSync('users', u);
 
-    // Se l'admin ha impostato una nuova password → chiama Edge Function admin-set-password
+    // Nota: il reset password di altri utenti richiede service_role (Supabase Dashboard)
     if (password && DB_MODE === 'supabase') {
-      callEdgeFunction('admin-set-password', { user_id: id, new_password: password })
-        .then(() => toast('Password aggiornata su Supabase Auth ✅', 'success'))
-        .catch(e => toast('⚠️ Profilo salvato ma password Auth non aggiornata: ' + e.message, 'warning'));
+      toast('⚠️ Profilo aggiornato. Per cambiare la password usa Supabase Dashboard → Authentication → Users', 'warning');
     }
 
     syncUserCatAssignments(userId, role, catIds);
@@ -3678,34 +3776,43 @@ function saveUser(id) {
     toast('Utente aggiornato ✅','success');
 
   } else {
-    // ── NUOVO UTENTE — usa Edge Function create-user ──
+    // ── NUOVO UTENTE — usa signUp diretto (anon key) ──
     const authEmail = email || (username.includes('@') ? username : username + '@sporttrackpro.it');
 
     if (DB_MODE === 'supabase') {
-      // Disabilita il bottone per evitare doppi click
       const btn = document.querySelector('.modal .btn-accent');
       if (btn) { btn.disabled = true; btn.textContent = 'Creazione in corso…'; }
 
-      callEdgeFunction('create-user', {
-        username, password, name, role,
-        email: authEmail, profession, phone,
+      rpcCreateUser({
+        email:      authEmail,
+        password:   password,
+        name:       name,
+        username:   username,
+        role:       role,
+        profession: profession || '',
+        phone:      phone || '',
         society_id: currentUser.societyId || null,
       }).then(result => {
-        // Aggiorna lo stato locale con l'ID reale da Supabase Auth
-        userId = result.user.id;
+        userId = result.id;
+
+        // Aggiorna stato locale
         S.users.push({
-          id: userId, username, password: '***', role, name,
-          profession, phone, email: authEmail, societyId: currentUser.societyId || null
+          id: userId, username, role, name,
+          profession, phone, email: authEmail,
+          societyId: currentUser.societyId || null
         });
         syncUserCatAssignments(userId, role, catIds);
         saveState();
         closeModal(); buildAdminConfigTab('users'); buildSidebarNav();
-        toast(`✅ Utente "${name}" creato — può accedere subito con le credenziali assegnate`, 'success');
+        toast('✅ Utente "' + name + '" creato — può accedere con: ' + authEmail, 'success');
+
       }).catch(err => {
         if (btn) { btn.disabled = false; btn.textContent = '💾 Salva Utente'; }
-        toast('❌ Errore creazione utente: ' + err.message, 'error');
+        toast('❌ Errore: ' + err.message, 'error');
       });
-      return; // esce qui, il resto avviene nel .then()
+
+      return;
+
     } else {
       // Modalità locale (fallback)
       userId = uid();
@@ -3734,12 +3841,9 @@ function deleteUser(id) {
   buildAdminConfigTab('users'); buildSidebarNav();
 
   if (DB_MODE === 'supabase') {
-    callEdgeFunction('delete-user', { user_id: id })
-      .then(() => toast(`✅ Utente "${u.name}" eliminato`, 'success'))
-      .catch(err => {
-        // L'utente è già rimosso da localStorage/stato locale — avvisa solo
-        toast(`⚠️ Rimosso localmente ma errore Auth: ${err.message}`, 'warning');
-      });
+    rpcDeleteUser(id)
+      .then(() => toast('✅ Utente "' + u.name + '" eliminato da Auth e DB', 'success'))
+      .catch(err => toast('⚠️ Rimosso localmente ma errore: ' + err.message, 'warning'));
   } else {
     toast('Utente eliminato', 'success');
   }
@@ -4105,7 +4209,33 @@ function buildRolesConfig() {
 }
 
 function buildSettingsConfig() {
+  const srkSaved = !!getSRK();
   return `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title"><div class="icon" style="background:var(--red-l);color:var(--red)">🔑</div>Service Role Key — Gestione Utenti</div>
+      <div class="highlight-box" style="margin-bottom:14px">
+        <b>⚠️ Solo per amministratori.</b> La Service Role Key permette di creare, modificare ed eliminare utenti direttamente da questa app senza passare dalla dashboard Supabase.<br>
+        Viene salvata <b>solo nel tuo browser</b> (localStorage) — non è mai nel codice né su GitHub.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:.82rem;color:var(--ink-3);margin-bottom:6px">
+            ${srkSaved
+              ? '<span style="color:var(--green)">✅ Service Role Key configurata</span>'
+              : '<span style="color:var(--gold)">⚠️ Non configurata — creazione utenti non disponibile</span>'}
+          </div>
+          <div style="font-size:.78rem;color:var(--ink-3)">
+            Trovi la key in: Supabase Dashboard → Settings → API → <b>service_role (secret)</b>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-accent btn-sm" onclick="openSrkModal()">
+            ${srkSaved ? '🔄 Aggiorna Key' : '🔑 Configura Key'}
+          </button>
+          ${srkSaved ? '<button class="btn btn-danger btn-sm" onclick="if(confirm(\'Rimuovere la Service Role Key dal browser?\')){ localStorage.removeItem(\'stp_srk\'); buildAdminConfigTab(\'settings\'); toast(\'Key rimossa\'); }">🗑️ Rimuovi</button>' : ''}
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title"><div class="icon" style="background:var(--mist-2)">⚙️</div>Impostazioni Generali</div>
       <div class="highlight-box"><b>ℹ️ Parametri di Performance:</b> I parametri tecnica, fisico, tattica, mentale e comunicazione sono registrati per ogni atleta in ogni sessione. Vengono visualizzati nei profili atleta e nelle dashboard.</div>
@@ -7459,7 +7589,7 @@ async function adminResetPassword(userId, userName) {
   if (btn) { btn.disabled = true; btn.textContent = 'Aggiornamento…'; }
   try {
     if (DB_MODE === 'supabase') {
-      await callEdgeFunction('admin-set-password', { user_id: userId, new_password: pw });
+      await rpcResetPassword(userId, pw);
     }
     closeModal();
     toast('✅ Password di "' + userName + '" aggiornata — comunicagliela in modo sicuro', 'success');
