@@ -1503,15 +1503,34 @@ async function saveStateDB() {
 async function loadStateFromDB() {
   try {
     const data = await DB.loadAll();
-    // Pulisci localStorage prima di aggiornare S con dati freschi dal DB
+    console.log('[loadStateFromDB] societies:', data.societies?.length, data.societies?.map(s=>s.name));
+    console.log('[loadStateFromDB] sports:', data.sports?.length);
+    console.log('[loadStateFromDB] seasons:', data.seasons?.length);
+    // Pulisci localStorage e sovrascrivi S completamente con dati freschi dal DB
     localStorage.removeItem(STORE_KEY);
     const activeSeason = (data.seasons||[]).find(s=>s.active);
     data.activeSeason = activeSeason?.id || data.seasons?.[0]?.id || null;
-    Object.assign(S, data);
+    // Sovrascrivi completamente S (non Object.assign che mantiene vecchi valori)
+    S.sports         = data.sports         || [];
+    S.societies      = data.societies      || [];
+    S.teams          = data.teams          || [];
+    S.seasons        = data.seasons        || [];
+    S.users          = data.users          || [];
+    S.categories     = data.categories     || [];
+    S.athletes       = data.athletes       || [];
+    S.athleteSeasons = data.athleteSeasons || [];
+    S.sessions       = data.sessions       || [];
+    S.attendances    = data.attendances    || [];
+    S.performances   = data.performances   || [];
+    S.matches        = data.matches        || [];
+    S.convocati      = data.convocati      || [];
+    S.activeSeason   = data.activeSeason;
+    S.staffHistory   = data.staffHistory   || [];
     // Carica configurazioni locali da tabella config
     await loadConfigFromDB();
     // Snapshot per il dirty-tracking
     _prevState = JSON.parse(JSON.stringify(S));
+    console.log('[loadStateFromDB] OK — societies:', S.societies.map(s=>s.name));
   } catch(e) {
     console.error('Errore caricamento DB:', e);
     toast('Errore caricamento dati: ' + e.message, 'error');
@@ -2997,9 +3016,9 @@ function setTopbar(title, bc, actionsHtml='') {
 
 // ── [2] ADMIN CONFIG ──────────────────────────────────────────
 function showAdminConfig(tab) {
+  window._pendingConfigTab = tab; // salva il tab richiesto
   showView('admin-config');
-  // slight delay so view is created
-  setTimeout(() => buildAdminConfigTab(tab), 60);
+  setTimeout(() => buildAdminConfigTab(tab), 80);
 }
 viewBuilders['admin-config'] = (el) => {
   setTopbar('Configurazione', 'Censimento');
@@ -3018,13 +3037,15 @@ viewBuilders['admin-config'] = (el) => {
     </div>
     <div id="config-content"></div>
   `;
-  buildAdminConfigTab('sport');
+  // Non caricare sport di default — showAdminConfig imposterà il tab corretto
+  // buildAdminConfigTab('sport') chiamato solo se nessun tab è specificato
 };
 
 function buildAdminConfigTab(tab) {
-  // activate tab
-  document.querySelectorAll('.tab-btn').forEach((b,i) => {
-    b.classList.toggle('active', ['sport','society','team','category','users','settings'][i] === tab);
+  // activate tab — array completo di tutti i tab
+  const allTabs = ['sport','society','team','category','users','activities','seasons','roles','settings'];
+  document.querySelectorAll('#config-tabs .tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', allTabs[i] === tab);
   });
   const c = document.getElementById('config-content');
   if (!c) return;
