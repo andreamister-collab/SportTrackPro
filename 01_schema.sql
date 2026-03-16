@@ -1,5 +1,5 @@
 -- ============================================================
--- SportTrack Pro — Schema Supabase
+-- SportTrack Pro — Schema Supabase 
 -- Esegui questo file nel SQL Editor di Supabase
 -- ============================================================
 
