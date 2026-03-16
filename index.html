@@ -637,6 +637,10 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .stat-card[onclick]:hover { box-shadow: var(--shadow-lg); transform: translateY(-3px) scale(1.02); filter: brightness(1.03); }
 .stat-card[onclick]:active { transform: translateY(0) scale(.99); }
 
+/* ── PASSWORD STRENGTH ───────────────────────────────────────── */
+#pw-strength-bar-wrap { animation: fadeIn .2s ease both; }
+
+
 /* Page header: always wrap gracefully */
 .page-header h2 { font-size: clamp(1.1rem, 3vw, 1.65rem); }
 
@@ -944,7 +948,7 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // ── CONFIGURAZIONE SUPABASE ─────────────────────────────────
 // Sostituisci questi valori con le tue credenziali Supabase:
 // Supabase Dashboard → Settings → API
-const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
+const SUPABASE_URL  = 'https://saoghfehqrjgobcpiebz.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -1244,17 +1248,118 @@ const DB = {
   },
 };
 
-// ── PATCH: saveState usa Supabase invece di localStorage ─────────
-const _origSaveState = typeof saveState !== 'undefined' ? saveState : null;
+// ══════════════════════════════════════════════════════════════════
+//  sbSync — helper centralizzato sync diretto su Supabase
+//  Chiamato ESPLICITAMENTE da ogni funzione CRUD dopo aver modificato S
+//  sbSync('athletes', obj)        → upsert
+//  sbSync('athletes', id, true)   → delete
+//  sbSync('athletes', [o1,o2])    → upsert multiplo
+// ══════════════════════════════════════════════════════════════════
+async function sbSync(table, objOrId, isDelete = false) {
+  if (DB_MODE !== 'supabase' || !currentUser) return;
+  // Verifica sessione attiva
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    console.warn('[sbSync] Nessuna sessione attiva — skip sync');
+    toast('⚠️ Sessione scaduta, rieffettua il login', 'warning');
+    return;
+  }
+  try {
+    if (isDelete) {
+      const id = typeof objOrId === 'string' ? objOrId : objOrId?.id;
+      if (!id) return;
+      const { error } = await sb.from(table).delete().eq('id', id);
+      if (error) throw error;
+      console.log(`[sbSync] DELETE ${table} id=${id} ✅`);
+      return;
+    }
+    const rows = Array.isArray(objOrId) ? objOrId : [objOrId];
+    const mapped = rows.map(obj => toSnakeCase(table, obj));
+    if (mapped.length === 0) return;
+    console.log(`[sbSync] UPSERT ${table}`, mapped);
+    const { error } = await sb.from(table).upsert(mapped, { onConflict: 'id' });
+    if (error) {
+      console.error(`[sbSync] ERRORE ${table}:`, error);
+      // Messaggio dettagliato per RLS
+      let msg = error.message;
+      if (error.code === '42501') msg = `Permesso negato su "${table}" — controlla le RLS policies in Supabase`;
+      if (error.code === '23505') msg = `Duplicato su "${table}" — record già esistente`;
+      if (error.code === 'PGRST301') msg = `JWT scaduto — rieffettua il login`;
+      toast(`❌ DB ${table}: ${msg}`, 'error');
+      return;
+    }
+    console.log(`[sbSync] UPSERT ${table} OK ✅`);
+    // Aggiorna indicatore sync nella topbar
+    const lbl = document.getElementById('db-status-label');
+    if (lbl) { lbl.textContent = 'Salvato ✓'; setTimeout(() => { lbl.textContent = 'Supabase'; }, 2000); }
+  } catch(e) {
+    console.error(`[sbSync] exception su ${table}:`, e);
+    toast(`❌ Errore sync ${table}: ${e.message}`, 'error');
+  }
+}
 
+async function sbSyncDeleteWhere(table, col, val) {
+  if (DB_MODE !== 'supabase' || !currentUser) return;
+  try {
+    const { error } = await sb.from(table).delete().eq(col, val);
+    if (error) console.error(`[sbSyncDeleteWhere] ${table}.${col}=${val}:`, error.message);
+  } catch(e) { console.error(e); }
+}
+// ══════════════════════════════════════════════════════════════════
+//  EDGE FUNCTIONS — chiamate sicure con service_role lato server
+// ══════════════════════════════════════════════════════════════════
+async function callEdgeFunction(fnName, body) {
+  const session = (await sb.auth.getSession()).data.session;
+  if (!session) throw new Error('Non autenticato');
+  const url = SUPABASE_URL + '/functions/v1/' + fnName;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + session.access_token,
+      'apikey': SUPABASE_ANON,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Errore Edge Function');
+  return data;
+}
+
+// ── Config sync (activityTypes, perfParams, sessionTypePerfParams) ─
+// Salva le configurazioni locali in Supabase come JSON in tabella 'config'
+// La tabella va creata con: CREATE TABLE config (key text primary key, value jsonb);
+async function sbSyncConfig(key, value) {
+  if (DB_MODE !== 'supabase' || !currentUser) return;
+  try {
+    const { error } = await sb.from('config').upsert({ key, value: JSON.stringify(value) }, { onConflict: 'key' });
+    if (error) console.warn('[sbSyncConfig]', key, error.message);
+  } catch(e) { console.warn('[sbSyncConfig]', e); }
+}
+async function loadConfigFromDB() {
+  if (DB_MODE !== 'supabase') return;
+  try {
+    const { data } = await sb.from('config').select('*');
+    if (!data) return;
+    data.forEach(row => {
+      try {
+        const val = JSON.parse(row.value);
+        if (row.key === 'activityTypes')         S.activityTypes = val;
+        if (row.key === 'perfParams')             S.perfParams = val;
+        if (row.key === 'sessionTypePerfParams')  S.sessionTypePerfParams = val;
+      } catch(e) {}
+    });
+  } catch(e) {}
+}
+
+
+// ── PATCH: saveState usa Supabase invece di localStorage ─────────
 async function saveStateDB() {
   if (DB_MODE !== 'supabase') { saveState(); return; }
-  // Salva incrementalmente solo i delta — per semplicità
-  // ogni modifica chiama DB.save* direttamente nelle funzioni già esistenti
 }
 
 // Override saveState per modalità ibrida
-// (le funzioni specifiche chiamano DB.save* direttamente)
+// (le funzioni specifiche chiamano sbSync direttamente)
 
 // ── PATCH: loadState usa Supabase ────────────────────────────────
 async function loadStateFromDB() {
@@ -1263,6 +1368,8 @@ async function loadStateFromDB() {
     const activeSeason = (data.seasons||[]).find(s=>s.active);
     data.activeSeason = activeSeason?.id || data.seasons?.[0]?.id || null;
     Object.assign(S, data);
+    // Carica configurazioni locali da tabella config
+    await loadConfigFromDB();
     // Snapshot per il dirty-tracking
     _prevState = JSON.parse(JSON.stringify(S));
   } catch(e) {
@@ -1743,7 +1850,7 @@ function getPerfParamsForType(typeKey) {
 function setSessionTypePerfParams(typeKey, paramKeys) {
   if (!S.sessionTypePerfParams) S.sessionTypePerfParams = {};
   S.sessionTypePerfParams[typeKey] = paramKeys;
-  saveState();
+  saveState(); sbSyncConfig('sessionTypePerfParams', S.sessionTypePerfParams);
 }
 const STATUS_LABELS = { P: 'Presente', A: 'Assente', G: 'Giustificato', C: 'Convocato', NC: 'Non Conv.' };
 // Extended att statuses for matches
@@ -2842,12 +2949,13 @@ function saveSport(id) {
     S.sports.push({ id: uid(), name, icon: icon||'🏅' });
     toast('Sport aggiunto','success');
   }
-  saveState(); closeModal(); buildAdminConfigTab('sport'); buildSidebarNav();
+  const saved = id ? S.sports.find(x=>x.id===id) : S.sports[S.sports.length-1];
+  saveState(); sbSync('sports', saved); closeModal(); buildAdminConfigTab('sport'); buildSidebarNav();
 }
 function deleteSport(id) {
   if (!confirm('Eliminare questo sport?')) return;
   S.sports = S.sports.filter(x=>x.id!==id);
-  saveState(); buildAdminConfigTab('sport');
+  saveState(); sbSync('sports', id, true); buildAdminConfigTab('sport');
   toast('Sport eliminato');
 }
 
@@ -2909,12 +3017,13 @@ function saveSociety(id) {
     S.societies.push({ id: uid(), name, sportId, city, email });
     toast('Società aggiunta','success');
   }
-  saveState(); closeModal(); buildAdminConfigTab('society');
+  const saved = id ? S.societies.find(x=>x.id===id) : S.societies[S.societies.length-1];
+  saveState(); sbSync('societies', saved); closeModal(); buildAdminConfigTab('society');
 }
 function deleteSociety(id) {
   if (!confirm('Eliminare questa società e tutti i dati collegati?')) return;
   S.societies = S.societies.filter(x=>x.id!==id);
-  saveState(); buildAdminConfigTab('society'); toast('Società eliminata');
+  saveState(); sbSync('societies', id, true); buildAdminConfigTab('society'); toast('Società eliminata');
 }
 
 function buildTeamConfig() {
@@ -2972,12 +3081,13 @@ function saveTeam(id) {
     S.teams.push({ id: uid(), name, societyId, sportId });
     toast('Squadra aggiunta','success');
   }
-  saveState(); closeModal(); buildAdminConfigTab('team');
+  const saved = id ? S.teams.find(x=>x.id===id) : S.teams[S.teams.length-1];
+  saveState(); sbSync('teams', saved); closeModal(); buildAdminConfigTab('team');
 }
 function deleteTeam(id) {
   if (!confirm('Eliminare questa squadra?')) return;
   S.teams = S.teams.filter(x=>x.id!==id);
-  saveState(); buildAdminConfigTab('team'); toast('Squadra eliminata');
+  saveState(); sbSync('teams', id, true); buildAdminConfigTab('team'); toast('Squadra eliminata');
 }
 
 function buildCategoryConfig() {
@@ -3088,7 +3198,8 @@ function saveCategory(id) {
     S.categories.push({ id: uid(), ...data });
     toast('Categoria aggiunta','success');
   }
-  saveState(); closeModal(); buildAdminConfigTab('category'); buildSidebarNav();
+  const savedCat = id ? S.categories.find(x=>x.id===id) : S.categories[S.categories.length-1];
+  saveState(); sbSync('categories', savedCat); closeModal(); buildAdminConfigTab('category'); buildSidebarNav();
 }
 function deleteCategory(id) {
   if (!confirm('Eliminare questa categoria e tutti i dati collegati?')) return;
@@ -3098,7 +3209,12 @@ function deleteCategory(id) {
   S.sessions = S.sessions.filter(x=>x.categoryId!==id);
   S.attendances = S.attendances.filter(x=>!delSessIds.includes(x.sessionId));
   if (selectedCategoryId === id) selectedCategoryId = null;
-  saveState(); buildAdminConfigTab('category'); buildSidebarNav(); toast('Categoria eliminata');
+  saveState();
+  sbSync('categories', id, true);
+  delSessIds.forEach(sid => sbSyncDeleteWhere('attendances','session_id',sid));
+  sbSyncDeleteWhere('athletes','category_id',id);
+  sbSyncDeleteWhere('sessions','category_id',id);
+  buildAdminConfigTab('category'); buildSidebarNav(); toast('Categoria eliminata');
 }
 
 // Quick staff assignment modal for a specific category
@@ -3167,7 +3283,7 @@ function saveCategoryStaff(catId) {
   cat.directorIds     = pick('cs-dirs');
   cat.coachIds        = pick('cs-coaches');
   cat.professionalIds = pick('cs-profs');
-  saveState(); closeModal(); buildAdminConfigTab('category'); buildSidebarNav();
+  saveState(); sbSync('categories', cat); closeModal(); buildAdminConfigTab('category'); buildSidebarNav();
   toast('Assegnazioni staff aggiornate','success');
 }
 
@@ -3221,6 +3337,7 @@ function buildUsersConfig() {
               </td>
               <td style="display:flex;gap:6px;flex-wrap:wrap">
                 <button class="btn btn-ghost btn-sm" onclick="openUserModal('${u.id}')">✏️ Modifica</button>
+                <button class="btn btn-ghost btn-sm" onclick="openAdminResetPasswordModal('${u.id}','${esc(u.name)}')" title="Reset password">🔑</button>
                 <button class="btn btn-ghost btn-sm" onclick="openStaffSeasonModal('${u.id}')">⚽ Storico</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">🗑️</button>
               </td>
@@ -3287,19 +3404,145 @@ function buildUserCatSelector(userId, role) {
     </div>`;
 }
 
+// ── PASSWORD STRENGTH ENGINE ──────────────────────────────────
+function pwStrength(pw) {
+  if (!pw) return { score: 0, label: '', color: '', checks: {} };
+  const checks = {
+    length:   pw.length >= 10,
+    upper:    /[A-Z]/.test(pw),
+    lower:    /[a-z]/.test(pw),
+    digit:    /[0-9]/.test(pw),
+    symbol:   /[^A-Za-z0-9]/.test(pw),
+    noRepeat: !/(.)(\1{2,})/.test(pw),
+    length14: pw.length >= 14,
+  };
+  const score = Object.values(checks).filter(Boolean).length;
+  const map = [
+    { min:0, label:'',           color:'#CBD5E0', bar:0   },
+    { min:1, label:'Molto debole', color:'#DC2626', bar:14  },
+    { min:2, label:'Debole',       color:'#EF4444', bar:28  },
+    { min:3, label:'Discreta',     color:'#F59E0B', bar:45  },
+    { min:4, label:'Sufficiente',  color:'#F59E0B', bar:60  },
+    { min:5, label:'Buona',        color:'#10B981', bar:78  },
+    { min:6, label:'Forte',        color:'#059669', bar:90  },
+    { min:7, label:'Molto forte',  color:'#047857', bar:100 },
+  ];
+  const level = [...map].reverse().find(m => score >= m.min) || map[0];
+  return { score, label: level.label, color: level.color, bar: level.bar, checks };
+}
+
+function pwStrengthHTML(inputId, confirmId) {
+  return `
+    <div id="pw-strength-bar-wrap" style="margin-top:6px;display:none">
+      <div style="height:5px;border-radius:99px;background:var(--mist-3);overflow:hidden;margin-bottom:5px">
+        <div id="pw-strength-bar" style="height:100%;width:0%;border-radius:99px;transition:width .3s,background .3s"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
+        <span id="pw-strength-label" style="font-size:.75rem;font-weight:700"></span>
+        <span id="pw-strength-checks" style="font-size:.7rem;color:var(--ink-3)"></span>
+      </div>
+    </div>
+    <div id="pw-confirm-msg" style="font-size:.75rem;margin-top:4px;display:none"></div>`;
+}
+
+function _updatePwStrengthUI(pw, inputId) {
+  const wrap = document.getElementById('pw-strength-bar-wrap');
+  const bar  = document.getElementById('pw-strength-bar');
+  const lbl  = document.getElementById('pw-strength-label');
+  const chk  = document.getElementById('pw-strength-checks');
+  if (!wrap) return;
+  if (!pw) { wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  const s = pwStrength(pw);
+  bar.style.width      = s.bar + '%';
+  bar.style.background = s.color;
+  lbl.textContent      = s.label;
+  lbl.style.color      = s.color;
+  const parts = [];
+  if (!s.checks.length)   parts.push('≥10 car.');
+  if (!s.checks.upper)    parts.push('MAIUSC.');
+  if (!s.checks.lower)    parts.push('minusc.');
+  if (!s.checks.digit)    parts.push('numero');
+  if (!s.checks.symbol)   parts.push('simbolo');
+  if (!s.checks.noRepeat) parts.push('no ripetizioni');
+  chk.textContent = parts.length ? 'Manca: ' + parts.join(', ') : '✅ Tutti i requisiti soddisfatti';
+}
+
+function _updatePwConfirmUI(pw, conf) {
+  const el = document.getElementById('pw-confirm-msg');
+  if (!el || !conf) { if(el) el.style.display='none'; return; }
+  el.style.display = 'block';
+  if (pw === conf) {
+    el.innerHTML = '<span style="color:var(--green)">✅ Le password coincidono</span>';
+  } else {
+    el.innerHTML = '<span style="color:var(--red)">❌ Le password non coincidono</span>';
+  }
+}
+
+function pwIsStrong(pw) {
+  const s = pwStrength(pw);
+  // Richiede score ≥ 5: lunghezza, maiusc, minusc, numero, simbolo
+  return s.checks.length && s.checks.upper && s.checks.lower && s.checks.digit && s.checks.symbol;
+}
+
+function pwErrorMsg(pw) {
+  const s = pwStrength(pw);
+  const missing = [];
+  if (!s.checks.length)  missing.push('almeno 10 caratteri');
+  if (!s.checks.upper)   missing.push('una lettera maiuscola');
+  if (!s.checks.lower)   missing.push('una lettera minuscola');
+  if (!s.checks.digit)   missing.push('un numero');
+  if (!s.checks.symbol)  missing.push('un carattere speciale (!@#$%...)');
+  return missing.length ? 'Password troppo debole. Aggiungi: ' + missing.join(', ') + '.' : '';
+}
+
+// ── GENERATORE PASSWORD SICURA ────────────────────────────────
+function generateSecurePassword() {
+  const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower   = 'abcdefghjkmnpqrstuvwxyz';
+  const digits  = '23456789';
+  const symbols = '!@#$%&*?+';
+  const all     = upper + lower + digits + symbols;
+  const arr     = crypto.getRandomValues(new Uint32Array(14));
+  let pw = '';
+  // Garantisce almeno uno di ogni classe
+  pw += upper [arr[0]  % upper.length];
+  pw += lower [arr[1]  % lower.length];
+  pw += digits[arr[2]  % digits.length];
+  pw += symbols[arr[3] % symbols.length];
+  for (let i = 4; i < 14; i++) pw += all[arr[i] % all.length];
+  // Shuffle
+  return pw.split('').sort(() => Math.random() - 0.5).join('');
+}
+
+function fillGeneratedPassword(inputId) {
+  const pw  = generateSecurePassword();
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  inp.value = pw;
+  inp.type  = 'text';
+  setTimeout(() => { if(inp) inp.type = 'password'; }, 3000);
+  _updatePwStrengthUI(pw, inputId);
+  const conf = document.getElementById(inputId === 'usr-pass' ? 'usr-pass-confirm' : 'pw-confirm');
+  if (conf && conf.value) _updatePwConfirmUI(pw, conf.value);
+  // Copy to clipboard
+  navigator.clipboard?.writeText(pw).then(()=>toast('Password generata e copiata negli appunti 📋','success'))
+    .catch(()=>toast('Password generata — copiala prima che scompaia','warning'));
+}
+
 function openUserModal(id) {
   const u = id ? S.users.find(x=>x.id===id) : null;
   const roleOpts = ['responsabile','dirigente','allenatore','professionista']
     .map(r=>`<option value="${r}" ${u?.role===r?'selected':''}>${ROLES[r].icon} ${ROLES[r].label}</option>`)
     .join('');
 
-  // Initial category selector based on current role (will refresh on role change)
-  const initRole = u?.role || 'dirigente';
+  const initRole  = u?.role || 'dirigente';
   const initCatSel = buildUserCatSelector(u?.id||null, initRole);
+  const pwLabel   = u ? 'Nuova Password <span style="font-weight:400;color:var(--ink-3)">(lascia vuoto per non cambiare)</span>' : 'Password Temporanea <span style="color:var(--red)">*</span>';
 
   openModal(`
     <div class="modal-header">
-      <h3>${u?`Modifica — ${esc(u.name)}`:'Nuovo Utente Staff'}</h3>
+      <h3>${u ? `✏️ Modifica — ${esc(u.name)}` : '➕ Nuovo Utente Staff'}</h3>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
 
@@ -3315,8 +3558,29 @@ function openUserModal(id) {
 
     <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px;padding-top:14px;border-top:1px solid var(--mist-2)">🔐 Credenziali di Accesso</div>
     <div class="form-row">
-      <div class="form-field"><label>Username</label><input id="usr-uname" value="${esc(u?.username||'')}" placeholder="mario.rossi"></div>
-      <div class="form-field"><label>Password ${u?'(lascia vuoto per non cambiare)':''}</label><input id="usr-pass" type="password" placeholder="••••••••"></div>
+      <div class="form-field">
+        <label>Username (parte prima della @)</label>
+        <input id="usr-uname" value="${esc(u?.username||'')}" placeholder="mario.rossi" ${u?'readonly style="background:var(--mist);color:var(--ink-3)"':''}>
+        ${u ? '<div style="font-size:.72rem;color:var(--ink-3);margin-top:3px">Lo username non può essere modificato dopo la creazione.</div>' : '<div style="font-size:.72rem;color:var(--ink-3);margin-top:3px">Email di accesso: <strong id="usr-email-preview">…@sporttrackpro.it</strong></div>'}
+      </div>
+      <div class="form-field">
+        <label>${pwLabel}</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="usr-pass" type="password" placeholder="••••••••" style="flex:1"
+            oninput="_updatePwStrengthUI(this.value,'usr-pass');_updatePwConfirmUI(this.value,document.getElementById('usr-pass-confirm')?.value)">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="fillGeneratedPassword('usr-pass')" title="Genera password sicura" style="flex-shrink:0;padding:8px 10px">🎲</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="togglePwVisibility('usr-pass','eye-usr')" style="flex-shrink:0;padding:8px 10px"><span id="eye-usr">👁</span></button>
+        </div>
+        ${pwStrengthHTML('usr-pass','usr-pass-confirm')}
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:4px">
+      <div class="form-field"></div>
+      <div class="form-field">
+        <label>Conferma Password</label>
+        <input id="usr-pass-confirm" type="password" placeholder="••••••••"
+          oninput="_updatePwConfirmUI(document.getElementById('usr-pass').value,this.value)">
+      </div>
     </div>
     <div class="form-field" style="margin-top:8px">
       <label>Ruolo nel Sistema</label>
@@ -3327,10 +3591,31 @@ function openUserModal(id) {
 
     <div id="usr-cat-section">${initCatSel}</div>
 
+    <div style="background:var(--accent-l);border-radius:var(--radius);padding:10px 14px;font-size:.8rem;color:var(--ink-3);margin-top:12px">
+      🔒 <strong>Requisiti password:</strong> min. 10 caratteri, almeno una maiuscola, una minuscola, un numero e un carattere speciale (!@#$%…). Usa 🎲 per generarne una sicura.
+    </div>
+
     <div class="form-actions" style="margin-top:16px">
       <button class="btn btn-accent btn-lg" onclick="saveUser('${id||''}')">💾 Salva Utente</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`, 'modal-lg');
+
+  // Live email preview
+  const unameEl = document.getElementById('usr-uname');
+  const prevEl  = document.getElementById('usr-email-preview');
+  if (unameEl && prevEl) {
+    unameEl.addEventListener('input', () => {
+      prevEl.textContent = (unameEl.value.trim() || '…') + '@sporttrackpro.it';
+    });
+  }
+}
+
+function togglePwVisibility(inputId, iconId) {
+  const inp  = document.getElementById(inputId);
+  const icon = document.getElementById(iconId);
+  if (!inp) return;
+  inp.type  = inp.type === 'password' ? 'text' : 'password';
+  if (icon) icon.textContent = inp.type === 'password' ? '👁' : '🙈';
 }
 
 // Called when the role dropdown changes inside the user modal
@@ -3342,7 +3627,8 @@ function refreshUserCatSelector(userId, role) {
 function saveUser(id) {
   const name       = document.getElementById('usr-name').value.trim();
   const username   = document.getElementById('usr-uname').value.trim();
-  const password   = document.getElementById('usr-pass').value.trim();
+  const password   = document.getElementById('usr-pass').value;
+  const pwConfirm  = document.getElementById('usr-pass-confirm')?.value || '';
   const role       = document.getElementById('usr-role').value;
   const profession = document.getElementById('usr-prof').value.trim();
   const phone      = document.getElementById('usr-phone').value.trim();
@@ -3350,39 +3636,93 @@ function saveUser(id) {
   const catSelect  = document.getElementById('usr-cats');
   const catIds     = catSelect ? Array.from(catSelect.selectedOptions).map(o=>o.value) : [];
 
-  if (!name||!username) { toast('Nome e username obbligatori','error'); return; }
-  if (!id && S.users.some(u=>u.username===username)) { toast('Username già esistente','error'); return; }
+  if (!name || !username) { toast('Nome e username obbligatori','error'); return; }
+
+  // ── Validazione password ─────────────────────────────────────
+  if (password) {
+    const pwErr = pwErrorMsg(password);
+    if (pwErr) { toast(pwErr, 'error'); return; }
+    if (password !== pwConfirm) { toast('Le password non coincidono','error'); return; }
+  } else if (!id) {
+    toast('La password è obbligatoria per i nuovi utenti','error');
+    return;
+  }
+
+  if (!id && S.users.some(u=>u.username===username)) {
+    toast('Username già esistente','error'); return;
+  }
 
   let userId = id;
   if (id) {
+    // ── MODIFICA UTENTE ESISTENTE ──
     const u = S.users.find(x=>x.id===id);
     const oldRole = u.role;
-    // If role changed, remove from all old-role category arrays
     if (oldRole !== role) {
       const oldKey = {responsabile:'managerIds',dirigente:'directorIds',allenatore:'coachIds',professionista:'professionalIds'}[oldRole];
       if (oldKey) S.categories.forEach(c=>{ c[oldKey]=(c[oldKey]||[]).filter(i=>i!==id); });
     }
-    Object.assign(u, {name,username,role,profession,phone,email});
-    if (password) u.password = password;
-    toast('Utente aggiornato','success');
+    Object.assign(u, {name, username, role, profession, phone, email});
+
+    // Aggiorna profilo su Supabase
+    sbSync('users', u);
+
+    // Se l'admin ha impostato una nuova password → chiama Edge Function admin-set-password
+    if (password && DB_MODE === 'supabase') {
+      callEdgeFunction('admin-set-password', { user_id: id, new_password: password })
+        .then(() => toast('Password aggiornata su Supabase Auth ✅', 'success'))
+        .catch(e => toast('⚠️ Profilo salvato ma password Auth non aggiornata: ' + e.message, 'warning'));
+    }
+
+    syncUserCatAssignments(userId, role, catIds);
+    saveState(); closeModal(); buildAdminConfigTab('users'); buildSidebarNav();
+    toast('Utente aggiornato ✅','success');
+
   } else {
-    if (!password) { toast('Password obbligatoria','error'); return; }
-    userId = uid();
-    S.users.push({ id: userId, username, password, role, name, profession, phone, email });
-    toast('Utente aggiunto','success');
+    // ── NUOVO UTENTE — usa Edge Function create-user ──
+    const authEmail = email || (username.includes('@') ? username : username + '@sporttrackpro.it');
+
+    if (DB_MODE === 'supabase') {
+      // Disabilita il bottone per evitare doppi click
+      const btn = document.querySelector('.modal .btn-accent');
+      if (btn) { btn.disabled = true; btn.textContent = 'Creazione in corso…'; }
+
+      callEdgeFunction('create-user', {
+        username, password, name, role,
+        email: authEmail, profession, phone,
+        society_id: currentUser.societyId || null,
+      }).then(result => {
+        // Aggiorna lo stato locale con l'ID reale da Supabase Auth
+        userId = result.user.id;
+        S.users.push({
+          id: userId, username, password: '***', role, name,
+          profession, phone, email: authEmail, societyId: currentUser.societyId || null
+        });
+        syncUserCatAssignments(userId, role, catIds);
+        saveState();
+        closeModal(); buildAdminConfigTab('users'); buildSidebarNav();
+        toast(`✅ Utente "${name}" creato — può accedere subito con le credenziali assegnate`, 'success');
+      }).catch(err => {
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Salva Utente'; }
+        toast('❌ Errore creazione utente: ' + err.message, 'error');
+      });
+      return; // esce qui, il resto avviene nel .then()
+    } else {
+      // Modalità locale (fallback)
+      userId = uid();
+      S.users.push({ id: userId, username, password, role, name, profession, phone, email: authEmail });
+      syncUserCatAssignments(userId, role, catIds);
+      saveState(); closeModal(); buildAdminConfigTab('users'); buildSidebarNav();
+      toast('Utente aggiunto (modalità locale)','success');
+    }
   }
-
-  // Sync category assignments
-  syncUserCatAssignments(userId, role, catIds);
-
-  saveState(); closeModal(); buildAdminConfigTab('users'); buildSidebarNav();
 }
 
 function deleteUser(id) {
   const u = S.users.find(x=>x.id===id);
   if (!u) return;
   if (u.role === 'admin') { toast('Non puoi eliminare questo utente','error'); return; }
-  if (!confirm(`Eliminare l'utente "${u.name}"?`)) return;
+  if (!confirm(`Eliminare l'utente "${u.name}" anche da Supabase Auth?`)) return;
+
   S.users = S.users.filter(x=>x.id!==id);
   S.categories.forEach(c => {
     c.directorIds    = (c.directorIds||[]).filter(i=>i!==id);
@@ -3390,7 +3730,19 @@ function deleteUser(id) {
     c.coachIds       = (c.coachIds||[]).filter(i=>i!==id);
     c.professionalIds= (c.professionalIds||[]).filter(i=>i!==id);
   });
-  saveState(); buildAdminConfigTab('users'); buildSidebarNav(); toast('Utente eliminato');
+  saveState();
+  buildAdminConfigTab('users'); buildSidebarNav();
+
+  if (DB_MODE === 'supabase') {
+    callEdgeFunction('delete-user', { user_id: id })
+      .then(() => toast(`✅ Utente "${u.name}" eliminato`, 'success'))
+      .catch(err => {
+        // L'utente è già rimosso da localStorage/stato locale — avvisa solo
+        toast(`⚠️ Rimosso localmente ma errore Auth: ${err.message}`, 'warning');
+      });
+  } else {
+    toast('Utente eliminato', 'success');
+  }
 }
 function buildStaffViewConfig() {
   // For non-admin: show read-only staff list per accessible category
@@ -3537,7 +3889,7 @@ function saveActivityTypes() {
     updated[k] = { label, emoji, color, cls: 'act-'+k };
   });
   S.activityTypes = updated;
-  saveState();
+  saveState(); sbSyncConfig('activityTypes', updated);
   buildAdminConfigTab('activities');
   toast('Tipi di attività salvati ✅', 'success');
 }
@@ -3553,7 +3905,7 @@ function addActivityType() {
   if (!S.activityTypes) S.activityTypes = { ...ACTIVITY_TYPES_DEFAULT };
   else if (Object.keys(S.activityTypes).length === 0) S.activityTypes = { ...ACTIVITY_TYPES_DEFAULT };
   S.activityTypes[key] = { label, emoji, color, cls: 'act-'+key };
-  saveState();
+  saveState(); sbSyncConfig('activityTypes', S.activityTypes);
   buildAdminConfigTab('activities');
   toast('Tipo attività "'+label+'" aggiunto ✅', 'success');
 }
@@ -3562,7 +3914,7 @@ function deleteActivityType(key) {
   if (!confirm('Eliminare il tipo "'+key+'"? Le sessioni già create non verranno modificate.')) return;
   if (!S.activityTypes) S.activityTypes = { ...ACTIVITY_TYPES_DEFAULT };
   delete S.activityTypes[key];
-  saveState();
+  saveState(); sbSyncConfig('activityTypes', S.activityTypes);
   buildAdminConfigTab('activities');
   toast('Tipo eliminato', 'success');
 }
@@ -3570,7 +3922,7 @@ function deleteActivityType(key) {
 function resetActivityTypes() {
   if (!confirm('Ripristinare i tipi di attività predefiniti?')) return;
   S.activityTypes = null;
-  saveState();
+  saveState(); sbSyncConfig('activityTypes', null);
   buildAdminConfigTab('activities');
   toast('Tipi ripristinati ai default');
 }
@@ -3583,7 +3935,7 @@ function savePerfParams() {
     return { key, label };
   });
   S.perfParams = updated;
-  saveState();
+  saveState(); sbSyncConfig('perfParams', updated);
   buildAdminConfigTab('activities');
   toast('Parametri performance salvati ✅', 'success');
 }
@@ -3596,7 +3948,7 @@ function addPerfParam() {
   if (current.some(p => p.key === key)) { toast('Parametro già esistente','error'); return; }
   if (!S.perfParams) S.perfParams = PERF_PARAMS_DEFAULT.map(k => ({ key:k, label:PERF_LABELS_DEFAULT[k]||k }));
   S.perfParams.push({ key, label });
-  saveState();
+  saveState(); sbSyncConfig('perfParams', S.perfParams);
   buildAdminConfigTab('activities');
   toast('Parametro "'+label+'" aggiunto ✅', 'success');
 }
@@ -3605,7 +3957,7 @@ function deletePerfParam(key) {
   if (!confirm('Eliminare il parametro "'+key+'"? I dati già registrati non verranno modificati.')) return;
   const current = getPerfParams().map(normPerfParam);
   S.perfParams = current.filter(p => p.key !== key);
-  saveState();
+  saveState(); sbSyncConfig('perfParams', S.perfParams);
   buildAdminConfigTab('activities');
   toast('Parametro eliminato');
 }
@@ -3613,7 +3965,7 @@ function deletePerfParam(key) {
 function resetPerfParams() {
   if (!confirm('Ripristinare i parametri performance predefiniti?')) return;
   S.perfParams = null;
-  saveState();
+  saveState(); sbSyncConfig('perfParams', null);
   buildAdminConfigTab('activities');
   toast('Parametri ripristinati ai default');
 }
@@ -3672,8 +4024,9 @@ function addSeasonFromConfig() {
   const name = start+'/'+end;
   if ((S.seasons||[]).some(s => s.name===name)) { toast('Stagione già esistente','error'); return; }
   if (!S.seasons) S.seasons = [];
-  S.seasons.push({ id: uid(), name, startYear: start, endYear: end, active: false });
-  saveState(); rebuildSeasonSelector(); buildAdminConfigTab('seasons');
+  const newSeas = { id: uid(), name, startYear: start, endYear: end, active: false };
+  S.seasons.push(newSeas);
+  saveState(); sbSync('seasons', newSeas); rebuildSeasonSelector(); buildAdminConfigTab('seasons');
   toast('Stagione '+name+' aggiunta','success');
 }
 
@@ -4191,7 +4544,8 @@ function saveAthlete(id) {
     S.athletes.push({ id: uid(), ...data });
     toast('Atleta aggiunto ✅','success');
   }
-  saveState(); closeModal();
+  const savedAth = id ? S.athletes.find(x=>x.id===id) : S.athletes[S.athletes.length-1];
+  saveState(); sbSync('athletes', savedAth); closeModal();
   // Refresh the right view depending on context
   if (currentView === 'admin-athletes') {
     viewBuilders['admin-athletes'](document.getElementById('view-admin-athletes'));
@@ -4205,7 +4559,11 @@ function deleteAthlete(id) {
   if (!confirm('Eliminare questo atleta e tutte le presenze?')) return;
   S.athletes = S.athletes.filter(x=>x.id!==id);
   S.attendances = S.attendances.filter(x=>x.athleteId!==id);
-  saveState(); showView('athletes'); toast('Atleta eliminato');
+  saveState();
+  sbSync('athletes', id, true);
+  sbSyncDeleteWhere('attendances','athlete_id',id);
+  sbSyncDeleteWhere('athlete_seasons','athlete_id',id);
+  showView('athletes'); toast('Atleta eliminato');
 }
 
 // ── RUOLI CONFIGURABILI PER CATEGORIA ──────────────────────────
@@ -4240,7 +4598,8 @@ function saveRoleConfig(catId) {
   const roles = raw.split('\n').map(r=>r.trim()).filter(Boolean);
   if (!S.athleteRoles) S.athleteRoles = {};
   S.athleteRoles[catId] = roles;
-  saveState();
+  const catForRole = S.categories.find(cat=>cat.id===catId);
+  saveState(); if(catForRole) sbSync('categories', catForRole);
   closeModal();
   toast('Ruoli salvati: ' + roles.length + ' voci', 'success');
 }
@@ -4421,7 +4780,7 @@ function createSession() {
   window._sessState.catId = catId;
   window._sessState.type  = type;
   if (catId !== selectedCategoryId) { selectedCategoryId = catId; buildSidebarNav(); }
-  saveState(); closeModal();
+  saveState(); sbSync('sessions', sess); closeModal();
   toast('Sessione creata ✅','success');
   openSessionEdit(sess.id);
 }
@@ -4429,7 +4788,11 @@ function deleteSession(id) {
   if (!confirm('Eliminare questa sessione e tutte le presenze?')) return;
   S.sessions = S.sessions.filter(x=>x.id!==id);
   S.attendances = S.attendances.filter(x=>x.sessionId!==id);
-  saveState(); renderSessionsList(); toast('Sessione eliminata');
+  saveState();
+  sbSync('sessions', id, true);
+  sbSyncDeleteWhere('attendances','session_id',id);
+  sbSyncDeleteWhere('performances','session_id',id);
+  renderSessionsList(); toast('Sessione eliminata');
 }
 
 // ── [6] SESSION ENTRY (presenze + performance) ────────────────
@@ -4570,7 +4933,7 @@ function setAttStatus(sessId, athleteId, status) {
   } else {
     att.status = status;
   }
-  saveState();
+  saveState(); sbSync('attendances', att);
   // update UI
   ['P','A','G'].forEach(s => {
     const btn = document.getElementById(`btn-${s}-${athleteId}`);
@@ -4588,13 +4951,15 @@ function setStarPerf(star) {
   if (!att) return;
   if (!att.perf) att.perf = {};
   att.perf[p] = v;
-  saveState();
+  // Salva anche in performances table su Supabase
+  const perfObj = { id: att.id, sessionId: att.sessionId, athleteId: att.athleteId, params: att.perf, notes: att.notes||'' };
+  saveState(); sbSync('performances', perfObj);
   const stars = document.querySelectorAll(`#stars-${aid}-${p} .star`);
   stars.forEach((s,i) => s.classList.toggle('on', i<v));
 }
 function setAttNote(sessId, athleteId, val) {
   const att = S.attendances.find(a => a.sessionId===sessId && a.athleteId===athleteId);
-  if (att) { att.notes = val; saveState(); }
+  if (att) { att.notes = val; saveState(); sbSync('attendances', att); }
 }
 function markAll(sessId, status) {
   const athletes = getCategoryAthletes(selectedCategoryId);
@@ -6448,7 +6813,9 @@ function saveMatch(id) {
         if (modalCatId) linkedSess.categoryId = modalCatId;
       }
     }
-    saveState(); closeModal();
+    const mSaved = S.matches.find(x=>x.id===id);
+    if(mSaved.sessionId){ const ls=S.sessions.find(s=>s.id===mSaved.sessionId); if(ls) sbSync('sessions',ls); }
+    saveState(); sbSync('matches', mSaved); closeModal();
     toast('Partita aggiornata ✅','success');
     if (currentView === 'convocati') {
       viewBuilders['convocati'](document.getElementById('view-convocati'));
@@ -6472,7 +6839,9 @@ function saveMatch(id) {
     window._matchState.catId  = catId;
     window._matchState.teamId = teamId;
     if (catId !== selectedCategoryId) { selectedCategoryId = catId; buildSidebarNav(); }
-    saveState(); closeModal();
+    const newM = S.matches[S.matches.length-1];
+    const newSess = S.sessions[S.sessions.length-1];
+    saveState(); sbSync('sessions', newSess); sbSync('matches', newM); closeModal();
     toast('Partita aggiunta ✅ — Sessione creata automaticamente','success');
     showView('matches');
   }
@@ -6486,9 +6855,14 @@ function deleteMatch(id) {
     S.attendances = (S.attendances||[]).filter(x => x.sessionId !== m.sessionId);
     S.sessions = (S.sessions||[]).filter(x => x.id !== m.sessionId);
   }
+  const delMatchSessId = S.matches.find(x=>x.id===id)?.sessionId;
   S.matches = (S.matches||[]).filter(x=>x.id!==id);
   S.convocati = (S.convocati||[]).filter(x=>x.matchId!==id);
-  saveState(); showView('matches'); toast('Partita eliminata');
+  saveState();
+  sbSync('matches', id, true);
+  sbSyncDeleteWhere('convocati','match_id',id);
+  if(delMatchSessId){ sbSync('sessions', delMatchSessId, true); sbSyncDeleteWhere('attendances','session_id',delMatchSessId); }
+  showView('matches'); toast('Partita eliminata');
 }
 
 // ── CONVOCATI VIEW ───────────────────────────────────────────
@@ -6667,7 +7041,8 @@ function createLinkedSession(matchId) {
   S.sessions.push({ id: sessId, categoryId: m.categoryId, date: m.date, type: 'P',
     notes: 'Partita vs ' + m.opponent, createdBy: currentUser.id, matchId });
   m.linkedSessionId = sessId;
-  saveState();
+  const lSess = S.sessions[S.sessions.length-1];
+  saveState(); sbSync('sessions', lSess);
   toast('Sessione creata e collegata','success');
   viewBuilders['convocati'](document.getElementById('view-convocati'));
 }
@@ -6691,7 +7066,7 @@ function setCvStatus(matchId, athleteId, status) {
   } else {
     cv.status = status;
   }
-  saveState();
+  saveState(); sbSync('convocati', cv);
   // Refresh the view
   viewBuilders['convocati'](document.getElementById('view-convocati'));
 }
@@ -6699,7 +7074,7 @@ function setCvStatus(matchId, athleteId, status) {
 function setCvNote(matchId, athleteId, val) {
   if (!S.convocati) S.convocati = [];
   const cv = S.convocati.find(c=>c.matchId===matchId && c.athleteId===athleteId);
-  if (cv) { cv.notes = val; saveState(); }
+  if (cv) { cv.notes = val; saveState(); sbSync('convocati', cv); }
 }
 
 function convocaTutti(matchId) {
@@ -6711,7 +7086,8 @@ function convocaTutti(matchId) {
     if (!cv) S.convocati.push({ id: uid(), matchId, athleteId: a.id, status: 'convocato', notes: '' });
     else cv.status = 'convocato';
   });
-  saveState();
+  const allCvs = (S.convocati||[]).filter(cv=>cv.matchId===matchId);
+  saveState(); sbSync('convocati', allCvs);
   viewBuilders['convocati'](document.getElementById('view-convocati'));
   toast('Tutti gli atleti convocati', 'success');
 }
@@ -6719,7 +7095,7 @@ function convocaTutti(matchId) {
 function resetConvocati(matchId) {
   if (!confirm('Azzerare tutti i convocati?')) return;
   S.convocati = (S.convocati||[]).filter(c=>c.matchId!==matchId);
-  saveState();
+  saveState(); sbSyncDeleteWhere('convocati','match_id',matchId);
   viewBuilders['convocati'](document.getElementById('view-convocati'));
   toast('Convocati azzerati');
 }
@@ -6868,8 +7244,9 @@ function addNewSeason() {
   const name = `${start}/${end}`;
   if ((S.seasons||[]).some(s => s.name === name)) { toast('Stagione già esistente','error'); return; }
   if (!S.seasons) S.seasons = [];
-  S.seasons.push({ id: uid(), name, startYear: start, endYear: end, active: false });
-  saveState(); rebuildSeasonSelector();
+  const newS = { id: uid(), name, startYear: start, endYear: end, active: false };
+  S.seasons.push(newS);
+  saveState(); sbSync('seasons', newS); rebuildSeasonSelector();
   document.getElementById('seasons-list-area').innerHTML = buildSeasonsListHtml(S.seasons.slice().reverse());
   document.getElementById('new-season-start').value = '';
   document.getElementById('new-season-end').value = '';
@@ -6879,7 +7256,7 @@ function addNewSeason() {
 function setSeasonActive(id) {
   S.seasons.forEach(s => s.active = s.id === id);
   S.activeSeason = id;
-  saveState(); rebuildSeasonSelector();
+  saveState(); sbSync('seasons', S.seasons); rebuildSeasonSelector();
   document.getElementById('seasons-list-area').innerHTML = buildSeasonsListHtml(S.seasons.slice().reverse());
   toast('Stagione attiva aggiornata','success');
 }
@@ -6887,7 +7264,7 @@ function setSeasonActive(id) {
 function deleteSeason(id) {
   if (!confirm('Eliminare questa stagione?')) return;
   S.seasons = S.seasons.filter(s => s.id !== id);
-  saveState(); rebuildSeasonSelector();
+  saveState(); sbSync('seasons', id, true); rebuildSeasonSelector();
   document.getElementById('seasons-list-area').innerHTML = buildSeasonsListHtml(S.seasons.slice().reverse());
   toast('Stagione eliminata');
 }
@@ -6970,8 +7347,8 @@ function saveAthleteSeasonEnroll(athleteId) {
     S.athleteSeasons.push({ id: uid(), athleteId, categoryId, seasonId, role, shirtNumber: num, joinDate, notes });
     toast('Iscrizione aggiunta','success');
   }
-  saveState(); closeModal();
-  // Refresh profile if open
+  const savedAs = existing || S.athleteSeasons[S.athleteSeasons.length-1];
+  saveState(); sbSync('athlete_seasons', savedAs); closeModal();
   if (currentView === 'athlete-profile') showView('athlete-profile');
 }
 
@@ -7040,6 +7417,59 @@ function saveStaffHistoryEntry(userId) {
   toast('Storico aggiornato','success');
 }
 
+
+// ── ADMIN RESET PASSWORD ─────────────────────────────────────
+function openAdminResetPasswordModal(userId, userName) {
+  openModal(`
+    <div class="modal-header">
+      <h3>🔑 Reset Password — ${esc(userName)}</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div style="background:var(--gold-l);border-radius:var(--radius);padding:10px 14px;font-size:.82rem;color:#7a4a00;margin-bottom:16px">
+      ⚠️ Stai impostando una nuova password per <strong>${esc(userName)}</strong>. L'utente potrà cambiarla al prossimo accesso.
+    </div>
+    <div class="form-field" style="margin-bottom:4px">
+      <label>Nuova Password Temporanea</label>
+      <div style="display:flex;gap:6px">
+        <input id="ar-pass" type="password" placeholder="••••••••" style="flex:1"
+          oninput="_updatePwStrengthUI(this.value,'ar-pass');_updatePwConfirmUI(this.value,document.getElementById('ar-pass-confirm').value)">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="fillGeneratedPassword('ar-pass')" title="Genera password sicura" style="padding:8px 10px">🎲</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePwVisibility('ar-pass','eye-ar')" style="padding:8px 10px"><span id="eye-ar">👁</span></button>
+      </div>
+      ${pwStrengthHTML('ar-pass','ar-pass-confirm')}
+    </div>
+    <div class="form-field" style="margin-top:10px">
+      <label>Conferma Password</label>
+      <input id="ar-pass-confirm" type="password" placeholder="••••••••"
+        oninput="_updatePwConfirmUI(document.getElementById('ar-pass').value,this.value)">
+    </div>
+    <div class="form-actions" style="margin-top:16px">
+      <button class="btn btn-accent" onclick="adminResetPassword('${userId}','${userName}')">🔑 Imposta Password</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+    </div>\`);
+}
+
+async function adminResetPassword(userId, userName) {
+  const pw   = document.getElementById('ar-pass').value;
+  const conf = document.getElementById('ar-pass-confirm').value;
+  const pwErr = pwErrorMsg(pw);
+  if (pwErr) { toast(pwErr, 'error'); return; }
+  if (pw !== conf) { toast('Le password non coincidono','error'); return; }
+  const btn = document.querySelector('.modal .btn-accent');
+  if (btn) { btn.disabled = true; btn.textContent = 'Aggiornamento…'; }
+  try {
+    if (DB_MODE === 'supabase') {
+      await callEdgeFunction('admin-set-password', { user_id: userId, new_password: pw });
+    }
+    closeModal();
+    toast('✅ Password di "' + userName + '" aggiornata — comunicagliela in modo sicuro', 'success');
+  } catch(e) {
+    toast('❌ ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔑 Imposta Password'; }
+  }
+}
+
 // ── ADMIN PASSWORD CHANGE ────────────────────────────────────
 function openChangePasswordModal() {
   openModal(`
@@ -7047,37 +7477,88 @@ function openChangePasswordModal() {
       <h3>🔐 Cambia Password</h3>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
+
+    <div style="background:var(--accent-l);border-radius:var(--radius);padding:10px 14px;font-size:.8rem;color:var(--ink-3);margin-bottom:16px">
+      🔒 <strong>Requisiti:</strong> min. 10 caratteri · maiuscola · minuscola · numero · carattere speciale (!@#$%…)
+    </div>
+
     <div class="form-field" style="margin-bottom:12px">
       <label>Password Attuale</label>
-      <input id="pw-current" type="password" placeholder="••••••••">
+      <div style="display:flex;gap:6px">
+        <input id="pw-current" type="password" placeholder="••••••••" style="flex:1">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePwVisibility('pw-current','eye-cur')" style="padding:8px 10px"><span id="eye-cur">👁</span></button>
+      </div>
     </div>
-    <div class="form-field" style="margin-bottom:12px">
+
+    <div class="form-field" style="margin-bottom:4px">
       <label>Nuova Password</label>
-      <input id="pw-new" type="password" placeholder="••••••••">
+      <div style="display:flex;gap:6px">
+        <input id="pw-new" type="password" placeholder="••••••••" style="flex:1"
+          oninput="_updatePwStrengthUI(this.value,'pw-new');_updatePwConfirmUI(this.value,document.getElementById('pw-confirm').value)">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="fillGeneratedPassword('pw-new')" title="Genera password sicura" style="padding:8px 10px">🎲</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePwVisibility('pw-new','eye-new')" style="padding:8px 10px"><span id="eye-new">👁</span></button>
+      </div>
+      ${pwStrengthHTML('pw-new','pw-confirm')}
     </div>
-    <div class="form-field">
+
+    <div class="form-field" style="margin-top:10px">
       <label>Conferma Nuova Password</label>
-      <input id="pw-confirm" type="password" placeholder="••••••••">
+      <div style="display:flex;gap:6px">
+        <input id="pw-confirm" type="password" placeholder="••••••••" style="flex:1"
+          oninput="_updatePwConfirmUI(document.getElementById('pw-new').value,this.value)">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePwVisibility('pw-confirm','eye-conf')" style="padding:8px 10px"><span id="eye-conf">👁</span></button>
+      </div>
     </div>
+
     <div class="form-actions" style="margin-top:16px">
       <button class="btn btn-accent" onclick="saveNewPassword()">🔐 Aggiorna Password</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`);
 }
 
-function saveNewPassword() {
+async function saveNewPassword() {
   const cur  = document.getElementById('pw-current').value;
   const nw   = document.getElementById('pw-new').value;
   const conf = document.getElementById('pw-confirm').value;
+
   if (!cur || !nw || !conf) { toast('Compila tutti i campi','error'); return; }
+
+  // Verifica password attuale (locale)
   const u = S.users.find(x => x.id === currentUser.id);
-  if (!u || u.password !== cur) { toast('Password attuale non corretta','error'); return; }
-  if (nw.length < 6) { toast('La nuova password deve avere almeno 6 caratteri','error'); return; }
-  if (nw !== conf) { toast('Le password non coincidono','error'); return; }
-  u.password = nw;
-  currentUser.password = nw;
-  saveState(); closeModal();
-  toast('Password aggiornata con successo','success');
+  if (u && u.password && u.password !== cur) {
+    toast('❌ Password attuale non corretta','error'); return;
+  }
+
+  // Valida nuova password
+  const pwErr = pwErrorMsg(nw);
+  if (pwErr) { toast(pwErr,'error'); return; }
+  if (nw !== conf) { toast('❌ Le password non coincidono','error'); return; }
+  if (nw === cur)  { toast('La nuova password deve essere diversa da quella attuale','error'); return; }
+
+  const btn = document.querySelector('.modal .btn-accent');
+  if (btn) { btn.disabled = true; btn.textContent = 'Aggiornamento...'; }
+
+  try {
+    if (DB_MODE === 'supabase') {
+      // Verifica anche in Supabase Auth re-autenticando
+      const email = currentUser.email || (currentUser.username + '@sporttrackpro.it');
+      const { error: reAuthErr } = await sb.auth.signInWithPassword({ email, password: cur });
+      if (reAuthErr) {
+        toast('❌ Password attuale non corretta su Supabase Auth','error');
+        return;
+      }
+      await DB.changePassword(nw);
+    }
+    // Aggiorna stato locale
+    if (u) { u.password = nw; currentUser.password = nw; }
+    saveState();
+    closeModal();
+    toast('✅ Password aggiornata con successo','success');
+  } catch(e) {
+    toast('❌ Errore aggiornamento: ' + (e.message || e),'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔐 Aggiorna Password'; }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
