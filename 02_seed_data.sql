@@ -1,5 +1,5 @@
 -- ============================================================
--- SportTrack Pro — Dati di esempio
+-- SportTrack Pro — Dati di esempio 
 -- IMPORTANTE: esegui PRIMA il file 01_schema.sql
 -- Poi crea gli utenti auth PRIMA di eseguire questo file:
 --   1) Vai su Supabase → Authentication → Users
