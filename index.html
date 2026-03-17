@@ -949,7 +949,7 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // Sostituisci questi valori con le tue credenziali Supabase:
 // Supabase Dashboard → Settings → API
 const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';;
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -1861,7 +1861,17 @@ function resetState() {
 }
 
 // ── HELPERS ──────────────────────────────────────────────────
-function uid() { return 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7); }
+function uid() {
+  // Genera UUID v4 compatibile con Supabase (tipo uuid)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback manuale UUID v4
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
 function esc(str) { const d = document.createElement('div'); d.textContent = str||''; return d.innerHTML; }
 function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
 function fmtDate(d) { if(!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('it-IT'); }
@@ -2586,16 +2596,16 @@ const TABLE_COLUMNS = {
 
 // Colonne reali per ogni tabella (da schema Supabase verificato)
 const TABLE_REAL_COLUMNS = {
-  // Colonne verificate direttamente sul DB — aggiornare se si modifica lo schema
+  // Schema verificato sul DB reale — tutti gli ID sono text tranne users.id (uuid)
   sports:          ['id','name','icon'],
   societies:       ['id','name','sport_id','city','email'],
-  teams:           ['id','name','society_id'],
+  teams:           ['id','name','society_id','sport_id'],
   seasons:         ['id','name','start_year','end_year','active','society_id'],
   users:           ['id','name','username','email','role','profession','phone','society_id'],
   categories:      ['id','name','sport_id','society_id','team_id','team_ids','director_ids','manager_ids','coach_ids','prof_ids'],
   athletes:        ['id','first_name','last_name','dob','nickname','category_id','team_id','number','role','notes'],
   athlete_seasons: ['id','athlete_id','category_id','season_id','team_id','role','shirt_number','join_date','notes'],
-  sessions:        ['id','category_id','date','type','notes','created_by','match_id'],
+  sessions:        ['id','category_id','date','type','notes','match_id','created_by'],
   attendances:     ['id','session_id','athlete_id','status'],
   performances:    ['id','session_id','athlete_id','params','notes'],
   matches:         ['id','category_id','date','time','meet_time','meet_place','opponent','home_away','result','scored','conceded','notes','bg_color','created_by'],
