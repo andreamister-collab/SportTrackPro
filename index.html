@@ -948,9 +948,9 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // ── CONFIGURAZIONE SUPABASE ─────────────────────────────────
 // Sostituisci questi valori con le tue credenziali Supabase:
 // Supabase Dashboard → Settings → API
-
 const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -1350,29 +1350,19 @@ async function sbSyncDeleteWhere(table, col, val) {
 // ── GESTIONE UTENTI — solo anon key, nessuna service role ────
 
 async function rpcCreateUser(params) {
-  // Crea utente con signUp standard (anon key)
-  const { data, error } = await sb.auth.signUp({
-    email:    params.email,
-    password: params.password,
-    options:  { data: { name: params.name, username: params.username, role: params.role } }
+  // Usa RPC create_app_user (SECURITY DEFINER) — crea Auth + profilo in un solo step
+  const { data, error } = await sb.rpc('create_app_user', {
+    p_email:      params.email,
+    p_password:   params.password,
+    p_name:       params.name,
+    p_username:   params.username,
+    p_role:       params.role,
+    p_profession: params.profession || '',
+    p_phone:      params.phone || '',
+    p_society_id: params.society_id || null,
   });
   if (error) throw new Error(error.message);
-  if (!data.user) throw new Error('Utente non creato');
-
-  // Inserisci profilo in public.users
-  const { error: profileErr } = await sb.from('users').insert({
-    id:         data.user.id,
-    name:       params.name,
-    username:   params.username,
-    email:      params.email,
-    role:       params.role,
-    profession: params.profession || '',
-    phone:      params.phone || '',
-    society_id: params.society_id || null,
-  });
-  if (profileErr) throw new Error('Profilo non salvato: ' + profileErr.message);
-
-  return { id: data.user.id, ...params };
+  return data; // { id, email, username, name, role }
 }
 
 async function rpcResetPassword(userId, newPassword) {
@@ -2089,9 +2079,20 @@ async function doLogin() {
   if (btn) { btn.disabled = true; btn.textContent = 'Connessione...'; }
 
   // Costruisci email dall'username
-  const email = u.includes('@') ? u : u + '@sporttrackpro.it';
+  // Prima cerca l'email reale in public.users tramite username
+  let email = u.includes('@') ? u : u + '@sporttrackpro.it';
 
   try {
+    // Step 0: cerca email reale da public.users tramite username
+    if (!u.includes('@')) {
+      const { data: userRow } = await sb
+        .from('users').select('email').eq('username', u).maybeSingle();
+      if (userRow?.email) {
+        email = userRow.email;
+        console.log('[Login] Email trovata da profilo:', email);
+      }
+    }
+
     // Step 1: autenticazione Supabase
     console.log('[Login] Tentativo auth:', email);
     const { data: authData, error: authErr } = await sb.auth.signInWithPassword({ email, password: p });
