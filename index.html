@@ -949,7 +949,7 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // Sostituisci questi valori con le tue credenziali Supabase:
 // Supabase Dashboard → Settings → API
 const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';;
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -2614,56 +2614,35 @@ const TABLE_REAL_COLUMNS = {
 };
 
 function toSnakeCase(table, obj) {
-  const maps = {
-    athletes: {
-      firstName:'first_name', lastName:'last_name', categoryId:'category_id',
-      teamId:'team_id'
-    },
-    sessions: {
-      categoryId:'category_id', createdBy:'created_by',
-      matchId:'match_id'
-    },
-    attendances: {
-      sessionId:'session_id', athleteId:'athlete_id'
-    },
-    matches: {
-      categoryId:'category_id', homeAway:'home_away',
-      scoredGoals:'scored', concededGoals:'conceded',
-      bgColor:'bg_color', createdBy:'created_by',
-      meetTime:'meet_time', meetPlace:'meet_place'
-    },
-    convocati: {
-      matchId:'match_id', athleteId:'athlete_id'
-    },
-    performances: {
-      sessionId:'session_id', athleteId:'athlete_id'
-    },
-    categories: {
-      societyId:'society_id', sportId:'sport_id', teamId:'team_id',
-      teamIds:'team_ids', managerIds:'manager_ids', directorIds:'director_ids',
-      coachIds:'coach_ids', professionalIds:'prof_ids'
-    },
-    teams: { societyId:'society_id', sportId:'sport_id' },
-    users: { societyId:'society_id' },
-    seasons: { societyId:'society_id', startYear:'start_year', endYear:'end_year' },
-    athlete_seasons: {
-      athleteId:'athlete_id', categoryId:'category_id', seasonId:'season_id',
-      teamId:'team_id', shirtNumber:'shirt_number', joinDate:'join_date',
-      societyId:'society_id'
-    },
+  // Conversione automatica camelCase → snake_case per tutti i campi
+  function camelToSnake(str) {
+    return str.replace(/[A-Z]/g, l => '_' + l.toLowerCase());
+  }
+
+  // Mappings espliciti per casi speciali
+  const explicitMaps = {
+    scoredGoals:      'scored',
+    concededGoals:    'conceded',
+    professionalIds:  'prof_ids',
   };
-  const map = maps[table] || {};
+
+  // Campi da escludere sempre
+  const exclude = new Set(['password','role_label','gradient','password_hash','teamId_old']);
+
   const out = {};
-  for (const [k,v] of Object.entries(obj)) {
-    const sk = map[k] || k;
-    if (['password','role_label','gradient','password_hash'].includes(sk)) continue;
+  for (const [k, v] of Object.entries(obj)) {
+    if (exclude.has(k)) continue;
+    const sk = explicitMaps[k] || camelToSnake(k);
     out[sk] = v;
   }
-  // Filtra solo le colonne realmente presenti nel DB per questa tabella
+
+  // Filtra solo le colonne realmente presenti nel DB
   const realCols = TABLE_REAL_COLUMNS[table];
   if (realCols) {
     const filtered = {};
-    for (const k of realCols) { if (k in out) filtered[k] = out[k]; }
+    for (const col of realCols) {
+      if (col in out) filtered[col] = out[col];
+    }
     return filtered;
   }
   return out;
