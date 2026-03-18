@@ -950,7 +950,6 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // Supabase Dashboard → Settings → API
 const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
-
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -1593,6 +1592,8 @@ async function loadStateFromDB() {
   <button class="btn btn-success" onclick="openImportAthleteModal()">📥 Importa atleti da Excel</button>
 </div>
 </div>
+      <!-- Parent View -->
+      <div class="view" id="view-parent-view"><!-- dynamic --></div>
       <!-- Export Reports -->
       <div class="view" id="view-export"><!-- dynamic --></div>
 
@@ -2024,6 +2025,7 @@ const ROLES = {
   dirigente:      { label: 'Dirigente',        icon: '🏛️', color: '#059669', gradient: 'linear-gradient(135deg,#059669,#34D399)' },
   allenatore:     { label: 'Allenatore',       icon: '⚽', color: '#D97706', gradient: 'linear-gradient(135deg,#D97706,#FCD34D)' },
   professionista: { label: 'Professionista',   icon: '🩺', color: '#0891B2', gradient: 'linear-gradient(135deg,#0891B2,#67E8F9)' },
+  genitore:       { label: 'Genitore',         icon: '👨‍👧', color: '#BE185D', gradient: 'linear-gradient(135deg,#BE185D,#F472B6)' },
 };
 
 // Returns list of category IDs accessible to the current user
@@ -2036,6 +2038,11 @@ function getAccessibleCategoryIds() {
     if (r === 'dirigente')      return (c.directorIds||[]).includes(currentUser.id);
     if (r === 'allenatore')     return (c.coachIds||[]).includes(currentUser.id);
     if (r === 'professionista') return (c.professionalIds||[]).includes(currentUser.id);
+    if (r === 'genitore') {
+      // Il genitore accede alle categorie degli atleti a lui associati
+      const myAthletes = S.athletes.filter(a => (a.parentIds||[]).includes(currentUser.id));
+      return myAthletes.some(a => a.categoryId === c.id);
+    }
     return false;
   }).map(c => c.id);
 }
@@ -2047,6 +2054,12 @@ function canAccessCategory(catId) {
 }
 
 // What can a role DO in a category?
+// Ritorna gli atleti associati al genitore loggato
+function getMyChildren() {
+  if (!currentUser || currentUser.role !== 'genitore') return [];
+  return S.athletes.filter(a => (a.parentIds||[]).includes(currentUser.id));
+}
+
 function canEdit(catId) {
   if (!currentUser) return false;
   if (currentUser.role === 'admin') return true;
@@ -2188,6 +2201,8 @@ function _afterLogin() {
       rebuildSeasonSelector(); // stagioni aggiornate
       if (currentUser.role === 'admin') {
         showView('admin-overview');
+      } else if (currentUser.role === 'genitore') {
+        showView('parent-view');
       } else {
         const accIds = getAccessibleCategoryIds();
         if (accIds.length > 0) selectedCategoryId = accIds[0];
@@ -2198,6 +2213,8 @@ function _afterLogin() {
     buildSidebarNav();
     if (currentUser.role === 'admin') {
       showView('admin-overview');
+    } else if (currentUser.role === 'genitore') {
+      showView('parent-view');
     } else {
       const accIds = getAccessibleCategoryIds();
       if (accIds.length > 0) selectedCategoryId = accIds[0];
@@ -2606,7 +2623,7 @@ const TABLE_REAL_COLUMNS = {
   seasons:         ['id','name','start_year','end_year','active','society_id'],
   users:           ['id','name','username','email','role','profession','phone','society_id'],
   categories:      ['id','name','sport_id','society_id','team_id','team_ids','director_ids','manager_ids','coach_ids','prof_ids'],
-  athletes:        ['id','first_name','last_name','dob','nickname','category_id','team_id','number','role','notes'],
+  athletes:        ['id','first_name','last_name','dob','nickname','category_id','team_id','number','role','notes','parent_ids'],
   athlete_seasons: ['id','athlete_id','category_id','season_id','team_id','role','shirt_number','join_date','notes'],
   sessions:        ['id','category_id','date','type','notes','match_id','created_by'],
   attendances:     ['id','session_id','athlete_id','status'],
@@ -3624,7 +3641,7 @@ function fillGeneratedPassword(inputId) {
 
 function openUserModal(id) {
   const u = id ? S.users.find(x=>x.id===id) : null;
-  const roleOpts = ['responsabile','dirigente','allenatore','professionista']
+  const roleOpts = ['responsabile','dirigente','allenatore','professionista','genitore']
     .map(r=>`<option value="${r}" ${u?.role===r?'selected':''}>${ROLES[r].icon} ${ROLES[r].label}</option>`)
     .join('');
 
@@ -4509,6 +4526,19 @@ function filterAthletes() {
   else athletes.sort((a,b)=>(a.lastName||'').localeCompare(b.lastName||''));
   renderAthleteTable(athletes);
 }
+
+function buildParentSelector(athleteId, selectedIds) {
+  const parents = S.users.filter(u => u.role === 'genitore');
+  if (!parents.length) {
+    return '<div style="font-size:.82rem;color:var(--ink-3)">Nessun genitore registrato. Aggiungi prima un utente con ruolo Genitore.</div>';
+  }
+  const sel = selectedIds || [];
+  return `<select id="ath-parents" multiple style="min-height:80px;padding:6px;border:1.5px solid var(--mist-3);border-radius:var(--radius);width:100%;font-size:.88rem">
+    ${parents.map(p => `<option value="${p.id}" ${sel.includes(p.id)?'selected':''}>${esc(p.name)} (${esc(p.username)})</option>`).join('')}
+  </select>
+  <div style="font-size:.72rem;color:var(--ink-3);margin-top:3px">Ctrl/Cmd per selezionare più genitori</div>`;
+}
+
 function openAthleteModal(id) {
   const a = id ? S.athletes.find(x=>x.id===id) : null;
   const catId = a?.categoryId || selectedCategoryId || '';
@@ -4584,6 +4614,14 @@ function buildAthleteModalHtml(id, catId, a) {
       </div>
     </div>
     <div class="form-field" style="margin-top:8px"><label>Note</label><textarea id="ath-notes" placeholder="Note sull'atleta...">${esc(a?.notes||'')}</textarea></div>
+
+    <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--mist-2)">
+      👨‍👧 Genitori / Tutori
+    </div>
+    <div class="form-field">
+      ${buildParentSelector(id||null, a?.parentIds||[])}
+    </div>
+
     <div class="form-actions" style="margin-top:14px">
       <button class="btn btn-accent btn-lg" onclick="saveAthlete('${id||''}')">💾 Salva Atleta</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
@@ -4622,13 +4660,17 @@ function saveAthlete(id) {
     toast('Non hai i permessi per questa categoria','error'); return;
   }
 
+  const parentSelect = document.getElementById('ath-parents');
+  const parentIds = parentSelect ? Array.from(parentSelect.selectedOptions).map(o => o.value) : [];
+
   const data = {
     firstName, lastName, categoryId, teamId,
-    nickname: document.getElementById('ath-nick')?.value.trim() || '',
-    dob:    document.getElementById('ath-dob').value,
-    number: parseInt(document.getElementById('ath-num').value)||null,
-    role:   document.getElementById('ath-role')?.value.trim() || '',
-    notes:  document.getElementById('ath-notes')?.value.trim() || '',
+    nickname:  document.getElementById('ath-nick')?.value.trim() || '',
+    dob:       document.getElementById('ath-dob').value,
+    number:    parseInt(document.getElementById('ath-num').value)||null,
+    role:      document.getElementById('ath-role')?.value.trim() || '',
+    notes:     document.getElementById('ath-notes')?.value.trim() || '',
+    parentIds: parentIds,
   };
 
   if (id) {
@@ -8015,6 +8057,165 @@ function saveSessionPerfConfig(typeKey) {
     if (el) { el.innerHTML = ''; viewBuilders['session-entry'](el); }
   }
 }
+
+
+// ══════════════════════════════════════════════════════════════════
+//  VISTA GENITORE
+// ══════════════════════════════════════════════════════════════════
+viewBuilders['parent-view'] = (el) => {
+  if (!currentUser || currentUser.role !== 'genitore') {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Accesso non autorizzato</h3></div>';
+    return;
+  }
+  setTopbar('Area Genitore', '');
+
+  const children = getMyChildren();
+  if (!children.length) {
+    el.innerHTML = `
+      <div class="page-header"><div class="header-row"><div>
+        <h2>👨‍👧 Area Genitore</h2>
+        <p>Benvenuto, ${esc(currentUser.name)}</p>
+      </div></div></div>
+      <div class="empty-state">
+        <div class="icon">👶</div>
+        <h3>Nessun atleta associato</h3>
+        <p>Contatta l'amministratore per associare il tuo account al profilo del tuo bambino.</p>
+      </div>`;
+    return;
+  }
+
+  // Se più figli mostra tabs
+  const activeChildId = window._parentChildId || children[0].id;
+  const activeChild = children.find(a => a.id === activeChildId) || children[0];
+  window._parentChildId = activeChild.id;
+
+  const cat = S.categories.find(c => c.id === activeChild.categoryId);
+  const team = S.teams.find(t => t.id === activeChild.teamId);
+  const sessions = getCategorySessions(activeChild.categoryId).sort((a,b) => b.date.localeCompare(a.date));
+  const atts = getAthleteAttendances(activeChild.id);
+  const sessAtts = atts.filter(a => sessions.some(s => s.id === a.sessionId));
+  const pres = sessAtts.filter(a => a.status === 'P').length;
+  const ass  = sessAtts.filter(a => a.status === 'A').length;
+  const giust= sessAtts.filter(a => a.status === 'G').length;
+  const presRate = pct(pres, sessions.length || 1);
+  const perf = getAthleteAvgPerf(activeChild.id);
+  const color = avatarColor((activeChild.firstName||'')+(activeChild.lastName||''));
+
+  // Convocazioni partite
+  const myConvocati = (S.convocati||[]).filter(cv => cv.athleteId === activeChild.id);
+  const myMatches = myConvocati.map(cv => {
+    const m = S.matches.find(x => x.id === cv.matchId);
+    return m ? { match: m, status: cv.status } : null;
+  }).filter(Boolean).sort((a,b) => b.match.date.localeCompare(a.match.date));
+
+  const childTabs = children.length > 1 ? `
+    <div class="tabs" style="margin-bottom:20px">
+      ${children.map(ch => `
+        <button class="tab-btn ${ch.id===activeChild.id?'active':''}"
+          onclick="window._parentChildId='${ch.id}'; showView('parent-view')">
+          ${esc(ch.firstName)} ${esc(ch.lastName)}
+        </button>`).join('')}
+    </div>` : '';
+
+  const statusIcon = { P:'✅', A:'❌', G:'⚠️', C:'📋', NC:'—' };
+  const statusLabel = { P:'Presente', A:'Assente', G:'Giustificato', C:'Convocato', NC:'Non conv.' };
+
+  el.innerHTML = `
+    <div class="page-header">
+      <div class="header-row">
+        <div>
+          <h2>👨‍👧 Area Genitore</h2>
+          <p>Benvenuto, ${esc(currentUser.name)}</p>
+        </div>
+      </div>
+    </div>
+
+    ${childTabs}
+
+    <!-- Intestazione atleta -->
+    <div class="card" style="margin-bottom:20px;background:linear-gradient(135deg,${color} 0%,#1e293b 100%);color:white">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;flex-shrink:0">
+          ${initials((activeChild.firstName||'')+' '+(activeChild.lastName||''))}
+        </div>
+        <div>
+          <div style="font-size:1.3rem;font-weight:800;font-family:var(--font-head)">${esc(activeChild.firstName)} ${esc(activeChild.lastName)}</div>
+          <div style="opacity:.8;font-size:.9rem">${esc(cat?.name||'—')} · ${esc(team?.name||'—')}</div>
+          <div style="opacity:.7;font-size:.82rem;margin-top:2px">
+            ${activeChild.role ? '🏷️ ' + esc(activeChild.role) : ''}
+            ${activeChild.number ? ' · #' + activeChild.number : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Presenze</div><div class="value">${pres}</div><div class="sub">${presRate}% delle sessioni</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Assenze</div><div class="value">${ass}</div></div>
+      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Giustificati</div><div class="value">${giust}</div></div>
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Sessioni Totali</div><div class="value">${sessions.length}</div></div>
+      ${perf.overall > 0 ? `<div class="stat-card purple"><div class="accent-bar"></div><div class="label">Performance</div><div class="value">${perf.overall.toFixed(1)}</div><div class="sub">media overall</div></div>` : ''}
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+
+      <!-- Performance -->
+      ${perf.overall > 0 ? `
+      <div class="card">
+        <div class="card-title"><div class="icon" style="background:var(--gold-l);color:var(--gold)">⭐</div>Performance Media</div>
+        <div class="perf-bars">
+          ${getPerfParams().map(normPerfParam).map(({key,label}) => perfBar(label, perf[key]||0)).join('')}
+        </div>
+      </div>` : '<div></div>'}
+
+      <!-- Convocazioni -->
+      <div class="card">
+        <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">⚽</div>Convocazioni Partite</div>
+        ${myMatches.length === 0
+          ? '<div class="text-muted text-sm">Nessuna partita registrata</div>'
+          : myMatches.slice(0,8).map(({match:m, status}) => {
+              const convSt = status === 'convocato' ? 'badge-green' : status === 'riserva' ? 'badge-gold' : 'badge-gray';
+              const convLabel = status === 'convocato' ? '✅ Convocato' : status === 'riserva' ? '🔄 Riserva' : '❌ Non conv.';
+              return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mist-2)">
+                <div style="min-width:80px;font-size:.82rem;color:var(--ink-3)">${fmtDate(m.date)}</div>
+                <div style="flex:1">
+                  <div class="fw-700">${esc(m.opponent)}</div>
+                  <div style="font-size:.78rem;color:var(--ink-3)">${m.homeAway==='home'?'🏠 Casa':'✈️ Trasferta'}</div>
+                </div>
+                <span class="badge ${convSt}">${convLabel}</span>
+              </div>`;
+            }).join('')
+        }
+      </div>
+    </div>
+
+    <!-- Storico sessioni -->
+    <div class="card">
+      <div class="card-title"><div class="icon" style="background:var(--green-l);color:var(--green)">📅</div>Storico Presenze</div>
+      ${sessions.length === 0
+        ? '<div class="text-muted text-sm">Nessuna sessione registrata</div>'
+        : `<div class="table-wrap"><table>
+            <thead><tr><th>Data</th><th>Tipo</th><th>Presenze</th><th>Note</th></tr></thead>
+            <tbody>
+              ${sessions.slice(0,20).map(sess => {
+                const att = atts.find(a => a.sessionId === sess.id);
+                const st = att?.status || '—';
+                const stColor = st==='P'?'var(--green)':st==='A'?'var(--red)':st==='G'?'var(--gold)':'var(--ink-3)';
+                const act = getActivityTypesMap()[sess.type] || {};
+                return `<tr>
+                  <td>${fmtDate(sess.date)}</td>
+                  <td>${actBadge(sess.type)}</td>
+                  <td><span style="color:${stColor};font-weight:700">${statusIcon[st]||'—'} ${statusLabel[st]||'—'}</span></td>
+                  <td style="font-size:.82rem;color:var(--ink-3)">${esc(sess.notes||'')}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table></div>`
+      }
+    </div>
+  `;
+};
 
 // ══════════════════════════════════════════════════════════════════
 //  INIT
