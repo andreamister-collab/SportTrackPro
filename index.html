@@ -948,6 +948,7 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // ── CONFIGURAZIONE SUPABASE ─────────────────────────────────
 // Sostituisci questi valori con le tue credenziali Supabase:
 // Supabase Dashboard → Settings → API
+
 const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
 </script>
@@ -2172,7 +2173,6 @@ function _afterLogin() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   updateSidebarUser();
-  buildSidebarNav();
   rebuildSeasonSelector();
   document.getElementById('bottom-nav').style.display = '';
   startBackgroundSync();
@@ -2180,10 +2180,11 @@ function _afterLogin() {
     const dbEl = document.getElementById('db-status');
     if (dbEl) dbEl.style.display = 'flex';
   }
-  // Ricarica dal DB prima di mostrare la view
-  // così la view usa sempre dati freschi dal DB
   if (DB_MODE === 'supabase') {
+    // Carica DB prima di costruire navbar e mostrare view
     loadStateFromDB().then(() => {
+      buildSidebarNav();       // navbar con dati freschi
+      rebuildSeasonSelector(); // stagioni aggiornate
       if (currentUser.role === 'admin') {
         showView('admin-overview');
       } else {
@@ -2193,6 +2194,7 @@ function _afterLogin() {
       }
     });
   } else {
+    buildSidebarNav();
     if (currentUser.role === 'admin') {
       showView('admin-overview');
     } else {
