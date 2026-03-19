@@ -3473,14 +3473,39 @@ function syncUserCatAssignments(userId, role, newCatIds) {
     responsabile: 'managerIds', dirigente: 'directorIds',
     allenatore: 'coachIds', professionista: 'professionalIds'
   }[role];
+
+  // Genitore: l'associazione è sugli atleti (parentIds), non sulle categorie
+  if (role === 'genitore') {
+    // Rimuovi il genitore da tutti gli atleti
+    S.athletes.forEach(a => { a.parentIds = (a.parentIds||[]).filter(i=>i!==userId); });
+    // Aggiungi il genitore agli atleti selezionati (newCatIds qui sono athleteIds)
+    newCatIds.forEach(aid => {
+      const ath = S.athletes.find(a => a.id === aid);
+      if (ath) {
+        if (!ath.parentIds) ath.parentIds = [];
+        if (!ath.parentIds.includes(userId)) ath.parentIds.push(userId);
+        sbSync('athletes', ath);
+      }
+    });
+    return;
+  }
+
   if (!key) return;
-  // Remove user from ALL categories for this role key first
+  // Rimuovi utente da TUTTE le categorie per questo ruolo
   S.categories.forEach(c => { c[key] = (c[key]||[]).filter(i=>i!==userId); });
-  // Add user to the selected categories
+  // Aggiungi utente alle categorie selezionate
   newCatIds.forEach(cid => {
     const cat = S.categories.find(c=>c.id===cid);
-    if (cat) { if (!cat[key]) cat[key]=[]; if(!cat[key].includes(userId)) cat[key].push(userId); }
+    if (cat) {
+      if (!cat[key]) cat[key]=[];
+      if (!cat[key].includes(userId)) cat[key].push(userId);
+    }
   });
+  // Sincronizza TUTTE le categorie modificate su Supabase
+  const affectedCats = S.categories.filter(c =>
+    newCatIds.includes(c.id) || (c[key]||[]).length >= 0
+  );
+  affectedCats.forEach(cat => sbSync('categories', cat));
 }
 
 // Build the category multi-select HTML for the user modal, filtered by role
@@ -3492,7 +3517,34 @@ function buildUserCatSelector(userId, role) {
     allenatore:   { label: 'Categorie come Allenatore', note: "L'Allenatore può registrare sessioni e presenze", multi: true },
     professionista:{ label: 'Categorie come Professionista', note: 'Il Professionista ha accesso in sola lettura', multi: true },
   }[role];
-  if (!roleInfo) return '';
+  if (!roleInfo) {
+    // Genitore: mostra lista atleti invece di categorie
+    if (role === 'genitore') {
+      const currentAthIds = userId
+        ? S.athletes.filter(a => (a.parentIds||[]).includes(userId)).map(a => a.id)
+        : [];
+      if (!S.athletes.length) return '<div style="font-size:.82rem;color:var(--ink-3);margin-top:10px">Nessun atleta registrato.</div>';
+      return `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--mist-2)">
+          <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+            👶 Atleti Associati
+          </div>
+          <div class="highlight-box" style="margin-bottom:10px;padding:8px 12px;font-size:.8rem">
+            Il genitore potrà vedere presenze, performance e convocazioni dell'atleta selezionato.
+          </div>
+          <select id="usr-cats" multiple style="width:100%;min-height:100px;max-height:160px;padding:6px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:var(--mist)">
+            ${S.athletes.map(a => {
+              const cat = S.categories.find(c=>c.id===a.categoryId);
+              return `<option value="${a.id}" ${currentAthIds.includes(a.id)?'selected':''}>
+                ${esc(a.firstName)} ${esc(a.lastName)} — ${esc(cat?.name||'—')} #${a.number||'—'}
+              </option>`;
+            }).join('')}
+          </select>
+          <div style="font-size:.75rem;color:var(--ink-3);margin-top:4px">Tieni <b>Ctrl</b> (Windows) o <b>Cmd</b> (Mac) per selezionare più figli</div>
+        </div>`;
+    }
+    return '';
+  }
 
   return `
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--mist-2)">
@@ -3781,6 +3833,10 @@ function saveUser(id) {
     }
 
     syncUserCatAssignments(userId, role, catIds);
+    // Sincronizza categorie aggiornate su Supabase (per ruoli che usano categorie)
+    if (role !== 'genitore') {
+      S.categories.forEach(cat => sbSync('categories', cat));
+    }
     saveState(); closeModal(); buildAdminConfigTab('users'); buildSidebarNav();
     toast('Utente aggiornato ✅','success');
 
