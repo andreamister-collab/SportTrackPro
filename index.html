@@ -1054,7 +1054,8 @@ const DB = {
       })),
       athletes:       (athletes.data||[]).map(r => ({
         ...r, firstName: r.first_name, lastName: r.last_name,
-        categoryId: r.category_id, teamId: r.team_id, societyId: r.society_id
+        categoryId: r.category_id, teamId: r.team_id, societyId: r.society_id,
+        parentIds: r.parent_ids || []
       })),
       athleteSeasons: (athleteSeasons.data||[]).map(r => ({
         ...r, athleteId: r.athlete_id, categoryId: r.category_id,
