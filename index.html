@@ -3476,14 +3476,31 @@ function syncUserCatAssignments(userId, role, newCatIds) {
 
   // Genitore: l'associazione è sugli atleti (parentIds), non sulle categorie
   if (role === 'genitore') {
+    // Raccogli tutti gli atleti che cambiano stato (aggiunti + rimossi)
+    const toUpdate = new Set();
+
     // Rimuovi il genitore da tutti gli atleti
-    S.athletes.forEach(a => { a.parentIds = (a.parentIds||[]).filter(i=>i!==userId); });
-    // Aggiungi il genitore agli atleti selezionati (newCatIds qui sono athleteIds)
+    S.athletes.forEach(a => {
+      const had = (a.parentIds||[]).includes(userId);
+      a.parentIds = (a.parentIds||[]).filter(i => i !== userId);
+      if (had) toUpdate.add(a.id);
+    });
+
+    // Aggiungi il genitore agli atleti selezionati
     newCatIds.forEach(aid => {
       const ath = S.athletes.find(a => a.id === aid);
       if (ath) {
         if (!ath.parentIds) ath.parentIds = [];
         if (!ath.parentIds.includes(userId)) ath.parentIds.push(userId);
+        toUpdate.add(ath.id);
+      }
+    });
+
+    // Sincronizza solo gli atleti modificati
+    toUpdate.forEach(aid => {
+      const ath = S.athletes.find(a => a.id === aid);
+      if (ath) {
+        console.log('[genitore] sync atleta', ath.firstName, 'parentIds:', ath.parentIds);
         sbSync('athletes', ath);
       }
     });
@@ -3832,10 +3849,16 @@ function saveUser(id) {
       toast('⚠️ Profilo aggiornato. Per cambiare la password usa Supabase Dashboard → Authentication → Users', 'warning');
     }
 
+    // Ricorda quali categorie erano associate prima
+    const prevCatIds = getUserCatIds(userId, role);
     syncUserCatAssignments(userId, role, catIds);
-    // Sincronizza categorie aggiornate su Supabase (per ruoli che usano categorie)
+    // Sincronizza SOLO le categorie che sono cambiate (aggiunte o rimosse)
     if (role !== 'genitore') {
-      S.categories.forEach(cat => sbSync('categories', cat));
+      const changedCatIds = new Set([...prevCatIds, ...catIds]);
+      changedCatIds.forEach(cid => {
+        const cat = S.categories.find(c => c.id === cid);
+        if (cat) sbSync('categories', cat);
+      });
     }
     saveState(); closeModal(); buildAdminConfigTab('users'); buildSidebarNav();
     toast('Utente aggiornato ✅','success');
@@ -3867,6 +3890,13 @@ function saveUser(id) {
           societyId: currentUser.societyId || null
         });
         syncUserCatAssignments(userId, role, catIds);
+        // Sincronizza categorie/atleti modificati dopo creazione
+        if (role !== 'genitore') {
+          catIds.forEach(cid => {
+            const cat = S.categories.find(c => c.id === cid);
+            if (cat) sbSync('categories', cat);
+          });
+        }
         saveState();
         closeModal(); buildAdminConfigTab('users'); buildSidebarNav();
         toast('✅ Utente "' + name + '" creato — può accedere con: ' + authEmail, 'success');
