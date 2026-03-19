@@ -8463,14 +8463,26 @@ function confirmImportAthletes() {
   let imported=0, skipped=0;
   _importRows.forEach(r => {
     if (!r.Nome||!r.Cognome) return;
-    const catId  = String(r.Categoria||defaultCatId||'');
-    const teamId = String(r.Squadra||defaultTeamId||'');
-    const seasId = String(r.Stagione||defaultSeasId||'');
-    const cat = S.categories.find(c=>c.id===catId);
+    const catVal  = String(r.Categoria||defaultCatId||'');
+    const teamVal = String(r.Squadra||defaultTeamId||'');
+    const seasVal = String(r.Stagione||defaultSeasId||'');
+
+    // Cerca per ID o per nome (case-insensitive)
+    const cat  = S.categories.find(c=>c.id===catVal) ||
+                 S.categories.find(c=>c.name.toLowerCase()===catVal.toLowerCase().trim());
+    const team = S.teams.find(t=>t.id===teamVal) ||
+                 S.teams.find(t=>t.name.toLowerCase()===teamVal.toLowerCase().trim());
+    const seas = S.seasons?.find(s=>s.id===seasVal) ||
+                 S.seasons?.find(s=>s.name.toLowerCase()===seasVal.toLowerCase().trim());
+
+    const catId  = cat?.id  || catVal;
+    const teamId = team?.id || teamVal;
+    const seasId = seas?.id || seasVal;
+
     if (!cat || athleteExists(r.Nome,r.Cognome,r.Nascita||'')) { skipped++; return; }
 
     const athId = uid();
-    S.athletes.push({
+    const newAth = {
       id: athId,
       firstName: String(r.Nome||''),
       lastName:  String(r.Cognome||''),
@@ -8481,22 +8493,29 @@ function confirmImportAthletes() {
       number:    parseInt(r.Numero)||null,
       role:      String(r.Ruolo||''),
       notes:     String(r.Note||''),
-    });
+      parentIds: [],
+    };
+    S.athletes.push(newAth);
+    sbSync('athletes', newAth);
+
     if (!S.athleteSeasons) S.athleteSeasons=[];
-    S.athleteSeasons.push({
+    const newAs = {
       id: uid(), athleteId: athId,
       categoryId: catId, teamId: teamId, seasonId: seasId,
       role: String(r.Ruolo||''), shirtNumber: parseInt(r.Numero)||null,
       joinDate: new Date().toISOString().slice(0,10), notes:'',
-    });
+    };
+    S.athleteSeasons.push(newAs);
+    sbSync('athlete_seasons', newAs);
     imported++;
   });
 
   saveState();
   _importRows = [];
+  window._importLogged = false;
   closeModal();
-  toast(`✅ Importati ${imported} atleti${skipped?', '+skipped+' saltati':''}`, 'success');
-  showView('athletes');
+  toast('✅ Importati ' + imported + ' atleti' + (skipped?', '+skipped+' saltati':''), 'success');
+  showView('admin-athletes');
 }
 
 function downloadExcelTemplate() {
