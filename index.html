@@ -950,6 +950,7 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // Supabase Dashboard → Settings → API
 const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -8405,12 +8406,19 @@ function previewImport(input) {
     let ok=0, dup=0, missCat=0;
     rows.forEach(r => {
       if (!r.Nome||!r.Cognome) return;
-      const catId   = r.Categoria || defaultCatId;
-      const teamId  = r.Squadra   || defaultTeamId;
-      const seasId  = r.Stagione  || defaultSeasId;
-      const cat     = S.categories.find(c=>c.id===catId);
-      const team    = S.teams.find(t=>t.id===teamId);
-      const seas    = S.seasons?.find(s=>s.id===seasId);
+      const catVal  = r.Categoria || defaultCatId;
+      const teamVal = r.Squadra   || defaultTeamId;
+      const seasVal = r.Stagione  || defaultSeasId;
+      // Cerca per ID oppure per nome (case-insensitive)
+      const cat  = S.categories.find(c=>c.id===catVal) ||
+                   S.categories.find(c=>c.name.toLowerCase()===String(catVal).toLowerCase().trim());
+      const team = S.teams.find(t=>t.id===teamVal) ||
+                   S.teams.find(t=>t.name.toLowerCase()===String(teamVal).toLowerCase().trim());
+      const seas = S.seasons?.find(s=>s.id===seasVal) ||
+                   S.seasons?.find(s=>s.name.toLowerCase()===String(seasVal).toLowerCase().trim());
+      const catId  = cat?.id  || catVal;
+      const teamId = team?.id || teamVal;
+      const seasId = seas?.id || seasVal;
       const isDup   = !!athleteExists(r.Nome,r.Cognome,r.Nascita||'');
       if (isDup) dup++;
       else if (!cat) missCat++;
