@@ -2061,16 +2061,27 @@ function getAccessibleCategoryIds() {
     if (r === 'allenatore')     return (c.coachIds||[]).includes(currentUser.id);
     if (r === 'professionista') return (c.professionalIds||[]).includes(currentUser.id);
     if (r === 'presidente') {
+    const presAccIds = getAccessibleCategoryIds();
     desktopHTML =
       dGroup('📊 Panoramica',
         dItem('🏆','Panoramica',`showView('president-view')`)
+      ) +
+      dGroup('👕 Squadre',
+        buildTeamDropdownItems(presAccIds) || '<div class="dropdown-section-title">Nessuna squadra</div>'
       ) +
       dGroup('⚙️ Gestione',
         dItem('👥','Staff & Utenti',`showAdminConfig('users')`) +
         dItem('🏛️','Società',`showAdminConfig('society')`) +
         dItem('🏷️','Categorie',`showAdminConfig('category')`)
       );
-    mobileHTML = desktopHTML;
+    mobileHTML =
+      mSection('Panoramica', mItem('🏆','Panoramica',`showView('president-view')`)) +
+      mSection('Squadre', buildMobileTeamItems(presAccIds)) +
+      mSection('Gestione',
+        mItem('👥','Staff & Utenti',`showAdminConfig('users')`) +
+        mItem('🏛️','Società',`showAdminConfig('society')`) +
+        mItem('🏷️','Categorie',`showAdminConfig('category')`)
+      );
   }
 
   if (r === 'genitore') {
@@ -2526,9 +2537,9 @@ function buildTeamNavItems(accIds) {
 // Navigate to dashboard for a specific team within a category
 function selectTeamView(catId, teamId) {
   if (!canAccessCategory(catId)) { toast('Accesso non autorizzato','error'); return; }
-  // Genitore e presidente non accedono alle viste categoria
+  // Genitore non accede alle viste categoria
   if (currentUser?.role === 'genitore') { showView('parent-view'); return; }
-  if (currentUser?.role === 'presidente') { showView('president-view'); return; }
+  // Presidente può vedere la cat-dashboard ma non le altre viste
   selectedCategoryId = catId;
   window._dashTeam = teamId;
   window._dashSeas = window._dashSeas || getActiveSeason()?.id || '';
@@ -2735,8 +2746,9 @@ function showView(viewId, pushHistory=true) {
   if (currentUser?.role === 'genitore' && viewId !== 'parent-view') {
     viewId = 'parent-view';
   }
-  // Presidente può vedere solo president-view e admin-config
-  if (currentUser?.role === 'presidente' && !['president-view','admin-config'].includes(viewId)) {
+  // Presidente può vedere solo alcune viste
+  const presidentAllowed = ['president-view','admin-config','cat-dashboard','admin-society','admin-reports'];
+  if (currentUser?.role === 'presidente' && !presidentAllowed.includes(viewId)) {
     viewId = 'president-view';
   }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -8686,12 +8698,28 @@ viewBuilders['president-view'] = (el) => {
       </div>
     </div>
 
+    <!-- Società info -->
+    ${(()=>{
+      const soc = S.societies.find(s=>s.id===presidentSocId) || S.societies[0];
+      const sport = soc ? S.sports.find(s=>s.id===soc.sportId) : null;
+      if (!soc) return '';
+      return `<div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,#1A3A5C,#2d6a9f);color:white;border:none">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="font-size:2.5rem">🏛️</div>
+          <div>
+            <div style="font-size:1.4rem;font-weight:800;font-family:var(--font-head)">${esc(soc.name)}</div>
+            <div style="opacity:.8;font-size:.9rem">${esc(sport?.name||'—')} · ${esc(soc.city||'')} ${soc.email?'· '+esc(soc.email):''}</div>
+          </div>
+        </div>
+      </div>`;
+    })()}
+
     <!-- KPI principali -->
     <div class="stats-grid" style="margin-bottom:16px">
-      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${totalAthletes}</div><div class="sub">in ${S.categories.length} categorie</div></div>
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${totalAthletes}</div><div class="sub">in ${catStats.length} categorie</div></div>
       <div class="stat-card green"><div class="accent-bar"></div><div class="label">% Presenze</div><div class="value">${globalPct}%</div><div class="sub">${presentAtts}/${totalAtts} slot</div></div>
       <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${totalSessions}</div></div>
-      <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Staff</div><div class="value">${S.users.filter(u=>!['admin','genitore','presidente'].includes(u.role)).length}</div><div class="sub">persone</div></div>
+      <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Staff</div><div class="value">${S.users.filter(u=>!['admin','genitore','presidente'].includes(u.role)&&(!presidentSocId||u.societyId===presidentSocId)).length}</div><div class="sub">persone</div></div>
     </div>
 
     <!-- KPI partite -->
