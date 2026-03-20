@@ -950,6 +950,7 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // Supabase Dashboard → Settings → API
 const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -1600,6 +1601,8 @@ async function loadStateFromDB() {
 </div>
       <!-- Parent View -->
       <div class="view" id="view-parent-view"><!-- dynamic --></div>
+      <!-- President View -->
+      <div class="view" id="view-president-view"><!-- dynamic --></div>
       <!-- Export Reports -->
       <div class="view" id="view-export"><!-- dynamic --></div>
 
@@ -2032,19 +2035,33 @@ const ROLES = {
   allenatore:     { label: 'Allenatore',       icon: '⚽', color: '#D97706', gradient: 'linear-gradient(135deg,#D97706,#FCD34D)' },
   professionista: { label: 'Professionista',   icon: '🩺', color: '#0891B2', gradient: 'linear-gradient(135deg,#0891B2,#67E8F9)' },
   genitore:       { label: 'Genitore',         icon: '👨‍👧', color: '#BE185D', gradient: 'linear-gradient(135deg,#BE185D,#F472B6)' },
+  presidente:     { label: 'Presidente',       icon: '🏆', color: '#92400E', gradient: 'linear-gradient(135deg,#92400E,#F59E0B)' },
 };
 
 // Returns list of category IDs accessible to the current user
 function getAccessibleCategoryIds() {
   if (!currentUser) return [];
   const r = currentUser.role;
-  if (r === 'admin') return S.categories.map(c => c.id);
+  if (r === 'admin' || r === 'presidente') return S.categories.map(c => c.id);
   return S.categories.filter(c => {
     if (r === 'responsabile')   return (c.managerIds||[]).includes(currentUser.id);
     if (r === 'dirigente')      return (c.directorIds||[]).includes(currentUser.id);
     if (r === 'allenatore')     return (c.coachIds||[]).includes(currentUser.id);
     if (r === 'professionista') return (c.professionalIds||[]).includes(currentUser.id);
-    if (r === 'genitore') {
+    if (r === 'presidente') {
+    desktopHTML =
+      dGroup('📊 Panoramica',
+        dItem('🏆','Dashboard Presidente',`showView('president-view')`)
+      ) +
+      dGroup('⚙️ Gestione',
+        dItem('👥','Staff & Utenti',`showAdminConfig('users')`) +
+        dItem('🏛️','Società',`showAdminConfig('society')`) +
+        dItem('🏷️','Categorie',`showAdminConfig('category')`)
+      );
+    mobileHTML = desktopHTML;
+  }
+
+  if (r === 'genitore') {
       // Il genitore accede alle categorie degli atleti a lui associati
       const myAthletes = S.athletes.filter(a => (a.parentIds||[]).includes(currentUser.id));
       return myAthletes.some(a => a.categoryId === c.id);
@@ -2055,7 +2072,7 @@ function getAccessibleCategoryIds() {
 
 function canAccessCategory(catId) {
   if (!currentUser) return false;
-  if (currentUser.role === 'admin') return true;
+  if (currentUser.role === 'admin' || currentUser.role === 'presidente') return true;
   return getAccessibleCategoryIds().includes(catId);
 }
 
@@ -2209,6 +2226,8 @@ function _afterLogin() {
         showView('admin-overview');
       } else if (currentUser.role === 'genitore') {
         showView('parent-view');
+      } else if (currentUser.role === 'presidente') {
+        showView('president-view');
       } else {
         const accIds = getAccessibleCategoryIds();
         if (accIds.length > 0) selectedCategoryId = accIds[0];
@@ -2221,6 +2240,8 @@ function _afterLogin() {
       showView('admin-overview');
     } else if (currentUser.role === 'genitore') {
       showView('parent-view');
+    } else if (currentUser.role === 'presidente') {
+      showView('president-view');
     } else {
       const accIds = getAccessibleCategoryIds();
       if (accIds.length > 0) selectedCategoryId = accIds[0];
@@ -2879,6 +2900,20 @@ viewBuilders['admin-overview'] = (el) => {
       </div>
     </div>
 
+    ${(()=>{
+      const allMs = S.matches.filter(m=>m.result!=='TBD');
+      const totGf = allMs.reduce((s,m)=>s+(m.scoredGoals||0),0);
+      const totGs = allMs.reduce((s,m)=>s+(m.concededGoals||0),0);
+      const totPts = allMs.reduce((s,m)=>s+getMatchPoints(m.result),0);
+      const totW = allMs.filter(m=>m.result==='W').length;
+      return allMs.length ? `
+      <div class="stats-grid" style="margin-bottom:12px">
+        <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${totGf}</div><div class="sub">in ${allMs.length} partite</div></div>
+        <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${totGs}</div><div class="sub">diff. ${totGf-totGs>=0?'+':''}${totGf-totGs}</div></div>
+        <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti Totali</div><div class="value">${totPts}</div><div class="sub">${totW} vittorie</div></div>
+        <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Partite Giocate</div><div class="value">${allMs.length}</div><div class="sub">${allMs.filter(m=>m.result==='W').length}V ${allMs.filter(m=>m.result==='D').length}P ${allMs.filter(m=>m.result==='L').length}S</div></div>
+      </div>` : '';
+    })()}
     <div class="stats-grid">
       <div class="stat-card blue" style="cursor:pointer" onclick="showView('admin-athletes')" title="Vai a Censimento Atleti"><div class="accent-bar"></div><div class="label">Atleti Totali</div><div class="value">${totalAthletes}</div><div class="sub">in ${totalCategories} categorie</div></div>
       <div class="stat-card green" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">Sessioni Registrate</div><div class="value">${totalSessions}</div><div class="sub">tutte le categorie</div></div>
@@ -3411,7 +3446,7 @@ function saveCategoryStaff(catId) {
 }
 
 function buildUsersConfig() {
-  const roleGroups = ['admin','responsabile','dirigente','allenatore','professionista'];
+  const roleGroups = ['admin','responsabile','dirigente','allenatore','professionista','presidente'];
   const roleBadge = r => {
     const rd = ROLES[r]||{label:r,icon:'👤'};
     const cls = {admin:'badge-blue',responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal'}[r]||'badge-gray';
@@ -3724,7 +3759,7 @@ function fillGeneratedPassword(inputId) {
 
 function openUserModal(id) {
   const u = id ? S.users.find(x=>x.id===id) : null;
-  const roleOpts = ['responsabile','dirigente','allenatore','professionista','genitore']
+  const roleOpts = ['responsabile','dirigente','allenatore','professionista','genitore','presidente']
     .map(r=>`<option value="${r}" ${u?.role===r?'selected':''}>${ROLES[r].icon} ${ROLES[r].label}</option>`)
     .join('');
 
@@ -8438,6 +8473,155 @@ function getCategoryMatchStats(catId) {
   const l    = ms.filter(m=>m.result==='L').length;
   return { played: ms.length, w, d, l, pts, gf, gs, gd: gf-gs };
 }
+
+
+// ══════════════════════════════════════════════════════════════════
+//  VISTA PRESIDENTE
+// ══════════════════════════════════════════════════════════════════
+viewBuilders['president-view'] = (el) => {
+  if (!currentUser || currentUser.role !== 'presidente') {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Accesso non autorizzato</h3></div>';
+    return;
+  }
+  setTopbar('Dashboard Presidente', '');
+
+  const activeSeas = S.seasons.find(s => s.active);
+  const allMs = S.matches.filter(m => m.result !== 'TBD');
+  const totGf  = allMs.reduce((s,m) => s+(m.scoredGoals||0), 0);
+  const totGs  = allMs.reduce((s,m) => s+(m.concededGoals||0), 0);
+  const totPts = allMs.reduce((s,m) => s+getMatchPoints(m.result), 0);
+  const totW   = allMs.filter(m=>m.result==='W').length;
+  const totD   = allMs.filter(m=>m.result==='D').length;
+  const totL   = allMs.filter(m=>m.result==='L').length;
+
+  const totalAthletes = S.athletes.length;
+  const totalSessions = S.sessions.length;
+  const totalAtts = S.attendances.length;
+  const presentAtts = S.attendances.filter(a=>a.status==='P').length;
+  const globalPct = pct(presentAtts, totalAtts||1);
+
+  // Staff per ruolo
+  const dirigenti     = S.users.filter(u=>u.role==='dirigente');
+  const allenatori    = S.users.filter(u=>u.role==='allenatore');
+  const responsabili  = S.users.filter(u=>u.role==='responsabile');
+  const professionisti= S.users.filter(u=>u.role==='professionista');
+
+  // Stats per categoria
+  const catStats = S.categories.map(cat => {
+    const ms = getCategoryMatchStats(cat.id);
+    const st = getCategoryStats(cat.id);
+    const team = S.teams.find(t=>t.id===cat.teamId);
+    return { cat, ms, st, team };
+  }).sort((a,b) => b.ms.pts - a.ms.pts);
+
+  el.innerHTML = `
+    <div class="page-header">
+      <div class="header-row">
+        <div>
+          <h2>🏆 Dashboard Presidente</h2>
+          <p>Benvenuto, ${esc(currentUser.name)} · ${activeSeas ? '⚽ '+esc(activeSeas.name) : 'Tutte le stagioni'}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI principali -->
+    <div class="stats-grid" style="margin-bottom:16px">
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${totalAthletes}</div><div class="sub">in ${S.categories.length} categorie</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">% Presenze</div><div class="value">${globalPct}%</div><div class="sub">${presentAtts}/${totalAtts} slot</div></div>
+      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${totalSessions}</div></div>
+      <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Staff</div><div class="value">${S.users.filter(u=>!['admin','genitore','presidente'].includes(u.role)).length}</div><div class="sub">persone</div></div>
+    </div>
+
+    <!-- KPI partite -->
+    ${allMs.length ? `
+    <div class="stats-grid" style="margin-bottom:16px">
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${totGf}</div><div class="sub">media ${(totGf/(allMs.length||1)).toFixed(1)}/partita</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${totGs}</div><div class="sub">diff. ${totGf-totGs>=0?'+':''}${totGf-totGs}</div></div>
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti Totali</div><div class="value">${totPts}</div><div class="sub">${totW}V ${totD}P ${totL}S</div></div>
+      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Partite Giocate</div><div class="value">${allMs.length}</div></div>
+    </div>` : ''}
+
+    <div class="grid-2" style="margin-bottom:20px">
+
+      <!-- Classifica categorie -->
+      <div class="card">
+        <div class="card-title"><div class="icon" style="background:var(--gold-l);color:var(--gold)">🏆</div>Classifica Categorie</div>
+        ${catStats.length === 0 ? '<div class="text-muted text-sm">Nessuna partita registrata</div>' :
+          `<div class="table-wrap"><table>
+            <thead><tr><th>#</th><th>Categoria</th><th>Pt</th><th>G</th><th>V</th><th>P</th><th>S</th><th>GF</th><th>GS</th></tr></thead>
+            <tbody>
+              ${catStats.map(({cat,ms},i) => `
+                <tr>
+                  <td class="fw-700">${i+1}</td>
+                  <td class="fw-600">${esc(cat.name)}</td>
+                  <td class="fw-700" style="color:var(--accent)">${ms.pts}</td>
+                  <td>${ms.played}</td>
+                  <td style="color:var(--green)">${ms.w}</td>
+                  <td style="color:var(--gold)">${ms.d}</td>
+                  <td style="color:var(--red)">${ms.l}</td>
+                  <td>${ms.gf}</td>
+                  <td>${ms.gs}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table></div>`
+        }
+      </div>
+
+      <!-- Staff per ruolo -->
+      <div class="card">
+        <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">👥</div>Staff</div>
+        ${[
+          {label:'Dirigenti', icon:'🏛️', users: dirigenti, color:'badge-green'},
+          {label:'Allenatori', icon:'⚽', users: allenatori, color:'badge-gold'},
+          {label:'Responsabili', icon:'⭐', users: responsabili, color:'badge-purple'},
+          {label:'Professionisti', icon:'🩺', users: professionisti, color:'badge-teal'},
+        ].map(({label,icon,users,color}) => users.length ? `
+          <div style="margin-bottom:14px">
+            <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);margin-bottom:6px">${icon} ${label} (${users.length})</div>
+            ${users.map(u => `
+              <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+                <div class="user-avatar" style="background:${ROLES[u.role]?.gradient||'#999'};width:28px;height:28px;font-size:.65rem">${initials(u.name)}</div>
+                <div style="flex:1;font-size:.85rem;font-weight:600">${esc(u.name)}</div>
+                <span class="badge ${color}" style="font-size:.7rem">${esc(u.profession||'')}</span>
+              </div>`).join('')}
+          </div>
+        ` : '').join('')}
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--mist-2)">
+          <button class="btn btn-accent btn-sm" onclick="showAdminConfig('users')">+ Aggiungi Staff</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Società -->
+    ${S.societies.map(soc => {
+      const socTeams = S.teams.filter(t=>t.id===soc.id||t.societyId===soc.id);
+      const socCats = S.categories.filter(c=>c.societyId===soc.id);
+      const sport = S.sports.find(s=>s.id===soc.sportId);
+      return `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">
+          <div class="icon" style="background:var(--teal-l);color:var(--teal)">🏛️</div>
+          <div>
+            <div style="font-weight:800">${esc(soc.name)}</div>
+            <div style="font-size:.78rem;color:var(--ink-3)">${esc(sport?.name||'—')} · ${esc(soc.city||'')} ${soc.email?'· '+esc(soc.email):''}</div>
+          </div>
+        </div>
+        <div class="stats-grid">
+          ${socCats.map(cat => {
+            const ms = getCategoryMatchStats(cat.id);
+            const st = getCategoryStats(cat.id);
+            return `<div class="stat-card blue" style="cursor:pointer" onclick="alert('Vista categoria non disponibile per il presidente')">
+              <div class="accent-bar"></div>
+              <div class="label">${esc(cat.name)}</div>
+              <div class="value">${ms.pts}pt</div>
+              <div class="sub">${ms.gf}-${ms.gs} · ${st.presenceRate}% presenze</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+};
 
 // ══════════════════════════════════════════════════════════════════
 //  INIT
