@@ -948,9 +948,13 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // ── CONFIGURAZIONE SUPABASE ─────────────────────────────────
 // Sostituisci questi valori con le tue credenziali Supabase:
 // Supabase Dashboard → Settings → API
-const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
+// Le credenziali sono in config.js (caricato prima di questo script)
+// Se SUPABASE_URL non è definito usa i valori di fallback
+if (typeof SUPABASE_URL === 'undefined') {
+  console.error('⚠️ config.js non trovato — assicurati che config.js sia caricato prima di index.html');
+}
 </script>
+<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ── INIT CLIENT ────────────────────────────────────────────────
@@ -2058,7 +2062,8 @@ function getAccessibleCategoryIds() {
     if (r === 'presidente') {
     desktopHTML =
       dGroup('📊 Panoramica',
-        dItem('🏆','Dashboard Presidente',`showView('president-view')`)
+        dItem('🏆','Dashboard',`showView('president-view')`) +
+        dItem('🏠','Home',`showView('president-view')`)
       ) +
       dGroup('⚙️ Gestione',
         dItem('👥','Staff & Utenti',`showAdminConfig('users')`) +
@@ -8391,6 +8396,16 @@ viewBuilders['parent-view'] = (el) => {
     return m ? { match: m, status: cv.status } : null;
   }).filter(Boolean).sort((a,b) => b.match.date.localeCompare(a.match.date));
 
+  // Stats della squadra
+  const teamSessions = getCategorySessions(activeChild.categoryId);
+  const teamAtts = S.attendances.filter(a => teamSessions.some(s=>s.id===a.sessionId));
+  const teamPresRate = pct(
+    teamAtts.filter(a=>a.status==='P').length,
+    teamAtts.length || 1
+  );
+  const teamMs = getCategoryMatchStats(activeChild.categoryId);
+
+  // Tabs figli (sempre visibili se più di 1)
   const childTabs = children.length > 1 ? `
     <div class="tabs" style="margin-bottom:20px">
       ${children.map(ch => `
@@ -8432,7 +8447,24 @@ viewBuilders['parent-view'] = (el) => {
       </div>
     </div>
 
-    <!-- KPI -->
+    <!-- Stats Squadra -->
+    <div class="card" style="margin-bottom:16px;background:var(--mist)">
+      <div class="card-title" style="margin-bottom:10px">
+        <div class="icon" style="background:var(--accent-l);color:var(--accent)">👕</div>
+        <span style="font-weight:700">${esc(cat?.name||'—')} — ${esc(team?.name||'—')}</span>
+        <span style="font-size:.78rem;color:var(--ink-3);margin-left:8px">Statistiche Squadra</span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Sessioni Squadra</div><div class="value">${teamSessions.length}</div></div>
+        <div class="stat-card green"><div class="accent-bar"></div><div class="label">Presenze Squadra</div><div class="value">${teamPresRate}%</div></div>
+        ${teamMs.played > 0 ? `
+        <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${teamMs.pts}</div><div class="sub">${teamMs.w}V ${teamMs.d}P ${teamMs.l}S</div></div>
+        <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${teamMs.gf}</div></div>
+        ` : ''}
+      </div>
+    </div>
+
+    <!-- KPI Atleta -->
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card green"><div class="accent-bar"></div><div class="label">Presenze</div><div class="value">${pres}</div><div class="sub">${presRate}% delle sessioni</div></div>
       <div class="stat-card red"><div class="accent-bar"></div><div class="label">Assenze</div><div class="value">${ass}</div></div>
@@ -8627,6 +8659,7 @@ viewBuilders['president-view'] = (el) => {
           <h2>🏆 Dashboard Presidente</h2>
           <p>Benvenuto, ${esc(currentUser.name)} · ${activeSeas ? '⚽ '+esc(activeSeas.name) : 'Tutte le stagioni'}</p>
         </div>
+        <button class="btn btn-ghost" onclick="showView('president-view')" style="gap:6px">🏠 Home</button>
       </div>
     </div>
 
