@@ -3508,6 +3508,13 @@ function buildUsersConfig() {
 
 // Helper: get current category IDs assigned to user u with given role
 function getUserCatIds(userId, role) {
+  if (role === 'genitore') {
+    return S.athletes.filter(a=>(a.parentIds||[]).includes(userId)).map(a=>a.id);
+  }
+  if (role === 'presidente') {
+    const u = S.users.find(x=>x.id===userId);
+    return u?.societyId ? [u.societyId] : [];
+  }
   const key = {
     responsabile: 'managerIds', dirigente: 'directorIds',
     allenatore: 'coachIds', professionista: 'professionalIds'
@@ -3524,6 +3531,16 @@ function syncUserCatAssignments(userId, role, newCatIds) {
   }[role];
 
   // Genitore: l'associazione è sugli atleti (parentIds), non sulle categorie
+  if (role === 'presidente') {
+    // Per presidente: newCatIds[0] è il societyId selezionato
+    const user = S.users.find(u => u.id === userId);
+    if (user) {
+      user.societyId = newCatIds[0] || null;
+      sbSync('users', user);
+    }
+    return;
+  }
+
   if (role === 'genitore') {
     // Raccogli tutti gli atleti che cambiano stato (aggiunti + rimossi)
     const toUpdate = new Set();
@@ -3584,6 +3601,25 @@ function buildUserCatSelector(userId, role) {
     professionista:{ label: 'Categorie come Professionista', note: 'Il Professionista ha accesso in sola lettura', multi: true },
   }[role];
   if (!roleInfo) {
+    // Presidente: mostra lista società
+    if (role === 'presidente') {
+      const currentSocId = userId
+        ? S.users.find(u=>u.id===userId)?.societyId || ''
+        : '';
+      if (!S.societies.length) return '<div style="font-size:.82rem;color:var(--ink-3);margin-top:10px">Nessuna società registrata.</div>';
+      return `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--mist-2)">
+          <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+            🏛️ Società Associata
+          </div>
+          <select id="usr-cats" style="width:100%;padding:8px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:var(--mist)">
+            <option value="">— Nessuna —</option>
+            ${S.societies.map(s => `<option value="${s.id}" ${currentSocId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
+          </select>
+          <div style="font-size:.75rem;color:var(--ink-3);margin-top:4px">Il presidente vedrà i dati di questa società</div>
+        </div>`;
+    }
+
     // Genitore: mostra lista atleti invece di categorie
     if (role === 'genitore') {
       const currentAthIds = userId
@@ -8593,8 +8629,14 @@ viewBuilders['president-view'] = (el) => {
     </div>
 
     <!-- Società -->
-    ${S.societies.map(soc => {
-      const socTeams = S.teams.filter(t=>t.id===soc.id||t.societyId===soc.id);
+    ${(()=>{
+      // Mostra solo la società associata al presidente, o tutte se non associato
+      const presidentSocId = currentUser.societyId;
+      const visibleSocs = presidentSocId
+        ? S.societies.filter(s=>s.id===presidentSocId)
+        : S.societies;
+      return visibleSocs.map(soc => {
+      const socTeams = S.teams.filter(t=>t.societyId===soc.id);
       const socCats = S.categories.filter(c=>c.societyId===soc.id);
       const sport = S.sports.find(s=>s.id===soc.sportId);
       return `
@@ -8620,6 +8662,7 @@ viewBuilders['president-view'] = (el) => {
         </div>
       </div>`;
     }).join('')}
+    })()}
   `;
 };
 
