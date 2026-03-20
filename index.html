@@ -3298,11 +3298,30 @@ function buildCategoryConfig() {
 }
 function openCategoryModal(id) {
   const cat = id ? S.categories.find(x=>x.id===id) : null;
-  const byRole = role => S.users.filter(u=>u.role===role);
+
+  // Determina la società di riferimento per filtrare squadre e utenti
+  // Priorità: società della categoria > società dell'utente corrente > tutte
+  const refSocId = cat?.societyId || currentUser?.societyId || null;
+
+  // Filtra squadre per società
+  const visibleTeams = refSocId
+    ? S.teams.filter(t => t.societyId === refSocId)
+    : S.teams;
+
+  // Filtra utenti per società
+  const byRole = role => S.users.filter(u =>
+    u.role === role && (!refSocId || !u.societyId || u.societyId === refSocId)
+  );
+
   const multiSel = (elemId, users, selectedIds) =>
     `<select id="${elemId}" multiple style="height:90px;background:var(--mist);font-size:.85rem">
       ${users.map(u=>`<option value="${u.id}" ${(selectedIds||[]).includes(u.id)?'selected':''}>${esc(u.name)} (${esc(u.username)})</option>`).join('')}
     </select><span class="text-muted text-sm">Ctrl/Cmd per multipli</span>`;
+
+  // Filtra società visibili
+  const visibleSocs = currentUser?.role === 'admin' && !currentUser?.societyId
+    ? S.societies
+    : S.societies.filter(s => s.id === refSocId || s.id === cat?.societyId);
 
   openModal(`
     <div class="modal-header"><h3>${cat?'Modifica Categoria':'Nuova Categoria'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
@@ -3311,11 +3330,11 @@ function openCategoryModal(id) {
       <div class="form-field"><label>Sport</label><select id="cat-sport">${S.sports.map(s=>`<option value="${s.id}" ${s.id===cat?.sportId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
     </div>
     <div class="form-row">
-      <div class="form-field"><label>Società</label><select id="cat-soc">${S.societies.map(s=>`<option value="${s.id}" ${s.id===cat?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+      <div class="form-field"><label>Società</label><select id="cat-soc">${visibleSocs.map(s=>`<option value="${s.id}" ${s.id===cat?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
       <div class="form-field">
         <label>Squadre (una o più — Ctrl/Cmd per selezionare più squadre)</label>
         <select id="cat-team-multi" multiple style="height:90px;border:1.5px solid var(--mist-3);border-radius:8px;padding:4px 6px;font-size:.88rem;background:var(--mist)">
-          ${S.teams.map(t=>`<option value="${t.id}" ${(cat?.teamIds||(cat?.teamId?[cat.teamId]:[])).includes(t.id)?'selected':''}>${esc(t.name)}</option>`).join('')}
+          ${visibleTeams.map(t=>`<option value="${t.id}" ${(cat?.teamIds||(cat?.teamId?[cat.teamId]:[])).includes(t.id)?'selected':''}>${esc(t.name)}</option>`).join('')}
         </select>
       </div>
     </div>
