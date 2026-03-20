@@ -950,7 +950,6 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // Supabase Dashboard → Settings → API
 const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
-
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -1077,7 +1076,8 @@ const DB = {
       matches:        (matches.data||[]).map(r => ({
         ...r, categoryId: r.category_id, homeAway: r.home_away,
         scoredGoals: r.scored, concededGoals: r.conceded,
-        bgColor: r.bg_color, createdBy: r.created_by, societyId: r.society_id
+        bgColor: r.bg_color, createdBy: r.created_by, societyId: r.society_id,
+        meetTime: r.meet_time, meetPlace: r.meet_place
       })),
       convocati:      (convocati.data||[]).map(r => ({
         ...r, matchId: r.match_id, athleteId: r.athlete_id, societyId: r.society_id
