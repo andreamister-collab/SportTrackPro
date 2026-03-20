@@ -1565,6 +1565,7 @@ async function loadStateFromDB() {
   <!-- MAIN -->
   <div id="main-content">
     <div id="top-bar">
+      <button id="topbar-home-btn" onclick="goHome()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px 8px;border-radius:6px;color:var(--ink-2);display:flex;align-items:center;gap:4px;margin-right:6px" title="Home">🏠</button>
       <span class="topbar-title" id="topbar-title">Dashboard</span>
       <span class="topbar-breadcrumb" id="topbar-bc"></span>
       <div class="topbar-actions" id="topbar-actions"></div>
@@ -2526,6 +2527,9 @@ function buildTeamNavItems(accIds) {
 // Navigate to dashboard for a specific team within a category
 function selectTeamView(catId, teamId) {
   if (!canAccessCategory(catId)) { toast('Accesso non autorizzato','error'); return; }
+  // Genitore e presidente non accedono alle viste categoria
+  if (currentUser?.role === 'genitore') { showView('parent-view'); return; }
+  if (currentUser?.role === 'presidente') { showView('president-view'); return; }
   selectedCategoryId = catId;
   window._dashTeam = teamId;
   window._dashSeas = window._dashSeas || getActiveSeason()?.id || '';
@@ -2539,6 +2543,9 @@ function highlightNavItem() {
 }
 function selectCategoryView(catId) {
   if (!canAccessCategory(catId)) { toast('Accesso non autorizzato','error'); return; }
+  // Genitore e presidente non accedono alle viste categoria
+  if (currentUser?.role === 'genitore') { showView('parent-view'); return; }
+  if (currentUser?.role === 'presidente') { showView('president-view'); return; }
   selectedCategoryId = catId;
   buildSidebarNav();
   showView('category-home');
@@ -2725,6 +2732,14 @@ const DB_REFRESH_VIEWS = new Set([
 ]);
 
 function showView(viewId, pushHistory=true) {
+  // Genitore può vedere solo parent-view
+  if (currentUser?.role === 'genitore' && viewId !== 'parent-view') {
+    viewId = 'parent-view';
+  }
+  // Presidente può vedere solo president-view e admin-config
+  if (currentUser?.role === 'presidente' && !['president-view','admin-config'].includes(viewId)) {
+    viewId = 'president-view';
+  }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const el = document.getElementById('view-' + viewId);
   if (!el) return;
@@ -3021,6 +3036,15 @@ function showCatDashboard(catId) {
   selectedCategoryId = catId;
   showView('cat-dashboard');
 }
+function goHome() {
+  if (!currentUser) return;
+  const role = currentUser.role;
+  if (role === 'admin') showView('admin-overview');
+  else if (role === 'presidente') showView('president-view');
+  else if (role === 'genitore') showView('parent-view');
+  else showView('category-home');
+}
+
 function setTopbar(title, bc, actionsHtml='') {
   document.getElementById('topbar-title').textContent = title;
   document.getElementById('topbar-bc').textContent = bc ? '/ ' + bc : '';
