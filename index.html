@@ -2063,8 +2063,7 @@ function getAccessibleCategoryIds() {
     if (r === 'presidente') {
     desktopHTML =
       dGroup('📊 Panoramica',
-        dItem('🏆','Dashboard',`showView('president-view')`) +
-        dItem('🏠','Home',`showView('president-view')`)
+        dItem('🏆','Panoramica',`showView('president-view')`)
       ) +
       dGroup('⚙️ Gestione',
         dItem('👥','Staff & Utenti',`showAdminConfig('users')`) +
@@ -8454,23 +8453,6 @@ viewBuilders['parent-view'] = (el) => {
 
     ${childTabs}
 
-    <!-- Intestazione atleta -->
-    <div class="card" style="margin-bottom:20px;background:linear-gradient(135deg,${color} 0%,#1e293b 100%);color:white">
-      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-        <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;flex-shrink:0">
-          ${initials((activeChild.firstName||'')+' '+(activeChild.lastName||''))}
-        </div>
-        <div>
-          <div style="font-size:1.3rem;font-weight:800;font-family:var(--font-head)">${esc(activeChild.firstName)} ${esc(activeChild.lastName)}</div>
-          <div style="opacity:.8;font-size:.9rem">${esc(cat?.name||'—')} · ${esc(team?.name||'—')}</div>
-          <div style="opacity:.7;font-size:.82rem;margin-top:2px">
-            ${activeChild.role ? '🏷️ ' + esc(activeChild.role) : ''}
-            ${activeChild.number ? ' · #' + activeChild.number : ''}
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Stats Squadra -->
     <div class="card" style="margin-bottom:16px;background:var(--mist)">
       <div class="card-title" style="margin-bottom:10px">
@@ -8485,6 +8467,23 @@ viewBuilders['parent-view'] = (el) => {
         <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${teamMs.pts}</div><div class="sub">${teamMs.w}V ${teamMs.d}P ${teamMs.l}S</div></div>
         <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${teamMs.gf}</div></div>
         ` : ''}
+      </div>
+    </div>
+
+    <!-- Intestazione atleta -->
+    <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,${color} 0%,#1e293b 100%);color:white">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;flex-shrink:0">
+          ${initials((activeChild.firstName||'')+' '+(activeChild.lastName||''))}
+        </div>
+        <div>
+          <div style="font-size:1.3rem;font-weight:800;font-family:var(--font-head)">${esc(activeChild.firstName)} ${esc(activeChild.lastName)}</div>
+          <div style="opacity:.8;font-size:.9rem">${esc(cat?.name||'—')} · ${esc(team?.name||'—')}</div>
+          <div style="opacity:.7;font-size:.82rem;margin-top:2px">
+            ${activeChild.role ? '🏷️ ' + esc(activeChild.role) : ''}
+            ${activeChild.number ? ' · #' + activeChild.number : ''}
+          </div>
+        </div>
       </div>
     </div>
 
