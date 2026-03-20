@@ -2663,6 +2663,12 @@ function toSnakeCase(table, obj) {
     out[sk] = v;
   }
 
+  // Converti stringhe vuote in null per colonne time/date
+  const timeFields = new Set(['time','meet_time','join_date','dob']);
+  for (const k of Object.keys(out)) {
+    if (timeFields.has(k) && out[k] === '') out[k] = null;
+  }
+
   // Filtra solo le colonne realmente presenti nel DB
   const realCols = TABLE_REAL_COLUMNS[table];
   if (realCols) {
