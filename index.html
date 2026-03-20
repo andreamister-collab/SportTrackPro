@@ -1021,10 +1021,10 @@ const DB = {
     const [
       sports, societies, teams, categories, users,
       athletes, athleteSeasons, seasons,
-      sessions, attendances, matches, convocati, performances
+      sessions, attendances, matches, convocati, performances, scorers
     ] = await Promise.all([
-      sb.from('sports').select('*'),                                              // globale
-      sb.from('societies').select('*'),                                           // globale
+      sb.from('sports').select('*'),
+      sb.from('societies').select('*'),
       sb.from('teams').select('*'),
       sb.from('categories').select('*'),
       sb.from('users').select('*'),
@@ -1036,6 +1036,7 @@ const DB = {
       sb.from('matches').select('*').order('date', { ascending: false }),
       sb.from('convocati').select('*'),
       sb.from('performances').select('*'),
+      sb.from('scorers').select('*'),
     ]);
 
     // Converti snake_case → camelCase per compatibilità con il codice esistente
@@ -1079,6 +1080,9 @@ const DB = {
       })),
       convocati:      (convocati.data||[]).map(r => ({
         ...r, matchId: r.match_id, athleteId: r.athlete_id, societyId: r.society_id
+      })),
+      scorers:        (scorers.data||[]).map(r => ({
+        ...r, matchId: r.match_id, athleteId: r.athlete_id
       })),
       performances:   (performances.data||[]).map(r => ({
         ...r, sessionId: r.session_id, athleteId: r.athlete_id, societyId: r.society_id
@@ -1439,6 +1443,7 @@ async function loadStateFromDB() {
     S.performances   = data.performances   || [];
     S.matches        = data.matches        || [];
     S.convocati      = data.convocati      || [];
+    S.scorers        = data.scorers        || [];
     S.activeSeason   = data.activeSeason;
     S.staffHistory   = data.staffHistory   || [];
     // Carica configurazioni locali da tabella config
@@ -2181,7 +2186,7 @@ function _afterLogin() {
   S = {
     users:[], sports:[], societies:[], teams:[], categories:[],
     athletes:[], sessions:[], attendances:[], matches:[], convocati:[],
-    seasons:[], athleteSeasons:[], staffHistory:[],
+    seasons:[], athleteSeasons:[], staffHistory:[], scorers:[],
     activityTypes:null, perfParams:null, sessionTypePerfParams:null,
     activeSeason:null, athleteRoles:{}
   };
@@ -2631,6 +2636,7 @@ const TABLE_REAL_COLUMNS = {
   performances:    ['id','session_id','athlete_id','params','notes'],
   matches:         ['id','category_id','date','time','meet_time','meet_place','opponent','home_away','result','scored','conceded','notes','bg_color','created_by'],
   convocati:       ['id','match_id','athlete_id','status','notes'],
+  scorers:         ['id','match_id','athlete_id','goals','notes'],
   config:          ['key','value'],
 };
 
@@ -2922,7 +2928,7 @@ viewBuilders['admin-overview'] = (el) => {
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Categoria</th><th>Squadra</th><th>Sport</th><th>Staff Assegnato</th><th>Atleti</th><th>Sessioni</th><th>% Presenze</th><th>Azioni</th>
+            <th>Categoria</th><th>Squadra</th><th>Sport</th><th>Staff Assegnato</th><th>Atleti</th><th>Sessioni</th><th>% Presenze</th><th>Punti / Gol</th><th>Azioni</th>
           </tr></thead>
           <tbody>
             ${catRows.map(({cat,st,team,soc,dirs}) => `
@@ -2940,6 +2946,7 @@ viewBuilders['admin-overview'] = (el) => {
               <td class="fw-600">${st.athletes}</td>
               <td>${st.sessions}</td>
               <td>${ratingBadge(st.presenceRate)} <span class="fw-700" style="margin-left:4px">${st.presenceRate}%</span></td>
+              <td>${(()=>{const ms=getCategoryMatchStats(cat.id);return ms.played?`<span style="font-weight:700;color:var(--accent)">${ms.pts}pt</span> <span style="font-size:.78rem;color:var(--ink-3)">${ms.gf}-${ms.gs} (${ms.w}V ${ms.d}P ${ms.l}S)</span>`:'<span style="color:var(--ink-3)">—</span>';})()}</td>
               <td style="display:flex;gap:6px;flex-wrap:wrap">
                 <button class="btn btn-ghost btn-sm" onclick="selectCategoryView('${cat.id}')">Gestisci</button>
                 <button class="btn btn-ghost btn-sm" onclick="showCatDashboard('${cat.id}')">Dashboard</button>
@@ -4408,6 +4415,13 @@ viewBuilders['category-home'] = (el) => {
       </div>
     </div>
 
+    ${(()=>{const ms=getCategoryMatchStats(selectedCategoryId);return ms.played>0?`
+    <div class="stats-grid" style="margin-bottom:12px">
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${ms.pts}</div><div class="sub">${ms.w}V ${ms.d}P ${ms.l}S</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${ms.gf}</div><div class="sub">media ${(ms.gf/ms.played).toFixed(1)}/partita</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${ms.gs}</div><div class="sub">diff. ${ms.gd>=0?'+':''}${ms.gd}</div></div>
+      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Partite Giocate</div><div class="value">${ms.played}</div><div class="sub">${ms.w} vittorie</div></div>
+    </div>`:''})()}
     <div class="stats-grid">
       <div class="stat-card blue" style="cursor:pointer" onclick="showView('athletes')" title="Vai ad Atleti"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${st.athletes}</div><div class="sub">registrati</div></div>
       <div class="stat-card green" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${st.sessions}</div><div class="sub">totali</div></div>
@@ -6944,7 +6958,16 @@ function openMatchModal(id) {
     </div>
     <div class="form-row">
       <div class="form-field"><label>🤝 Orario Ritrovo</label><input id="m-meet" type="time" value="${m?.meetTime||''}"></div>
-      <div class="form-field"><label>📍 Luogo / Indirizzo Ritrovo</label><input id="m-place" value="${esc(m?.meetPlace||'')}" placeholder="es. Campo Sportivo Via Roma 1, Milano"></div>
+      <div class="form-field">
+        <label>📍 Luogo / Indirizzo Ritrovo
+          ${m?.meetPlace ? `<a href="https://maps.google.com/?q=${encodeURIComponent(m.meetPlace)}" target="_blank" style="margin-left:8px;font-size:.75rem;color:var(--accent)">🗺️ Apri Maps</a>` : ''}
+        </label>
+        <input id="m-place" value="${esc(m?.meetPlace||'')}" placeholder="es. Campo Sportivo Via Roma 1, Milano"
+          oninput="updateMapsLink(this.value)">
+        <div id="m-maps-link" style="margin-top:4px;font-size:.78rem">
+          ${m?.meetPlace ? `<a href="https://maps.google.com/?q=${encodeURIComponent(m.meetPlace)}" target="_blank" style="color:var(--accent)">🗺️ Apri in Google Maps</a>` : ''}
+        </div>
+      </div>
     </div>
     <hr style="margin:14px 0">
     <div class="form-row">
@@ -6965,6 +6988,32 @@ function openMatchModal(id) {
       </div>
     </div>
     <div class="form-field" style="margin-top:8px"><label>Note</label><input id="m-notes" value="${esc(m?.notes||'')}" placeholder="Descrizione, osservazioni..."></div>
+
+    ${id ? `
+    <hr style="margin:14px 0">
+    <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+      ⚽ Tabellino Marcatori
+    </div>
+    <div id="scorers-list" style="margin-bottom:8px">
+      ${buildScorersList(id)}
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div class="form-field" style="flex:1;min-width:140px;margin:0">
+        <label style="font-size:.75rem">Atleta</label>
+        <select id="scorer-athlete" style="font-size:.85rem">
+          <option value="">— Seleziona —</option>
+          ${getCategoryAthletes(m?.categoryId||'').sort((a,b)=>(a.number||99)-(b.number||99)).map(a =>
+            `<option value="${a.id}">#${a.number||'—'} ${esc(a.lastName)} ${esc(a.firstName)}</option>`
+          ).join('')}
+        </select>
+      </div>
+      <div class="form-field" style="width:70px;margin:0">
+        <label style="font-size:.75rem">Gol</label>
+        <input id="scorer-goals" type="number" value="1" min="1" max="20" style="font-size:.9rem;text-align:center">
+      </div>
+      <button class="btn btn-accent btn-sm" onclick="addScorer('${id}')" style="margin-bottom:2px">+ Aggiungi</button>
+    </div>` : '<div style="font-size:.8rem;color:var(--ink-3);margin:8px 0">Salva prima la partita per aggiungere i marcatori.</div>'}
+
     <hr style="margin:14px 0">
     <div class="form-field">
       <label>🎨 Colore Sfondo Convocati</label>
@@ -7181,7 +7230,7 @@ viewBuilders['convocati'] = (el) => {
           <div style="opacity:.8;margin-top:5px;display:flex;gap:14px;flex-wrap:wrap;font-size:.84rem">
             <span>📅 ${fmtDate(m.date)}${m.time?' · 🕐 '+m.time:''}</span>
             ${m.meetTime ? `<span>🤝 ${esc(m.meetTime)}</span>` : ''}
-            ${m.meetPlace ? `<span>📍 ${esc(m.meetPlace)}</span>` : ''}
+            ${m.meetPlace ? `<span style="cursor:pointer" onclick="window.open('https://maps.google.com/?q='+encodeURIComponent('${esc(m.meetPlace)}'),'_blank')">📍 ${esc(m.meetPlace)} 🗺️</span>` : ''}
             <span>${HOMEAWAY_LABELS[m.homeAway]||''}</span>
           </div>
         </div>
@@ -7804,6 +7853,9 @@ async function saveNewPassword() {
 //  EXPORT CONVOCATI IMMAGINE (Canvas)
 // ══════════════════════════════════════════════════════════════════
 
+// Alias per compatibilità
+function exportMatchImage(matchId) { exportConvocatiImage(matchId); }
+
 function exportConvocatiImage(matchId) {
   const m = S.matches.find(x=>x.id===matchId);
   if (!m) return;
@@ -8303,6 +8355,83 @@ viewBuilders['parent-view'] = (el) => {
     </div>
   `;
 };
+
+
+// ── HELPER GOOGLE MAPS LINK ──────────────────────────────────
+function updateMapsLink(val) {
+  const el = document.getElementById('m-maps-link');
+  if (!el) return;
+  el.innerHTML = val.trim()
+    ? `<a href="https://maps.google.com/?q=${encodeURIComponent(val.trim())}" target="_blank" style="color:var(--accent)">🗺️ Apri in Google Maps</a>`
+    : '';
+}
+
+// ── MARCATORI ────────────────────────────────────────────────
+function buildScorersList(matchId) {
+  if (!matchId) return '';
+  const list = (S.scorers||[]).filter(s => s.matchId === matchId);
+  if (!list.length) return '<div style="font-size:.82rem;color:var(--ink-3)">Nessun marcatore registrato</div>';
+  return list.map(s => {
+    const a = S.athletes.find(x => x.id === s.athleteId);
+    const name = a ? `#${a.number||'—'} ${esc(a.lastName)} ${esc(a.firstName)}` : '—';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--mist-2)">
+      <span style="font-size:1rem">⚽</span>
+      <span style="flex:1;font-size:.88rem;font-weight:600">${name}</span>
+      <span class="badge badge-gold" style="min-width:32px;text-align:center">${s.goals} gol</span>
+      <button class="btn btn-ghost btn-sm" style="padding:2px 8px;color:var(--red)" onclick="removeScorer('${s.id}','${matchId}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function addScorer(matchId) {
+  const athId = document.getElementById('scorer-athlete')?.value;
+  const goals = parseInt(document.getElementById('scorer-goals')?.value)||1;
+  if (!athId) { toast('Seleziona un atleta','error'); return; }
+
+  // Controlla se esiste già
+  const existing = (S.scorers||[]).find(s => s.matchId===matchId && s.athleteId===athId);
+  if (existing) {
+    existing.goals += goals;
+    sbSync('scorers', existing);
+  } else {
+    const newScorer = { id: uid(), matchId, athleteId: athId, goals, notes: '' };
+    if (!S.scorers) S.scorers = [];
+    S.scorers.push(newScorer);
+    sbSync('scorers', newScorer);
+  }
+  saveState();
+  const el = document.getElementById('scorers-list');
+  if (el) el.innerHTML = buildScorersList(matchId);
+  document.getElementById('scorer-athlete').value = '';
+  document.getElementById('scorer-goals').value = '1';
+  toast('⚽ Marcatore aggiunto','success');
+}
+
+function removeScorer(scorerId, matchId) {
+  S.scorers = (S.scorers||[]).filter(s => s.id !== scorerId);
+  sbSync('scorers', scorerId, true); // delete
+  saveState();
+  const el = document.getElementById('scorers-list');
+  if (el) el.innerHTML = buildScorersList(matchId);
+}
+
+// ── STATISTICHE GOL E PUNTI ───────────────────────────────────
+function getMatchPoints(result) {
+  if (result === 'W') return 3;
+  if (result === 'D') return 1;
+  return 0;
+}
+
+function getCategoryMatchStats(catId) {
+  const ms = S.matches.filter(m => m.categoryId === catId && m.result !== 'TBD');
+  const pts  = ms.reduce((s,m) => s + getMatchPoints(m.result), 0);
+  const gf   = ms.reduce((s,m) => s + (m.scoredGoals||0), 0);
+  const gs   = ms.reduce((s,m) => s + (m.concededGoals||0), 0);
+  const w    = ms.filter(m=>m.result==='W').length;
+  const d    = ms.filter(m=>m.result==='D').length;
+  const l    = ms.filter(m=>m.result==='L').length;
+  return { played: ms.length, w, d, l, pts, gf, gs, gd: gf-gs };
+}
 
 // ══════════════════════════════════════════════════════════════════
 //  INIT
