@@ -2042,7 +2042,14 @@ const ROLES = {
 function getAccessibleCategoryIds() {
   if (!currentUser) return [];
   const r = currentUser.role;
-  if (r === 'admin' || r === 'presidente') return S.categories.map(c => c.id);
+  if (r === 'admin') return S.categories.map(c => c.id);
+  // Presidente vede solo le categorie della sua società
+  if (r === 'presidente') {
+    const socId = currentUser.societyId;
+    return socId
+      ? S.categories.filter(c => c.societyId === socId).map(c => c.id)
+      : S.categories.map(c => c.id);
+  }
   return S.categories.filter(c => {
     if (r === 'responsabile')   return (c.managerIds||[]).includes(currentUser.id);
     if (r === 'dirigente')      return (c.directorIds||[]).includes(currentUser.id);
@@ -2072,7 +2079,11 @@ function getAccessibleCategoryIds() {
 
 function canAccessCategory(catId) {
   if (!currentUser) return false;
-  if (currentUser.role === 'admin' || currentUser.role === 'presidente') return true;
+  if (currentUser.role === 'admin') return true;
+  if (currentUser.role === 'presidente') {
+    const cat = S.categories.find(c=>c.id===catId);
+    return !currentUser.societyId || cat?.societyId === currentUser.societyId;
+  }
   return getAccessibleCategoryIds().includes(catId);
 }
 
@@ -3635,12 +3646,21 @@ function buildUserCatSelector(userId, role) {
             Il genitore potrà vedere presenze, performance e convocazioni dell'atleta selezionato.
           </div>
           <select id="usr-cats" multiple style="width:100%;min-height:100px;max-height:160px;padding:6px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:var(--mist)">
-            ${S.athletes.map(a => {
-              const cat = S.categories.find(c=>c.id===a.categoryId);
-              return `<option value="${a.id}" ${currentAthIds.includes(a.id)?'selected':''}>
-                ${esc(a.firstName)} ${esc(a.lastName)} — ${esc(cat?.name||'—')} #${a.number||'—'}
-              </option>`;
-            }).join('')}
+            ${(()=>{
+              const adminSocId = currentUser?.societyId;
+              const visibleAths = adminSocId
+                ? S.athletes.filter(a => {
+                    const cat = S.categories.find(c=>c.id===a.categoryId);
+                    return cat?.societyId === adminSocId;
+                  })
+                : S.athletes;
+              return visibleAths.map(a => {
+                const cat = S.categories.find(c=>c.id===a.categoryId);
+                return `<option value="${a.id}" ${currentAthIds.includes(a.id)?'selected':''}>
+                  ${esc(a.firstName)} ${esc(a.lastName)} — ${esc(cat?.name||'—')} #${a.number||'—'}
+                </option>`;
+              }).join('');
+            })()}
           </select>
           <div style="font-size:.75rem;color:var(--ink-3);margin-top:4px">Tieni <b>Ctrl</b> (Windows) o <b>Cmd</b> (Mac) per selezionare più figli</div>
         </div>`;
@@ -3655,13 +3675,20 @@ function buildUserCatSelector(userId, role) {
       </div>
       <div class="highlight-box" style="margin-bottom:10px;padding:8px 12px;font-size:.8rem">${roleInfo.note}</div>
       <select id="usr-cats" multiple style="width:100%;min-height:100px;max-height:160px;padding:6px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:var(--mist)">
-        ${S.categories.map(cat => {
-          const team = S.teams.find(t=>t.id===cat.teamId);
-          const soc  = S.societies.find(s=>s.id===cat.societyId);
-          return `<option value="${cat.id}" ${currentIds.includes(cat.id)?'selected':''}>
-            ${esc(cat.name)} — ${esc(soc?.name||'')} / ${esc(team?.name||'')}
-          </option>`;
-        }).join('')}
+        ${(()=>{
+          // Filtra categorie per società dell'admin corrente (se non super-admin)
+          const adminSocId = currentUser?.societyId;
+          const visibleCats = adminSocId
+            ? S.categories.filter(c => c.societyId === adminSocId)
+            : S.categories;
+          return visibleCats.map(cat => {
+            const team = S.teams.find(t=>t.id===cat.teamId);
+            const soc  = S.societies.find(s=>s.id===cat.societyId);
+            return `<option value="${cat.id}" ${currentIds.includes(cat.id)?'selected':''}>
+              ${esc(cat.name)} — ${esc(soc?.name||'')} / ${esc(team?.name||'')}
+            </option>`;
+          }).join('');
+        })()}
       </select>
       <div style="font-size:.75rem;color:var(--ink-3);margin-top:4px">Tieni <b>Ctrl</b> (Windows) o <b>Cmd</b> (Mac) per selezionare più categorie</div>
     </div>`;
