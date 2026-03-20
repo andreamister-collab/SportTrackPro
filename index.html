@@ -950,6 +950,7 @@ hr { border: none; border-top: 1px solid var(--mist-2); margin: 16px 0; }
 // Supabase Dashboard → Settings → API
 const SUPABASE_URL  = 'https://jvcplfgozdqirzqfqwox.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -8630,32 +8631,38 @@ viewBuilders['president-view'] = (el) => {
 
     <!-- Società -->
     ${(()=>{
+      // Mostra solo la società associata al presidente, o tutte se non associato
       const presidentSocId = currentUser.societyId;
       const visibleSocs = presidentSocId
         ? S.societies.filter(s=>s.id===presidentSocId)
         : S.societies;
       return visibleSocs.map(soc => {
-        const socCats = S.categories.filter(c=>c.societyId===soc.id);
-        const sport = S.sports.find(s=>s.id===soc.sportId);
-        return '<div class="card" style="margin-bottom:16px">' +
-          '<div class="card-title">' +
-          '<div class="icon" style="background:var(--teal-l);color:var(--teal)">🏛️</div>' +
-          '<div><div style="font-weight:800">' + esc(soc.name) + '</div>' +
-          '<div style="font-size:.78rem;color:var(--ink-3)">' + esc(sport?.name||'—') + ' · ' + esc(soc.city||'') + (soc.email?' · '+esc(soc.email):'') + '</div>' +
-          '</div></div>' +
-          '<div class="stats-grid">' +
-          socCats.map(cat => {
+      const socTeams = S.teams.filter(t=>t.societyId===soc.id);
+      const socCats = S.categories.filter(c=>c.societyId===soc.id);
+      const sport = S.sports.find(s=>s.id===soc.sportId);
+      return `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">
+          <div class="icon" style="background:var(--teal-l);color:var(--teal)">🏛️</div>
+          <div>
+            <div style="font-weight:800">${esc(soc.name)}</div>
+            <div style="font-size:.78rem;color:var(--ink-3)">${esc(sport?.name||'—')} · ${esc(soc.city||'')} ${soc.email?'· '+esc(soc.email):''}</div>
+          </div>
+        </div>
+        <div class="stats-grid">
+          ${socCats.map(cat => {
             const ms = getCategoryMatchStats(cat.id);
             const st = getCategoryStats(cat.id);
-            return '<div class="stat-card blue">' +
-              '<div class="accent-bar"></div>' +
-              '<div class="label">' + esc(cat.name) + '</div>' +
-              '<div class="value">' + ms.pts + 'pt</div>' +
-              '<div class="sub">' + ms.gf + '-' + ms.gs + ' · ' + st.presenceRate + '% presenze</div>' +
-              '</div>';
-          }).join('') +
-          '</div></div>';
-      }).join('');
+            return `<div class="stat-card blue" style="cursor:pointer" onclick="alert('Vista categoria non disponibile per il presidente')">
+              <div class="accent-bar"></div>
+              <div class="label">${esc(cat.name)}</div>
+              <div class="value">${ms.pts}pt</div>
+              <div class="sub">${ms.gf}-${ms.gs} · ${st.presenceRate}% presenze</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('')}
     })()}
   `;
 };
