@@ -1375,7 +1375,7 @@ const DB = {
       opponent: m.opponent||'', home_away: m.homeAway||'home',
       result: m.result||'TBD', scored: m.scoredGoals||0, conceded: m.concededGoals||0,
       notes: m.notes||'', bg_color: m.bgColor||'#1A3A5C', created_by: m.createdBy||null,
-      society_id: m.societyId || null
+      team_id: m.teamId || null
     });
   },
 
@@ -2937,7 +2937,7 @@ const TABLE_REAL_COLUMNS = {
   sessions:        ['id','category_id','date','type','notes','match_id','created_by'],
   attendances:     ['id','session_id','athlete_id','status'],
   performances:    ['id','session_id','athlete_id','params','notes'],
-  matches:         ['id','category_id','date','time','meet_time','meet_place','opponent','home_away','result','scored','conceded','notes','bg_color','created_by','society_id'],
+  matches:         ['id','category_id','date','time','meet_time','meet_place','opponent','home_away','result','scored','conceded','notes','bg_color','created_by','team_id'],
   convocati:       ['id','match_id','athlete_id','status','notes'],
   scorers:         ['id','match_id','athlete_id','goals','notes'],
   config:          ['key','value'],
@@ -2957,7 +2957,7 @@ function toSnakeCase(table, obj) {
   };
 
   // Campi da escludere sempre
-  const exclude = new Set(['password','role_label','gradient','password_hash','teamId_old']);
+  const exclude = new Set(['password','role_label','gradient','password_hash','teamId_old','sessionId']);
 
   const out = {};
   for (const [k, v] of Object.entries(obj)) {
@@ -7602,14 +7602,16 @@ function saveMatch(id) {
     if (!catId) { toast('Seleziona una categoria','error'); return; }
     const mid    = uid();
     const sessId = uid();
-    const catSocId = S.categories.find(c=>c.id===catId)?.societyId || currentUser.societyId || null;
+    // Ricava teamId dalla categoria se non selezionato manualmente
+    const cat = S.categories.find(c=>c.id===catId);
+    const resolvedTeamId = teamId || cat?.teamId || null;
     const sessNotes = 'Partita vs ' + opponent + (notes ? ' — ' + notes : '');
     S.sessions.push({ id: sessId, categoryId: catId, date, type: 'P',
-      notes: sessNotes, createdBy: currentUser.id, matchId: mid, societyId: catSocId });
+      notes: sessNotes, createdBy: currentUser.id, matchId: mid });
     S.matches.push({ id: mid, opponent, homeAway, date, time, meetTime, meetPlace,
       result, scoredGoals:gf, concededGoals:gs, notes, bgColor,
-      categoryId: catId, teamId: teamId||undefined, createdBy: currentUser.id,
-      sessionId: sessId, societyId: catSocId });
+      categoryId: catId, teamId: resolvedTeamId||undefined, createdBy: currentUser.id,
+      sessionId: sessId });
     // Sync filter state
     if (!window._matchState) window._matchState = {};
     window._matchState.catId  = catId;
