@@ -1281,7 +1281,8 @@ const DB = {
       matches:        (matches.data||[]).map(r => ({
         ...r, categoryId: r.category_id, homeAway: r.home_away,
         scoredGoals: r.scored, concededGoals: r.conceded,
-        bgColor: r.bg_color, createdBy: r.created_by, societyId: r.society_id,
+        bgColor: r.bg_color, createdBy: r.created_by,
+        teamId: r.team_id || null,
         meetTime: r.meet_time, meetPlace: r.meet_place
       })),
       convocati:      (convocati.data||[]).map(r => ({
@@ -1493,7 +1494,7 @@ async function sbSync(table, objOrId, isDelete = false) {
     }
     const rows = Array.isArray(objOrId) ? objOrId : [objOrId];
     // Assicura che society_id sia valorizzato per tabelle che lo richiedono
-    const TABLES_WITH_SOCIETY = ['categories','athletes','sessions','matches',
+    const TABLES_WITH_SOCIETY = ['categories','athletes','sessions',
       'attendances','performances','convocati','athlete_seasons','seasons','teams'];
     const fallbackSocId = currentUser.societyId || S.societies?.[0]?.id || null;
     const enriched = rows.map(obj => {
