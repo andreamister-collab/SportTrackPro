@@ -3250,18 +3250,18 @@ viewBuilders['admin-overview'] = (el) => {
       <div class="card">
         <div class="card-title" style="justify-content:space-between">
           <div style="display:flex;align-items:center;gap:8px">
-            <div class="icon" style="background:var(--gold-l);color:var(--gold)">⚽</div>Partite ultima settimana
+            <div class="icon" style="background:var(--gold-l);color:var(--gold)">⚽</div>Partite ultimo mese
           </div>
           <button class="btn btn-ghost btn-sm" onclick="showView('matches-overview')">Tutte le partite →</button>
         </div>
         ${(()=>{
-          const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate()-7);
-          const weekStr = oneWeekAgo.toISOString().slice(0,10);
+          const oneMonthAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate()-30);
+          const weekStr = oneMonthAgo.toISOString().slice(0,10);
           const accCats = getAccessibleCategoryIds();
           const weekMatches = S.matches
             .filter(m => m.date >= weekStr && accCats.includes(m.categoryId))
             .sort((a,b) => b.date.localeCompare(a.date));
-          if (!weekMatches.length) return '<div class="text-muted text-sm" style="padding:8px 0">Nessuna partita nell\'ultima settimana</div>';
+          if (!weekMatches.length) return '<div class="text-muted text-sm" style="padding:8px 0">Nessuna partita nell\'ultimo mese</div>';
           return weekMatches.slice(0,6).map(function(m) {
             var cat = S.categories.find(function(c){return c.id===m.categoryId;});
             var team = S.teams.find(function(t){return t.id===m.teamId;}) || S.teams.find(function(t){return t.id===(cat&&cat.teamId);});
@@ -5053,6 +5053,8 @@ viewBuilders['category-home'] = (el) => {
       <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${ms.gs}</div><div class="sub">diff. ${ms.gd>=0?'+':''}${ms.gd}</div></div>
       <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Partite Giocate</div><div class="value">${ms.played}</div><div class="sub">${ms.w} vittorie</div></div>
     </div>`:''})()}
+
+    ${buildRecentMatchesCard([selectedCategoryId||''], {stateKey:'_catHomeMatch',viewId:'category-home',title:'Partite ultimo mese'})}
     <div class="stats-grid">
       <div class="stat-card blue" style="cursor:pointer" onclick="showView('athletes')" title="Vai ad Atleti"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${st.athletes}</div><div class="sub">registrati</div></div>
       <div class="stat-card green" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${st.sessions}</div><div class="sub">totali</div></div>
@@ -5494,9 +5496,11 @@ viewBuilders['sessions'] = (el) => {
   const catTeams = curCat ? getCategoryTeams(curCat.id) : [];
   const canS     = curCat ? canEditSessions(curCat.id) : false;
 
-  const sessions = curCat
+  let sessions = curCat
     ? getCategorySessionsForSeason(curCat.id, ss.seasId).reverse().filter(s=>!ss.type||s.type===ss.type)
     : [];
+  if (ss.dateFrom) sessions = sessions.filter(s=>s.date>=ss.dateFrom);
+  if (ss.dateTo)   sessions = sessions.filter(s=>s.date<=ss.dateTo);
 
   setTopbar('Sessioni', curCat?.name||'Tutte');
 
@@ -5536,9 +5540,18 @@ viewBuilders['sessions'] = (el) => {
         </select>
       </div>
 
+      <div class="form-field" style="margin:0;min-width:110px">
+        <label style="font-size:.73rem">Data da</label>
+        <input type="date" value="${ss.dateFrom||''}" onchange="window._sessState.dateFrom=this.value;viewBuilders['sessions'](document.getElementById('view-sessions'))">
+      </div>
+
+      <div class="form-field" style="margin:0;min-width:110px">
+        <label style="font-size:.73rem">Data a</label>
+        <input type="date" value="${ss.dateTo||''}" onchange="window._sessState.dateTo=this.value;viewBuilders['sessions'](document.getElementById('view-sessions'))">
+      </div>
+
       <div style="display:flex;gap:6px;align-items:flex-end;flex-shrink:0">
         ${canS ? `<button class="btn btn-accent" onclick="openNewSessionModal()">+ Nuova Sessione</button>` : ''}
-        
       </div>
     </div>
 
@@ -9015,6 +9028,15 @@ viewBuilders['parent-view'] = (el) => {
       ${perf.overall > 0 ? `<div class="stat-card purple"><div class="accent-bar"></div><div class="label">Performance</div><div class="value">${perf.overall.toFixed(1)}</div><div class="sub">media overall</div></div>` : ''}
     </div>
 
+    ${(()=>{
+      const childCatIds = children.map(ch=>ch.categoryId).filter(Boolean);
+      return buildRecentMatchesCard(childCatIds, {
+        stateKey: '_parentMatchState',
+        viewId: 'parent-view',
+        title: 'Partite ultimo mese (squadra)'
+      });
+    })()}
+
     <div class="grid-2" style="margin-bottom:20px">
 
       <!-- Performance -->
@@ -9170,6 +9192,111 @@ function getMultiCatMatchStats(catIds) {
 // ══════════════════════════════════════════════════════════════════
 //  VISTA PRESIDENTE
 // ══════════════════════════════════════════════════════════════════
+
+// ── Helper: card partite ultimo mese con filtri opzionali ─────
+function buildRecentMatchesCard(catIds, opts) {
+  opts = opts || {};
+  var socId    = opts.socId    || null;
+  var stateKey = opts.stateKey || '_rcmState';
+  var viewId   = opts.viewId   || '';
+  var title    = opts.title    || 'Partite ultimo mese';
+
+  if (!window[stateKey]) window[stateKey] = {teamId:'',dateFrom:'',dateTo:''};
+  var st = window[stateKey];
+
+  var monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate()-30);
+  var monthStr = monthAgo.toISOString().slice(0,10);
+
+  var matches = S.matches.filter(function(m){ return catIds.includes(m.categoryId); });
+  matches = matches.filter(function(m){ return m.date >= monthStr; });
+  if (socId) {
+    var socCats = S.categories.filter(function(c){ return c.societyId===socId; }).map(function(c){return c.id;});
+    matches = matches.filter(function(m){ return socCats.includes(m.categoryId); });
+  }
+  if (st.teamId) matches = matches.filter(function(m){ return m.teamId===st.teamId||m.categoryId===st.teamId; });
+  if (st.dateFrom) matches = matches.filter(function(m){ return m.date>=st.dateFrom; });
+  if (st.dateTo)   matches = matches.filter(function(m){ return m.date<=st.dateTo; });
+  matches = matches.sort(function(a,b){ return b.date.localeCompare(a.date); });
+
+  var played = matches.filter(function(m){ return m.result&&m.result!=='TBD'; });
+  var W=played.filter(function(m){return m.result==='W';}).length;
+  var D=played.filter(function(m){return m.result==='D';}).length;
+  var L=played.filter(function(m){return m.result==='L';}).length;
+  var gf=played.reduce(function(s,m){return s+(m.scoredGoals||0);},0);
+  var gs=played.reduce(function(s,m){return s+(m.concededGoals||0);},0);
+  var pts=W*3+D;
+
+  var filterTeams = S.teams.filter(function(t){
+    return catIds.some(function(cid){
+      var cat=S.categories.find(function(c){return c.id===cid;});
+      return cat&&(cat.teamId===t.id||(cat.teamIds||[]).includes(t.id));
+    });
+  });
+
+  // Costruisci onchange handler come stringa sicura
+  function mkOnChange(field) {
+    return "window['" + stateKey + "']." + field + "=this.value;" +
+           (viewId ? "viewBuilders['" + viewId + "'](document.getElementById('view-" + viewId + "'));" : "");
+  }
+
+  var filterBar = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">';
+  if (filterTeams.length > 1) {
+    var teamSel = '<div class="form-field" style="margin:0;min-width:120px;flex:1"><label style="font-size:.73rem">Squadra</label>'
+      + '<select onchange="' + mkOnChange('teamId') + '">'
+      + '<option value="">Tutte</option>'
+      + filterTeams.map(function(t){
+          return '<option value="' + t.id + '"' + (t.id===st.teamId?' selected':'') + '>' + esc(t.name) + '</option>';
+        }).join('')
+      + '</select></div>';
+    filterBar += teamSel;
+  }
+  filterBar += '<div class="form-field" style="margin:0;min-width:110px"><label style="font-size:.73rem">Data da</label>'
+    + '<input type="date" value="' + (st.dateFrom||'') + '" onchange="' + mkOnChange('dateFrom') + '"></div>';
+  filterBar += '<div class="form-field" style="margin:0;min-width:110px"><label style="font-size:.73rem">Data a</label>'
+    + '<input type="date" value="' + (st.dateTo||'') + '" onchange="' + mkOnChange('dateTo') + '"></div>';
+  filterBar += '</div>';
+
+  var statsRow = '';
+  if (played.length > 0) {
+    statsRow = '<div class="stats-grid" style="margin-bottom:12px">'
+      + '<div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">'+pts+'</div><div class="sub">'+played.length+' partite</div></div>'
+      + '<div class="stat-card green"><div class="accent-bar"></div><div class="label">Vittorie</div><div class="value">'+W+'</div></div>'
+      + '<div class="stat-card gold"><div class="accent-bar"></div><div class="label">Pareggi</div><div class="value">'+D+'</div></div>'
+      + '<div class="stat-card red"><div class="accent-bar"></div><div class="label">Sconfitte</div><div class="value">'+L+'</div></div>'
+      + '<div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">'+gf+'</div><div class="sub">diff.'+(gf-gs>=0?'+':'')+(gf-gs)+'</div></div>'
+      + '<div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">'+gs+'</div></div>'
+      + '</div>';
+  }
+
+  var rows = '';
+  if (!matches.length) {
+    rows = '<div class="text-muted text-sm" style="padding:10px 0">Nessuna partita nel periodo selezionato</div>';
+  } else {
+    rows = matches.slice(0,15).map(function(m){
+      var cat = S.categories.find(function(c){return c.id===m.categoryId;});
+      var team = S.teams.find(function(t){return t.id===m.teamId;}) || S.teams.find(function(t){return cat&&t.id===cat.teamId;});
+      var rc = m.result==='W'?'var(--green)':m.result==='L'?'var(--red)':m.result==='D'?'var(--gold)':'#94A3B8';
+      var sc = m.result&&m.result!=='TBD'?(m.scoredGoals||0)+'—'+(m.concededGoals||0):'da giocare';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mist-2)">'
+        + '<div style="font-size:.75rem;color:#64748B;min-width:54px">'+fmtDate(m.date)+'</div>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div class="fw-600" style="font-size:.85rem">'+esc((team&&team.name)||(cat&&cat.name)||'—')+' vs '+esc(m.opponent)+'</div>'
+        + '<div class="text-muted text-sm">'+esc((cat&&cat.name)||'—')+' · '+(m.homeAway==='home'?'🏠 Casa':'✈️ Trasferta')+'</div>'
+        + '</div>'
+        + '<div class="fw-700" style="color:'+rc+';font-size:.88rem;flex-shrink:0">'+sc+'</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  return '<div class="card" style="margin-bottom:20px">'
+    + '<div class="card-title" style="justify-content:space-between">'
+    + '<div style="display:flex;align-items:center;gap:8px"><div class="icon" style="background:var(--gold-l);color:var(--gold)">⚽</div>'+title+'</div>'
+    + '<button class="btn btn-ghost btn-sm" onclick="showView(\'matches-overview\')">Tutte le partite →</button>'
+    + '</div>'
+    + filterBar + statsRow + rows
+    + '</div>';
+}
+
 viewBuilders['president-view'] = (el) => {
   if (!currentUser || currentUser.role !== 'presidente') {
     el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Accesso non autorizzato</h3></div>';
@@ -9303,6 +9430,18 @@ viewBuilders['president-view'] = (el) => {
         </div>
       </div>
     </div>
+
+    <!-- Partite ultimo mese -->
+    ${(()=>{
+      const pCatIds = getAccessibleCategoryIds();
+      return buildRecentMatchesCard(pCatIds, {
+        socId: presidentSocId,
+        stateKey: '_presMatchState',
+        viewId: 'president-view',
+        title: 'Partite ultimo mese',
+        readOnly: true
+      });
+    })()}
 
     <!-- Società -->
     ${(()=>{
