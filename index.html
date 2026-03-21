@@ -4768,86 +4768,29 @@ function buildRolesConfig() {
 }
 
 function buildSettingsConfig() {
-  const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isAndroid = /Android/.test(navigator.userAgent);
-  const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-
-  const pwaStatusHtml = isInstalled
-    ? `<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--green-l);border-radius:10px;border:1px solid var(--green)">
-        <span style="font-size:1.4rem">✅</span>
-        <div><div style="font-weight:700;color:var(--green)">App già installata</div><div style="font-size:.82rem;color:var(--ink-3);margin-top:2px">SportTrack Pro è in esecuzione come app nativa.</div></div>
-       </div>`
-    : (_pwaPrompt
-        ? `<button class="btn btn-accent" onclick="_installPwa()" style="width:100%;justify-content:center;gap:10px;font-size:1rem;padding:14px">
-            📲 Installa SportTrack Pro sul dispositivo
-           </button>`
-        : '');
-
-  const iosGuide = isIOS ? `
-    <div class="highlight-box" style="margin-top:12px">
-      <div style="font-weight:700;margin-bottom:8px">📱 Installazione su iPhone / iPad (Safari)</div>
-      <ol style="padding-left:18px;line-height:2">
-        <li>Apri questa pagina in <b>Safari</b></li>
-        <li>Tocca l'icona <b>Condividi</b> <span style="font-size:1.1rem">⬆️</span> in basso</li>
-        <li>Scorri e seleziona <b>"Aggiungi alla schermata Home"</b></li>
-        <li>Conferma tocando <b>"Aggiungi"</b> in alto a destra</li>
-      </ol>
-    </div>` : '';
-
-  const androidGuide = isAndroid ? `
-    <div class="highlight-box" style="margin-top:12px">
-      <div style="font-weight:700;margin-bottom:8px">🤖 Installazione su Android (Chrome)</div>
-      <ol style="padding-left:18px;line-height:2">
-        <li>Apri questa pagina in <b>Chrome</b></li>
-        <li>Tocca il menu <b>⋮</b> in alto a destra</li>
-        <li>Seleziona <b>"Installa app"</b> o <b>"Aggiungi a schermata Home"</b></li>
-        <li>Conferma toccando <b>"Installa"</b></li>
-      </ol>
-    </div>` : '';
-
-  const desktopGuide = (!isIOS && !isAndroid) ? `
-    <div class="highlight-box" style="margin-top:12px">
-      <div style="font-weight:700;margin-bottom:8px">💻 Installazione su Desktop (Chrome / Edge)</div>
-      <ol style="padding-left:18px;line-height:2">
-        <li>Clicca l'icona <b>⬇️</b> o <b>+</b> nella barra degli indirizzi</li>
-        <li>Oppure usa il menu <b>⋮</b> → <b>"Installa SportTrack Pro"</b></li>
-        <li>Conferma cliccando <b>"Installa"</b></li>
-      </ol>
-    </div>` : '';
-
+  setTimeout(() => _refreshPwaSection(), 50); // aggiorna dopo render
   return `
     <div class="card" style="margin-bottom:20px">
       <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">📲</div>Installa App SportTrack Pro</div>
       <p style="color:var(--ink-3);font-size:.88rem;margin-bottom:16px">
-        Installa SportTrack Pro come app sul tuo dispositivo: funziona offline, si apre senza browser, 
-        ha icona sulla schermata Home e aspetto nativo.
+        Installa SportTrack Pro come app sul dispositivo: si apre senza browser, 
+        ha icona sulla schermata Home, funziona offline e ha un aspetto nativo.
       </p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--mist-2);border-radius:10px">
-          <span style="font-size:1.5rem">⚡</span>
-          <div style="font-size:.82rem"><div style="font-weight:700">Veloce</div><div style="color:var(--ink-3)">Avvio istantaneo</div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--mist-2);border-radius:10px">
+          <span style="font-size:1.3rem">⚡</span><div style="font-size:.8rem"><div style="font-weight:700">Veloce</div><div style="color:var(--ink-3)">Avvio istantaneo</div></div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--mist-2);border-radius:10px">
-          <span style="font-size:1.5rem">📶</span>
-          <div style="font-size:.82rem"><div style="font-weight:700">Offline</div><div style="color:var(--ink-3)">Funziona senza rete</div></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--mist-2);border-radius:10px">
+          <span style="font-size:1.3rem">📶</span><div style="font-size:.8rem"><div style="font-weight:700">Offline</div><div style="color:var(--ink-3)">Senza connessione</div></div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--mist-2);border-radius:10px">
-          <span style="font-size:1.5rem">📱</span>
-          <div style="font-size:.82rem"><div style="font-weight:700">Nativo</div><div style="color:var(--ink-3)">Icona su schermata Home</div></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--mist-2);border-radius:10px">
+          <span style="font-size:1.3rem">📱</span><div style="font-size:.8rem"><div style="font-weight:700">Nativo</div><div style="color:var(--ink-3)">Schermata Home</div></div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--mist-2);border-radius:10px">
-          <span style="font-size:1.5rem">🔒</span>
-          <div style="font-size:.82rem"><div style="font-weight:700">Sicuro</div><div style="color:var(--ink-3)">Dati crittografati</div></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--mist-2);border-radius:10px">
+          <span style="font-size:1.3rem">🔒</span><div style="font-size:.8rem"><div style="font-weight:700">Sicuro</div><div style="color:var(--ink-3)">Dati protetti</div></div>
         </div>
       </div>
-      ${pwaStatusHtml}
-      ${iosGuide}
-      ${androidGuide}
-      ${desktopGuide}
-      ${!isInstalled && !_pwaPrompt && !isIOS ? `<div style="margin-top:12px;padding:12px;background:var(--mist-2);border-radius:10px;font-size:.82rem;color:var(--ink-3)">
-        💡 Il pulsante di installazione apparirà automaticamente quando il browser lo supporta, oppure segui le istruzioni manuali qui sopra.
-      </div>` : ''}
+      <div id="pwa-install-section">${_buildPwaInstallHtml()}</div>
     </div>
 
     <div class="card">
@@ -9625,12 +9568,111 @@ let _pwaPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   _pwaPrompt = e;
+  // Aggiorna il pulsante nella sezione PWA se è visibile
+  _refreshPwaSection();
   setTimeout(() => {
     if (_pwaPrompt && document.getElementById('app')?.classList.contains('visible')) {
       _showPwaBanner();
     }
   }, 3000);
 });
+
+function _refreshPwaSection() {
+  const el = document.getElementById('pwa-install-section');
+  if (!el) return;
+  el.innerHTML = _buildPwaInstallHtml();
+}
+
+function _buildPwaInstallHtml() {
+  const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isAndroid = /Android/.test(navigator.userAgent);
+
+  if (isInstalled) {
+    return `<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--green-l);border-radius:10px;border:1px solid var(--green)">
+      <span style="font-size:1.6rem">✅</span>
+      <div><div style="font-weight:700;color:var(--green)">App già installata</div>
+      <div style="font-size:.82rem;color:var(--ink-3);margin-top:2px">SportTrack Pro è in esecuzione come app nativa.</div></div>
+    </div>`;
+  }
+
+  let html = '';
+
+  // iOS Safari — nessun beforeinstallprompt, guida manuale
+  if (isIOS) {
+    html += `
+    <div style="background:var(--accent-l);border:1px solid var(--accent);border-radius:10px;padding:16px;margin-bottom:12px">
+      <div style="font-weight:700;color:var(--accent);margin-bottom:10px;font-size:.95rem">📱 Installazione su iPhone / iPad</div>
+      <div style="font-size:.85rem;color:var(--ink-2);line-height:1.8">
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">1</span>
+          <span>Apri questa pagina in <b>Safari</b> (non Chrome)</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">2</span>
+          <span>Tocca il tasto <b>Condividi</b> <b style="font-size:1rem">⎋</b> in fondo allo schermo</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">3</span>
+          <span>Seleziona <b>"Aggiungi alla schermata Home"</b></span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">4</span>
+          <span>Tocca <b>"Aggiungi"</b> in alto a destra</span>
+        </div>
+      </div>
+    </div>`;
+  }
+  // Android con prompt disponibile
+  else if (isAndroid && _pwaPrompt) {
+    html += `
+    <button onclick="_installPwa()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:16px;background:var(--accent);color:white;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-head);box-shadow:0 4px 16px rgba(79,134,247,.4)">
+      <span style="font-size:1.4rem">📲</span> Installa SportTrack Pro
+    </button>`;
+  }
+  // Android senza prompt — guida manuale
+  else if (isAndroid && !_pwaPrompt) {
+    html += `
+    <div style="background:var(--accent-l);border:1px solid var(--accent);border-radius:10px;padding:16px;margin-bottom:12px">
+      <div style="font-weight:700;color:var(--accent);margin-bottom:10px;font-size:.95rem">🤖 Installazione su Android</div>
+      <div style="font-size:.85rem;color:var(--ink-2);line-height:1.8">
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">1</span>
+          <span>Apri questa pagina in <b>Chrome</b></span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">2</span>
+          <span>Tocca il menu <b>⋮</b> in alto a destra</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">3</span>
+          <span>Seleziona <b>"Installa app"</b> o <b>"Aggiungi a schermata Home"</b></span>
+        </div>
+      </div>
+    </div>`;
+  }
+  // Desktop con prompt disponibile
+  else if (_pwaPrompt) {
+    html += `
+    <button onclick="_installPwa()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:16px;background:var(--accent);color:white;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-head);box-shadow:0 4px 16px rgba(79,134,247,.4)">
+      <span style="font-size:1.4rem">💻</span> Installa SportTrack Pro
+    </button>`;
+  }
+  // Desktop senza prompt — guida manuale
+  else {
+    html += `
+    <div style="background:var(--mist-2);border:1px solid var(--mist-3);border-radius:10px;padding:16px">
+      <div style="font-weight:700;margin-bottom:10px;font-size:.95rem">💻 Installazione su Desktop (Chrome / Edge)</div>
+      <div style="font-size:.85rem;color:var(--ink-2);line-height:1.8">
+        <div style="margin-bottom:6px">• Cerca l'icona <b>⬇</b> o <b>+</b> nella barra degli indirizzi</div>
+        <div style="margin-bottom:6px">• Oppure menu <b>⋮</b> → <b>"Installa SportTrack Pro"</b></div>
+        <div style="color:var(--ink-3);font-size:.8rem;margin-top:8px">Se non compare, ricarica la pagina o attendi qualche secondo.</div>
+      </div>
+    </div>`;
+  }
+
+  return html;
+}
 
 function _showPwaBanner() {
   if (document.getElementById('pwa-banner')) return;
@@ -9653,10 +9695,7 @@ async function _installPwa() {
   document.getElementById('pwa-banner')?.remove();
   if (outcome === 'accepted') {
     toast('✅ SportTrack Pro installata con successo!', 'success');
-    // Aggiorna la tab impostazioni se è aperta
-    if (currentView === 'admin-config') {
-      setTimeout(() => buildAdminConfigTab('settings'), 500);
-    }
+    _refreshPwaSection();
   }
 }
 
