@@ -2675,6 +2675,7 @@ function buildTopNav() {
         dItem('🔧','Impostazioni',`showAdminConfig('settings')`) +
         dItem('📤','Esporta Excel',`showView('export')`) +
         '<div class="dropdown-divider"></div>' +
+        dItem('📲','Installa App',`showAdminConfig('settings');setTimeout(()=>showInstallQR(),200)`) +
         dItem('🗑️','Reset Demo',`if(confirm('Reset tutti i dati?'))resetState()`, true)
       ) +
       catActionsDropdown;
@@ -2697,6 +2698,9 @@ function buildTopNav() {
         mItem('📆','Stagioni',`showAdminConfig('seasons')`) +
         mItem('🔧','Impostazioni',`showAdminConfig('settings')`) +
         mItem('📤','Esporta Excel',`showView('export')`)
+      ) +
+      mSection('📲 App',
+        mItem('📲','Installa App sul Cellulare',`showAdminConfig('settings');setTimeout(()=>showInstallQR(),200)`)
       ) +
       catActionsMobile;
   } else {
