@@ -8778,6 +8778,13 @@ viewBuilders['parent-view'] = (el) => {
   const statusIcon = { P:'✅', A:'❌', G:'⚠️', C:'📋', NC:'—' };
   const statusLabel = { P:'Presente', A:'Assente', G:'Giustificato', C:'Convocato', NC:'Non conv.' };
 
+  // Gol atleta nelle partite
+  const athGoals = (S.scorers||[]).filter(s => s.athleteId === activeChild.id).reduce((t,s) => t + (s.goals||0), 0);
+  const athMatches = myConvocati.filter(cv => {
+    const m = S.matches.find(x => x.id === cv.matchId);
+    return m && m.result && m.result !== 'TBD';
+  }).length;
+
   el.innerHTML = `
     <div class="page-header">
       <div class="header-row">
@@ -8790,25 +8797,29 @@ viewBuilders['parent-view'] = (el) => {
 
     ${childTabs}
 
-    <!-- Stats Squadra -->
-    <div class="card" style="margin-bottom:16px;background:var(--mist)">
-      <div class="card-title" style="margin-bottom:10px">
+    <!-- ── STAT CARD SQUADRA ─────────────────────────────── -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:12px">
         <div class="icon" style="background:var(--accent-l);color:var(--accent)">👕</div>
-        <span style="font-weight:700">${esc(cat?.name||'—')} — ${esc(team?.name||'—')}</span>
-        <span style="font-size:.78rem;color:var(--ink-3);margin-left:8px">Statistiche Squadra</span>
+        <div>
+          <div style="font-weight:700">${esc(cat?.name||'—')} — ${esc(team?.name||'—')}</div>
+          <div style="font-size:.75rem;color:#94A3B8;font-weight:400">Statistiche Squadra</div>
+        </div>
       </div>
       <div class="stats-grid">
-        <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Sessioni Squadra</div><div class="value">${teamSessions.length}</div></div>
-        <div class="stat-card green"><div class="accent-bar"></div><div class="label">Presenze Squadra</div><div class="value">${teamPresRate}%</div></div>
+        <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${teamSessions.length}</div><div class="sub">totali</div></div>
+        <div class="stat-card green"><div class="accent-bar"></div><div class="label">% Presenze</div><div class="value">${teamPresRate}%</div><div class="sub">media squadra</div></div>
         ${teamMs.played > 0 ? `
-        <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${teamMs.pts}</div><div class="sub">${teamMs.w}V ${teamMs.d}P ${teamMs.l}S</div></div>
-        <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${teamMs.gf}</div></div>
-        ` : ''}
+        <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${teamMs.pts}</div><div class="sub">${teamMs.w}V ${teamMs.d}P ${teamMs.l}S</div></div>
+        <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${teamMs.gf}</div><div class="sub">media ${teamMs.played ? (teamMs.gf/teamMs.played).toFixed(1) : 0}/partita</div></div>
+        <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${teamMs.gs}</div><div class="sub">diff. ${teamMs.gd >= 0 ? '+' : ''}${teamMs.gd}</div></div>
+        <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${teamMs.played}</div><div class="sub">${teamMs.w} vittorie</div></div>
+        ` : '<div class="stat-card teal"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">0</div><div class="sub">nessuna giocata</div></div>'}
       </div>
     </div>
 
-    <!-- Intestazione atleta -->
-    <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,${color} 0%,#1e293b 100%);color:white">
+    <!-- ── CARD ATLETA ───────────────────────────────────── -->
+    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,${color} 0%,#1e293b 100%);color:white;border:none">
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;flex-shrink:0">
           ${initials((activeChild.firstName||'')+' '+(activeChild.lastName||''))}
@@ -8824,12 +8835,14 @@ viewBuilders['parent-view'] = (el) => {
       </div>
     </div>
 
-    <!-- KPI Atleta -->
+    <!-- ── STAT CARD ATLETA ──────────────────────────────── -->
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card green"><div class="accent-bar"></div><div class="label">Presenze</div><div class="value">${pres}</div><div class="sub">${presRate}% delle sessioni</div></div>
-      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Assenze</div><div class="value">${ass}</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Assenze</div><div class="value">${ass}</div><div class="sub">${sessions.length ? pct(ass, sessions.length) : 0}%</div></div>
       <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Giustificati</div><div class="value">${giust}</div></div>
-      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Sessioni Totali</div><div class="value">${sessions.length}</div></div>
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${sessions.length}</div><div class="sub">totali</div></div>
+      ${athMatches > 0 ? `<div class="stat-card teal"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${athMatches}</div><div class="sub">giocate</div></div>` : ''}
+      ${athGoals > 0 ? `<div class="stat-card gold"><div class="accent-bar"></div><div class="label">Gol</div><div class="value">${athGoals}</div><div class="sub">stagione</div></div>` : ''}
       ${perf.overall > 0 ? `<div class="stat-card purple"><div class="accent-bar"></div><div class="label">Performance</div><div class="value">${perf.overall.toFixed(1)}</div><div class="sub">media overall</div></div>` : ''}
     </div>
 
