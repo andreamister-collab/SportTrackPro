@@ -531,7 +531,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .topbar-breadcrumb { font-size: .8rem; color: #94A3B8; margin-left: 10px; }
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
-#content-area { flex: 1; padding: 28px; overflow-y: auto; background: #0D1117; overflow-x: hidden; }
+#content-area { flex: 1; padding: 28px; overflow-y: auto; background: #0D1117; overflow-x: hidden; scroll-padding-top: var(--header-h); }
 
 /* ── VIEW TRANSITIONS ───────────────────────────────────────── */
 .view { display: none; animation: viewIn .3s cubic-bezier(.22,1,.36,1) both; }
@@ -540,7 +540,9 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── PAGE HEADER ────────────────────────────────────────────── */
-.page-header { margin-bottom: 28px; }
+.page-header { margin-bottom: 28px; scroll-margin-top: calc(var(--header-h) + 8px); }
+/* Assicura che il primo elemento di ogni view non venga coperto dal top-bar sticky */
+.view.active > *:first-child { scroll-margin-top: calc(var(--header-h) + 8px); }
 .page-header h2 { font-size: 1.65rem; color: #E2E8F0; letter-spacing: -.03em; }
 .page-header p { color: #94A3B8; font-size: .9rem; margin-top: 4px; }
 .page-header .header-row { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
@@ -1734,7 +1736,7 @@ async function loadStateFromDB() {
       <span class="topbar-breadcrumb" id="topbar-bc"></span>
       <div id="topbar-filter" style="display:flex;align-items:center;gap:6px;margin-left:16px;flex-wrap:wrap"></div>
       <div class="topbar-actions" id="topbar-actions"></div>
-      <button id="topbar-filter-btn" onclick="toggleTopbarFilter()" style="display:none;background:none;border:1.5px solid #2D3748;border-radius:8px;padding:5px 10px;color:#94A3B8;font-size:.8rem;cursor:pointer;margin-left:8px">⚙️</button>
+      <button id="topbar-filter-btn" onclick="toggleTopbarFilter()" style="display:none!important;background:none;border:1.5px solid #2D3748;border-radius:8px;padding:5px 10px;color:#94A3B8;font-size:.8rem;cursor:pointer;margin-left:8px">⚙️</button>
     </div>
     <div id="content-area">
 
@@ -2935,6 +2937,10 @@ function showView(viewId, pushHistory=true) {
   highlightNavItem();
   updateBottomNav();
 
+  // Scroll al top del content-area ad ogni cambio vista
+  const ca = document.getElementById('content-area');
+  if (ca) ca.scrollTop = 0;
+
   // Mostra spinner
   el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--ink-3)">
     <div style="font-size:2rem;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⟳</div>
@@ -3246,8 +3252,9 @@ function setTopbar(title, bc, actionsHtml='', filterHtml='') {
   document.getElementById('topbar-actions').innerHTML = actionsHtml;
   const filterEl = document.getElementById('topbar-filter');
   if (filterEl) { filterEl.innerHTML = filterHtml; filterEl.classList.remove('show-mobile'); }
-  const filterBtn = document.getElementById('topbar-filter-btn');
-  if (filterBtn) filterBtn.style.display = filterHtml ? 'block' : 'none';
+  // topbar-filter-btn è disabilitato permanentemente (icona ingranaggio rimossa)
+  // const filterBtn = document.getElementById('topbar-filter-btn');
+  // if (filterBtn) filterBtn.style.display = filterHtml ? 'block' : 'none';
 }
 
 // ── [2] ADMIN CONFIG ──────────────────────────────────────────
@@ -5350,6 +5357,7 @@ function renderSessionsList() {
     </div>`;
 }
 function openNewSessionModal() {
+  if (currentUser?.role === 'presidente') { toast('Accesso in sola lettura — il Presidente non può creare sessioni', 'error'); return; }
   openModal(`
     <div class="modal-header"><h3>Nuova Sessione</h3></div>
     <div class="form-row">
@@ -5377,6 +5385,7 @@ function refreshNewSessionTeams(catId) {
 }
 
 function createSession() {
+  if (currentUser?.role === 'presidente') { toast('Accesso in sola lettura','error'); return; }
   const date   = document.getElementById('sess-date').value;
   const type   = document.getElementById('sess-type').value;
   const notes  = document.getElementById('sess-notes').value.trim();
@@ -8954,7 +8963,7 @@ viewBuilders['president-view'] = (el) => {
           </div>
         ` : '').join('')}
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--mist-2)">
-          <button class="btn btn-accent btn-sm" onclick="showAdminConfig('users')">+ Aggiungi Staff</button>
+          <!-- Sola lettura: nessuna azione di modifica per il presidente -->
         </div>
       </div>
     </div>
