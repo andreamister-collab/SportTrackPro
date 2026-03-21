@@ -525,6 +525,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   display: flex; align-items: center; padding: 0 28px;
   position: sticky; top: 56px; z-index: 50;
   box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  flex-shrink: 0;
 }
 .topbar-title { font-size: 1.1rem; font-weight: 700; color: #E2E8F0; font-family: var(--font-head); }
 .topbar-breadcrumb { font-size: .8rem; color: #94A3B8; margin-left: 10px; }
@@ -534,7 +535,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 
 /* ── VIEW TRANSITIONS ───────────────────────────────────────── */
 .view { display: none; animation: viewIn .3s cubic-bezier(.22,1,.36,1) both; }
-.view.active { display: block; overflow-x: hidden; min-width: 0; }
+.view.active { display: block; overflow-x: hidden; min-width: 0; overflow-y: visible; }
 @keyframes viewIn { from { opacity:0; transform:translateY(10px); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -2278,23 +2279,23 @@ function getMyChildren() {
 function canEdit(catId) {
   if (!currentUser) return false;
   if (currentUser.role === 'admin') return true;
+  if (currentUser.role === 'presidente') return false; // sola lettura
   const cat = S.categories.find(c=>c.id===catId);
   if (!cat) return false;
   const r = currentUser.role;
-  // responsabile and dirigente can edit fully; allenatore can enter sessions+presenze; professionista read-only
   return ['responsabile','dirigente','allenatore'].includes(r) && canAccessCategory(catId);
 }
 
 function canEditSessions(catId) {
   if (!currentUser) return false;
   if (currentUser.role === 'admin') return true;
+  if (currentUser.role === 'presidente') return false; // sola lettura
   return ['responsabile','dirigente','allenatore'].includes(currentUser.role) && canAccessCategory(catId);
 }
 
 function isReadOnly(catId) {
   if (!currentUser) return true;
   if (currentUser.role === 'admin') return false;
-  // Presidente e professionista: sola lettura
   if (['professionista','presidente'].includes(currentUser.role)) return canAccessCategory(catId);
   return false;
 }
@@ -3323,7 +3324,7 @@ function buildSportConfig() {
 function openSportModal(id) {
   const s = id ? S.sports.find(x=>x.id===id) : null;
   const overlay = openModal(`
-    <div class="modal-header"><h3>${s ? 'Modifica Sport' : 'Nuovo Sport'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-header"><h3>${s ? 'Modifica Sport' : 'Nuovo Sport'}</h3></div>
     <div class="form-row">
       <div class="form-field"><label>Nome Sport</label><input id="sp-name" value="${esc(s?.name||'')}" placeholder="es. Calcio"></div>
       <div class="form-field"><label>Icona (emoji)</label><input id="sp-icon" value="${esc(s?.icon||'🏅')}" placeholder="🏅" style="font-size:1.4rem;text-align:center"></div>
@@ -3385,7 +3386,7 @@ function buildSocietyConfig() {
 function openSocietyModal(id) {
   const s = id ? S.societies.find(x=>x.id===id) : null;
   openModal(`
-    <div class="modal-header"><h3>${s?'Modifica Società':'Nuova Società'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-header"><h3>${s?'Modifica Società':'Nuova Società'}</h3></div>
     <div class="form-row">
       <div class="form-field"><label>Nome Società</label><input id="soc-name" value="${esc(s?.name||'')}" placeholder="es. ASD Olimpia"></div>
       <div class="form-field"><label>Sport</label><select id="soc-sport">${S.sports.map(sp=>`<option value="${sp.id}" ${sp.id===s?.sportId?'selected':''}>${esc(sp.name)}</option>`).join('')}</select></div>
@@ -3451,7 +3452,7 @@ function buildTeamConfig() {
 function openTeamModal(id) {
   const t = id ? S.teams.find(x=>x.id===id) : null;
   openModal(`
-    <div class="modal-header"><h3>${t?'Modifica Squadra':'Nuova Squadra'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-header"><h3>${t?'Modifica Squadra':'Nuova Squadra'}</h3></div>
     <div class="form-row">
       <div class="form-field"><label>Nome Squadra</label><input id="tm-name" value="${esc(t?.name||'')}" placeholder="es. Prima Squadra"></div>
       <div class="form-field"><label>Società</label><select id="tm-soc">${S.societies.map(s=>`<option value="${s.id}" ${s.id===t?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
@@ -3572,7 +3573,7 @@ function openCategoryModal(id) {
     : S.societies.filter(s => s.id === refSocId || s.id === cat?.societyId);
 
   openModal(`
-    <div class="modal-header"><h3>${cat?'Modifica Categoria':'Nuova Categoria'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-header"><h3>${cat?'Modifica Categoria':'Nuova Categoria'}</h3></div>
     <div class="form-row">
       <div class="form-field"><label>Nome Categoria</label><input id="cat-name" value="${esc(cat?.name||'')}" placeholder="es. Under 14"></div>
       <div class="form-field"><label>Sport</label><select id="cat-sport">${S.sports.map(s=>`<option value="${s.id}" ${s.id===cat?.sportId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
@@ -3674,7 +3675,7 @@ function openCategoryStaffModal(catId) {
   openModal(`
     <div class="modal-header">
       <h3>👥 Staff — ${esc(cat.name)}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
     <div class="text-muted text-sm" style="margin-bottom:16px">${esc(soc?.name||'')} · ${esc(team?.name||'')}</div>
 
@@ -4100,7 +4101,7 @@ function openUserModal(id) {
   openModal(`
     <div class="modal-header">
       <h3>${u ? `✏️ Modifica — ${esc(u.name)}` : '➕ Nuovo Utente Staff'}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
 
     <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">📋 Dati Personali</div>
@@ -5040,7 +5041,7 @@ function buildAthleteModalHtml(id, catId, a) {
   return `
     <div class="modal-header">
       <h3>${a?'Modifica Atleta — '+esc(a.lastName)+' '+esc(a.firstName):'Nuovo Atleta'}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
 
     <div style="background:var(--mist);border-radius:10px;padding:14px 16px;margin-bottom:16px">
@@ -5187,7 +5188,7 @@ function openRoleConfigModal(catId) {
   openModal(`
     <div class="modal-header">
       <h3>⚙️ Gestione Ruoli — ${esc(cat?.name||'Categoria')}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
     <div class="text-muted text-sm" style="margin-bottom:14px">
       Configura la lista dei ruoli disponibili per questa categoria. Ogni ruolo sarà selezionabile nella scheda atleta.
@@ -5244,7 +5245,7 @@ viewBuilders['sessions'] = (el) => {
 
   el.innerHTML = `
     <!-- ── FILTRI SESSIONI ────────────────────────────────── -->
-    <div style="background:white;border:1px solid var(--mist-2);border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow-sm)">
+    <div style="background:#161B27;border:1px solid #2D3748;border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:none">
       <span style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🔍 Filtri</span>
 
       <div class="form-field" style="margin:0;min-width:130px;flex:1">
@@ -5280,7 +5281,7 @@ viewBuilders['sessions'] = (el) => {
 
       <div style="display:flex;gap:6px;align-items:flex-end;flex-shrink:0">
         ${canS ? `<button class="btn btn-accent" onclick="openNewSessionModal()">+ Nuova Sessione</button>` : ''}
-        <button class="btn btn-ghost btn-sm" onclick="window._sessState={catId:'${curCat?.id||''}',seasId:'${ss.seasId}'};viewBuilders['sessions'](document.getElementById('view-sessions'))">✕</button>
+        
       </div>
     </div>
 
@@ -5350,7 +5351,7 @@ function renderSessionsList() {
 }
 function openNewSessionModal() {
   openModal(`
-    <div class="modal-header"><h3>Nuova Sessione</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-header"><h3>Nuova Sessione</h3></div>
     <div class="form-row">
       <div class="form-field"><label>Data</label><input id="sess-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
       <div class="form-field"><label>Tipo Attività</label><select id="sess-type">
@@ -5614,9 +5615,7 @@ function buildCategoryDashboardView(el, catId) {
         ${esc(t.name)}
       </button>`).join('')+'<button onclick="window._dashTeam=\'\';buildCategoryDashboardView(document.getElementById(\'view-cat-dashboard\'),\'${catId}\')" style="padding:5px 12px;border-radius:8px;font-size:.8rem;font-weight:600;border:1.5px solid '+(!filterTeamId?'var(--accent)':'#2D3748')+';background:'+(!filterTeamId?'#1E2D4A':'#1E2433')+';color:'+(!filterTeamId?'var(--accent)':'#94A3B8')+';cursor:pointer">👕 Tutte</button>' : ''}
   `;
-  const resetBtn = (filterTeamId || filterSeasId!==activeSeas?.id)
-    ? `<button onclick="window._dashTeam='';window._dashSeas='';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')" style="padding:5px 10px;border-radius:8px;border:1.5px solid #2D3748;background:#1E2433;color:#94A3B8;font-size:.78rem;cursor:pointer">✕ Reset</button>`
-    : '';
+  const resetBtn = '';
   setTopbar('Dashboard Categoria', cat.name, resetBtn, filterHtml);
 
   // activity breakdown
@@ -6009,7 +6008,7 @@ function buildSocDashContent(socId) {
   const globalPct2 = pct(presAtts, allAtts.length||1);
 
   c.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:18px;background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--mist-2)">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:18px;background:#161B27;border-radius:var(--radius-lg);border:1px solid var(--mist-2)">
       <div style="font-size:2.5rem">${sport?.icon||'🏅'}</div>
       <div>
         <div style="font-size:1.4rem;font-weight:800;font-family:var(--font-head)">${esc(soc?.name||'')}</div>
@@ -6192,7 +6191,7 @@ viewBuilders['admin-athletes'] = (el) => {
         <option value="">Tutte le Squadre</option>
         ${S.teams.map(t=>`<option value="${t.id}" ${t.id===filterTeam?'selected':''}>${esc(t.name)}</option>`).join('')}
       </select>
-      <button class="btn btn-ghost btn-sm" onclick="window._filterCat='';window._filterSoc='';window._filterQ='';window._filterTeam='';viewBuilders['admin-athletes'](document.getElementById('view-admin-athletes'))">✕ Reset</button>
+      
     </div>
 
     <div class="card" style="padding:0">
@@ -7154,7 +7153,7 @@ viewBuilders['matches'] = (el) => {
 
   el.innerHTML = `
     <!-- ── FILTRI PARTITE ─────────────────────────────────── -->
-    <div style="background:white;border:1px solid var(--mist-2);border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow-sm)">
+    <div style="background:#161B27;border:1px solid #2D3748;border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:none">
       <span style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🔍 Filtri</span>
 
       <div class="form-field" style="margin:0;min-width:130px;flex:1">
@@ -7280,7 +7279,7 @@ function openMatchModal(id) {
   openModal(`
     <div class="modal-header">
       <h3>${m?'Modifica Partita':'Nuova Partita'}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
 
     <!-- Contesto: categoria + squadra -->
@@ -7838,7 +7837,7 @@ function openSeasonManagementModal() {
   openModal(`
     <div class="modal-header">
       <h3>⚽ Gestione Stagioni Calcistiche</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
     <div class="highlight-box" style="margin-bottom:16px">
       La stagione <b>attiva ★</b> è quella predefinita al login. Puoi comunque cambiare stagione in qualsiasi momento dal selettore in alto.
@@ -7924,7 +7923,7 @@ function openAthleteSeasonModal(athleteId) {
   openModal(`
     <div class="modal-header">
       <h3>📋 Stagioni — ${esc(ath.lastName)} ${esc(ath.firstName)}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
     <div style="margin-bottom:16px">
       <div style="font-weight:700;font-size:.9rem;margin-bottom:10px">Storico Iscrizioni</div>
@@ -8006,7 +8005,7 @@ function openStaffSeasonModal(userId) {
   openModal(`
     <div class="modal-header">
       <h3>📋 Storico Ruoli — ${esc(u.name)}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
     <div style="margin-bottom:14px">
       ${history.length ? history.map(sh => {
@@ -8066,7 +8065,7 @@ function saveStaffHistoryEntry(userId) {
 function openAdminResetPasswordModal(userId, userName) {
   const html = '<div class="modal-header">'
     + '<h3>🔑 Reset Password — ' + esc(userName) + '</h3>'
-    + '<button class="modal-close" onclick="closeModal()">✕</button>'
+    + ''
     + '</div>'
     + '<div style="background:var(--gold-l);border-radius:var(--radius);padding:10px 14px;font-size:.82rem;color:#7a4a00;margin-bottom:16px">'
     + '⚠️ Stai impostando una nuova password per <strong>' + esc(userName) + '</strong>.'
@@ -8125,7 +8124,7 @@ function openChangePasswordModal() {
   openModal(`
     <div class="modal-header">
       <h3>🔐 Cambia Password</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
 
     <div style="background:var(--accent-l);border-radius:var(--radius);padding:10px 14px;font-size:.8rem;color:var(--ink-3);margin-bottom:16px">
@@ -8520,7 +8519,7 @@ function openSessionPerfConfig(typeKey) {
   openModal(`
     <div class="modal-header">
       <h3>${typeInfo.emoji} Parametri Performance — ${esc(typeInfo.label)}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
     <div class="highlight-box" style="margin-bottom:16px;font-size:.85rem">
       Seleziona quali parametri registrare per le sessioni di tipo <b>${esc(typeInfo.label)}</b>.
@@ -8767,7 +8766,7 @@ function buildScorersList(matchId) {
       <span style="font-size:1rem">⚽</span>
       <span style="flex:1;font-size:.88rem;font-weight:600">${name}</span>
       <span class="badge badge-gold" style="min-width:32px;text-align:center">${s.goals} gol</span>
-      <button class="btn btn-ghost btn-sm" style="padding:2px 8px;color:var(--red)" onclick="removeScorer('${s.id}','${matchId}')">✕</button>
+      
     </div>`;
   }).join('');
 }
@@ -9025,7 +9024,7 @@ function openImportAthleteModal() {
   openModal(`
     <div class="modal-header">
       <h3>📥 Importa Atleti da Excel</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      
     </div>
     <div class="highlight-box" style="margin-bottom:14px">
       💡 Carica un file Excel con i dati degli atleti. Le colonne obbligatorie sono <b>Nome</b> e <b>Cognome</b>.
