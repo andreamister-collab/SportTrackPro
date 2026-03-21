@@ -14,41 +14,41 @@
 <style>
 /* ── ROOT TOKENS ───────────────────────────────────────────── */
 :root {
-  /* ── DARK PRO THEME ── */
-  --ink:       #E2E8F0;
-  --ink-2:     #CBD5E0;
-  --ink-3:     #94A3B8;
-  --mist:      #1E2433;
-  --mist-2:    #252D3D;
-  --mist-3:    #2D3748;
-  --white:     #161B27;
-  --accent:    #4F86F7;
-  --accent-h:  #3B72E8;
-  --accent-l:  #1E2D4A;
-  --gold:      #F59E0B;
-  --gold-l:    #2A1F00;
-  --green:     #10B981;
-  --green-l:   #022C1E;
-  --red:       #EF4444;
-  --red-l:     #2C0A0A;
-  --teal:      #06B6D4;
-  --teal-l:    #001E27;
-  --purple:    #A78BFA;
-  --purple-l:  #1E1240;
+  /* ── LIGHT THEME ── */
+  --ink:       #0F172A;
+  --ink-2:     #1E293B;
+  --ink-3:     #475569;
+  --mist:      #F1F5F9;
+  --mist-2:    #E2E8F0;
+  --mist-3:    #CBD5E0;
+  --white:     #FFFFFF;
+  --accent:    #1A56DB;
+  --accent-h:  #1648C1;
+  --accent-l:  #EBF5FF;
+  --gold:      #D97706;
+  --gold-l:    #FEF3C7;
+  --green:     #059669;
+  --green-l:   #D1FAE5;
+  --red:       #DC2626;
+  --red-l:     #FEE2E2;
+  --teal:      #0891B2;
+  --teal-l:    #CFFAFE;
+  --purple:    #7C3AED;
+  --purple-l:  #EDE9FE;
 
-  --sport-a:   #4F86F7;
-  --sport-p:   #F59E0B;
-  --sport-i:   #10B981;
-  --sport-ps:  #A78BFA;
+  --sport-a:   #1A56DB;
+  --sport-p:   #D97706;
+  --sport-i:   #059669;
+  --sport-ps:  #7C3AED;
 
   --radius:    10px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
-  --shadow:    0 4px 16px rgba(0,0,0,.4);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,.5);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow:    0 4px 16px rgba(0,0,0,.10);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.14);
 
   --sidebar-w: 260px;
-  --role-admin:   linear-gradient(135deg,#3B5BDB,#4F86F7);
+  --role-admin:   linear-gradient(135deg,#1A56DB,#3B82F6);
   --role-resp:    linear-gradient(135deg,#7C3AED,#A78BFA);
   --role-dir:     linear-gradient(135deg,#059669,#34D399);
   --role-coach:   linear-gradient(135deg,#D97706,#FCD34D);
@@ -183,7 +183,7 @@
 /* ── RESET ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 15px; -webkit-text-size-adjust: 100%; }
-body { font-family: var(--font-body); background: #0D1117; color: #E2E8F0; min-height: 100vh; overscroll-behavior-y: none; }
+body { font-family: var(--font-body); background: #F1F5F9; color: #0F172A; min-height: 100vh; overscroll-behavior-y: none; }
 button { cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 input, select, textarea { -webkit-tap-highlight-color: transparent; }
 a { text-decoration: none; color: inherit; }
@@ -194,14 +194,14 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 /* ── SCROLLBAR ──────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2D3748; border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 99px; }
 
 /* ── LOGIN SCREEN ───────────────────────────────────────────── */
 #login-screen {
   min-height: 100vh;
   min-height: 100dvh;
   display: block;          /* NON flex — layout normale scorrevole */
-  background: #0D1117;
+  background: linear-gradient(135deg, #1E293B 0%, #1A3A6E 100%);
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
@@ -231,8 +231,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   padding: 32px 16px max(32px, env(safe-area-inset-bottom));
 }
 .login-card {
-  background: #161B27;
-  border: 1px solid #2D3748;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
   border-radius: 20px;
   padding: 40px 36px;
   width: min(420px, 100%);
@@ -253,20 +253,20 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   display: flex; align-items: center; justify-content: center;
   font-size: 22px; color: white; box-shadow: 0 4px 12px rgba(26,86,219,.4);
 }
-.login-logo h1 { font-size: 1.5rem; color: #E2E8F0; letter-spacing: -.02em; }
-.login-logo span { font-family: var(--font-body); font-weight: 400; color: #94A3B8; font-size: .85rem; }
-.login-card h2 { font-size: 1.35rem; margin-bottom: 6px; color: #E2E8F0; }
+.login-logo h1 { font-size: 1.5rem; color: #0F172A; letter-spacing: -.02em; }
+.login-logo span { font-family: var(--font-body); font-weight: 400; color: #475569; font-size: .85rem; }
+.login-card h2 { font-size: 1.35rem; margin-bottom: 6px; color: #0F172A; }
 .login-card p { color: #94A3B8; font-size: .9rem; margin-bottom: 28px; }
 .form-group { margin-bottom: 18px; }
 .form-group label { display: block; font-size: .82rem; font-weight: 600; color: #94A3B8; margin-bottom: 6px; letter-spacing: .03em; text-transform: uppercase; }
 .form-group input, .form-group select {
-  width: 100%; padding: 11px 14px; border: 1.5px solid #2D3748;
-  border-radius: var(--radius); font-size: .95rem; color: #E2E8F0;
-  background: #1E2433; transition: border-color .2s, box-shadow .2s;
+  width: 100%; padding: 11px 14px; border: 1.5px solid #CBD5E0;
+  border-radius: var(--radius); font-size: .95rem; color: #0F172A;
+  background: #F8FAFC; transition: border-color .2s, box-shadow .2s;
   outline: none;
 }
 .form-group input:focus, .form-group select:focus {
-  border-color: var(--accent); background: #1A1F2E;
+  border-color: var(--accent); background: #FFFFFF;
   box-shadow: 0 0 0 3px rgba(79,134,247,.18);
 }
 .btn-primary {
@@ -279,7 +279,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .btn-primary:hover { background: var(--accent-h); box-shadow: 0 6px 20px rgba(26,86,219,.45); transform: translateY(-1px); }
 .btn-primary:active { transform: translateY(0); }
 .login-hint { font-size: .8rem; color: #94A3B8; text-align: center; margin-top: 20px; line-height: 1.6; }
-.login-hint strong { color: #E2E8F0; }
+.login-hint strong { color: #0F172A; }
 
 
 /* Login su mobile portrait */
@@ -328,8 +328,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 
 /* ── TOP NAVBAR ────────────────────────────────────────────── */
 #topnav {
-  background: #161B27;
-  border-bottom: 1px solid #2D3748;
+  background: #1E293B;
+  border-bottom: 1px solid #1E293B;
   color: white;
   position: sticky; top: 0; z-index: 100;
   box-shadow: 0 2px 16px rgba(0,0,0,.5);
@@ -375,7 +375,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 /* ── Dropdown panel ── */
 .topnav-dropdown {
   position: absolute; top: calc(100% + 4px); left: 0;
-  background: #1E2433; border: 1px solid #2D3748; border-radius: 12px;
+  background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,.5);
   min-width: 220px; padding: 6px;
   opacity: 0; visibility: hidden; pointer-events: none;
@@ -390,7 +390,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .topnav-item.open .topnav-btn { color: white; background: rgba(255,255,255,.1); }
 .topnav-item.open .nav-arrow { transform: rotate(180deg); }
 .dropdown-section-title {
-  font-size: .68rem; font-weight: 700; color: #64748B;
+  font-size: .68rem; font-weight: 700; color: #94A3B8;
   text-transform: uppercase; letter-spacing: .08em;
   padding: 8px 12px 4px; margin-top: 4px;
 }
@@ -400,12 +400,12 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   padding: 9px 12px; border-radius: 8px;
   background: none; border: none; width: 100%; text-align: left;
   font-family: var(--font-body); font-size: .875rem; font-weight: 500;
-  color: #CBD5E0; cursor: pointer;
+  color: #1E293B; cursor: pointer;
   transition: background .12s, color .12s;
   -webkit-tap-highlight-color: transparent;
 }
-.dropdown-item:hover, .dropdown-item:active { background: #2D3748; color: #F0F4F8; }
-.dropdown-item.active { background: #1E2D4A; color: var(--accent); font-weight: 600; }
+.dropdown-item:hover, .dropdown-item:active { background: #F1F5F9; color: #1A56DB; }
+.dropdown-item.active { background: #EBF5FF; color: var(--accent); font-weight: 600; }
 .dropdown-item .d-icon { width: 20px; text-align: center; font-size: .95rem; flex-shrink: 0; }
 .dropdown-divider { height: 1px; background: #252D3D; margin: 4px 8px; }
 .dropdown-danger { color: var(--red) !important; }
@@ -444,8 +444,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .topnav-user-btn .uname { font-size: .82rem; font-weight: 600; color: white; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-dropdown {
   position: absolute; top: calc(100% + 8px); right: 0;
-  background: #1E2433; border: 1px solid #2D3748; border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.12);
   min-width: 200px; padding: 6px;
   opacity: 0; visibility: hidden; pointer-events: none;
   transform: translateY(-8px);
@@ -457,18 +457,18 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   transform: translateY(0);
 }
 .user-dropdown-header {
-  padding: 10px 12px 8px; border-bottom: 1px solid #2D3748; margin-bottom: 4px;
+  padding: 10px 12px 8px; border-bottom: 1px solid #E2E8F0; margin-bottom: 4px;
 }
 .user-dropdown-header .uname-full { font-weight: 700; font-size: .9rem; color: #E2E8F0; }
-.user-dropdown-header .urole { font-size: .75rem; color: #94A3B8; margin-top: 2px; }
+.user-dropdown-header .urole { font-size: .75rem; color: #475569; margin-top: 2px; }
 
 /* ── Bottom navigation bar (mobile only) ── */
 #bottom-nav {
   display: none;
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 101;
-  background: #161B27;
-  border-top: 1px solid #2D3748;
-  box-shadow: 0 -4px 20px rgba(0,0,0,.4);
+  background: #FFFFFF;
+  border-top: 1px solid #E2E8F0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.08);
   padding: 6px 4px max(6px, env(safe-area-inset-bottom));
   display: none;
   grid-template-columns: repeat(5, 1fr);
@@ -481,7 +481,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   min-height: 52px;
 }
 .bn-item:hover, .bn-item:active { background: #1E2433; }
-.bn-item.active { background: #1E2D4A; }
+.bn-item.active { background: #EBF5FF; }
 .bn-item.active .bn-icon { filter: none; }
 .bn-item.active .bn-label { color: var(--accent); font-weight: 700; }
 .bn-icon { font-size: 1.3rem; line-height: 1; }
@@ -508,7 +508,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 #mobile-menu {
   display: none;
   position: fixed; inset: 56px 0 0 0; z-index: 99;
-  background: var(--ink); overflow-y: auto;
+  background: #1E293B; overflow-y: auto;
   padding: 12px 12px max(12px, env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
 }
@@ -542,8 +542,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 
 #top-bar {
   height: var(--header-h);
-  background: #161B27;
-  border-bottom: 1px solid #2D3748;
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
   display: flex;
   align-items: center;
   padding: 0 28px;
@@ -551,11 +551,11 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   position: sticky;
   top: 56px;
   z-index: 50;
-  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
   flex-shrink: 0;
 }
-.topbar-title { font-size: 1.1rem; font-weight: 700; color: #E2E8F0; font-family: var(--font-head); }
-.topbar-breadcrumb { font-size: .8rem; color: #94A3B8; margin-left: 10px; }
+.topbar-title { font-size: 1.1rem; font-weight: 700; color: #0F172A; font-family: var(--font-head); }
+.topbar-breadcrumb { font-size: .8rem; color: #64748B; margin-left: 10px; }
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
 /* content-area: NON deve avere overflow-y:auto.
@@ -584,8 +584,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 
 /* ── CARDS ──────────────────────────────────────────────────── */
 .card {
-  background: #161B27; border-radius: var(--radius-lg);
-  box-shadow: 0 2px 8px rgba(0,0,0,.3); border: 1px solid #2D3748;
+  background: #FFFFFF; border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm); border: 1px solid #E2E8F0;
   padding: 22px; overflow: hidden;
 }
 .card-title { font-size: .95rem; font-weight: 700; color: #E2E8F0; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
@@ -594,11 +594,11 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 /* ── STAT CARDS ─────────────────────────────────────────────── */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
 .stat-card {
-  background: #161B27; border-radius: var(--radius-lg);
-  padding: 20px; border: 1px solid #2D3748; box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  background: #FFFFFF; border-radius: var(--radius-lg);
+  padding: 20px; border: 1px solid #E2E8F0; box-shadow: var(--shadow-sm);
   position: relative; overflow: hidden; transition: box-shadow .2s, transform .2s;
 }
-.stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.4); transform: translateY(-2px); }
+.stat-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
 .stat-card .label { font-size: .78rem; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
 .stat-card .value { font-size: 2rem; font-weight: 800; font-family: var(--font-head); line-height: 1; margin-bottom: 4px; }
 .stat-card .sub { font-size: .78rem; color: #94A3B8; }
@@ -634,8 +634,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   .card { margin-bottom: 12px; }
   .filter-bar {
   display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-  padding: 14px 20px; background: #161B27;
-  border-bottom: 1px solid #2D3748; margin-bottom: 20px;
+  padding: 14px 20px; background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0; margin-bottom: 20px;
   border-radius: var(--radius-lg);
 }
   .filter-bar input, .filter-bar select { min-width: 0; flex: 1 1 140px; }
@@ -718,13 +718,13 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   /* Form fields: touch friendly */
   .form-field input, .form-field select, .form-field textarea {
   width: 100%; padding: 10px 13px;
-  border: 1.5px solid #2D3748; border-radius: var(--radius);
-  font-size: .9rem; font-family: var(--font-body); color: #E2E8F0;
-  background: #1E2433; outline: none;
+  border: 1.5px solid #CBD5E0; border-radius: var(--radius);
+  font-size: .9rem; font-family: var(--font-body); color: #0F172A;
+  background: #F8FAFC; outline: none;
   transition: border-color .2s, box-shadow .2s;
 }
 .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
-  border-color: var(--accent); background: #1A2035;
+  border-color: var(--accent); background: #FFFFFF;
   box-shadow: 0 0 0 3px rgba(79,134,247,.15);
 }
   .form-row, .form-row.trio { grid-template-columns: 1fr; gap: 12px; }
@@ -860,7 +860,7 @@ thead th {
   color: #94A3B8; text-transform: uppercase; letter-spacing: .06em;
   background: #1E2433; border-bottom: 2px solid var(--mist-2); white-space: nowrap;
 }
-tbody tr { border-bottom: 1px solid #2D3748; transition: background .12s; }
+tbody tr { border-bottom: 1px solid #E2E8F0; transition: background .12s; }
 tbody tr:hover { background: #1E2433; }
 tbody td { padding: 11px 14px; vertical-align: middle; }
 tbody tr:last-child { border-bottom: none; }
@@ -888,7 +888,7 @@ tbody tr:last-child { border-bottom: none; }
 .badge-red { background: var(--red-l); color: var(--red); }
 .badge-purple { background: var(--purple-l); color: var(--purple); }
 .badge-teal { background: var(--teal-l); color: var(--teal); }
-.badge-gray { background: #252D3D; color: #94A3B8; }
+.badge-gray { background: #F1F5F9; color: #475569; }
 
 /* ── ACTIVITY TYPE CHIPS ────────────────────────────────────── */
 .act-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; font-size: .78rem; font-weight: 700; }
@@ -973,7 +973,7 @@ tbody tr:last-child { border-bottom: none; }
 .perf-bar-val { font-size: .78rem; font-weight: 700; color: #E2E8F0; width: 28px; text-align: right; font-family: var(--font-mono); }
 
 /* ── TABS ────────────────────────────────────────────────────── */
-.tabs { display: flex; gap: 4px; background: #1E2433; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+.tabs { display: flex; gap: 4px; background: #E2E8F0; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
 .tab-btn {
   flex: 1; padding: 8px 14px; border: none; border-radius: 7px; cursor: pointer;
   font-size: .85rem; font-weight: 600; color: #94A3B8; background: transparent;
@@ -1030,9 +1030,9 @@ tbody tr:last-child { border-bottom: none; }
 
 /* ── SEARCH / FILTER BAR ────────────────────────────────────── */
 .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
-.filter-bar input { flex: 1; min-width: 200px; padding: 9px 14px; border: 1.5px solid #2D3748; border-radius: 8px; font-size: .9rem; background: #1E2433; color: #E2E8F0; outline: none; }
+.filter-bar input { flex: 1; min-width: 200px; padding: 9px 14px; border: 1.5px solid #CBD5E0; border-radius: 8px; font-size: .9rem; background: #F8FAFC; color: #0F172A; outline: none; }
 .filter-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
-.filter-bar select { padding: 9px 12px; border: 1.5px solid #2D3748; border-radius: 8px; font-size: .88rem; background: #1E2433; color: #E2E8F0; outline: none; cursor: pointer; }
+.filter-bar select { padding: 9px 12px; border: 1.5px solid #CBD5E0; border-radius: 8px; font-size: .88rem; background: #F8FAFC; color: #0F172A; outline: none; cursor: pointer; }
 
 /* ── EMPTY STATE ────────────────────────────────────────────── */
 .empty-state { text-align: center; padding: 56px 20px; color: #94A3B8; }
@@ -3617,7 +3617,7 @@ function buildCatTeamSelect(socId, selectedIds) {
     ? S.teams.filter(t => t.societyId === socId)
     : S.teams;
   if (!teams.length) return '<div style="font-size:.82rem;color:var(--ink-3)">Nessuna squadra per questa società</div>';
-  return `<select id="cat-team-multi" multiple style="height:90px;border:1.5px solid var(--mist-3);border-radius:8px;padding:4px 6px;font-size:.88rem;background:var(--mist);width:100%">
+  return `<select id="cat-team-multi" multiple style="height:90px;border:1.5px solid var(--mist-3);border-radius:8px;padding:4px 6px;font-size:.88rem;background:#F8FAFC;width:100%">
     ${teams.map(t=>`<option value="${t.id}" ${(selectedIds||[]).includes(t.id)?'selected':''}>${esc(t.name)}</option>`).join('')}
   </select>`;
 }
@@ -3651,7 +3651,7 @@ function openCategoryModal(id) {
   });
 
   const multiSel = (elemId, users, selectedIds) =>
-    `<select id="${elemId}" multiple style="height:90px;background:var(--mist);font-size:.85rem">
+    `<select id="${elemId}" multiple style="height:90px;background:#F8FAFC;font-size:.85rem">
       ${users.map(u=>`<option value="${u.id}" ${(selectedIds||[]).includes(u.id)?'selected':''}>${esc(u.name)} (${esc(u.username)})</option>`).join('')}
     </select><span class="text-muted text-sm">Ctrl/Cmd per multipli</span>`;
 
@@ -3752,7 +3752,7 @@ function openCategoryStaffModal(catId) {
     const rd = ROLES[role]||{};
     const cls = {responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal'}[role]||'badge-gray';
     if (!users.length) return `<div class="text-muted text-sm" style="padding:8px">Nessun ${rd.label||role} registrato</div>`;
-    return `<select id="${elemId}" multiple style="width:100%;min-height:80px;max-height:120px;padding:4px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.85rem;background:var(--mist)">
+    return `<select id="${elemId}" multiple style="width:100%;min-height:80px;max-height:120px;padding:4px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.85rem;background:#F8FAFC">
       ${users.map(u=>`<option value="${u.id}" ${(selectedIds||[]).includes(u.id)?'selected':''}>${esc(u.name)} — ${esc(u.profession||'')}</option>`).join('')}
     </select>`;
   };
@@ -3979,7 +3979,7 @@ function buildUserCatSelector(userId, role) {
           <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
             🏛️ Società Associata
           </div>
-          <select id="usr-cats" style="width:100%;padding:8px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:var(--mist)">
+          <select id="usr-cats" style="width:100%;padding:8px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:#F8FAFC">
             <option value="">— Nessuna —</option>
             ${S.societies.map(s => `<option value="${s.id}" ${currentSocId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
           </select>
@@ -4001,7 +4001,7 @@ function buildUserCatSelector(userId, role) {
           <div class="highlight-box" style="margin-bottom:10px;padding:8px 12px;font-size:.8rem">
             Il genitore potrà vedere presenze, performance e convocazioni dell'atleta selezionato.
           </div>
-          <select id="usr-cats" multiple style="width:100%;min-height:100px;max-height:160px;padding:6px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:var(--mist)">
+          <select id="usr-cats" multiple style="width:100%;min-height:100px;max-height:160px;padding:6px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:#F8FAFC">
             ${(()=>{
               const adminSocId = currentUser?.societyId;
               const visibleAths = adminSocId
@@ -4030,7 +4030,7 @@ function buildUserCatSelector(userId, role) {
         📋 ${roleInfo.label}
       </div>
       <div class="highlight-box" style="margin-bottom:10px;padding:8px 12px;font-size:.8rem">${roleInfo.note}</div>
-      <select id="usr-cats" multiple style="width:100%;min-height:100px;max-height:160px;padding:6px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:var(--mist)">
+      <select id="usr-cats" multiple style="width:100%;min-height:100px;max-height:160px;padding:6px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:#F8FAFC">
         ${(()=>{
           // Filtra categorie per società dell'admin corrente (se non super-admin)
           const adminSocId = currentUser?.societyId;
@@ -4206,7 +4206,7 @@ function openUserModal(id) {
     <div class="form-row">
       <div class="form-field">
         <label>Username (parte prima della @)</label>
-        <input id="usr-uname" value="${esc(u?.username||'')}" placeholder="mario.rossi" ${u?'readonly style="background:var(--mist);color:var(--ink-3)"':''}>
+        <input id="usr-uname" value="${esc(u?.username||'')}" placeholder="mario.rossi" ${u?'readonly style="background:#F8FAFC;color:var(--ink-3)"':''}>
         ${u ? '<div style="font-size:.72rem;color:var(--ink-3);margin-top:3px">Lo username non può essere modificato dopo la creazione.</div>' : '<div style="font-size:.72rem;color:var(--ink-3);margin-top:3px">Email di accesso: <strong id="usr-email-preview">…@sporttrackpro.it</strong></div>'}
       </div>
       <div class="form-field">
@@ -4473,7 +4473,7 @@ function buildActivitiesConfig() {
   ).join('');
 
   const perfRows = perfPs.map(({key,label}) =>
-    `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--mist);border-radius:8px;margin-bottom:6px" id="perf-row-${key}">
+    `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#F8FAFC;border-radius:8px;margin-bottom:6px" id="perf-row-${key}">
       <span style="font-family:monospace;font-size:.8rem;color:var(--ink-3);min-width:80px">${esc(key)}</span>
       <input id="perf-label-${key}" value="${esc(label)}" style="flex:1;padding:5px 10px;border:1px solid var(--mist-3);border-radius:6px;font-size:.88rem" placeholder="Etichetta">
       <button class="btn btn-danger btn-sm" onclick="deletePerfParam('${key}')">🗑️</button>
@@ -4869,12 +4869,12 @@ viewBuilders['category-home'] = (el) => {
     </div>
 
     <!-- Tab-bar azioni -->
-    <div style="background:#161B27;border:1px solid #2D3748;border-radius:var(--radius-lg);padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-      <button class="btn btn-ghost btn-sm" onclick="showView('athletes')" style="background:#1E2433;border-color:#2D3748">👥 ${canEditCat?'Gestisci':'Visualizza'} Atleti</button>
-      <button class="btn btn-ghost btn-sm" onclick="showView('matches')" style="background:#1E2433;border-color:#2D3748">⚽ Partite</button>
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:var(--radius-lg);padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+      <button class="btn btn-ghost btn-sm" onclick="showView('athletes')" style="background:#F8FAFC;border-color:#CBD5E0">👥 ${canEditCat?'Gestisci':'Visualizza'} Atleti</button>
+      <button class="btn btn-ghost btn-sm" onclick="showView('matches')" style="background:#F8FAFC;border-color:#CBD5E0">⚽ Partite</button>
       ${canSess ? `<button class="btn btn-accent btn-sm" onclick="openNewSessionModal()">+ Nuova Sessione</button>` : ''}
-      ${currentUser.role==='responsabile' ? `<button class="btn btn-ghost btn-sm" onclick="showView('admin-society')" style="background:#1E2433;border-color:#2D3748">🏛️ Vista Società</button>` : ''}
-      <button class="btn btn-ghost btn-sm" onclick="showView('cat-dashboard')" style="background:#1E2D4A;border-color:var(--accent);color:var(--accent);margin-left:auto">📊 Dashboard</button>
+      ${currentUser.role==='responsabile' ? `<button class="btn btn-ghost btn-sm" onclick="showView('admin-society')" style="background:#F8FAFC;border-color:#CBD5E0">🏛️ Vista Società</button>` : ''}
+      <button class="btn btn-ghost btn-sm" onclick="showView('cat-dashboard')" style="background:#EBF5FF;border-color:var(--accent);color:var(--accent);margin-left:auto">📊 Dashboard</button>
     </div>
 
     ${(()=>{const ms=getCategoryMatchStats(selectedCategoryId);return ms.played>0?`
@@ -5132,7 +5132,7 @@ function buildAthleteModalHtml(id, catId, a) {
       
     </div>
 
-    <div style="background:var(--mist);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+    <div style="background:#F8FAFC;border-radius:10px;padding:14px 16px;margin-bottom:16px">
       <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">📋 Assegnazione</div>
       <div class="form-row" style="margin-bottom:0">
         <div class="form-field">
@@ -5333,7 +5333,7 @@ viewBuilders['sessions'] = (el) => {
 
   el.innerHTML = `
     <!-- ── FILTRI SESSIONI ────────────────────────────────── -->
-    <div style="background:#161B27;border:1px solid #2D3748;border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:none">
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,.06);box-shadow:none">
       <span style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🔍 Filtri</span>
 
       <div class="form-field" style="margin:0;min-width:130px;flex:1">
@@ -5607,7 +5607,7 @@ function buildSessionEditView(el, sessId) {
           </div>
           <div style="margin-top:12px">
             <div style="font-size:.78rem;color:var(--ink-3);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">📝 Note atleta</div>
-            <input type="text" id="note-${ath.id}" value="${esc(notes)}" placeholder="Note sulla prestazione..." style="width:100%;padding:8px 10px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem${sessRO?';background:var(--mist);color:var(--ink-3);':''}" ${sessRO?'readonly disabled':''}  data-sessid="${sessId}" data-athid="${ath.id}" data-ro="${sessRO?'1':''}" onchange="if(!this.dataset.ro)setAttNote(this.dataset.sessid,this.dataset.athid,this.value)">
+            <input type="text" id="note-${ath.id}" value="${esc(notes)}" placeholder="Note sulla prestazione..." style="width:100%;padding:8px 10px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem${sessRO?';background:#F8FAFC;color:var(--ink-3);':''}" ${sessRO?'readonly disabled':''}  data-sessid="${sessId}" data-athid="${ath.id}" data-ro="${sessRO?'1':''}" onchange="if(!this.dataset.ro)setAttNote(this.dataset.sessid,this.dataset.athid,this.value)">
           </div>
         </div>
       </div>`;
@@ -5696,7 +5696,7 @@ function buildCategoryDashboardView(el, catId) {
 
   const filterHtml = `
     <select onchange="window._dashSeas=this.value;buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
-      style="padding:5px 10px;border:1.5px solid #2D3748;border-radius:8px;font-size:.82rem;font-weight:600;background:#1E2433;color:#E2E8F0;cursor:pointer;outline:none;">
+      style="padding:5px 10px;border:1.5px solid #2D3748;border-radius:8px;font-size:.82rem;font-weight:600;background:#F8FAFC;color:#0F172A;cursor:pointer;outline:none;border:1.5px solid #CBD5E0;">
       ${allSeasons.slice().reverse().map(s=>`<option value="${s.id}" ${s.id===filterSeasId?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
     </select>
     ${multiTeam ? catTeams.map(t=>`
@@ -5829,7 +5829,7 @@ function buildCategoryDashboardView(el, catId) {
                 <span style="font-size:.78rem;color:var(--ink-3)">diff. ${gdSign}${tMs.gd}</span>
               </div>`;
             })()}
-            ${topAth ? `<div style="margin-top:8px;padding:6px 10px;background:var(--mist);border-radius:8px;font-size:.78rem">
+            ${topAth ? `<div style="margin-top:8px;padding:6px 10px;background:#F8FAFC;border-radius:8px;font-size:.78rem">
               🏆 Migliore: <b>${esc(topAth.a.lastName)} ${esc(topAth.a.firstName)}</b> — ${topAth.pr}%
             </div>` : ''}
             <div style="margin-top:8px;font-size:.75rem;color:var(--accent);text-align:right;font-weight:600">Dettaglio →</div>
@@ -6023,7 +6023,7 @@ viewBuilders['athlete-profile'] = (el) => {
           <span class="badge badge-red">${ass} assenze</span>
           <span class="badge badge-gold">${giust} giust.</span>
         </div>
-        ${ath.notes?`<div style="margin-top:12px;padding:10px 14px;background:var(--mist);border-radius:8px;font-size:.88rem;color:var(--ink-3)">📝 ${esc(ath.notes)}</div>`:''}
+        ${ath.notes?`<div style="margin-top:12px;padding:10px 14px;background:#F8FAFC;border-radius:8px;font-size:.88rem;color:var(--ink-3)">📝 ${esc(ath.notes)}</div>`:''}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${canEdit(ath.categoryId) ? `<button class="btn btn-ghost" onclick="openAthleteModal('${id}')">✏️ Modifica</button>` : ''}
@@ -6151,7 +6151,7 @@ function buildSocDashContent(socId) {
           const teamCats = cats.filter(c=>c.teamId===team.id);
           const teamMs = getMultiCatMatchStats(teamCats.map(c=>c.id));
           const hasMs = teamMs.played > 0;
-          return `<div style="margin-bottom:16px;padding:14px;background:var(--mist);border-radius:10px">
+          return `<div style="margin-bottom:16px;padding:14px;background:#F8FAFC;border-radius:10px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
               <div class="fw-700">${esc(team.name)}</div>
               ${hasMs ? `<div style="display:flex;gap:8px;font-size:.78rem">
@@ -6485,12 +6485,12 @@ viewBuilders['export'] = (el) => {
       <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">💾</div>Backup & Ripristino Dati <span class="badge badge-blue" style="margin-left:8px">Cambia browser / dispositivo</span></div>
       <p class="text-muted text-sm" style="margin-bottom:20px">Esporta tutti i dati in un file <b>.json</b> per fare un backup o per trasferirli su un altro browser o dispositivo. Importa il file per ripristinare tutto.</p>
       <div class="grid-2" style="gap:16px">
-        <div style="background:var(--mist);border-radius:12px;padding:20px">
+        <div style="background:#F8FAFC;border-radius:12px;padding:20px">
           <div class="fw-700" style="margin-bottom:6px;font-size:.95rem">📤 Esporta Backup</div>
           <p class="text-muted text-sm" style="margin-bottom:14px">Scarica un file <b>backup_sporttrack.json</b> con tutti i tuoi dati (atleti, sessioni, presenze, performance, configurazioni).</p>
           <button class="btn btn-accent w-full" onclick="exportBackupJSON()">💾 Scarica Backup JSON</button>
         </div>
-        <div style="background:var(--mist);border-radius:12px;padding:20px">
+        <div style="background:#F8FAFC;border-radius:12px;padding:20px">
           <div class="fw-700" style="margin-bottom:6px;font-size:.95rem">📥 Importa Backup</div>
           <p class="text-muted text-sm" style="margin-bottom:14px">Carica un file <b>.json</b> precedentemente esportato per ripristinare tutti i dati su questo browser.</p>
           <label style="display:block;width:100%;background:var(--green);color:white;text-align:center;padding:9px 16px;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;transition:background .2s" onmouseenter="this.style.background='#047857'" onmouseleave="this.style.background='var(--green)'">
@@ -7293,7 +7293,7 @@ viewBuilders['matches'] = (el) => {
 
   el.innerHTML = `
     <!-- ── FILTRI PARTITE ─────────────────────────────────── -->
-    <div style="background:#161B27;border:1px solid #2D3748;border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:none">
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,.06);box-shadow:none">
       <span style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🔍 Filtri</span>
 
       <div class="form-field" style="margin:0;min-width:130px;flex:1">
@@ -7422,7 +7422,7 @@ function openMatchModal(id) {
     </div>
 
     <!-- Contesto: categoria + squadra -->
-    <div style="background:var(--mist);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+    <div style="background:#F8FAFC;border-radius:10px;padding:12px 14px;margin-bottom:14px">
       <div style="font-size:.73rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📋 Contesto Partita</div>
       <div class="form-row" style="margin:0">
         <div class="form-field" style="margin:0">
@@ -7724,7 +7724,7 @@ viewBuilders['convocati'] = (el) => {
         <button class="att-cell ${attSt==='G'?'att-G':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${m.linkedSessionId}" data-athid="${ath.id}" data-st="G" onclick="attClick(this)" title="Giustificato">G</button>
       </div>` : ''}` : ''}
       <input type="text" placeholder="Note..." value="${esc(cv?.notes||'')}"
-        style="width:90px;font-size:.75rem;padding:3px 6px;border:1px solid var(--mist-3);border-radius:6px;${canEdit?'':'background:var(--mist)'}"
+        style="width:90px;font-size:.75rem;padding:3px 6px;border:1px solid var(--mist-3);border-radius:6px;${canEdit?'':'background:#F8FAFC'}"
         ${canEdit ? `data-matchid="${matchId}" data-athid="${ath.id}" onchange="setCvNoteInline(this)"` : 'readonly'}>
     </div>`;
   };
@@ -7765,7 +7765,7 @@ viewBuilders['convocati'] = (el) => {
     ${!m.linkedSessionId ? `<div class="warning-box" style="margin-bottom:14px">⚠️ Questa partita non ha una sessione collegata. <button class="btn btn-ghost btn-sm" onclick="createLinkedSession('${matchId}')">🔗 Crea sessione ora</button></div>` : ''}
 
     ${canMgr ? `
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:var(--mist);border-radius:10px;align-items:center">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:#F8FAFC;border-radius:10px;align-items:center">
       <span style="font-size:.82rem;font-weight:600;color:var(--ink-3)">Azioni rapide:</span>
       <button class="btn btn-ghost btn-sm" onclick="convocaTutti('${matchId}')">✅ Convoca tutti</button>
       <button class="btn btn-ghost btn-sm" onclick="resetConvocati('${matchId}')">🔄 Reset convocazioni</button>
@@ -8008,7 +8008,7 @@ function openSeasonManagementModal() {
 function buildSeasonsListHtml(seasons) {
   if (!seasons.length) return '<div class="text-muted text-sm">Nessuna stagione</div>';
   return seasons.map(s => `
-    <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:var(--mist);margin-bottom:6px">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:#F8FAFC;margin-bottom:6px">
       <div style="flex:1">
         <span class="fw-700">${esc(s.name)}</span>
         ${s.active ? '<span class="season-badge season-active-badge" style="margin-left:8px">★ Attiva</span>' : ''}
@@ -8656,7 +8656,7 @@ function openSessionPerfConfig(typeKey) {
 
   // Build checkboxes without nested template literals
   const checkboxRows = allParams.map(({key, label}) =>
-    '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--mist);border-radius:8px;cursor:pointer">' +
+    '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F8FAFC;border-radius:8px;cursor:pointer">' +
     '<input type="checkbox" id="stp-' + key + '" value="' + key + '" ' + (current.includes(key) ? 'checked' : '') +
     ' style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">' +
     '<span class="fw-600">' + esc(label) + '</span>' +
