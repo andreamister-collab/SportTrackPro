@@ -5760,12 +5760,12 @@ function buildCategoryDashboardView(el, catId) {
 
     ${(()=>{
       const ms = getCategoryMatchStats(catId, filterTeamId||undefined);
-      if (!ms.played) return '';
+      if (!ms.total) return '';
       const gdSign = ms.gd >= 0 ? '+' : '';
       return `
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card green"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${ms.pts}</div><div class="sub">${ms.w}V ${ms.d}P ${ms.l}S</div></div>
-      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${ms.played}</div><div class="sub">giocate</div></div>
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${ms.played}</div><div class="sub">${ms.total > ms.played ? `${ms.total - ms.played} da giocare` : 'giocate'}</div></div>
       <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${ms.gf}</div><div class="sub">media ${ms.played ? (ms.gf/ms.played).toFixed(1) : 0}/partita</div></div>
       <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${ms.gs}</div><div class="sub">diff. ${gdSign}${ms.gd}</div></div>
     </div>`;
@@ -6133,12 +6133,12 @@ function buildSocDashContent(socId) {
     ${(()=>{
       const catIds = cats.map(c=>c.id);
       const ms = getMultiCatMatchStats(catIds);
-      if (!ms.played) return '';
+      if (!ms.total) return '';
       const gdSign = ms.gd >= 0 ? '+' : '';
       return `<div class="stats-grid" style="margin-bottom:20px">
         <div class="stat-card green"><div class="accent-bar"></div><div class="label">Punti Totali</div><div class="value">${ms.pts}</div><div class="sub">${ms.w}V ${ms.d}P ${ms.l}S</div></div>
-        <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${ms.played}</div><div class="sub">giocate</div></div>
-        <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${ms.gf}</div><div class="sub">media ${(ms.gf/ms.played).toFixed(1)}/partita</div></div>
+        <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${ms.played}</div><div class="sub">${ms.total > ms.played ? `${ms.total - ms.played} da giocare` : 'giocate'}</div></div>
+        <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${ms.gf}</div><div class="sub">media ${ms.played ? (ms.gf/ms.played).toFixed(1) : 0}/partita</div></div>
         <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${ms.gs}</div><div class="sub">diff. ${gdSign}${ms.gd}</div></div>
       </div>`;
     })()}
@@ -8952,27 +8952,29 @@ function getMatchPoints(result) {
 }
 
 function getCategoryMatchStats(catId, teamId) {
-  let ms = S.matches.filter(m => m.categoryId === catId && m.result !== 'TBD');
-  if (teamId) ms = ms.filter(m => m.teamId === teamId);
-  const pts  = ms.reduce((s,m) => s + getMatchPoints(m.result), 0);
-  const gf   = ms.reduce((s,m) => s + (m.scoredGoals||0), 0);
-  const gs   = ms.reduce((s,m) => s + (m.concededGoals||0), 0);
-  const w    = ms.filter(m=>m.result==='W').length;
-  const d    = ms.filter(m=>m.result==='D').length;
-  const l    = ms.filter(m=>m.result==='L').length;
-  return { played: ms.length, w, d, l, pts, gf, gs, gd: gf-gs };
+  let ms = S.matches.filter(m => m.categoryId === catId);
+  if (teamId) ms = ms.filter(m => m.teamId === teamId || (!m.teamId));
+  const played = ms.filter(m => m.result && m.result !== 'TBD');
+  const pts  = played.reduce((s,m) => s + getMatchPoints(m.result), 0);
+  const gf   = played.reduce((s,m) => s + (m.scoredGoals||0), 0);
+  const gs   = played.reduce((s,m) => s + (m.concededGoals||0), 0);
+  const w    = played.filter(m=>m.result==='W').length;
+  const d    = played.filter(m=>m.result==='D').length;
+  const l    = played.filter(m=>m.result==='L').length;
+  return { played: played.length, total: ms.length, w, d, l, pts, gf, gs, gd: gf-gs };
 }
 
 // Statistiche partite aggregate per una lista di categorie (usato in dashboard società)
 function getMultiCatMatchStats(catIds) {
-  const ms = S.matches.filter(m => catIds.includes(m.categoryId) && m.result !== 'TBD');
-  const pts = ms.reduce((s,m) => s + getMatchPoints(m.result), 0);
-  const gf  = ms.reduce((s,m) => s + (m.scoredGoals||0), 0);
-  const gs  = ms.reduce((s,m) => s + (m.concededGoals||0), 0);
-  const w   = ms.filter(m=>m.result==='W').length;
-  const d   = ms.filter(m=>m.result==='D').length;
-  const l   = ms.filter(m=>m.result==='L').length;
-  return { played: ms.length, w, d, l, pts, gf, gs, gd: gf-gs };
+  const ms = S.matches.filter(m => catIds.includes(m.categoryId));
+  const played = ms.filter(m => m.result && m.result !== 'TBD');
+  const pts = played.reduce((s,m) => s + getMatchPoints(m.result), 0);
+  const gf  = played.reduce((s,m) => s + (m.scoredGoals||0), 0);
+  const gs  = played.reduce((s,m) => s + (m.concededGoals||0), 0);
+  const w   = played.filter(m=>m.result==='W').length;
+  const d   = played.filter(m=>m.result==='D').length;
+  const l   = played.filter(m=>m.result==='L').length;
+  return { played: played.length, total: ms.length, w, d, l, pts, gf, gs, gd: gf-gs };
 }
 
 
