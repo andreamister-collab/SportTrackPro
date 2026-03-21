@@ -4,18 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0D1117">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="SportTrack">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="SportTrack Pro">
-<link rel="manifest" href="manifest.json">
+
 <link rel="apple-touch-icon" href="data:image/png;base64,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">
 <meta name="apple-mobile-web-app-title" content="SportTrack">
 <title>SportTrack Pro — Gestione Società Sportiva</title>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-title" content="SportTrack">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1150,7 +1143,6 @@ hr { border: none; border-top: 1px solid #2D3748; margin: 16px 0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
 <!-- ═══════════════════════════════════════════════════════════════
   SUPABASE CLIENT
@@ -1382,7 +1374,8 @@ const DB = {
       meet_time: m.meetTime||null, meet_place: m.meetPlace||null,
       opponent: m.opponent||'', home_away: m.homeAway||'home',
       result: m.result||'TBD', scored: m.scoredGoals||0, conceded: m.concededGoals||0,
-      notes: m.notes||'', bg_color: m.bgColor||'#1A3A5C', created_by: m.createdBy||null
+      notes: m.notes||'', bg_color: m.bgColor||'#1A3A5C', created_by: m.createdBy||null,
+      society_id: m.societyId || null
     });
   },
 
@@ -1655,9 +1648,18 @@ async function loadStateFromDB() {
     S.sessions       = data.sessions       || [];
     S.attendances    = data.attendances    || [];
     S.performances   = data.performances   || [];
-    S.matches        = data.matches        || [];
     S.convocati      = data.convocati      || [];
     S.scorers        = data.scorers        || [];
+
+    // Filtra matches per society_id dell'utente corrente
+    // Se l'admin non ha societyId → vede tutte; altrimenti filtra per la sua società
+    const userSocId = currentUser?.societyId || null;
+    const accCatIds = new Set((data.categories || [])
+      .filter(c => !userSocId || c.societyId === userSocId)
+      .map(c => c.id));
+    S.matches = (data.matches || []).filter(m =>
+      !userSocId || m.societyId === userSocId || accCatIds.has(m.categoryId)
+    );
     S.activeSeason   = data.activeSeason;
     S.staffHistory   = data.staffHistory   || [];
     // Carica configurazioni locali da tabella config
@@ -2675,7 +2677,6 @@ function buildTopNav() {
         dItem('🔧','Impostazioni',`showAdminConfig('settings')`) +
         dItem('📤','Esporta Excel',`showView('export')`) +
         '<div class="dropdown-divider"></div>' +
-        dItem('📲','Installa App',`showAdminConfig('settings');setTimeout(()=>showInstallQR(),200)`) +
         dItem('🗑️','Reset Demo',`if(confirm('Reset tutti i dati?'))resetState()`, true)
       ) +
       catActionsDropdown;
@@ -2698,9 +2699,6 @@ function buildTopNav() {
         mItem('📆','Stagioni',`showAdminConfig('seasons')`) +
         mItem('🔧','Impostazioni',`showAdminConfig('settings')`) +
         mItem('📤','Esporta Excel',`showView('export')`)
-      ) +
-      mSection('📲 App',
-        mItem('📲','Installa App sul Cellulare',`showAdminConfig('settings');setTimeout(()=>showInstallQR(),200)`)
       ) +
       catActionsMobile;
   } else {
@@ -2939,7 +2937,7 @@ const TABLE_REAL_COLUMNS = {
   sessions:        ['id','category_id','date','type','notes','match_id','created_by'],
   attendances:     ['id','session_id','athlete_id','status'],
   performances:    ['id','session_id','athlete_id','params','notes'],
-  matches:         ['id','category_id','date','time','meet_time','meet_place','opponent','home_away','result','scored','conceded','notes','bg_color','created_by'],
+  matches:         ['id','category_id','date','time','meet_time','meet_place','opponent','home_away','result','scored','conceded','notes','bg_color','created_by','society_id'],
   convocati:       ['id','match_id','athlete_id','status','notes'],
   scorers:         ['id','match_id','athlete_id','goals','notes'],
   config:          ['key','value'],
@@ -4773,38 +4771,7 @@ function buildRolesConfig() {
 }
 
 function buildSettingsConfig() {
-  setTimeout(() => _refreshPwaSection(), 50);
   return `
-    <div class="card" style="margin-bottom:20px">
-      <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">📲</div>Installa App SportTrack Pro</div>
-      <p style="color:var(--ink-3);font-size:.88rem;margin-bottom:16px">
-        Installa SportTrack Pro come app sul dispositivo: si apre senza browser,
-        ha icona sulla schermata Home, funziona offline e ha un aspetto nativo.
-      </p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--mist-2);border-radius:10px">
-          <span style="font-size:1.3rem">⚡</span><div style="font-size:.8rem"><div style="font-weight:700">Veloce</div><div style="color:var(--ink-3)">Avvio istantaneo</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--mist-2);border-radius:10px">
-          <span style="font-size:1.3rem">📶</span><div style="font-size:.8rem"><div style="font-weight:700">Offline</div><div style="color:var(--ink-3)">Senza connessione</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--mist-2);border-radius:10px">
-          <span style="font-size:1.3rem">📱</span><div style="font-size:.8rem"><div style="font-weight:700">Nativo</div><div style="color:var(--ink-3)">Schermata Home</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--mist-2);border-radius:10px">
-          <span style="font-size:1.3rem">🔒</span><div style="font-size:.8rem"><div style="font-weight:700">Sicuro</div><div style="color:var(--ink-3)">Dati protetti</div></div>
-        </div>
-      </div>
-      <div id="pwa-install-section">${_buildPwaInstallHtml()}</div>
-
-      <!-- Pulsante QR sempre visibile -->
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--mist-3)">
-        <button class="btn btn-ghost" onclick="showInstallQR()" style="width:100%;justify-content:center;gap:10px">
-          📷 Genera QR Code per installazione da cellulare
-        </button>
-      </div>
-    </div>
-
     <div class="card">
       <div class="card-title"><div class="icon" style="background:var(--mist-2)">⚙️</div>Impostazioni Generali</div>
       <div class="highlight-box"><b>ℹ️ Parametri di Performance:</b> I parametri tecnica, fisico, tattica, mentale e comunicazione sono registrati per ogni atleta in ogni sessione. Vengono visualizzati nei profili atleta e nelle dashboard.</div>
@@ -7585,12 +7552,14 @@ function saveMatch(id) {
     if (!catId) { toast('Seleziona una categoria','error'); return; }
     const mid    = uid();
     const sessId = uid();
+    const catSocId = S.categories.find(c=>c.id===catId)?.societyId || currentUser.societyId || null;
     const sessNotes = 'Partita vs ' + opponent + (notes ? ' — ' + notes : '');
     S.sessions.push({ id: sessId, categoryId: catId, date, type: 'P',
-      notes: sessNotes, createdBy: currentUser.id, matchId: mid });
+      notes: sessNotes, createdBy: currentUser.id, matchId: mid, societyId: catSocId });
     S.matches.push({ id: mid, opponent, homeAway, date, time, meetTime, meetPlace,
       result, scoredGoals:gf, concededGoals:gs, notes, bgColor,
-      categoryId: catId, teamId: teamId||undefined, createdBy: currentUser.id, sessionId: sessId });
+      categoryId: catId, teamId: teamId||undefined, createdBy: currentUser.id,
+      sessionId: sessId, societyId: catSocId });
     // Sync filter state
     if (!window._matchState) window._matchState = {};
     window._matchState.catId  = catId;
@@ -9566,234 +9535,6 @@ function startBackgroundSync() {
 
 
 </script>
-<script>
-// ── PWA: Service Worker + Banner installazione ────────────────
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(r => console.log('[PWA] SW registrato:', r.scope))
-      .catch(e => console.warn('[PWA] SW errore:', e));
-  });
-}
 
-let _pwaPrompt = null;
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  _pwaPrompt = e;
-  // Aggiorna il pulsante nella sezione PWA se è visibile
-  _refreshPwaSection();
-  setTimeout(() => {
-    if (_pwaPrompt && document.getElementById('app')?.classList.contains('visible')) {
-      _showPwaBanner();
-    }
-  }, 3000);
-});
-
-function _refreshPwaSection() {
-  const el = document.getElementById('pwa-install-section');
-  if (!el) return;
-  el.innerHTML = _buildPwaInstallHtml();
-}
-
-function showInstallQR() {
-  const url = window.location.origin + window.location.pathname;
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isAndroid = /Android/.test(navigator.userAgent);
-
-  openModal(`
-    <div class="modal-header" style="text-align:center">
-      <h3>📲 Installa SportTrack Pro</h3>
-    </div>
-    <div style="text-align:center;margin-bottom:16px">
-      <p style="color:var(--ink-3);font-size:.88rem">Scansiona il QR con il cellulare per aprire il sito e installare l'app</p>
-    </div>
-
-    <!-- QR Code canvas -->
-    <div style="display:flex;justify-content:center;margin-bottom:20px">
-      <div style="background:white;padding:16px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.3)">
-        <canvas id="qr-canvas"></canvas>
-      </div>
-    </div>
-
-    <!-- URL copiabile -->
-    <div style="display:flex;align-items:center;gap:8px;background:var(--mist-2);border-radius:10px;padding:10px 14px;margin-bottom:16px">
-      <span style="flex:1;font-size:.82rem;font-family:var(--font-mono);color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${url}</span>
-      <button onclick="navigator.clipboard.writeText('${url}').then(()=>toast('Link copiato!','success'))" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:600;cursor:pointer;flex-shrink:0">Copia</button>
-    </div>
-
-    <!-- Istruzioni per dispositivo -->
-    <div style="background:var(--mist-2);border-radius:12px;padding:14px 16px;margin-bottom:16px">
-      <div style="font-weight:700;font-size:.88rem;margin-bottom:10px;color:var(--ink)">
-        ${isIOS ? '📱 iPhone / iPad (Safari)' : isAndroid ? '🤖 Android (Chrome)' : '📱 Come installare sul cellulare'}
-      </div>
-      ${isIOS ? `
-      <div style="font-size:.82rem;color:var(--ink-2);line-height:1.9">
-        <div>1. Scansiona il QR con la fotocamera</div>
-        <div>2. Apri il link in <b>Safari</b></div>
-        <div>3. Tocca <b>Condividi ⎋</b> → <b>"Aggiungi a schermata Home"</b></div>
-        <div>4. Tocca <b>"Aggiungi"</b> in alto a destra</div>
-      </div>` : isAndroid ? `
-      <div style="font-size:.82rem;color:var(--ink-2);line-height:1.9">
-        <div>1. Scansiona il QR con la fotocamera</div>
-        <div>2. Apri il link in <b>Chrome</b></div>
-        <div>3. Tocca il menu <b>⋮</b> → <b>"Installa app"</b></div>
-        <div>4. Conferma toccando <b>"Installa"</b></div>
-      </div>` : `
-      <div style="font-size:.82rem;color:var(--ink-2);line-height:1.9">
-        <div><b>iPhone/iPad:</b> Apri in Safari → Condividi ⎋ → Aggiungi a schermata Home</div>
-        <div style="margin-top:6px"><b>Android:</b> Apri in Chrome → menu ⋮ → Installa app</div>
-      </div>`}
-    </div>
-
-    <!-- Pulsante condividi (se disponibile) -->
-    ${navigator.share ? `
-    <button onclick="navigator.share({title:'SportTrack Pro',text:'Installa SportTrack Pro sul tuo cellulare',url:'${url}'}).catch(()=>{})" 
-      style="width:100%;padding:12px;background:var(--green);color:white;border:none;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:var(--font-head);margin-bottom:8px">
-      📤 Condividi link via WhatsApp / SMS
-    </button>` : ''}
-
-    <button onclick="closeModal()" class="btn btn-ghost" style="width:100%;justify-content:center">Chiudi</button>
-  `);
-
-  // Genera QR dopo che il modal è nel DOM
-  setTimeout(() => {
-    const canvas = document.getElementById('qr-canvas');
-    if (!canvas) return;
-    if (typeof QRCode !== 'undefined') {
-      QRCode.toCanvas(canvas, url, {
-        width: 200,
-        margin: 1,
-        color: { dark: '#0D1117', light: '#FFFFFF' }
-      }, err => { if (err) console.warn('QR error:', err); });
-    } else {
-      // Fallback: usa API Google Charts se QRCode.js non è caricato
-      const img = document.createElement('img');
-      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}&bgcolor=FFFFFF&color=0D1117`;
-      img.style.cssText = 'width:200px;height:200px;border-radius:4px';
-      canvas.replaceWith(img);
-    }
-  }, 100);
-}
-
-function _buildPwaInstallHtml() {
-  const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isAndroid = /Android/.test(navigator.userAgent);
-
-  if (isInstalled) {
-    return `<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--green-l);border-radius:10px;border:1px solid var(--green)">
-      <span style="font-size:1.6rem">✅</span>
-      <div><div style="font-weight:700;color:var(--green)">App già installata</div>
-      <div style="font-size:.82rem;color:var(--ink-3);margin-top:2px">SportTrack Pro è in esecuzione come app nativa.</div></div>
-    </div>`;
-  }
-
-  let html = '';
-
-  // iOS Safari — nessun beforeinstallprompt, guida manuale
-  if (isIOS) {
-    html += `
-    <div style="background:var(--accent-l);border:1px solid var(--accent);border-radius:10px;padding:16px;margin-bottom:12px">
-      <div style="font-weight:700;color:var(--accent);margin-bottom:10px;font-size:.95rem">📱 Installazione su iPhone / iPad</div>
-      <div style="font-size:.85rem;color:var(--ink-2);line-height:1.8">
-        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
-          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">1</span>
-          <span>Apri questa pagina in <b>Safari</b> (non Chrome)</span>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
-          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">2</span>
-          <span>Tocca il tasto <b>Condividi</b> <b style="font-size:1rem">⎋</b> in fondo allo schermo</span>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
-          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">3</span>
-          <span>Seleziona <b>"Aggiungi alla schermata Home"</b></span>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:10px">
-          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">4</span>
-          <span>Tocca <b>"Aggiungi"</b> in alto a destra</span>
-        </div>
-      </div>
-    </div>`;
-  }
-  // Android con prompt disponibile
-  else if (isAndroid && _pwaPrompt) {
-    html += `
-    <button onclick="_installPwa()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:16px;background:var(--accent);color:white;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-head);box-shadow:0 4px 16px rgba(79,134,247,.4)">
-      <span style="font-size:1.4rem">📲</span> Installa SportTrack Pro
-    </button>`;
-  }
-  // Android senza prompt — guida manuale
-  else if (isAndroid && !_pwaPrompt) {
-    html += `
-    <div style="background:var(--accent-l);border:1px solid var(--accent);border-radius:10px;padding:16px;margin-bottom:12px">
-      <div style="font-weight:700;color:var(--accent);margin-bottom:10px;font-size:.95rem">🤖 Installazione su Android</div>
-      <div style="font-size:.85rem;color:var(--ink-2);line-height:1.8">
-        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
-          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">1</span>
-          <span>Apri questa pagina in <b>Chrome</b></span>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
-          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">2</span>
-          <span>Tocca il menu <b>⋮</b> in alto a destra</span>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:10px">
-          <span style="background:var(--accent);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0">3</span>
-          <span>Seleziona <b>"Installa app"</b> o <b>"Aggiungi a schermata Home"</b></span>
-        </div>
-      </div>
-    </div>`;
-  }
-  // Desktop con prompt disponibile
-  else if (_pwaPrompt) {
-    html += `
-    <button onclick="_installPwa()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:16px;background:var(--accent);color:white;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font-head);box-shadow:0 4px 16px rgba(79,134,247,.4)">
-      <span style="font-size:1.4rem">💻</span> Installa SportTrack Pro
-    </button>`;
-  }
-  // Desktop senza prompt — guida manuale
-  else {
-    html += `
-    <div style="background:var(--mist-2);border:1px solid var(--mist-3);border-radius:10px;padding:16px">
-      <div style="font-weight:700;margin-bottom:10px;font-size:.95rem">💻 Installazione su Desktop (Chrome / Edge)</div>
-      <div style="font-size:.85rem;color:var(--ink-2);line-height:1.8">
-        <div style="margin-bottom:6px">• Cerca l'icona <b>⬇</b> o <b>+</b> nella barra degli indirizzi</div>
-        <div style="margin-bottom:6px">• Oppure menu <b>⋮</b> → <b>"Installa SportTrack Pro"</b></div>
-        <div style="color:var(--ink-3);font-size:.8rem;margin-top:8px">Se non compare, ricarica la pagina o attendi qualche secondo.</div>
-      </div>
-    </div>`;
-  }
-
-  return html;
-}
-
-function _showPwaBanner() {
-  if (document.getElementById('pwa-banner')) return;
-  const b = document.createElement('div');
-  b.id = 'pwa-banner';
-  b.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#161B27;border:1px solid #4F86F7;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:9999;max-width:340px;width:calc(100vw - 32px);font-family:DM Sans,sans-serif';
-  b.innerHTML = '<span style="font-size:1.4rem">📲</span>'
-    + '<div style="flex:1"><div style="font-size:.88rem;font-weight:600;color:#E2E8F0">Installa SportTrack</div>'
-    + '<div style="font-size:.76rem;color:#94A3B8">Aggiungila alla schermata Home</div></div>'
-    + '<button onclick="_installPwa()" style="background:#4F86F7;color:white;border:none;border-radius:8px;padding:8px 12px;font-size:.82rem;font-weight:600;cursor:pointer">Installa</button>'
-    + '<button onclick="document.getElementById(String.fromCharCode(112,119,97,45,98,97,110,110,101,114)).remove()" style="background:none;border:none;color:#94A3B8;cursor:pointer;font-size:1.1rem;padding:4px">&#x2715;</button>';
-  document.body.appendChild(b);
-}
-
-async function _installPwa() {
-  if (!_pwaPrompt) return;
-  _pwaPrompt.prompt();
-  const { outcome } = await _pwaPrompt.userChoice;
-  _pwaPrompt = null;
-  document.getElementById('pwa-banner')?.remove();
-  if (outcome === 'accepted') {
-    toast('✅ SportTrack Pro installata con successo!', 'success');
-    _refreshPwaSection();
-  }
-}
-
-window.addEventListener('appinstalled', () => {
-  document.getElementById('pwa-banner')?.remove();
-});
-</script>
 </body>
 </html>
