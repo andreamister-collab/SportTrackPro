@@ -81,8 +81,8 @@
   #top-bar { padding: 0 10px; min-height: 48px; flex-wrap: wrap; }
   .topbar-title { font-size: .9rem; }
 
-  /* Contenuto scorrevole con padding bottom per bottom-nav */
-  #content-area { padding: 12px 10px 90px; }
+  /* Contenuto scorrevole — padding-bottom gestito da body per bottom-nav */
+  #content-area { padding: 12px 10px 16px; }
 
   /* Stats grid: 2 colonne compatte */
   .stats-grid {
@@ -181,7 +181,7 @@
 
 /* Tablet portrait (481-768px) */
 @media (min-width: 481px) and (max-width: 768px) {
-  #content-area { padding: 16px 14px 80px; }
+  #content-area { padding: 16px 14px 16px; }
   .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .grid-2 { grid-template-columns: 1fr !important; }
   .tabs { overflow-x: auto; flex-wrap: nowrap !important; }
@@ -189,7 +189,7 @@
 
 /* ── RESET ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 15px; -webkit-text-size-adjust: 100%; }
+html { font-size: 15px; -webkit-text-size-adjust: 100%; height: 100%; }
 body { font-family: var(--font-body); background: #0D1117; color: #E2E8F0; min-height: 100vh; overscroll-behavior-y: none; }
 button { cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 input, select, textarea { -webkit-tap-highlight-color: transparent; }
@@ -296,8 +296,17 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 }
 
 /* ── MAIN LAYOUT ────────────────────────────────────────────── */
+/* #app cresce con il contenuto — lo scroll avviene su body */
 #app { display: none; min-height: 100vh; flex-direction: column; }
 #app.visible { display: flex; }
+
+/* Main content cresce con il contenuto */
+#main-content, .main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* NON mettere overflow qui: romperebbe position:sticky dei figli */
+}
 
 /* ── TOP NAVBAR ────────────────────────────────────────────── */
 #topnav {
@@ -462,8 +471,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 
 @media (max-width: 900px) {
   #bottom-nav { display: grid; }
-  /* Push content above bottom nav */
-  #content-area { padding-bottom: max(80px, calc(68px + env(safe-area-inset-bottom))); }
+  /* Push content above bottom nav — padding sul body poiché lo scroll è su body */
+  body { padding-bottom: max(80px, calc(68px + env(safe-area-inset-bottom))); }
   /* Adjust mobile menu to not cover bottom nav */
   #mobile-menu { inset: 56px 0 calc(68px + env(safe-area-inset-bottom)) 0; }
 }
@@ -513,17 +522,17 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   #top-bar { top: 52px; }
 }
 
-/* Main content — full width, no left margin */
-#main-content, .main-content {
-  flex: 1; overflow-x: hidden; display: flex; flex-direction: column;
-  min-height: 0;
-}
-
 #top-bar {
-  height: var(--header-h); background: #161B27;
+  height: var(--header-h);
+  background: #161B27;
   border-bottom: 1px solid #2D3748;
-  display: flex; align-items: center; padding: 0 28px;
-  position: sticky; top: 56px; z-index: 50;
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  /* sticky rispetto alla finestra, sotto la topnav */
+  position: sticky;
+  top: 56px;
+  z-index: 50;
   box-shadow: 0 2px 8px rgba(0,0,0,.3);
   flex-shrink: 0;
 }
@@ -531,7 +540,15 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .topbar-breadcrumb { font-size: .8rem; color: #94A3B8; margin-left: 10px; }
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
-#content-area { flex: 1; padding: 28px; overflow-y: auto; background: #0D1117; overflow-x: hidden; scroll-padding-top: var(--header-h); }
+/* content-area: NON deve avere overflow-y:auto.
+   Lo scroll avviene sul body/html, così sticky funziona correttamente. */
+#content-area {
+  flex: 1;
+  padding: 28px;
+  background: #0D1117;
+  overflow-x: hidden;
+  /* padding-top compensato dal top-bar sticky tramite il flow flex normale */
+}
 
 /* ── VIEW TRANSITIONS ───────────────────────────────────────── */
 .view { display: none; animation: viewIn .3s cubic-bezier(.22,1,.36,1) both; }
@@ -653,8 +670,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   .topbar-breadcrumb { display: none; }
 
   /* Contenuto */
-  #content-area { padding: 14px 12px 80px; }
-  .view.active { padding-bottom: 20px; }
+  #content-area { padding: 14px 12px 16px; }
+  .view.active { padding-bottom: 0; }
 
   /* Cards più compatte */
   .card { padding: 14px; border-radius: 12px; margin-bottom: 10px; }
@@ -741,13 +758,13 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   #toast-container { bottom: 16px; right: 12px; left: 12px; }
   .toast { min-width: 0; width: 100%; }
 
-  /* Bottom safe area per iPhone */
-  #content-area { padding-bottom: max(80px, calc(16px + env(safe-area-inset-bottom))); }
+  /* Bottom safe area per iPhone — su body */
+  body { padding-bottom: max(80px, calc(16px + env(safe-area-inset-bottom))); }
 }
 
 /* Tablet landscape (601-900px) */
 @media (min-width: 481px) and (max-width: 900px) {
-  #content-area { padding: 20px 16px; }
+  #content-area { padding: 20px 16px 16px; }
   .card { padding: 18px; }
   .btn { min-height: 42px; }
   .form-field input, .form-field select, .form-field textarea { min-height: 42px; }
@@ -2937,7 +2954,8 @@ function showView(viewId, pushHistory=true) {
   highlightNavItem();
   updateBottomNav();
 
-  // Scroll al top del content-area ad ogni cambio vista
+  // Scroll al top della finestra ad ogni cambio vista
+  window.scrollTo({ top: 0, behavior: 'instant' });
   const ca = document.getElementById('content-area');
   if (ca) ca.scrollTop = 0;
 
