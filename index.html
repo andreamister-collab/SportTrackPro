@@ -3255,7 +3255,7 @@ viewBuilders['admin-overview'] = (el) => {
           <button class="btn btn-ghost btn-sm" onclick="showView('matches-overview')">Tutte le partite →</button>
         </div>
         ${(()=>{
-          const oneMonthAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate()-30);
+          const oneMonthAgo = new Date(); oneMonthAgo.setDate(oneMonthAgo.getDate()-30);
           const weekStr = oneMonthAgo.toISOString().slice(0,10);
           const accCats = getAccessibleCategoryIds();
           const weekMatches = S.matches
@@ -5046,21 +5046,21 @@ viewBuilders['category-home'] = (el) => {
       <button class="btn btn-ghost btn-sm" onclick="showView('cat-dashboard')" style="background:#EBF5FF;border-color:var(--accent);color:var(--accent);margin-left:auto">📊 Dashboard</button>
     </div>
 
-    ${(()=>{const ms=getCategoryMatchStats(selectedCategoryId);return ms.played>0?`
     <div class="stats-grid" style="margin-bottom:12px">
-      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${ms.pts}</div><div class="sub">${ms.w}V ${ms.d}P ${ms.l}S</div></div>
-      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${ms.gf}</div><div class="sub">media ${(ms.gf/ms.played).toFixed(1)}/partita</div></div>
-      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${ms.gs}</div><div class="sub">diff. ${ms.gd>=0?'+':''}${ms.gd}</div></div>
-      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Partite Giocate</div><div class="value">${ms.played}</div><div class="sub">${ms.w} vittorie</div></div>
-    </div>`:''})()}
-
-    ${buildRecentMatchesCard([selectedCategoryId||''], {stateKey:'_catHomeMatch',viewId:'category-home',title:'Partite ultimo mese'})}
-    <div class="stats-grid">
-      <div class="stat-card blue" style="cursor:pointer" onclick="showView('athletes')" title="Vai ad Atleti"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${st.athletes}</div><div class="sub">registrati</div></div>
-      <div class="stat-card green" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${st.sessions}</div><div class="sub">totali</div></div>
-      <div class="stat-card gold" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">% Presenze</div><div class="value">${st.presenceRate}%</div><div class="sub">${st.present}/${st.total} slot</div></div>
-      ${actBreakdown.map(({key,act,count})=>`<div class="stat-card ${act.color}" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">${act.label}</div><div class="value">${count}</div><div class="sub">sessioni</div></div>`).join('')}
+      <div class="stat-card blue" style="cursor:pointer" onclick="showView('athletes')"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${st.athletes}</div><div class="sub">registrati</div></div>
+      <div class="stat-card green" style="cursor:pointer" onclick="showView('sessions')"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${st.sessions}</div><div class="sub">totali</div></div>
+      <div class="stat-card gold" style="cursor:pointer" onclick="showView('sessions')"><div class="accent-bar"></div><div class="label">% Presenze</div><div class="value">${st.presenceRate}%</div><div class="sub">${st.present}/${st.total}</div></div>
+      ${actBreakdown.map(({key,act,count})=>`<div class="stat-card ${act.color}" style="cursor:pointer" onclick="showView('sessions')"><div class="accent-bar"></div><div class="label">${act.label}</div><div class="value">${count}</div><div class="sub">sessioni</div></div>`).join('')}
+      ${(()=>{const ms=getCategoryMatchStats(selectedCategoryId);return ms.played>0?
+        `<div class="stat-card blue" style="cursor:pointer" onclick="showView('matches')"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${ms.pts}</div><div class="sub">${ms.w}V ${ms.d}P ${ms.l}S</div></div>
+        <div class="stat-card green" style="cursor:pointer" onclick="showView('matches')"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${ms.gf}</div><div class="sub">media ${(ms.gf/ms.played).toFixed(1)}/p</div></div>
+        <div class="stat-card red" style="cursor:pointer" onclick="showView('matches')"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${ms.gs}</div><div class="sub">diff. ${ms.gd>=0?'+':''}${ms.gd}</div></div>
+        <div class="stat-card gold" style="cursor:pointer" onclick="showView('matches')"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${ms.played}</div><div class="sub">${ms.w} vittorie</div></div>`
+      :''})()}
     </div>
+
+    ${buildRecentMatchesCard([selectedCategoryId||''], {stateKey:'_catHomeMatch',viewId:'category-home',title:'Partite ultimo mese',hideStats:true})}
+
 
     <!-- Responsabile Overview Banner -->
     ${currentUser.role === 'responsabile' ? `
@@ -9257,7 +9257,7 @@ function buildRecentMatchesCard(catIds, opts) {
   filterBar += '</div>';
 
   var statsRow = '';
-  if (played.length > 0) {
+  if (played.length > 0 && !opts.hideStats) {
     statsRow = '<div class="stats-grid" style="margin-bottom:12px">'
       + '<div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">'+pts+'</div><div class="sub">'+played.length+' partite</div></div>'
       + '<div class="stat-card green"><div class="accent-bar"></div><div class="label">Vittorie</div><div class="value">'+W+'</div></div>'
