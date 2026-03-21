@@ -201,7 +201,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   min-height: 100vh;
   min-height: 100dvh;
   display: block;          /* NON flex — layout normale scorrevole */
-  background: linear-gradient(135deg, #1E293B 0%, #1A3A6E 100%);
+  background: linear-gradient(135deg, #1E40AF 0%, #1E293B 100%);
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
@@ -256,9 +256,9 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .login-logo h1 { font-size: 1.5rem; color: #0F172A; letter-spacing: -.02em; }
 .login-logo span { font-family: var(--font-body); font-weight: 400; color: #475569; font-size: .85rem; }
 .login-card h2 { font-size: 1.35rem; margin-bottom: 6px; color: #0F172A; }
-.login-card p { color: #94A3B8; font-size: .9rem; margin-bottom: 28px; }
+.login-card p { color: #64748B; font-size: .9rem; margin-bottom: 28px; }
 .form-group { margin-bottom: 18px; }
-.form-group label { display: block; font-size: .82rem; font-weight: 600; color: #94A3B8; margin-bottom: 6px; letter-spacing: .03em; text-transform: uppercase; }
+.form-group label { display: block; font-size: .82rem; font-weight: 600; color: #64748B; margin-bottom: 6px; letter-spacing: .03em; text-transform: uppercase; }
 .form-group input, .form-group select {
   width: 100%; padding: 11px 14px; border: 1.5px solid #CBD5E0;
   border-radius: var(--radius); font-size: .95rem; color: #0F172A;
@@ -278,7 +278,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 }
 .btn-primary:hover { background: var(--accent-h); box-shadow: 0 6px 20px rgba(26,86,219,.45); transform: translateY(-1px); }
 .btn-primary:active { transform: translateY(0); }
-.login-hint { font-size: .8rem; color: #94A3B8; text-align: center; margin-top: 20px; line-height: 1.6; }
+.login-hint { font-size: .8rem; color: #64748B; text-align: center; margin-top: 20px; line-height: 1.6; }
 .login-hint strong { color: #0F172A; }
 
 
@@ -328,8 +328,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 
 /* ── TOP NAVBAR ────────────────────────────────────────────── */
 #topnav {
-  background: #1E293B;
-  border-bottom: 1px solid #1E293B;
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
   color: white;
   position: sticky; top: 0; z-index: 100;
   box-shadow: 0 2px 16px rgba(0,0,0,.5);
@@ -350,8 +350,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   display: flex; align-items: center; justify-content: center;
   font-size: 15px;
 }
-.topnav-logo span { font-family: var(--font-head); font-size: 1rem; font-weight: 800; letter-spacing: -.01em; color: white; }
-.topnav-logo span em { font-style: normal; color: #60A5FA; }
+.topnav-logo span { font-family: var(--font-head); font-size: 1rem; font-weight: 800; letter-spacing: -.01em; color: #0F172A; }
+.topnav-logo span em { font-style: normal; color: #1A56DB; }
 
 /* ── Dropdown menu items ── */
 .topnav-menu { display: flex; align-items: stretch; flex: 1; gap: 2px; flex-wrap: nowrap; overflow: visible; }
@@ -359,7 +359,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .topnav-btn {
   display: flex; align-items: center; gap: 7px;
   padding: 0 14px; height: 56px;
-  background: none; border: none; color: rgba(255,255,255,.78);
+  background: none; border: none; color: #475569;
   font-family: var(--font-body); font-size: .875rem; font-weight: 600;
   cursor: pointer; white-space: nowrap;
   transition: color .15s, background .15s;
@@ -367,9 +367,9 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.topnav-btn:hover { color: white; background: rgba(255,255,255,.07); }
-.topnav-btn.active { color: white; border-bottom-color: var(--accent); }
-.topnav-btn .nav-arrow { font-size: .6rem; opacity: .55; transition: transform .2s; margin-left: 2px; }
+.topnav-btn:hover { color: #1A56DB; background: #EBF5FF; }
+.topnav-btn.active { color: #1A56DB; border-bottom-color: var(--accent); }
+.topnav-btn .nav-arrow { font-size: .6rem; opacity: .7; transition: transform .2s; margin-left: 2px; }
 .topnav-item:hover .nav-arrow { transform: rotate(180deg); }
 
 /* ── Dropdown panel ── */
@@ -387,10 +387,10 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   opacity: 1; visibility: visible; pointer-events: auto;
   transform: translateY(0);
 }
-.topnav-item.open .topnav-btn { color: white; background: rgba(255,255,255,.1); }
+.topnav-item.open .topnav-btn { color: #1A56DB; background: #EBF5FF; }
 .topnav-item.open .nav-arrow { transform: rotate(180deg); }
 .dropdown-section-title {
-  font-size: .68rem; font-weight: 700; color: #94A3B8;
+  font-size: .68rem; font-weight: 700; color: #64748B;
   text-transform: uppercase; letter-spacing: .08em;
   padding: 8px 12px 4px; margin-top: 4px;
 }
@@ -400,14 +400,14 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   padding: 9px 12px; border-radius: 8px;
   background: none; border: none; width: 100%; text-align: left;
   font-family: var(--font-body); font-size: .875rem; font-weight: 500;
-  color: #1E293B; cursor: pointer;
+  color: #0F172A; cursor: pointer;
   transition: background .12s, color .12s;
   -webkit-tap-highlight-color: transparent;
 }
 .dropdown-item:hover, .dropdown-item:active { background: #F1F5F9; color: #1A56DB; }
 .dropdown-item.active { background: #EBF5FF; color: var(--accent); font-weight: 600; }
 .dropdown-item .d-icon { width: 20px; text-align: center; font-size: .95rem; flex-shrink: 0; }
-.dropdown-divider { height: 1px; background: #252D3D; margin: 4px 8px; }
+.dropdown-divider { height: 1px; background: #F1F5F9; margin: 4px 8px; }
 .dropdown-danger { color: var(--red) !important; }
 .dropdown-danger:hover { background: var(--red-l) !important; }
 
@@ -416,32 +416,32 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .season-pill {
   display: flex; align-items: center; gap: 7px;
   padding: 5px 12px; border-radius: 99px;
-  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+  background: #EBF5FF; border: 1px solid #BFDBFE;
 }
-.season-pill label { font-size: .75rem; color: rgba(255,255,255,.6); font-weight: 600; white-space: nowrap; cursor: default; }
+.season-pill label { font-size: .75rem; color: #64748B; font-weight: 600; white-space: nowrap; cursor: default; }
 .season-pill select {
-  background: none; border: none; color: white;
+  background: none; border: none; color: #1A56DB;
   font-family: var(--font-body); font-size: .82rem; font-weight: 700;
   cursor: pointer; outline: none; padding: 0;
 }
-.season-pill select option { color: #E2E8F0; background: white; }
+.season-pill select option { color: #0F172A; background: white; }
 
 /* ── User chip ── */
 .topnav-user { position: relative; }
 .topnav-user-btn {
   display: flex; align-items: center; gap: 8px;
   padding: 5px 10px; border-radius: 99px;
-  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+  background: #EBF5FF; border: 1px solid #BFDBFE;
   cursor: pointer; transition: background .15s;
 }
-.topnav-user-btn:hover { background: rgba(255,255,255,.14); }
+.topnav-user-btn:hover { background: #DBEAFE; }
 .user-avatar {
   width: 28px; height: 28px; border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), #3B82F6);
   display: flex; align-items: center; justify-content: center;
   font-size: .72rem; font-weight: 700; color: white; flex-shrink: 0;
 }
-.topnav-user-btn .uname { font-size: .82rem; font-weight: 600; color: white; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topnav-user-btn .uname { font-size: .82rem; font-weight: 600; color: #1E293B; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-dropdown {
   position: absolute; top: calc(100% + 8px); right: 0;
   background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px;
@@ -459,7 +459,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .user-dropdown-header {
   padding: 10px 12px 8px; border-bottom: 1px solid #E2E8F0; margin-bottom: 4px;
 }
-.user-dropdown-header .uname-full { font-weight: 700; font-size: .9rem; color: #E2E8F0; }
+.user-dropdown-header .uname-full { font-weight: 700; font-size: .9rem; color: #0F172A; }
 .user-dropdown-header .urole { font-size: .75rem; color: #475569; margin-top: 2px; }
 
 /* ── Bottom navigation bar (mobile only) ── */
@@ -480,12 +480,12 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   cursor: pointer; border-radius: 10px; transition: background .15s;
   min-height: 52px;
 }
-.bn-item:hover, .bn-item:active { background: #1E2433; }
+.bn-item:hover, .bn-item:active { background: #F8FAFC; }
 .bn-item.active { background: #EBF5FF; }
 .bn-item.active .bn-icon { filter: none; }
 .bn-item.active .bn-label { color: var(--accent); font-weight: 700; }
 .bn-icon { font-size: 1.3rem; line-height: 1; }
-.bn-label { font-size: .64rem; font-weight: 600; color: #94A3B8; white-space: nowrap; font-family: var(--font-body); }
+.bn-label { font-size: .64rem; font-weight: 600; color: #64748B; white-space: nowrap; font-family: var(--font-body); }
 
 @media (max-width: 900px) {
   #bottom-nav { display: grid; }
@@ -498,7 +498,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 /* ── Mobile hamburger ── */
 #sidebar-toggle {
   display: none;
-  background: none; border: none; color: white;
+  background: none; border: none; color: #1A56DB;
   font-size: 1.3rem; cursor: pointer; padding: 6px 8px;
   border-radius: 8px; transition: background .15s;
 }
@@ -522,7 +522,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .mobile-nav-item {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 12px; border-radius: 8px;
-  background: none; border: none; color: rgba(255,255,255,.75);
+  background: none; border: none; color: rgba(255,255,255,.9);
   font-family: var(--font-body); font-size: .9rem; font-weight: 500;
   cursor: pointer; width: 100%; text-align: left;
   transition: background .12s, color .12s;
@@ -554,7 +554,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   box-shadow: 0 1px 3px rgba(0,0,0,.08);
   flex-shrink: 0;
 }
-.topbar-title { font-size: 1.1rem; font-weight: 700; color: #0F172A; font-family: var(--font-head); }
+.topbar-title { font-size: 1.1rem; font-weight: 700; color: #0F172A; font-family: var(--font-head); letter-spacing: -.01em; }
 .topbar-breadcrumb { font-size: .8rem; color: #64748B; margin-left: 10px; }
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
@@ -578,8 +578,8 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 .page-header { margin-bottom: 28px; scroll-margin-top: calc(var(--header-h) + 8px); }
 /* Assicura che il primo elemento di ogni view non venga coperto dal top-bar sticky */
 .view.active > *:first-child { scroll-margin-top: calc(var(--header-h) + 8px); }
-.page-header h2 { font-size: 1.65rem; color: #E2E8F0; letter-spacing: -.03em; }
-.page-header p { color: #94A3B8; font-size: .9rem; margin-top: 4px; }
+.page-header h2 { font-size: 1.65rem; color: #0F172A; font-weight: 800; letter-spacing: -.03em; }
+.page-header p { color: #64748B; font-size: .9rem; margin-top: 4px; }
 .page-header .header-row { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 
 /* ── CARDS ──────────────────────────────────────────────────── */
@@ -588,7 +588,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   box-shadow: var(--shadow-sm); border: 1px solid #E2E8F0;
   padding: 22px; overflow: hidden;
 }
-.card-title { font-size: .95rem; font-weight: 700; color: #E2E8F0; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.card-title { font-size: .95rem; font-weight: 700; color: #0F172A; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 .card-title .icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
 
 /* ── STAT CARDS ─────────────────────────────────────────────── */
@@ -599,9 +599,9 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   position: relative; overflow: hidden; transition: box-shadow .2s, transform .2s;
 }
 .stat-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
-.stat-card .label { font-size: .78rem; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+.stat-card .label { font-size: .78rem; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
 .stat-card .value { font-size: 2rem; font-weight: 800; font-family: var(--font-head); line-height: 1; margin-bottom: 4px; }
-.stat-card .sub { font-size: .78rem; color: #94A3B8; }
+.stat-card .sub { font-size: .78rem; color: #64748B; }
 .stat-card .accent-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 4px 0 0 4px; }
 .stat-card.blue .accent-bar { background: var(--accent); }
 .stat-card.blue .value { color: var(--accent); }
@@ -802,7 +802,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   scrollbar-color: var(--mist-3) transparent;
 }
 .table-wrap-x::-webkit-scrollbar { height: 6px; }
-.table-wrap-x::-webkit-scrollbar-track { background: #1E2433; border-radius: 4px; }
+.table-wrap-x::-webkit-scrollbar-track { background: #F8FAFC; border-radius: 4px; }
 .table-wrap-x::-webkit-scrollbar-thumb { background: var(--mist-3); border-radius: 4px; }
 .table-wrap-x::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
 
@@ -826,7 +826,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   padding-bottom: 4px; /* space for scrollbar */
 }
 .table-wrap::-webkit-scrollbar { height: 5px; }
-.table-wrap::-webkit-scrollbar-track { background: #1E2433; }
+.table-wrap::-webkit-scrollbar-track { background: #F8FAFC; }
 .table-wrap::-webkit-scrollbar-thumb { background: var(--mist-3); border-radius: 4px; }
 
 /* ── CONTENT SIZING ─────────────────────────────────────────── */
@@ -857,11 +857,11 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 table { width: 100%; border-collapse: collapse; font-size: .88rem;  min-width: 0;}
 thead th {
   padding: 10px 14px; text-align: left; font-size: .75rem; font-weight: 700;
-  color: #94A3B8; text-transform: uppercase; letter-spacing: .06em;
-  background: #1E2433; border-bottom: 2px solid var(--mist-2); white-space: nowrap;
+  color: #64748B; text-transform: uppercase; letter-spacing: .06em;
+  background: #F8FAFC; border-bottom: 2px solid var(--mist-2); white-space: nowrap;
 }
 tbody tr { border-bottom: 1px solid #E2E8F0; transition: background .12s; }
-tbody tr:hover { background: #1E2433; }
+tbody tr:hover { background: #F8FAFC; }
 tbody td { padding: 11px 14px; vertical-align: middle; }
 tbody tr:last-child { border-bottom: none; }
 
@@ -871,8 +871,8 @@ tbody tr:last-child { border-bottom: none; }
 .btn-lg { padding: 12px 22px; font-size: .95rem; }
 .btn-accent { background: var(--accent); color: white; box-shadow: 0 2px 8px rgba(26,86,219,.3); }
 .btn-accent:hover { background: var(--accent-h); box-shadow: 0 4px 14px rgba(26,86,219,.4); transform: translateY(-1px); }
-.btn-ghost { background: transparent; color: #94A3B8; border: 1.5px solid #2D3748; }
-.btn-ghost:hover { background: #1E2433; color: #E2E8F0; border-color: var(--mist-3); }
+.btn-ghost { background: transparent; color: #64748B; border: 1.5px solid #CBD5E0; }
+.btn-ghost:hover { background: #F8FAFC; color: #0F172A; border-color: var(--mist-3); }
 .btn-danger { background: var(--red); color: white; }
 .btn-danger:hover { background: #B91C1C; }
 .btn-success { background: var(--green); color: white; }
@@ -901,10 +901,10 @@ tbody tr:last-child { border-bottom: none; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-row.trio { grid-template-columns: 1fr 1fr 1fr; }
 .form-field { display: flex; flex-direction: column; gap: 5px; }
-.form-field label { font-size: .78rem; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: .04em; }
+.form-field label { font-size: .78rem; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: .04em; }
 .form-field input, .form-field select, .form-field textarea {
-  padding: 9px 12px; border: 1.5px solid #2D3748; border-radius: 8px;
-  font-size: .9rem; color: #E2E8F0; background: #1E2433;
+  padding: 9px 12px; border: 1.5px solid #CBD5E0; border-radius: 8px;
+  font-size: .9rem; color: #0F172A; background: #F8FAFC;
   transition: border-color .2s, box-shadow .2s; outline: none;
 }
 .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
@@ -929,12 +929,12 @@ tbody tr:last-child { border-bottom: none; }
 .modal-xl { max-width: 960px; }
 @keyframes modalIn { from { opacity:0; transform:scale(.94) translateY(12px); } }
 .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
-.modal-header h3 { font-size: 1.2rem; color: #E2E8F0; }
-.modal-close { background: none; border: none; cursor: pointer; font-size: 1.3rem; color: #94A3B8; padding: 4px; border-radius: 6px; }
-.modal-close:hover { background: #1E2433; color: var(--red); }
+.modal-header h3 { font-size: 1.2rem; color: #0F172A; }
+.modal-close { background: none; border: none; cursor: pointer; font-size: 1.3rem; color: #64748B; padding: 4px; border-radius: 6px; }
+.modal-close:hover { background: #F8FAFC; color: var(--red); }
 
 /* ── PROGRESS BAR ───────────────────────────────────────────── */
-.progress-bar { height: 6px; background: #252D3D; border-radius: 99px; overflow: hidden; }
+.progress-bar { height: 6px; background: #F1F5F9; border-radius: 99px; overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 99px; transition: width .5s cubic-bezier(.22,1,.36,1); }
 .progress-fill.green { background: var(--green); }
 .progress-fill.gold { background: var(--gold); }
@@ -944,7 +944,7 @@ tbody tr:last-child { border-bottom: none; }
 /* ── ATTENDANCE MATRIX ─────────────────────────────────────── */
 .att-matrix { font-size: .8rem; }
 .att-matrix table { border-collapse: separate; border-spacing: 2px; }
-.att-matrix th { font-size: .68rem; padding: 4px 6px; background: #1E2433; border-radius: 4px; }
+.att-matrix th { font-size: .68rem; padding: 4px 6px; background: #F8FAFC; border-radius: 4px; }
 .att-cell {
   width: 32px; height: 32px; border-radius: 6px; display: inline-flex;
   align-items: center; justify-content: center; font-size: .75rem; font-weight: 700;
@@ -954,9 +954,9 @@ tbody tr:last-child { border-bottom: none; }
 .att-P { background: var(--green-l); color: var(--green); }
 .att-A { background: var(--red-l); color: var(--red); }
 .att-G { background: var(--gold-l); color: var(--gold); }
-.att-empty { background: #252D3D; color: #94A3B8; }
+.att-empty { background: #F1F5F9; color: #64748B; }
 .att-C  { background: var(--accent-l); color: var(--accent); }
-.att-NC { background: #252D3D;   color: #94A3B8; }
+.att-NC { background: #F1F5F9;   color: #64748B; }
 
 /* ── PERFORMANCE STARS ─────────────────────────────────────── */
 .stars { display: flex; gap: 2px; }
@@ -967,24 +967,24 @@ tbody tr:last-child { border-bottom: none; }
 /* ── PERF RADAR (CSS-only mini chart) ─────────────────────── */
 .perf-bars { display: flex; flex-direction: column; gap: 8px; }
 .perf-bar-row { display: flex; align-items: center; gap: 10px; }
-.perf-bar-label { font-size: .78rem; color: #94A3B8; width: 100px; flex-shrink: 0; }
-.perf-bar-track { flex: 1; height: 8px; background: #252D3D; border-radius: 99px; overflow: hidden; }
+.perf-bar-label { font-size: .78rem; color: #64748B; width: 100px; flex-shrink: 0; }
+.perf-bar-track { flex: 1; height: 8px; background: #F1F5F9; border-radius: 99px; overflow: hidden; }
 .perf-bar-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width .6s cubic-bezier(.22,1,.36,1); }
-.perf-bar-val { font-size: .78rem; font-weight: 700; color: #E2E8F0; width: 28px; text-align: right; font-family: var(--font-mono); }
+.perf-bar-val { font-size: .78rem; font-weight: 700; color: #0F172A; width: 28px; text-align: right; font-family: var(--font-mono); }
 
 /* ── TABS ────────────────────────────────────────────────────── */
 .tabs { display: flex; gap: 4px; background: #E2E8F0; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
 .tab-btn {
   flex: 1; padding: 8px 14px; border: none; border-radius: 7px; cursor: pointer;
-  font-size: .85rem; font-weight: 600; color: #94A3B8; background: transparent;
+  font-size: .85rem; font-weight: 600; color: #64748B; background: transparent;
   transition: all .2s; font-family: inherit;
 }
-.tab-btn.active { background: white; color: #E2E8F0; box-shadow: var(--shadow-sm); }
+.tab-btn.active { background: white; color: #0F172A; box-shadow: var(--shadow-sm); }
 
 /* ── ENTITY CARDS ────────────────────────────────────────────── */
 .entity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
 .entity-card {
-  background: white; border-radius: var(--radius-lg); border: 1px solid #2D3748;
+  background: white; border-radius: var(--radius-lg); border: 1px solid #E2E8F0;
   padding: 18px; transition: box-shadow .2s, transform .2s; cursor: pointer;
   box-shadow: var(--shadow-sm);
 }
@@ -993,14 +993,14 @@ tbody tr:last-child { border-bottom: none; }
   width: 48px; height: 48px; border-radius: 12px; margin-bottom: 12px;
   display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
 }
-.entity-card .ec-name { font-weight: 700; font-size: 1rem; color: #E2E8F0; margin-bottom: 4px; }
-.entity-card .ec-meta { font-size: .8rem; color: #94A3B8; }
+.entity-card .ec-name { font-weight: 700; font-size: 1rem; color: #0F172A; margin-bottom: 4px; }
+.entity-card .ec-meta { font-size: .8rem; color: #64748B; }
 .entity-card .ec-actions { margin-top: 14px; display: flex; gap: 6px; }
 
 /* ── ATHLETE CARD ───────────────────────────────────────────── */
 .athlete-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px; border-radius: 10px; border: 1px solid #2D3748;
+  padding: 12px; border-radius: 10px; border: 1px solid #E2E8F0;
   margin-bottom: 8px; background: white; transition: box-shadow .15s;
 }
 .athlete-row:hover { box-shadow: var(--shadow-sm); }
@@ -1011,7 +1011,7 @@ tbody tr:last-child { border-bottom: none; }
 }
 .athlete-info { flex: 1; min-width: 0; }
 .athlete-info .name { font-weight: 600; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.athlete-info .meta { font-size: .78rem; color: #94A3B8; }
+.athlete-info .meta { font-size: .78rem; color: #64748B; }
 
 /* ── SESSION ENTRY ───────────────────────────────────────────── */
 .session-header {
@@ -1035,9 +1035,9 @@ tbody tr:last-child { border-bottom: none; }
 .filter-bar select { padding: 9px 12px; border: 1.5px solid #CBD5E0; border-radius: 8px; font-size: .88rem; background: #F8FAFC; color: #0F172A; outline: none; cursor: pointer; }
 
 /* ── EMPTY STATE ────────────────────────────────────────────── */
-.empty-state { text-align: center; padding: 56px 20px; color: #94A3B8; }
+.empty-state { text-align: center; padding: 56px 20px; color: #64748B; }
 .empty-state .icon { font-size: 3rem; margin-bottom: 16px; opacity: .5; }
-.empty-state h3 { font-size: 1.1rem; color: #94A3B8; margin-bottom: 8px; }
+.empty-state h3 { font-size: 1.1rem; color: #475569; margin-bottom: 8px; }
 .empty-state p { font-size: .88rem; max-width: 320px; margin: 0 auto 20px; }
 
 /* ── TOAST ──────────────────────────────────────────────────── */
@@ -1058,7 +1058,7 @@ tbody tr:last-child { border-bottom: none; }
 .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 100px; padding: 0 4px; }
 .bar-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .bar-fill { width: 100%; border-radius: 4px 4px 0 0; transition: height .5s cubic-bezier(.22,1,.36,1); min-height: 4px; }
-.bar-label { font-size: .65rem; color: #94A3B8; text-align: center; }
+.bar-label { font-size: .65rem; color: #64748B; text-align: center; }
 
 /* ── PARTITE & CONVOCATI ─────────────────────────────────────── */
 .match-card {
@@ -1085,10 +1085,10 @@ tbody tr:last-child { border-bottom: none; }
 .match-body { background: white; padding: 16px 22px; }
 .convocato-row {
   display: flex; align-items: center; gap: 10px; padding: 8px 12px;
-  border-radius: 8px; margin-bottom: 6px; background: #1E2433;
+  border-radius: 8px; margin-bottom: 6px; background: #F8FAFC;
   transition: background .15s; cursor: grab;
 }
-.convocato-row:hover { background: #252D3D; }
+.convocato-row:hover { background: #F1F5F9; }
 .cv-badge { padding: 3px 10px; border-radius: 99px; font-size: .72rem; font-weight: 700; }
 .cv-convocato  { background: #D1FAE5; color: #065F46; }
 .cv-riserva    { background: #FEF3C7; color: #92400E; }
@@ -1108,8 +1108,8 @@ tbody tr:last-child { border-bottom: none; }
 .season-active-badge { background:var(--green-l); color:var(--green); }
 .season-hist-card { background:var(--mist); border-radius:10px; padding:12px 16px; margin-bottom:8px; border-left:4px solid var(--accent); }
 /* ── MISC ────────────────────────────────────────────────────── */
-.divider { height: 1px; background: #252D3D; margin: 20px 0; }
-.text-muted { color: #94A3B8; font-size: .85rem; }
+.divider { height: 1px; background: #F1F5F9; margin: 20px 0; }
+.text-muted { color: #64748B; font-size: .85rem; }
 .text-sm { font-size: .82rem; }
 .fw-600 { font-weight: 600; }
 .fw-700 { font-weight: 700; }
@@ -1131,7 +1131,7 @@ tbody tr:last-child { border-bottom: none; }
 .color-gold { color: var(--gold); }
 .color-blue { color: var(--accent); }
 .color-purple { color: var(--purple); }
-hr { border: none; border-top: 1px solid #2D3748; margin: 16px 0; }
+hr { border: none; border-top: 1px solid #E2E8F0; margin: 16px 0; }
 .highlight-box {
   background: var(--accent-l); border: 1px solid rgba(26,86,219,.2);
   border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
@@ -1779,12 +1779,12 @@ async function loadStateFromDB() {
   <!-- MAIN -->
   <div id="main-content">
     <div id="top-bar">
-      <button id="topbar-home-btn" onclick="goHome()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px 8px;border-radius:6px;color:var(--ink-2);display:flex;align-items:center;gap:4px;margin-right:6px" title="Home">🏠</button>
+      <button id="topbar-home-btn" onclick="goHome()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px 8px;border-radius:6px;color:#475569;display:flex;align-items:center;gap:4px;margin-right:6px" title="Home">🏠</button>
       <span class="topbar-title" id="topbar-title">Dashboard</span>
       <span class="topbar-breadcrumb" id="topbar-bc"></span>
       <div id="topbar-filter" style="display:flex;align-items:center;gap:6px;margin-left:16px;flex-wrap:wrap"></div>
       <div class="topbar-actions" id="topbar-actions"></div>
-      <button id="topbar-filter-btn" onclick="toggleTopbarFilter()" style="display:none!important;background:none;border:1.5px solid #2D3748;border-radius:8px;padding:5px 10px;color:#94A3B8;font-size:.8rem;cursor:pointer;margin-left:8px">⚙️</button>
+      <button id="topbar-filter-btn" onclick="toggleTopbarFilter()" style="display:none!important;background:none;border:1.5px solid #CBD5E0;border-radius:8px;padding:5px 10px;color:#64748B;font-size:.8rem;cursor:pointer;margin-left:8px">⚙️</button>
     </div>
     <div id="content-area">
 
@@ -2592,7 +2592,7 @@ function buildTopNav() {
       if (catTeams.length <= 1) {
         const t = catTeams[0];
         const label = t ? esc(t.name) : esc(cat.name);
-        const sub = t ? `<span style="font-size:.72rem;color:var(--ink-3);margin-left:4px">${esc(cat.name)}</span>` : '';
+        const sub = t ? `<span style="font-size:.72rem;color:#64748B;margin-left:4px">${esc(cat.name)}</span>` : '';
         return `<button class="dropdown-item" onclick="selectTeamView('${cat.id}','${t?t.id:''}');closeMobileMenu()">
           <span class="d-icon">👕</span> ${label} ${sub}
         </button>`;
@@ -2777,7 +2777,7 @@ function buildTeamNavItems(accIds) {
         style="padding-left:28px;font-style:italic">
         <span class="nav-icon" style="font-size:.8rem">📊</span> Tutte
       </button>`;
-    return `<div style="padding:4px 10px 2px;font-size:.72rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-top:6px">
+    return `<div style="padding:4px 10px 2px;font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-top:6px">
         🏷️ ${esc(cat.name)}
       </div>
       ${allBtn}${teamBtns}`;
@@ -3023,7 +3023,7 @@ function showView(viewId, pushHistory=true) {
   if (ca) ca.scrollTop = 0;
 
   // Mostra spinner
-  el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--ink-3)">
+  el.innerHTML = `<div style="text-align:center;padding:60px;color:#64748B">
     <div style="font-size:2rem;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⟳</div>
     <div>Caricamento dati aggiornati...</div>
   </div>`;
@@ -3131,7 +3131,7 @@ function ratingBadge(pct) {
 }
 function actBadge(type) {
   const a = getActivityTypesMap()[type];
-  if (!a) return `<span class="act-chip" style="background:var(--mist-2);color:var(--ink-3)">${type}</span>`;
+  if (!a) return `<span class="act-chip" style="background:var(--mist-2);color:#64748B">${type}</span>`;
   return `<span class="act-chip ${a.cls||''}">${a.emoji||''} ${a.label}</span>`;
 }
 function avatarColor(name) {
@@ -3289,7 +3289,7 @@ viewBuilders['admin-overview'] = (el) => {
               <td class="fw-600">${st.athletes}</td>
               <td>${st.sessions}</td>
               <td>${ratingBadge(st.presenceRate)} <span class="fw-700" style="margin-left:4px">${st.presenceRate}%</span></td>
-              <td>${(()=>{const ms=getCategoryMatchStats(cat.id);return ms.played?`<span style="font-weight:700;color:var(--accent)">${ms.pts}pt</span> <span style="font-size:.78rem;color:var(--ink-3)">${ms.gf}-${ms.gs} (${ms.w}V ${ms.d}P ${ms.l}S)</span>`:'<span style="color:var(--ink-3)">—</span>';})()}</td>
+              <td>${(()=>{const ms=getCategoryMatchStats(cat.id);return ms.played?`<span style="font-weight:700;color:var(--accent)">${ms.pts}pt</span> <span style="font-size:.78rem;color:#64748B">${ms.gf}-${ms.gs} (${ms.w}V ${ms.d}P ${ms.l}S)</span>`:'<span style="color:#64748B">—</span>';})()}</td>
               <td style="display:flex;gap:6px;flex-wrap:wrap">
                 <button class="btn btn-ghost btn-sm" onclick="selectCategoryView('${cat.id}')">Gestisci</button>
                 <button class="btn btn-ghost btn-sm" onclick="showCatDashboard('${cat.id}')">Dashboard</button>
@@ -3616,7 +3616,7 @@ function buildCatTeamSelect(socId, selectedIds) {
   const teams = socId
     ? S.teams.filter(t => t.societyId === socId)
     : S.teams;
-  if (!teams.length) return '<div style="font-size:.82rem;color:var(--ink-3)">Nessuna squadra per questa società</div>';
+  if (!teams.length) return '<div style="font-size:.82rem;color:#64748B">Nessuna squadra per questa società</div>';
   return `<select id="cat-team-multi" multiple style="height:90px;border:1.5px solid var(--mist-3);border-radius:8px;padding:4px 6px;font-size:.88rem;background:#F8FAFC;width:100%">
     ${teams.map(t=>`<option value="${t.id}" ${(selectedIds||[]).includes(t.id)?'selected':''}>${esc(t.name)}</option>`).join('')}
   </select>`;
@@ -3676,7 +3676,7 @@ function openCategoryModal(id) {
       </div>
     </div>
     <hr style="margin:14px 0">
-    <div style="font-size:.8rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">👥 Assegnazione Staff</div>
+    <div style="font-size:.8rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">👥 Assegnazione Staff</div>
     <div class="form-row">
       <div class="form-field">
         <label>⭐ Responsabili</label>
@@ -3973,17 +3973,17 @@ function buildUserCatSelector(userId, role) {
       const currentSocId = userId
         ? S.users.find(u=>u.id===userId)?.societyId || ''
         : '';
-      if (!S.societies.length) return '<div style="font-size:.82rem;color:var(--ink-3);margin-top:10px">Nessuna società registrata.</div>';
+      if (!S.societies.length) return '<div style="font-size:.82rem;color:#64748B;margin-top:10px">Nessuna società registrata.</div>';
       return `
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--mist-2)">
-          <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+          <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
             🏛️ Società Associata
           </div>
           <select id="usr-cats" style="width:100%;padding:8px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem;background:#F8FAFC">
             <option value="">— Nessuna —</option>
             ${S.societies.map(s => `<option value="${s.id}" ${currentSocId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
           </select>
-          <div style="font-size:.75rem;color:var(--ink-3);margin-top:4px">Il presidente vedrà i dati di questa società</div>
+          <div style="font-size:.75rem;color:#64748B;margin-top:4px">Il presidente vedrà i dati di questa società</div>
         </div>`;
     }
 
@@ -3992,10 +3992,10 @@ function buildUserCatSelector(userId, role) {
       const currentAthIds = userId
         ? S.athletes.filter(a => (a.parentIds||[]).includes(userId)).map(a => a.id)
         : [];
-      if (!S.athletes.length) return '<div style="font-size:.82rem;color:var(--ink-3);margin-top:10px">Nessun atleta registrato.</div>';
+      if (!S.athletes.length) return '<div style="font-size:.82rem;color:#64748B;margin-top:10px">Nessun atleta registrato.</div>';
       return `
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--mist-2)">
-          <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+          <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
             👶 Atleti Associati
           </div>
           <div class="highlight-box" style="margin-bottom:10px;padding:8px 12px;font-size:.8rem">
@@ -4018,7 +4018,7 @@ function buildUserCatSelector(userId, role) {
               }).join('');
             })()}
           </select>
-          <div style="font-size:.75rem;color:var(--ink-3);margin-top:4px">Tieni <b>Ctrl</b> (Windows) o <b>Cmd</b> (Mac) per selezionare più figli</div>
+          <div style="font-size:.75rem;color:#64748B;margin-top:4px">Tieni <b>Ctrl</b> (Windows) o <b>Cmd</b> (Mac) per selezionare più figli</div>
         </div>`;
     }
     return '';
@@ -4026,7 +4026,7 @@ function buildUserCatSelector(userId, role) {
 
   return `
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--mist-2)">
-      <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+      <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
         📋 ${roleInfo.label}
       </div>
       <div class="highlight-box" style="margin-bottom:10px;padding:8px 12px;font-size:.8rem">${roleInfo.note}</div>
@@ -4046,7 +4046,7 @@ function buildUserCatSelector(userId, role) {
           }).join('');
         })()}
       </select>
-      <div style="font-size:.75rem;color:var(--ink-3);margin-top:4px">Tieni <b>Ctrl</b> (Windows) o <b>Cmd</b> (Mac) per selezionare più categorie</div>
+      <div style="font-size:.75rem;color:#64748B;margin-top:4px">Tieni <b>Ctrl</b> (Windows) o <b>Cmd</b> (Mac) per selezionare più categorie</div>
     </div>`;
 }
 
@@ -4080,12 +4080,12 @@ function pwStrength(pw) {
 function pwStrengthHTML(inputId, confirmId) {
   return `
     <div id="pw-strength-bar-wrap" style="margin-top:6px;display:none">
-      <div style="height:5px;border-radius:99px;background:var(--mist-3);overflow:hidden;margin-bottom:5px">
+      <div style="height:5px;border-radius:99px;background:#E2E8F0;color:#0F172A;overflow:hidden;margin-bottom:5px">
         <div id="pw-strength-bar" style="height:100%;width:0%;border-radius:99px;transition:width .3s,background .3s"></div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
         <span id="pw-strength-label" style="font-size:.75rem;font-weight:700"></span>
-        <span id="pw-strength-checks" style="font-size:.7rem;color:var(--ink-3)"></span>
+        <span id="pw-strength-checks" style="font-size:.7rem;color:#64748B"></span>
       </div>
     </div>
     <div id="pw-confirm-msg" style="font-size:.75rem;margin-top:4px;display:none"></div>`;
@@ -4184,7 +4184,7 @@ function openUserModal(id) {
 
   const initRole  = u?.role || 'dirigente';
   const initCatSel = buildUserCatSelector(u?.id||null, initRole);
-  const pwLabel   = u ? 'Nuova Password <span style="font-weight:400;color:var(--ink-3)">(lascia vuoto per non cambiare)</span>' : 'Password Temporanea <span style="color:var(--red)">*</span>';
+  const pwLabel   = u ? 'Nuova Password <span style="font-weight:400;color:#64748B">(lascia vuoto per non cambiare)</span>' : 'Password Temporanea <span style="color:var(--red)">*</span>';
 
   openModal(`
     <div class="modal-header">
@@ -4192,7 +4192,7 @@ function openUserModal(id) {
       
     </div>
 
-    <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">📋 Dati Personali</div>
+    <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">📋 Dati Personali</div>
     <div class="form-row">
       <div class="form-field"><label>Nome Completo</label><input id="usr-name" value="${esc(u?.name||'')}" placeholder="Mario Rossi"></div>
       <div class="form-field"><label>Professione / Qualifica</label><input id="usr-prof" value="${esc(u?.profession||'')}" placeholder="es. Allenatore UEFA B, Fisioterapista..."></div>
@@ -4202,12 +4202,12 @@ function openUserModal(id) {
       <div class="form-field"><label>Telefono</label><input id="usr-phone" value="${esc(u?.phone||'')}" placeholder="333-1234567"></div>
     </div>
 
-    <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px;padding-top:14px;border-top:1px solid var(--mist-2)">🔐 Credenziali di Accesso</div>
+    <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px;padding-top:14px;border-top:1px solid var(--mist-2)">🔐 Credenziali di Accesso</div>
     <div class="form-row">
       <div class="form-field">
         <label>Username (parte prima della @)</label>
-        <input id="usr-uname" value="${esc(u?.username||'')}" placeholder="mario.rossi" ${u?'readonly style="background:#F8FAFC;color:var(--ink-3)"':''}>
-        ${u ? '<div style="font-size:.72rem;color:var(--ink-3);margin-top:3px">Lo username non può essere modificato dopo la creazione.</div>' : '<div style="font-size:.72rem;color:var(--ink-3);margin-top:3px">Email di accesso: <strong id="usr-email-preview">…@sporttrackpro.it</strong></div>'}
+        <input id="usr-uname" value="${esc(u?.username||'')}" placeholder="mario.rossi" ${u?'readonly style="background:#F8FAFC;color:#64748B"':''}>
+        ${u ? '<div style="font-size:.72rem;color:#64748B;margin-top:3px">Lo username non può essere modificato dopo la creazione.</div>' : '<div style="font-size:.72rem;color:#64748B;margin-top:3px">Email di accesso: <strong id="usr-email-preview">…@sporttrackpro.it</strong></div>'}
       </div>
       <div class="form-field">
         <label>${pwLabel}</label>
@@ -4237,7 +4237,7 @@ function openUserModal(id) {
 
     <div id="usr-cat-section">${initCatSel}</div>
 
-    <div style="background:var(--accent-l);border-radius:var(--radius);padding:10px 14px;font-size:.8rem;color:var(--ink-3);margin-top:12px">
+    <div style="background:var(--accent-l);border-radius:var(--radius);padding:10px 14px;font-size:.8rem;color:#64748B;margin-top:12px">
       🔒 <strong>Requisiti password:</strong> min. 10 caratteri, almeno una maiuscola, una minuscola, un numero e un carattere speciale (!@#$%…). Usa 🎲 per generarne una sicura.
     </div>
 
@@ -4474,7 +4474,7 @@ function buildActivitiesConfig() {
 
   const perfRows = perfPs.map(({key,label}) =>
     `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#F8FAFC;border-radius:8px;margin-bottom:6px" id="perf-row-${key}">
-      <span style="font-family:monospace;font-size:.8rem;color:var(--ink-3);min-width:80px">${esc(key)}</span>
+      <span style="font-family:monospace;font-size:.8rem;color:#64748B;min-width:80px">${esc(key)}</span>
       <input id="perf-label-${key}" value="${esc(label)}" style="flex:1;padding:5px 10px;border:1px solid var(--mist-3);border-radius:6px;font-size:.88rem" placeholder="Etichetta">
       <button class="btn btn-danger btn-sm" onclick="deletePerfParam('${key}')">🗑️</button>
     </div>`
@@ -4846,7 +4846,7 @@ viewBuilders['category-home'] = (el) => {
     return arr.map(u=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
       <div class="user-avatar" style="width:30px;height:30px;font-size:.65rem;flex-shrink:0;background:${rd.gradient}">${initials(u.name)}</div>
       <div style="min-width:0"><div style="font-size:.82rem;font-weight:600">${esc(u.name)}</div>
-      <div style="font-size:.72rem;color:var(--ink-3)">${esc(u.profession||rd.label)}</div></div>
+      <div style="font-size:.72rem;color:#64748B">${esc(u.profession||rd.label)}</div></div>
       <span class="badge ${cls}" style="margin-left:auto;flex-shrink:0">${rd.icon}</span>
     </div>`).join('');
   };
@@ -4862,7 +4862,7 @@ viewBuilders['category-home'] = (el) => {
     <div class="page-header" style="margin-bottom:12px">
       <div>
         <h2>${esc(cat.name)}</h2>
-        <p style="color:#94A3B8;font-size:.88rem">${esc(sport?.icon||'⚽')} ${esc(sport?.name||'—')} · ${esc(soc?.name||'—')} · ${esc(team?.name||'—')}
+        <p style="color:#64748B;font-size:.88rem">${esc(sport?.icon||'⚽')} ${esc(sport?.name||'—')} · ${esc(soc?.name||'—')} · ${esc(team?.name||'—')}
           <span class="badge ${{'admin':'badge-blue','responsabile':'badge-purple','dirigente':'badge-green','allenatore':'badge-gold','professionista':'badge-teal'}[currentUser.role]||'badge-gray'}" style="margin-left:8px">${roleIcon} ${roleLabel}</span>
         </p>
       </div>
@@ -4870,10 +4870,10 @@ viewBuilders['category-home'] = (el) => {
 
     <!-- Tab-bar azioni -->
     <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:var(--radius-lg);padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-      <button class="btn btn-ghost btn-sm" onclick="showView('athletes')" style="background:#F8FAFC;border-color:#CBD5E0">👥 ${canEditCat?'Gestisci':'Visualizza'} Atleti</button>
-      <button class="btn btn-ghost btn-sm" onclick="showView('matches')" style="background:#F8FAFC;border-color:#CBD5E0">⚽ Partite</button>
+      <button class="btn btn-ghost btn-sm" onclick="showView('athletes')" style="background:#F8FAFC;border-color:#1E293B">👥 ${canEditCat?'Gestisci':'Visualizza'} Atleti</button>
+      <button class="btn btn-ghost btn-sm" onclick="showView('matches')" style="background:#F8FAFC;border-color:#1E293B">⚽ Partite</button>
       ${canSess ? `<button class="btn btn-accent btn-sm" onclick="openNewSessionModal()">+ Nuova Sessione</button>` : ''}
-      ${currentUser.role==='responsabile' ? `<button class="btn btn-ghost btn-sm" onclick="showView('admin-society')" style="background:#F8FAFC;border-color:#CBD5E0">🏛️ Vista Società</button>` : ''}
+      ${currentUser.role==='responsabile' ? `<button class="btn btn-ghost btn-sm" onclick="showView('admin-society')" style="background:#F8FAFC;border-color:#1E293B">🏛️ Vista Società</button>` : ''}
       <button class="btn btn-ghost btn-sm" onclick="showView('cat-dashboard')" style="background:#EBF5FF;border-color:var(--accent);color:var(--accent);margin-left:auto">📊 Dashboard</button>
     </div>
 
@@ -4978,7 +4978,7 @@ viewBuilders['category-home'] = (el) => {
           return `<div class="athlete-row" style="cursor:pointer" onclick="openAthleteProfile('${ath.id}')">
             ${athleteAvatar(ath)}
             <div class="athlete-info">
-              <div class="name">${esc(ath.lastName)} ${esc(ath.firstName)}${ath.nickname?` <span style="color:var(--ink-3);font-weight:400;font-size:.85rem">"${esc(ath.nickname)}"</span>`:''}</div>
+              <div class="name">${esc(ath.lastName)} ${esc(ath.firstName)}${ath.nickname?` <span style="color:#64748B;font-weight:400;font-size:.85rem">"${esc(ath.nickname)}"</span>`:''}</div>
               <div class="meta">#${ath.number||'—'} · ${esc(ath.role||'—')}</div>
             </div>
             <div style="text-align:right">
@@ -5093,13 +5093,13 @@ function filterAthletes() {
 function buildParentSelector(athleteId, selectedIds) {
   const parents = S.users.filter(u => u.role === 'genitore');
   if (!parents.length) {
-    return '<div style="font-size:.82rem;color:var(--ink-3)">Nessun genitore registrato. Aggiungi prima un utente con ruolo Genitore.</div>';
+    return '<div style="font-size:.82rem;color:#64748B">Nessun genitore registrato. Aggiungi prima un utente con ruolo Genitore.</div>';
   }
   const sel = selectedIds || [];
   return `<select id="ath-parents" multiple style="min-height:80px;padding:6px;border:1.5px solid var(--mist-3);border-radius:var(--radius);width:100%;font-size:.88rem">
     ${parents.map(p => `<option value="${p.id}" ${sel.includes(p.id)?'selected':''}>${esc(p.name)} (${esc(p.username)})</option>`).join('')}
   </select>
-  <div style="font-size:.72rem;color:var(--ink-3);margin-top:3px">Ctrl/Cmd per selezionare più genitori</div>`;
+  <div style="font-size:.72rem;color:#64748B;margin-top:3px">Ctrl/Cmd per selezionare più genitori</div>`;
 }
 
 function openAthleteModal(id) {
@@ -5133,7 +5133,7 @@ function buildAthleteModalHtml(id, catId, a) {
     </div>
 
     <div style="background:#F8FAFC;border-radius:10px;padding:14px 16px;margin-bottom:16px">
-      <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">📋 Assegnazione</div>
+      <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">📋 Assegnazione</div>
       <div class="form-row" style="margin-bottom:0">
         <div class="form-field">
           <label>Categoria <span style="color:var(--red)">*</span></label>
@@ -5153,7 +5153,7 @@ function buildAthleteModalHtml(id, catId, a) {
       </div>
     </div>
 
-    <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">👤 Dati Personali</div>
+    <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">👤 Dati Personali</div>
     <div class="form-row">
       <div class="form-field"><label>Cognome <span style="color:var(--red)">*</span></label><input id="ath-lname" value="${esc(a?.lastName||'')}" placeholder="Rossi"></div>
       <div class="form-field"><label>Nome <span style="color:var(--red)">*</span></label><input id="ath-fname" value="${esc(a?.firstName||'')}" placeholder="Mario"></div>
@@ -5178,7 +5178,7 @@ function buildAthleteModalHtml(id, catId, a) {
     </div>
     <div class="form-field" style="margin-top:8px"><label>Note</label><textarea id="ath-notes" placeholder="Note sull'atleta...">${esc(a?.notes||'')}</textarea></div>
 
-    <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--mist-2)">
+    <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--mist-2)">
       👨‍👧 Genitori / Tutori
     </div>
     <div class="form-field">
@@ -5334,7 +5334,7 @@ viewBuilders['sessions'] = (el) => {
   el.innerHTML = `
     <!-- ── FILTRI SESSIONI ────────────────────────────────── -->
     <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,.06);box-shadow:none">
-      <span style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🔍 Filtri</span>
+      <span style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🔍 Filtri</span>
 
       <div class="form-field" style="margin:0;min-width:130px;flex:1">
         <label style="font-size:.73rem">Stagione</label>
@@ -5594,11 +5594,11 @@ function buildSessionEditView(el, sessId) {
         </div>
         <!-- Performance params (shown only if present) -->
         <div id="perf-section-${ath.id}" style="display:${status==='P'?'block':'none'};margin-top:16px;padding-top:14px;border-top:1px solid var(--mist-2)">
-          <div style="font-size:.8rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">⭐ Parametri Performance</div>
+          <div style="font-size:.8rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">⭐ Parametri Performance</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
             ${getPerfParams().map(rawP => { const p = normPerfParam(rawP).key; return `
               <div>
-                <div style="font-size:.78rem;color:var(--ink-3);margin-bottom:4px">${getPerfLabel(p)}</div>
+                <div style="font-size:.78rem;color:#64748B;margin-bottom:4px">${getPerfLabel(p)}</div>
                 <div id="stars-${ath.id}-${p}" class="stars">
                   ${[1,2,3,4,5].map(i=>`<span class="star ${i<=(perf[p]||0)?'on':''}" data-v="${i}" data-param="${p}" data-aid="${ath.id}" data-sessid="${sessId}" data-ro="${sessRO?'1':''}" onclick="if(!this.dataset.ro)setStarPerf(this)" style="${sessRO?'cursor:not-allowed;opacity:.55':''}">★</span>`).join('')}
                 </div>
@@ -5606,8 +5606,8 @@ function buildSessionEditView(el, sessId) {
             `; }).join('')}
           </div>
           <div style="margin-top:12px">
-            <div style="font-size:.78rem;color:var(--ink-3);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">📝 Note atleta</div>
-            <input type="text" id="note-${ath.id}" value="${esc(notes)}" placeholder="Note sulla prestazione..." style="width:100%;padding:8px 10px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem${sessRO?';background:#F8FAFC;color:var(--ink-3);':''}" ${sessRO?'readonly disabled':''}  data-sessid="${sessId}" data-athid="${ath.id}" data-ro="${sessRO?'1':''}" onchange="if(!this.dataset.ro)setAttNote(this.dataset.sessid,this.dataset.athid,this.value)">
+            <div style="font-size:.78rem;color:#64748B;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">📝 Note atleta</div>
+            <input type="text" id="note-${ath.id}" value="${esc(notes)}" placeholder="Note sulla prestazione..." style="width:100%;padding:8px 10px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.88rem${sessRO?';background:#F8FAFC;color:#64748B;':''}" ${sessRO?'readonly disabled':''}  data-sessid="${sessId}" data-athid="${ath.id}" data-ro="${sessRO?'1':''}" onchange="if(!this.dataset.ro)setAttNote(this.dataset.sessid,this.dataset.athid,this.value)">
           </div>
         </div>
       </div>`;
@@ -5696,7 +5696,7 @@ function buildCategoryDashboardView(el, catId) {
 
   const filterHtml = `
     <select onchange="window._dashSeas=this.value;buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
-      style="padding:5px 10px;border:1.5px solid #2D3748;border-radius:8px;font-size:.82rem;font-weight:600;background:#F8FAFC;color:#0F172A;cursor:pointer;outline:none;border:1.5px solid #CBD5E0;">
+      style="padding:5px 10px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.82rem;font-weight:600;background:#F8FAFC;color:#0F172A;cursor:pointer;outline:none;border:1.5px solid #CBD5E0;">
       ${allSeasons.slice().reverse().map(s=>`<option value="${s.id}" ${s.id===filterSeasId?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
     </select>
     ${multiTeam ? catTeams.map(t=>`
@@ -5812,7 +5812,7 @@ function buildCategoryDashboardView(el, catId) {
             <div class="progress-bar" style="margin-bottom:10px">
               <div class="progress-fill" style="width:${tPct}%;background:${color};border-radius:99px"></div>
             </div>
-            <div style="display:flex;gap:14px;font-size:.82rem;color:var(--ink-3)">
+            <div style="display:flex;gap:14px;font-size:.82rem;color:#64748B">
               <span>👥 ${tAthletes.length} atleti</span>
               <span>📅 ${tSessions.length} sessioni</span>
               <span>✅ ${tPresent} presenze</span>
@@ -5823,10 +5823,10 @@ function buildCategoryDashboardView(el, catId) {
               const gdSign = tMs.gd >= 0 ? '+' : '';
               return `<div style="display:flex;gap:10px;margin-top:8px;padding:8px 10px;background:var(--mist-2);border-radius:8px;flex-wrap:wrap">
                 <span style="font-size:.78rem;font-weight:700;color:var(--green)">🏆 ${tMs.pts}pt</span>
-                <span style="font-size:.78rem;color:var(--ink-3)">${tMs.w}V ${tMs.d}P ${tMs.l}S</span>
+                <span style="font-size:.78rem;color:#64748B">${tMs.w}V ${tMs.d}P ${tMs.l}S</span>
                 <span style="font-size:.78rem;color:var(--teal)">⚽ ${tMs.gf} fatti</span>
                 <span style="font-size:.78rem;color:var(--red)">⛔ ${tMs.gs} subiti</span>
-                <span style="font-size:.78rem;color:var(--ink-3)">diff. ${gdSign}${tMs.gd}</span>
+                <span style="font-size:.78rem;color:#64748B">diff. ${gdSign}${tMs.gd}</span>
               </div>`;
             })()}
             ${topAth ? `<div style="margin-top:8px;padding:6px 10px;background:#F8FAFC;border-radius:8px;font-size:.78rem">
@@ -5890,13 +5890,13 @@ function buildCategoryDashboardView(el, catId) {
           const cls = {responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal'}[role]||'badge-gray';
           const members = (ids||[]).map(id=>S.users.find(u=>u.id===id)).filter(Boolean);
           return `<div>
-            <div style="font-size:.72rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">${rd.icon||''} ${label}</div>
+            <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">${rd.icon||''} ${label}</div>
             ${members.length ? members.map(u=>`
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                 <div class="user-avatar" style="width:28px;height:28px;font-size:.6rem;background:${rd.gradient||'#999'};flex-shrink:0">${initials(u.name)}</div>
                 <div style="min-width:0">
                   <div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.name)}</div>
-                  <div style="font-size:.7rem;color:var(--ink-3)">${esc(u.profession||'')}</div>
+                  <div style="font-size:.7rem;color:#64748B">${esc(u.profession||'')}</div>
                 </div>
               </div>`).join('')
             : '<div class="text-muted text-sm">—</div>'}
@@ -6010,7 +6010,7 @@ viewBuilders['athlete-profile'] = (el) => {
       </div>
       <div style="flex:1;min-width:200px">
         <h2 style="font-size:1.8rem;letter-spacing:-.03em">${esc(ath.lastName)} ${esc(ath.firstName)}</h2>
-        <div style="font-size:.95rem;color:var(--ink-3);margin-top:4px">#${ath.number||'—'} · ${esc(ath.role||'—')}</div>
+        <div style="font-size:.95rem;color:#64748B;margin-top:4px">#${ath.number||'—'} · ${esc(ath.role||'—')}</div>
         <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <span class="badge badge-blue" style="font-size:.8rem">🏷️ ${esc(cat?.name||'—')}</span>
           ${ath.teamId ? `<span class="badge badge-gray" style="font-size:.8rem">👕 ${esc(S.teams.find(t=>t.id===ath.teamId)?.name||'—')}</span>` : ''}
@@ -6023,7 +6023,7 @@ viewBuilders['athlete-profile'] = (el) => {
           <span class="badge badge-red">${ass} assenze</span>
           <span class="badge badge-gold">${giust} giust.</span>
         </div>
-        ${ath.notes?`<div style="margin-top:12px;padding:10px 14px;background:#F8FAFC;border-radius:8px;font-size:.88rem;color:var(--ink-3)">📝 ${esc(ath.notes)}</div>`:''}
+        ${ath.notes?`<div style="margin-top:12px;padding:10px 14px;background:#F8FAFC;border-radius:8px;font-size:.88rem;color:#64748B">📝 ${esc(ath.notes)}</div>`:''}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${canEdit(ath.categoryId) ? `<button class="btn btn-ghost" onclick="openAthleteModal('${id}')">✏️ Modifica</button>` : ''}
@@ -6123,7 +6123,7 @@ function buildSocDashContent(socId) {
   const globalPct2 = pct(presAtts, allAtts.length||1);
 
   c.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:18px;background:#161B27;border-radius:var(--radius-lg);border:1px solid var(--mist-2)">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:18px;background:#FFFFFF;border-radius:var(--radius-lg);border:1px solid var(--mist-2)">
       <div style="font-size:2.5rem">${sport?.icon||'🏅'}</div>
       <div>
         <div style="font-size:1.4rem;font-weight:800;font-family:var(--font-head)">${esc(soc?.name||'')}</div>
@@ -6158,7 +6158,7 @@ function buildSocDashContent(socId) {
                 <span style="color:var(--green);font-weight:700">${teamMs.pts}pt</span>
                 <span style="color:var(--teal)">${teamMs.gf}⚽</span>
                 <span style="color:var(--red)">${teamMs.gs}⛔</span>
-                <span style="color:var(--ink-3)">${teamMs.w}V${teamMs.d}P${teamMs.l}S</span>
+                <span style="color:#64748B">${teamMs.w}V${teamMs.d}P${teamMs.l}S</span>
               </div>` : ''}
             </div>
             ${teamCats.map(cat=>{
@@ -6169,7 +6169,7 @@ function buildSocDashContent(socId) {
                 <div style="flex:1"><div class="progress-bar"><div class="progress-fill ${st2.presenceRate>=70?'green':st2.presenceRate>=50?'gold':'red'}" style="width:${st2.presenceRate}%"></div></div></div>
                 <span class="fw-700 text-sm">${st2.presenceRate}%</span>
                 ${catMs.played ? `<span style="font-size:.75rem;color:var(--green);font-weight:700">${catMs.pts}pt</span>
-                <span style="font-size:.75rem;color:var(--ink-3)">${catMs.gf}-${catMs.gs}</span>` : ''}
+                <span style="font-size:.75rem;color:#64748B">${catMs.gf}-${catMs.gs}</span>` : ''}
                 <span class="text-muted text-sm">${st2.athletes} atleti</span>
               </div>`;
             }).join('')}
@@ -6359,7 +6359,7 @@ viewBuilders['admin-athletes'] = (el) => {
                   <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="openAthleteProfile('${ath.id}')">
                     ${athleteAvatar(ath, 32)}
                     <div>
-                      <div class="fw-600">${esc(ath.lastName)} ${esc(ath.firstName)}${ath.nickname?` <span style="color:var(--ink-3);font-size:.8rem">"${esc(ath.nickname)}"</span>`:''}</div>
+                      <div class="fw-600">${esc(ath.lastName)} ${esc(ath.firstName)}${ath.nickname?` <span style="color:#64748B;font-size:.8rem">"${esc(ath.nickname)}"</span>`:''}</div>
                     </div>
                   </div>
                 </td>
@@ -6507,7 +6507,7 @@ viewBuilders['export'] = (el) => {
         <div>
           <div class="fw-700 mb-16">Formato file</div>
           <p class="text-muted text-sm">I file vengono esportati in formato <b>.xlsx</b> (Excel 2007+), compatibile con:</p>
-          <ul style="margin:10px 0;padding-left:20px;font-size:.85rem;color:var(--ink-3)">
+          <ul style="margin:10px 0;padding-left:20px;font-size:.85rem;color:#64748B">
             <li>Microsoft Excel 2007 e versioni successive</li>
             <li>LibreOffice Calc (gratuito)</li>
             <li>Google Sheets (importa direttamente)</li>
@@ -7294,7 +7294,7 @@ viewBuilders['matches'] = (el) => {
   el.innerHTML = `
     <!-- ── FILTRI PARTITE ─────────────────────────────────── -->
     <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,.06);box-shadow:none">
-      <span style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🔍 Filtri</span>
+      <span style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">🔍 Filtri</span>
 
       <div class="form-field" style="margin:0;min-width:130px;flex:1">
         <label style="font-size:.73rem">Stagione</label>
@@ -7423,7 +7423,7 @@ function openMatchModal(id) {
 
     <!-- Contesto: categoria + squadra -->
     <div style="background:#F8FAFC;border-radius:10px;padding:12px 14px;margin-bottom:14px">
-      <div style="font-size:.73rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📋 Contesto Partita</div>
+      <div style="font-size:.73rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📋 Contesto Partita</div>
       <div class="form-row" style="margin:0">
         <div class="form-field" style="margin:0">
           <label style="font-size:.78rem">Categoria <span style="color:var(--red)">*</span></label>
@@ -7491,7 +7491,7 @@ function openMatchModal(id) {
 
     ${id ? `
     <hr style="margin:14px 0">
-    <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+    <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
       ⚽ Tabellino Marcatori
     </div>
     <div id="scorers-list" style="margin-bottom:8px">
@@ -7512,7 +7512,7 @@ function openMatchModal(id) {
         <input id="scorer-goals" type="number" value="1" min="1" max="20" style="font-size:.9rem;text-align:center">
       </div>
       <button class="btn btn-accent btn-sm" onclick="addScorer('${id}')" style="margin-bottom:2px">+ Aggiungi</button>
-    </div>` : '<div style="font-size:.8rem;color:var(--ink-3);margin:8px 0">Salva prima la partita per aggiungere i marcatori.</div>'}
+    </div>` : '<div style="font-size:.8rem;color:#64748B;margin:8px 0">Salva prima la partita per aggiungere i marcatori.</div>'}
 
     <hr style="margin:14px 0">
     <div class="form-field">
@@ -7694,7 +7694,7 @@ viewBuilders['convocati'] = (el) => {
     status === 'P' ? '<span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:4px;font-weight:700;font-size:.8rem">P</span>' :
     status === 'A' ? '<span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:4px;font-weight:700;font-size:.8rem">A</span>' :
     status === 'G' ? '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:4px;font-weight:700;font-size:.8rem">G</span>' :
-                     '<span style="background:var(--mist-2);color:var(--ink-3);padding:2px 8px;border-radius:4px;font-size:.8rem">—</span>';
+                     '<span style="background:var(--mist-2);color:#64748B;padding:2px 8px;border-radius:4px;font-size:.8rem">—</span>';
 
   const athRow = (ath, cvStatus, canEdit) => {
     const cv  = cvMap[ath.id];
@@ -7766,7 +7766,7 @@ viewBuilders['convocati'] = (el) => {
 
     ${canMgr ? `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:#F8FAFC;border-radius:10px;align-items:center">
-      <span style="font-size:.82rem;font-weight:600;color:var(--ink-3)">Azioni rapide:</span>
+      <span style="font-size:.82rem;font-weight:600;color:#64748B">Azioni rapide:</span>
       <button class="btn btn-ghost btn-sm" onclick="convocaTutti('${matchId}')">✅ Convoca tutti</button>
       <button class="btn btn-ghost btn-sm" onclick="resetConvocati('${matchId}')">🔄 Reset convocazioni</button>
       ${m.linkedSessionId ? `<button class="btn btn-ghost btn-sm" onclick="markAllConvocatiPresent('${matchId}')">📋 Segna presenti i convocati</button>` : ''}
@@ -7780,8 +7780,8 @@ viewBuilders['convocati'] = (el) => {
     <div class="card" style="padding:0;margin-bottom:16px">
       <div style="padding:14px 18px;border-bottom:2px solid var(--mist-2);display:flex;align-items:center;gap:10px">
         <div style="font-weight:700;font-size:.95rem;flex:1">Tutti gli Atleti</div>
-        <span style="font-size:.78rem;color:var(--ink-3)">Conv. → ✅🔄❌</span>
-        ${m.linkedSessionId ? `<span style="font-size:.78rem;color:var(--ink-3);margin-left:6px">Presenza → P A G</span>` : ''}
+        <span style="font-size:.78rem;color:#64748B">Conv. → ✅🔄❌</span>
+        ${m.linkedSessionId ? `<span style="font-size:.78rem;color:#64748B;margin-left:6px">Presenza → P A G</span>` : ''}
       </div>
       <div style="padding:8px 10px">
         ${athletes.map(ath => {
@@ -8275,7 +8275,7 @@ function openChangePasswordModal() {
       
     </div>
 
-    <div style="background:var(--accent-l);border-radius:var(--radius);padding:10px 14px;font-size:.8rem;color:var(--ink-3);margin-bottom:16px">
+    <div style="background:var(--accent-l);border-radius:var(--radius);padding:10px 14px;font-size:.8rem;color:#64748B;margin-bottom:16px">
       🔒 <strong>Requisiti:</strong> min. 10 caratteri · maiuscola · minuscola · numero · carattere speciale (!@#$%…)
     </div>
 
@@ -8803,7 +8803,7 @@ viewBuilders['parent-view'] = (el) => {
         <div class="icon" style="background:var(--accent-l);color:var(--accent)">👕</div>
         <div>
           <div style="font-weight:700">${esc(cat?.name||'—')} — ${esc(team?.name||'—')}</div>
-          <div style="font-size:.75rem;color:#94A3B8;font-weight:400">Statistiche Squadra</div>
+          <div style="font-size:.75rem;color:#64748B;font-weight:400">Statistiche Squadra</div>
         </div>
       </div>
       <div class="stats-grid">
@@ -8866,10 +8866,10 @@ viewBuilders['parent-view'] = (el) => {
               const convSt = status === 'convocato' ? 'badge-green' : status === 'riserva' ? 'badge-gold' : 'badge-gray';
               const convLabel = status === 'convocato' ? '✅ Convocato' : status === 'riserva' ? '🔄 Riserva' : '❌ Non conv.';
               return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mist-2)">
-                <div style="min-width:80px;font-size:.82rem;color:var(--ink-3)">${fmtDate(m.date)}</div>
+                <div style="min-width:80px;font-size:.82rem;color:#64748B">${fmtDate(m.date)}</div>
                 <div style="flex:1">
                   <div class="fw-700">${esc(m.opponent)}</div>
-                  <div style="font-size:.78rem;color:var(--ink-3)">${m.homeAway==='home'?'🏠 Casa':'✈️ Trasferta'}</div>
+                  <div style="font-size:.78rem;color:#64748B">${m.homeAway==='home'?'🏠 Casa':'✈️ Trasferta'}</div>
                 </div>
                 <span class="badge ${convSt}">${convLabel}</span>
               </div>`;
@@ -8895,7 +8895,7 @@ viewBuilders['parent-view'] = (el) => {
                   <td>${fmtDate(sess.date)}</td>
                   <td>${actBadge(sess.type)}</td>
                   <td><span style="color:${stColor};font-weight:700">${statusIcon[st]||'—'} ${statusLabel[st]||'—'}</span></td>
-                  <td style="font-size:.82rem;color:var(--ink-3)">${esc(sess.notes||'')}</td>
+                  <td style="font-size:.82rem;color:#64748B">${esc(sess.notes||'')}</td>
                 </tr>`;
               }).join('')}
             </tbody>
@@ -8919,7 +8919,7 @@ function updateMapsLink(val) {
 function buildScorersList(matchId) {
   if (!matchId) return '';
   const list = (S.scorers||[]).filter(s => s.matchId === matchId);
-  if (!list.length) return '<div style="font-size:.82rem;color:var(--ink-3)">Nessun marcatore registrato</div>';
+  if (!list.length) return '<div style="font-size:.82rem;color:#64748B">Nessun marcatore registrato</div>';
   return list.map(s => {
     const a = S.athletes.find(x => x.id === s.athleteId);
     const name = a ? `#${a.number||'—'} ${esc(a.lastName)} ${esc(a.firstName)}` : '—';
@@ -9120,7 +9120,7 @@ viewBuilders['president-view'] = (el) => {
           {label:'Professionisti', icon:'🩺', users: professionisti, color:'badge-teal'},
         ].map(({label,icon,users,color}) => users.length ? `
           <div style="margin-bottom:14px">
-            <div style="font-size:.78rem;font-weight:700;color:var(--ink-3);margin-bottom:6px">${icon} ${label} (${users.length})</div>
+            <div style="font-size:.78rem;font-weight:700;color:#64748B;margin-bottom:6px">${icon} ${label} (${users.length})</div>
             ${users.map(u => `
               <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
                 <div class="user-avatar" style="background:${ROLES[u.role]?.gradient||'#999'};width:28px;height:28px;font-size:.65rem">${initials(u.name)}</div>
@@ -9148,7 +9148,7 @@ viewBuilders['president-view'] = (el) => {
           '<div class="card-title">' +
           '<div class="icon" style="background:var(--teal-l);color:var(--teal)">🏛️</div>' +
           '<div><div style="font-weight:800">' + esc(soc.name) + '</div>' +
-          '<div style="font-size:.78rem;color:var(--ink-3)">' + esc(sport?.name||'—') + ' · ' + esc(soc.city||'') + (soc.email?' · '+esc(soc.email):'') + '</div>' +
+          '<div style="font-size:.78rem;color:#64748B">' + esc(sport?.name||'—') + ' · ' + esc(soc.city||'') + (soc.email?' · '+esc(soc.email):'') + '</div>' +
           '</div></div>' +
           '<div class="stats-grid">' +
           socCats.map(cat => {
