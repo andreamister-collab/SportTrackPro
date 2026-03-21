@@ -563,7 +563,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 #content-area {
   flex: 1;
   padding: 28px;
-  background: #0D1117;
+  background: #F1F5F9;
   overflow-x: hidden;
   /* padding-top compensato dal top-bar sticky tramite il flow flex normale */
 }
@@ -5701,9 +5701,9 @@ function buildCategoryDashboardView(el, catId) {
     </select>
     ${multiTeam ? catTeams.map(t=>`
       <button onclick="window._dashTeam='${t.id}';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
-        style="padding:5px 12px;border-radius:8px;font-size:.8rem;font-weight:600;border:1.5px solid ${t.id===filterTeamId?'var(--accent)':'#2D3748'};background:${t.id===filterTeamId?'#1E2D4A':'#1E2433'};color:${t.id===filterTeamId?'var(--accent)':'#94A3B8'};cursor:pointer">
+        style="padding:5px 12px;border-radius:8px;font-size:.8rem;font-weight:600;border:1.5px solid ${t.id===filterTeamId?'var(--accent)':'#E2E8F0'};background:${t.id===filterTeamId?'#1E2D4A':'#F8FAFC'};color:${t.id===filterTeamId?'var(--accent)':'#94A3B8'};cursor:pointer">
         ${esc(t.name)}
-      </button>`).join('')+'<button onclick="window._dashTeam=\'\';buildCategoryDashboardView(document.getElementById(\'view-cat-dashboard\'),\'${catId}\')" style="padding:5px 12px;border-radius:8px;font-size:.8rem;font-weight:600;border:1.5px solid '+(!filterTeamId?'var(--accent)':'#2D3748')+';background:'+(!filterTeamId?'#1E2D4A':'#1E2433')+';color:'+(!filterTeamId?'var(--accent)':'#94A3B8')+';cursor:pointer">👕 Tutte</button>' : ''}
+      </button>`).join('')+'<button onclick="window._dashTeam=\'\';buildCategoryDashboardView(document.getElementById(\'view-cat-dashboard\'),\'${catId}\')" style="padding:5px 12px;border-radius:8px;font-size:.8rem;font-weight:600;border:1.5px solid '+(!filterTeamId?'var(--accent)':'#E2E8F0')+';background:'+(!filterTeamId?'#1E2D4A':'#F8FAFC')+';color:'+(!filterTeamId?'var(--accent)':'#94A3B8')+';cursor:pointer">👕 Tutte</button>' : ''}
   `;
   const resetBtn = '';
   setTopbar('Dashboard Categoria', cat.name, resetBtn, filterHtml);
