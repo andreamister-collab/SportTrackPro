@@ -2129,7 +2129,9 @@ function canEditSessions(catId) {
 function isReadOnly(catId) {
   if (!currentUser) return true;
   if (currentUser.role === 'admin') return false;
-  return currentUser.role === 'professionista' && canAccessCategory(catId);
+  // Presidente e professionista: sola lettura
+  if (['professionista','presidente'].includes(currentUser.role)) return canAccessCategory(catId);
+  return false;
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
@@ -2747,7 +2749,12 @@ function showView(viewId, pushHistory=true) {
     viewId = 'parent-view';
   }
   // Presidente può vedere solo alcune viste
-  const presidentAllowed = ['president-view','admin-config','cat-dashboard','admin-society','admin-reports'];
+  const presidentAllowed = [
+    'president-view','admin-config','cat-dashboard',
+    'admin-society','admin-reports',
+    'athletes','matches','sessions','attendances',
+    'convocati','cat-reports'
+  ];
   if (currentUser?.role === 'presidente' && !presidentAllowed.includes(viewId)) {
     viewId = 'president-view';
   }
