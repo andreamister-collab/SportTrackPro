@@ -205,29 +205,37 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 
 /* ── LOGIN SCREEN ───────────────────────────────────────────── */
 #login-screen {
-  /* dvh = dynamic viewport height: esclude barra URL e notch su mobile */
   min-height: 100vh;
   min-height: 100dvh;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  display: block;          /* NON flex — layout normale scorrevole */
   background: #0D1117;
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
-  /* padding verticale generoso + safe area bottom per iPhone */
-  padding: 32px 16px max(32px, env(safe-area-inset-bottom));
+  padding: env(safe-area-inset-top, 0) 0 0 0;
 }
 #login-screen::before {
   content: '';
-  position: absolute; inset: 0;
+  position: fixed; inset: 0;   /* fixed così non scorre con la pagina */
   background: radial-gradient(ellipse 80% 60% at 60% 40%, rgba(26,86,219,.3) 0%, transparent 70%);
   pointer-events: none;
+  z-index: 0;
 }
 #login-screen .noise {
-  position: absolute; inset: 0;
+  position: fixed; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  opacity: .5; pointer-events: none;
+  opacity: .5; pointer-events: none; z-index: 0;
+}
+/* Wrapper che centra la card su desktop, scorre su mobile */
+#login-screen .login-wrap {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px max(32px, env(safe-area-inset-bottom));
 }
 .login-card {
   background: #161B27;
@@ -239,8 +247,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
   position: relative;
   z-index: 1;
   animation: loginIn .5s cubic-bezier(.22,1,.36,1) both;
-  /* Su mobile: niente margin auto, si posiziona nel flow normale */
-  margin: auto;
+  flex-shrink: 0;
 }
 @keyframes loginIn { from { opacity:0; transform:translateY(24px) scale(.97); } }
 .login-logo {
@@ -284,35 +291,28 @@ h1,h2,h3,h4,h5 { font-family: var(--font-head); }
 
 /* Login su mobile portrait */
 @media (max-width: 480px) {
-  #login-screen {
-    align-items: flex-start;
+  #login-screen .login-wrap {
+    align-items: flex-start;   /* non centrare verticalmente: scorre dall'alto */
     padding: 24px 16px max(24px, env(safe-area-inset-bottom));
-    /* Permette scroll quando la tastiera è aperta */
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    min-height: auto;
   }
   .login-card {
     padding: 28px 20px;
     border-radius: 16px;
     width: 100%;
-    margin: 0;
-    /* Previene che la card venga tagliata dalla tastiera */
-    margin-bottom: 16px;
   }
   .login-logo { margin-bottom: 24px; }
   .login-logo h1 { font-size: 1.2rem; }
   .login-card h2 { font-size: 1.1rem; }
   .login-card p { font-size: .85rem; margin-bottom: 20px; }
   .form-group { margin-bottom: 14px; }
-  /* Input touch-friendly: min 48px per WCAG */
-  .form-group input { 
-    padding: 13px 14px; 
-    font-size: 1rem; 
+  .form-group input {
+    padding: 13px 14px;
+    /* iOS non fa zoom se font >= 16px */
+    font-size: 16px;
     min-height: 48px;
-    /* Previene zoom automatico su iOS quando font < 16px */
-    font-size: max(16px, 1rem);
   }
-  .btn-primary { 
+  .btn-primary {
     min-height: 48px;
     font-size: 1rem;
     margin-top: 4px;
@@ -1678,6 +1678,7 @@ async function loadStateFromDB() {
 ══════════════════════════════════════════════════════════════ -->
 <div id="login-screen">
   <div class="noise"></div>
+  <div class="login-wrap">
   <div class="login-card">
     <div class="login-logo">
       <div class="logo-icon">⚽</div>
@@ -1700,6 +1701,7 @@ async function loadStateFromDB() {
     <div class="login-hint" id="login-hint-area" style="display:none">
       <span class="text-muted text-sm">Inserisci le credenziali fornite dall'amministratore.</span>
     </div>
+  </div>
   </div>
 </div>
 
@@ -4766,7 +4768,88 @@ function buildRolesConfig() {
 }
 
 function buildSettingsConfig() {
+  const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+
+  const pwaStatusHtml = isInstalled
+    ? `<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--green-l);border-radius:10px;border:1px solid var(--green)">
+        <span style="font-size:1.4rem">✅</span>
+        <div><div style="font-weight:700;color:var(--green)">App già installata</div><div style="font-size:.82rem;color:var(--ink-3);margin-top:2px">SportTrack Pro è in esecuzione come app nativa.</div></div>
+       </div>`
+    : (_pwaPrompt
+        ? `<button class="btn btn-accent" onclick="_installPwa()" style="width:100%;justify-content:center;gap:10px;font-size:1rem;padding:14px">
+            📲 Installa SportTrack Pro sul dispositivo
+           </button>`
+        : '');
+
+  const iosGuide = isIOS ? `
+    <div class="highlight-box" style="margin-top:12px">
+      <div style="font-weight:700;margin-bottom:8px">📱 Installazione su iPhone / iPad (Safari)</div>
+      <ol style="padding-left:18px;line-height:2">
+        <li>Apri questa pagina in <b>Safari</b></li>
+        <li>Tocca l'icona <b>Condividi</b> <span style="font-size:1.1rem">⬆️</span> in basso</li>
+        <li>Scorri e seleziona <b>"Aggiungi alla schermata Home"</b></li>
+        <li>Conferma tocando <b>"Aggiungi"</b> in alto a destra</li>
+      </ol>
+    </div>` : '';
+
+  const androidGuide = isAndroid ? `
+    <div class="highlight-box" style="margin-top:12px">
+      <div style="font-weight:700;margin-bottom:8px">🤖 Installazione su Android (Chrome)</div>
+      <ol style="padding-left:18px;line-height:2">
+        <li>Apri questa pagina in <b>Chrome</b></li>
+        <li>Tocca il menu <b>⋮</b> in alto a destra</li>
+        <li>Seleziona <b>"Installa app"</b> o <b>"Aggiungi a schermata Home"</b></li>
+        <li>Conferma toccando <b>"Installa"</b></li>
+      </ol>
+    </div>` : '';
+
+  const desktopGuide = (!isIOS && !isAndroid) ? `
+    <div class="highlight-box" style="margin-top:12px">
+      <div style="font-weight:700;margin-bottom:8px">💻 Installazione su Desktop (Chrome / Edge)</div>
+      <ol style="padding-left:18px;line-height:2">
+        <li>Clicca l'icona <b>⬇️</b> o <b>+</b> nella barra degli indirizzi</li>
+        <li>Oppure usa il menu <b>⋮</b> → <b>"Installa SportTrack Pro"</b></li>
+        <li>Conferma cliccando <b>"Installa"</b></li>
+      </ol>
+    </div>` : '';
+
   return `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">📲</div>Installa App SportTrack Pro</div>
+      <p style="color:var(--ink-3);font-size:.88rem;margin-bottom:16px">
+        Installa SportTrack Pro come app sul tuo dispositivo: funziona offline, si apre senza browser, 
+        ha icona sulla schermata Home e aspetto nativo.
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--mist-2);border-radius:10px">
+          <span style="font-size:1.5rem">⚡</span>
+          <div style="font-size:.82rem"><div style="font-weight:700">Veloce</div><div style="color:var(--ink-3)">Avvio istantaneo</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--mist-2);border-radius:10px">
+          <span style="font-size:1.5rem">📶</span>
+          <div style="font-size:.82rem"><div style="font-weight:700">Offline</div><div style="color:var(--ink-3)">Funziona senza rete</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--mist-2);border-radius:10px">
+          <span style="font-size:1.5rem">📱</span>
+          <div style="font-size:.82rem"><div style="font-weight:700">Nativo</div><div style="color:var(--ink-3)">Icona su schermata Home</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--mist-2);border-radius:10px">
+          <span style="font-size:1.5rem">🔒</span>
+          <div style="font-size:.82rem"><div style="font-weight:700">Sicuro</div><div style="color:var(--ink-3)">Dati crittografati</div></div>
+        </div>
+      </div>
+      ${pwaStatusHtml}
+      ${iosGuide}
+      ${androidGuide}
+      ${desktopGuide}
+      ${!isInstalled && !_pwaPrompt && !isIOS ? `<div style="margin-top:12px;padding:12px;background:var(--mist-2);border-radius:10px;font-size:.82rem;color:var(--ink-3)">
+        💡 Il pulsante di installazione apparirà automaticamente quando il browser lo supporta, oppure segui le istruzioni manuali qui sopra.
+      </div>` : ''}
+    </div>
+
     <div class="card">
       <div class="card-title"><div class="icon" style="background:var(--mist-2)">⚙️</div>Impostazioni Generali</div>
       <div class="highlight-box"><b>ℹ️ Parametri di Performance:</b> I parametri tecnica, fisico, tattica, mentale e comunicazione sono registrati per ogni atleta in ogni sessione. Vengono visualizzati nei profili atleta e nelle dashboard.</div>
@@ -9565,9 +9648,16 @@ function _showPwaBanner() {
 async function _installPwa() {
   if (!_pwaPrompt) return;
   _pwaPrompt.prompt();
-  await _pwaPrompt.userChoice;
+  const { outcome } = await _pwaPrompt.userChoice;
   _pwaPrompt = null;
   document.getElementById('pwa-banner')?.remove();
+  if (outcome === 'accepted') {
+    toast('✅ SportTrack Pro installata con successo!', 'success');
+    // Aggiorna la tab impostazioni se è aperta
+    if (currentView === 'admin-config') {
+      setTimeout(() => buildAdminConfigTab('settings'), 500);
+    }
+  }
 }
 
 window.addEventListener('appinstalled', () => {
