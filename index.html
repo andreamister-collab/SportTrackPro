@@ -9028,17 +9028,61 @@ viewBuilders['parent-view'] = (el) => {
       ${perf.overall > 0 ? `<div class="stat-card purple"><div class="accent-bar"></div><div class="label">Performance</div><div class="value">${perf.overall.toFixed(1)}</div><div class="sub">media overall</div></div>` : ''}
     </div>
 
+    <!-- Partite ultimo mese + convocazioni unificate -->
     ${(()=>{
+      if (!window._parentMatchState) window._parentMatchState = {teamId:'',dateFrom:'',dateTo:''};
+      const pms = window._parentMatchState;
       const childCatIds = children.map(ch=>ch.categoryId).filter(Boolean);
-      return buildRecentMatchesCard(childCatIds, {
-        stateKey: '_parentMatchState',
-        viewId: 'parent-view',
-        title: 'Partite ultimo mese (squadra)'
-      });
+      const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate()-30);
+      const monthStr = monthAgo.toISOString().slice(0,10);
+
+      let pMatches = S.matches.filter(m=>childCatIds.includes(m.categoryId)&&m.date>=monthStr);
+      if (pms.dateFrom) pMatches = pMatches.filter(m=>m.date>=pms.dateFrom);
+      if (pms.dateTo)   pMatches = pMatches.filter(m=>m.date<=pms.dateTo);
+      pMatches = pMatches.sort((a,b)=>b.date.localeCompare(a.date));
+
+      const mkOnChange = field =>
+        "window._parentMatchState."+field+"=this.value;showView('parent-view');";
+
+      const filterBar =
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">'
+        + '<div class="form-field" style="margin:0;min-width:110px"><label style="font-size:.73rem">Data da</label>'
+        + '<input type="date" value="'+(pms.dateFrom||'')+'" onchange="'+mkOnChange('dateFrom')+'"></div>'
+        + '<div class="form-field" style="margin:0;min-width:110px"><label style="font-size:.73rem">Data a</label>'
+        + '<input type="date" value="'+(pms.dateTo||'')+'" onchange="'+mkOnChange('dateTo')+'"></div>'
+        + '</div>';
+
+      const rows = pMatches.length === 0
+        ? '<div class="text-muted text-sm" style="padding:10px 0">Nessuna partita nel periodo</div>'
+        : pMatches.slice(0,12).map(m => {
+            const cat = S.categories.find(c=>c.id===m.categoryId);
+            const team = S.teams.find(t=>t.id===m.teamId)||S.teams.find(t=>cat&&t.id===cat.teamId);
+            const rc = m.result==='W'?'var(--green)':m.result==='L'?'var(--red)':m.result==='D'?'var(--gold)':'#94A3B8';
+            const sc = m.result&&m.result!=='TBD'?(m.scoredGoals||0)+'—'+(m.concededGoals||0):'da giocare';
+            // Stato convocazione del figlio attivo
+            const conv = myConvocati.find(cv=>cv.matchId===m.id);
+            const convSt = conv?.status==='convocato'?'badge-green':conv?.status==='riserva'?'badge-gold':conv?'badge-gray':'';
+            const convLabel = conv?.status==='convocato'?'✅ Convocato':conv?.status==='riserva'?'🔄 Riserva':conv?'❌ Non conv.':'';
+            return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--mist-2)">'
+              + '<div style="font-size:.75rem;color:#64748B;min-width:54px">'+fmtDate(m.date)+'</div>'
+              + '<div style="flex:1;min-width:0">'
+              + '<div class="fw-600" style="font-size:.85rem">'+esc((team&&team.name)||(cat&&cat.name)||'—')+' vs '+esc(m.opponent)+'</div>'
+              + '<div style="font-size:.78rem;color:#64748B">'+esc((cat&&cat.name)||'—')+' · '+(m.homeAway==='home'?'🏠 Casa':'✈️ Trasferta')+'</div>'
+              + '</div>'
+              + (convLabel ? '<span class="badge '+convSt+'" style="flex-shrink:0">'+convLabel+'</span>' : '')
+              + '<div class="fw-700" style="color:'+rc+';font-size:.88rem;flex-shrink:0;min-width:44px;text-align:right">'+sc+'</div>'
+              + '</div>';
+          }).join('');
+
+      return '<div class="card" style="margin-bottom:20px">'
+        + '<div class="card-title" style="justify-content:space-between">'
+        + '<div style="display:flex;align-items:center;gap:8px">'
+        + '<div class="icon" style="background:var(--gold-l);color:var(--gold)">⚽</div>Partite ultimo mese'
+        + '</div></div>'
+        + filterBar + rows + '</div>';
     })()}
 
     <div class="grid-2" style="margin-bottom:20px">
-
       <!-- Performance -->
       ${perf.overall > 0 ? `
       <div class="card">
@@ -9047,26 +9091,7 @@ viewBuilders['parent-view'] = (el) => {
           ${getPerfParams().map(normPerfParam).map(({key,label}) => perfBar(label, perf[key]||0)).join('')}
         </div>
       </div>` : '<div></div>'}
-
-      <!-- Convocazioni -->
-      <div class="card">
-        <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">⚽</div>Convocazioni Partite</div>
-        ${myMatches.length === 0
-          ? '<div class="text-muted text-sm">Nessuna partita registrata</div>'
-          : myMatches.slice(0,8).map(({match:m, status}) => {
-              const convSt = status === 'convocato' ? 'badge-green' : status === 'riserva' ? 'badge-gold' : 'badge-gray';
-              const convLabel = status === 'convocato' ? '✅ Convocato' : status === 'riserva' ? '🔄 Riserva' : '❌ Non conv.';
-              return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mist-2)">
-                <div style="min-width:80px;font-size:.82rem;color:#64748B">${fmtDate(m.date)}</div>
-                <div style="flex:1">
-                  <div class="fw-700">${esc(m.opponent)}</div>
-                  <div style="font-size:.78rem;color:#64748B">${m.homeAway==='home'?'🏠 Casa':'✈️ Trasferta'}</div>
-                </div>
-                <span class="badge ${convSt}">${convLabel}</span>
-              </div>`;
-            }).join('')
-        }
-      </div>
+      <div></div>
     </div>
 
     <!-- Storico sessioni -->
