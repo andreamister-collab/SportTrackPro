@@ -66,6 +66,127 @@
   --font-mono: 'JetBrains Mono', monospace;
 }
 
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE PORTRAIT — ottimizzazione completa
+   ════════════════════════════════════════════════════════════ */
+
+/* topbar-filter inline nel top-bar: si nasconde su schermi piccoli,
+   i filtri appaiono sotto il topbar come riga collassabile */
+@media (max-width: 480px) {
+  #topbar-filter { display: none !important; }
+  #topbar-filter.show-mobile { display: flex !important; }
+
+  /* Top-bar più compatta */
+  #top-bar { padding: 0 10px; min-height: 48px; flex-wrap: wrap; }
+  .topbar-title { font-size: .9rem; }
+
+  /* Contenuto scorrevole con padding bottom per bottom-nav */
+  #content-area { padding: 12px 10px 90px; }
+
+  /* Stats grid: 2 colonne compatte */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 14px !important;
+  }
+  .stat-card { padding: 12px 10px 12px 18px !important; }
+  .stat-card .value { font-size: 1.6rem !important; }
+  .stat-card .label { font-size: .68rem !important; }
+  .stat-card .sub { font-size: .7rem !important; }
+
+  /* Cards */
+  .card { padding: 14px !important; border-radius: 12px !important; }
+  .card-title { font-size: .85rem !important; margin-bottom: 10px !important; }
+
+  /* Tabelle: scroll orizzontale */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; }
+  table { font-size: .78rem !important; }
+  thead th { padding: 8px 10px !important; font-size: .65rem !important; }
+  tbody td { padding: 8px 10px !important; }
+
+  /* Bottoni touch-friendly */
+  .btn { min-height: 44px !important; font-size: .85rem !important; }
+  .btn-sm { min-height: 38px !important; font-size: .78rem !important; }
+
+  /* Page header compatto */
+  .page-header { margin-bottom: 14px !important; }
+  .page-header h2 { font-size: 1.1rem !important; }
+  .page-header p { font-size: .8rem !important; }
+
+  /* Grid 1 colonna */
+  .grid-2, .grid-3, .grid-auto { grid-template-columns: 1fr !important; gap: 10px !important; }
+
+  /* Tabs scrollabili orizzontalmente */
+  .tabs { overflow-x: auto; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .tab-btn { white-space: nowrap; flex-shrink: 0; padding: 6px 12px !important; font-size: .8rem !important; }
+
+  /* Athlete rows compatte */
+  .athlete-row { padding: 10px !important; }
+  .athlete-row .name { font-size: .88rem !important; }
+  .athlete-row .meta { font-size: .72rem !important; }
+
+  /* Match cards */
+  .match-header { padding: 12px 14px !important; }
+  .match-score { font-size: 1.4rem !important; }
+  .match-body { padding: 10px 14px !important; font-size: .82rem !important; }
+
+  /* Presenze: celle più grandi per il touch */
+  .att-cell { width: 42px !important; height: 42px !important; font-size: .95rem !important; }
+
+  /* Filter bar inline */
+  .filter-bar { gap: 8px !important; }
+  .filter-bar input, .filter-bar select {
+    min-width: 0 !important; flex: 1 1 120px !important;
+    padding: 9px 10px !important; font-size: .85rem !important;
+  }
+
+  /* Modali bottom-sheet */
+  .modal-overlay { align-items: flex-end !important; padding: 0 !important; }
+  .modal {
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+  }
+  .modal::before {
+    content: ''; display: block;
+    width: 36px; height: 4px;
+    background: #2D3748; border-radius: 2px;
+    margin: 0 auto 14px;
+  }
+
+  /* Form fields */
+  .form-row { flex-direction: column !important; gap: 10px !important; }
+  .form-field input, .form-field select, .form-field textarea {
+    padding: 11px 12px !important; font-size: .95rem !important; min-height: 44px !important;
+  }
+  .form-actions { flex-direction: column !important; gap: 8px !important; }
+  .form-actions .btn { width: 100% !important; justify-content: center !important; }
+
+  /* Header row: stack verticale */
+  .header-row { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+  .header-row > div:last-child { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; }
+  .header-row .btn { flex: 1 1 calc(50% - 3px) !important; min-height: 42px !important; text-align: center !important; justify-content: center !important; }
+
+  /* Tab-bar azioni categoria */
+  [style*="display:flex;align-items:center;gap:6px"] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+  }
+
+  /* Nascondi colonne non essenziali nelle tabelle */
+  .hide-mobile { display: none !important; }
+}
+
+/* Tablet portrait (481-768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+  #content-area { padding: 16px 14px 80px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-2 { grid-template-columns: 1fr !important; }
+  .tabs { overflow-x: auto; flex-wrap: nowrap !important; }
+}
+
 /* ── RESET ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 15px; -webkit-text-size-adjust: 100%; }
@@ -845,15 +966,7 @@ tbody tr:last-child { border-bottom: none; }
 @media (max-width: 1000px) { .widget-row { grid-template-columns: 1fr; } }
 
 /* ── SEARCH / FILTER BAR ────────────────────────────────────── */
-.filter-bar {
-  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center;
-  position: sticky;
-  top: calc(56px + var(--header-h));
-  z-index: 40;
-  background: #0D1117;
-  padding: 10px 0;
-  margin-top: -4px;
-}
+.filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
 .filter-bar input { flex: 1; min-width: 200px; padding: 9px 14px; border: 1.5px solid #2D3748; border-radius: 8px; font-size: .9rem; background: #1E2433; color: #E2E8F0; outline: none; }
 .filter-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
 .filter-bar select { padding: 9px 12px; border: 1.5px solid #2D3748; border-radius: 8px; font-size: .88rem; background: #1E2433; color: #E2E8F0; outline: none; cursor: pointer; }
@@ -1593,7 +1706,9 @@ async function loadStateFromDB() {
       <button id="topbar-home-btn" onclick="goHome()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px 8px;border-radius:6px;color:var(--ink-2);display:flex;align-items:center;gap:4px;margin-right:6px" title="Home">🏠</button>
       <span class="topbar-title" id="topbar-title">Dashboard</span>
       <span class="topbar-breadcrumb" id="topbar-bc"></span>
+      <div id="topbar-filter" style="display:flex;align-items:center;gap:6px;margin-left:16px;flex-wrap:wrap"></div>
       <div class="topbar-actions" id="topbar-actions"></div>
+      <button id="topbar-filter-btn" onclick="toggleTopbarFilter()" style="display:none;background:none;border:1.5px solid #2D3748;border-radius:8px;padding:5px 10px;color:#94A3B8;font-size:.8rem;cursor:pointer;margin-left:8px">⚙️</button>
     </div>
     <div id="content-area">
 
@@ -3079,8 +3194,19 @@ function showCatDashboard(catId) {
   selectedCategoryId = catId;
   showView('cat-dashboard');
 }
+function toggleTopbarFilter() {
+  const tf = document.getElementById('topbar-filter');
+  if (!tf) return;
+  tf.classList.toggle('show-mobile');
+}
+
 function goHome() {
   if (!currentUser) return;
+  // Reset filtri topbar
+  const tf = document.getElementById('topbar-filter');
+  if (tf) tf.innerHTML = '';
+  const ta = document.getElementById('topbar-actions');
+  if (ta) ta.innerHTML = '';
   const role = currentUser.role;
   if (role === 'admin') showView('admin-overview');
   else if (role === 'presidente') showView('president-view');
@@ -3088,10 +3214,14 @@ function goHome() {
   else showView('category-home');
 }
 
-function setTopbar(title, bc, actionsHtml='') {
+function setTopbar(title, bc, actionsHtml='', filterHtml='') {
   document.getElementById('topbar-title').textContent = title;
   document.getElementById('topbar-bc').textContent = bc ? '/ ' + bc : '';
   document.getElementById('topbar-actions').innerHTML = actionsHtml;
+  const filterEl = document.getElementById('topbar-filter');
+  if (filterEl) { filterEl.innerHTML = filterHtml; filterEl.classList.remove('show-mobile'); }
+  const filterBtn = document.getElementById('topbar-filter-btn');
+  if (filterBtn) filterBtn.style.display = filterHtml ? 'block' : 'none';
 }
 
 // ── [2] ADMIN CONFIG ──────────────────────────────────────────
@@ -4624,8 +4754,8 @@ viewBuilders['category-home'] = (el) => {
       </div>
     </div>
 
-    <!-- Tab-bar azioni sticky -->
-    <div style="position:sticky;top:calc(56px + var(--header-h));z-index:40;background:#0D1117;border-bottom:1px solid #2D3748;padding:8px 0 10px;margin-bottom:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+    <!-- Tab-bar azioni -->
+    <div style="background:#161B27;border:1px solid #2D3748;border-radius:var(--radius-lg);padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
       <button class="btn btn-ghost btn-sm" onclick="showView('athletes')" style="background:#1E2433;border-color:#2D3748">👥 ${canEditCat?'Gestisci':'Visualizza'} Atleti</button>
       <button class="btn btn-ghost btn-sm" onclick="showView('matches')" style="background:#1E2433;border-color:#2D3748">⚽ Partite</button>
       ${canSess ? `<button class="btn btn-accent btn-sm" onclick="openNewSessionModal()">+ Nuova Sessione</button>` : ''}
@@ -5448,7 +5578,21 @@ function buildCategoryDashboardView(el, catId) {
   const sessions = getCategorySessionsForSeason(catId, filterSeasId);
   const st       = getCategoryStatsForSeason(catId, filterSeasId, filterTeamId || undefined);
 
-  setTopbar('Dashboard Categoria', cat.name);
+  const filterHtml = `
+    <select onchange="window._dashSeas=this.value;buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
+      style="padding:5px 10px;border:1.5px solid #2D3748;border-radius:8px;font-size:.82rem;font-weight:600;background:#1E2433;color:#E2E8F0;cursor:pointer;outline:none;">
+      ${allSeasons.slice().reverse().map(s=>`<option value="${s.id}" ${s.id===filterSeasId?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+    </select>
+    ${multiTeam ? catTeams.map(t=>`
+      <button onclick="window._dashTeam='${t.id}';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
+        style="padding:5px 12px;border-radius:8px;font-size:.8rem;font-weight:600;border:1.5px solid ${t.id===filterTeamId?'var(--accent)':'#2D3748'};background:${t.id===filterTeamId?'#1E2D4A':'#1E2433'};color:${t.id===filterTeamId?'var(--accent)':'#94A3B8'};cursor:pointer">
+        ${esc(t.name)}
+      </button>`).join('')+'<button onclick="window._dashTeam=\'\';buildCategoryDashboardView(document.getElementById(\'view-cat-dashboard\'),\'${catId}\')" style="padding:5px 12px;border-radius:8px;font-size:.8rem;font-weight:600;border:1.5px solid '+(!filterTeamId?'var(--accent)':'#2D3748')+';background:'+(!filterTeamId?'#1E2D4A':'#1E2433')+';color:'+(!filterTeamId?'var(--accent)':'#94A3B8')+';cursor:pointer">👕 Tutte</button>' : ''}
+  `;
+  const resetBtn = (filterTeamId || filterSeasId!==activeSeas?.id)
+    ? `<button onclick="window._dashTeam='';window._dashSeas='';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')" style="padding:5px 10px;border-radius:8px;border:1.5px solid #2D3748;background:#1E2433;color:#94A3B8;font-size:.78rem;cursor:pointer">✕ Reset</button>`
+    : '';
+  setTopbar('Dashboard Categoria', cat.name, resetBtn, filterHtml);
 
   // activity breakdown
   const actData = getActivityTypes().map(([k,v]) => {
@@ -5478,31 +5622,7 @@ function buildCategoryDashboardView(el, catId) {
   const subInfo   = multiTeam ? (filterTeam ? esc(filterTeam.name) : 'Tutte le squadre') : esc(catTeams[0]?.name||'—');
 
   el.innerHTML = `
-    <!-- ── FILTER BAR sticky stile tab-bar ─────────────────── -->
-    <div style="position:sticky;top:calc(56px + var(--header-h));z-index:40;background:#0D1117;border-bottom:1px solid #2D3748;padding:10px 0 10px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
 
-      <!-- Stagione select -->
-      <select onchange="window._dashSeas=this.value;buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
-        style="padding:7px 12px;border:1.5px solid #2D3748;border-radius:8px;font-size:.85rem;font-weight:600;background:#1E2433;color:#E2E8F0;cursor:pointer;outline:none;">
-        ${allSeasons.slice().reverse().map(s=>`<option value="${s.id}" ${s.id===filterSeasId?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
-      </select>
-
-      <!-- Team pills (solo se categoria ha più squadre) -->
-      ${multiTeam ? `
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <button onclick="window._dashTeam='';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
-          style="padding:6px 14px;border-radius:8px;font-size:.82rem;font-weight:600;border:1.5px solid ${!filterTeamId?'var(--accent)':'#2D3748'};background:${!filterTeamId?'#1E2D4A':'#1E2433'};color:${!filterTeamId?'var(--accent)':'#94A3B8'};cursor:pointer;transition:all .15s">
-          👕 Tutte
-        </button>
-        ${catTeams.map(t=>`
-        <button onclick="window._dashTeam='${t.id}';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
-          style="padding:6px 14px;border-radius:8px;font-size:.82rem;font-weight:600;border:1.5px solid ${t.id===filterTeamId?'var(--accent)':'#2D3748'};background:${t.id===filterTeamId?'#1E2D4A':'#1E2433'};color:${t.id===filterTeamId?'var(--accent)':'#94A3B8'};cursor:pointer;transition:all .15s">
-          ${esc(t.name)}
-        </button>`).join('')}
-      </div>` : ''}
-
-      ${filterTeamId || filterSeasId!==activeSeas?.id ? `<button onclick="window._dashTeam='';window._dashSeas='';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')" style="margin-left:auto;padding:6px 12px;border-radius:8px;border:1.5px solid #2D3748;background:#1E2433;color:#94A3B8;font-size:.82rem;cursor:pointer">✕ Reset</button>` : ''}
-    </div>
 
     <!-- ── HEADER ─────────────────────────────────────────── -->
     <div class="page-header">
