@@ -1792,6 +1792,8 @@ async function loadStateFromDB() {
 
       <!-- Admin Overview -->
       <div class="view" id="view-admin-overview"><!-- dynamic --></div>
+      <div class="view" id="view-matches-overview"><!-- dynamic --></div>
+
       <!-- Admin Config: Sport/Società/Squadre/Categorie/Dirigenti -->
       <div class="view" id="view-admin-config"><!-- dynamic --></div>
       <!-- Admin Reports -->
@@ -2659,6 +2661,7 @@ function buildTopNav() {
     desktopHTML =
       dGroup('📊 Panoramica',
         dItem('📊','Dashboard Globale',`showView('admin-overview')`) +
+        dItem('⚽','Tutte le Partite',`showView('matches-overview')`) +
         dItem('🏛️','Dashboard Società',`showView('admin-society')`) +
         dItem('📈','Report Avanzati',`showView('admin-reports')`)
       ) +
@@ -2855,7 +2858,7 @@ function bottomNavGo(target) {
 function updateBottomNav() {
   document.querySelectorAll('.bn-item').forEach(b => b.classList.remove('active'));
   const map = {
-    'admin-overview': 'bn-home', 'category-home': 'bn-home',
+    'admin-overview': 'bn-home', 'category-home': 'bn-home', 'matches-overview': 'bn-matches',
     'athletes': 'bn-athletes', 'admin-athletes': 'bn-athletes',
     'sessions': 'bn-sessions', 'session-entry': 'bn-sessions',
     'matches': 'bn-matches', 'match-detail': 'bn-matches', 'convocati': 'bn-matches',
@@ -3000,7 +3003,7 @@ function showView(viewId, pushHistory=true) {
   const presidentAllowed = [
     'president-view','admin-config','cat-dashboard',
     'admin-society','admin-reports',
-    'athletes','matches','sessions','attendances',
+    'athletes','matches','matches-overview','sessions','attendances',
     'convocati','cat-reports'
   ];
   if (currentUser?.role === 'presidente' && !presidentAllowed.includes(viewId)) {
@@ -3245,21 +3248,38 @@ viewBuilders['admin-overview'] = (el) => {
       </div>
 
       <div class="card">
-        <div class="card-title"><div class="icon" style="background:var(--gold-l);color:var(--gold)">📅</div>Ultime Sessioni</div>
-        ${recentSess.length === 0 ? '<div class="text-muted text-sm">Nessuna sessione registrata</div>' :
-          recentSess.map(s => {
-            const cat = S.categories.find(c=>c.id===s.categoryId);
-            const at = getSessionAttendances(s.id);
-            const pres = at.filter(a=>a.status==='P').length;
-            return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mist-2)">
-              ${actBadge(s.type)}
-              <div style="flex:1;min-width:0">
-                <div class="fw-600 truncate" style="font-size:.85rem">${esc(cat?.name||'—')}</div>
-                <div class="text-muted text-sm">${fmtDate(s.date)} · ${pres} presenti</div>
-              </div>
-              ${ratingBadge(pct(pres, getCategoryAthletes(s.categoryId).length))}
-            </div>`;
-          }).join('')}
+        <div class="card-title" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="icon" style="background:var(--gold-l);color:var(--gold)">⚽</div>Partite ultima settimana
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="showView('matches-overview')">Tutte le partite →</button>
+        </div>
+        ${(()=>{
+          const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate()-7);
+          const weekStr = oneWeekAgo.toISOString().slice(0,10);
+          const accCats = getAccessibleCategoryIds();
+          const weekMatches = S.matches
+            .filter(m => m.date >= weekStr && accCats.includes(m.categoryId))
+            .sort((a,b) => b.date.localeCompare(a.date));
+          if (!weekMatches.length) return '<div class="text-muted text-sm" style="padding:8px 0">Nessuna partita nell\'ultima settimana</div>';
+          return weekMatches.slice(0,6).map(function(m) {
+            var cat = S.categories.find(function(c){return c.id===m.categoryId;});
+            var team = S.teams.find(function(t){return t.id===m.teamId;}) || S.teams.find(function(t){return t.id===(cat&&cat.teamId);});
+            var rc = m.result==='W'?'var(--green)':m.result==='L'?'var(--red)':m.result==='D'?'var(--gold)':'#94A3B8';
+            var rl = m.result==='W'?'V':m.result==='L'?'S':m.result==='D'?'P':'—';
+            var sc = m.result&&m.result!=='TBD' ? (m.scoredGoals||0)+'—'+(m.concededGoals||0) : 'da giocare';
+            return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mist-2);cursor:pointer" onclick="window._matchState={catId:\'' + m.categoryId + '\'};showView(\'matches\')">'
+              + '<div style="font-size:.75rem;color:#64748B;min-width:52px">' + fmtDate(m.date) + '</div>'
+              + '<div style="flex:1;min-width:0">'
+              + '<div class="fw-600" style="font-size:.85rem">' + esc((team&&team.name)||(cat&&cat.name)||'—') + ' vs ' + esc(m.opponent) + '</div>'
+              + '<div class="text-muted text-sm">' + esc((cat&&cat.name)||'—') + ' · ' + (m.homeAway==='home'?'🏠 Casa':'✈️ Trasferta') + '</div>'
+              + '</div>'
+              + '<div style="text-align:right;flex-shrink:0">'
+              + '<div class="fw-700" style="color:' + rc + ';font-size:.9rem">' + sc + '</div>'
+              + '<div style="font-size:.7rem;color:' + rc + ';font-weight:700">' + rl + '</div>'
+              + '</div></div>';
+          }).join('');
+        })()}
       </div>
     </div>
 
@@ -3299,6 +3319,155 @@ viewBuilders['admin-overview'] = (el) => {
           </tbody>
         </table>
       </div>
+    </div>
+  `;
+};
+
+viewBuilders['matches-overview'] = (el) => {
+  const role = currentUser.role;
+  const accCatIds = getAccessibleCategoryIds();
+
+  // Stato filtri
+  if (!window._moState) window._moState = { socId:'', teamId:'', catId:'', dateFrom:'', dateTo:'' };
+  const mo = window._moState;
+
+  const allSeasons = S.seasons || [];
+  const activeSeas = getActiveSeason();
+
+  // Filtra le partite accessibili
+  let matches = S.matches.filter(m => accCatIds.includes(m.categoryId));
+
+  // Filtro società
+  if (mo.socId) {
+    const socCats = S.categories.filter(c=>c.societyId===mo.socId).map(c=>c.id);
+    matches = matches.filter(m=>socCats.includes(m.categoryId));
+  }
+  // Filtro squadra/categoria
+  if (mo.teamId) matches = matches.filter(m=>m.teamId===mo.teamId || m.categoryId===mo.teamId);
+  // Filtro data da
+  if (mo.dateFrom) matches = matches.filter(m=>m.date>=mo.dateFrom);
+  // Filtro data a
+  if (mo.dateTo) matches = matches.filter(m=>m.date<=mo.dateTo);
+
+  matches = matches.sort((a,b)=>b.date.localeCompare(a.date));
+
+  // Statistiche aggregate
+  const played = matches.filter(m=>m.result&&m.result!=='TBD');
+  const W = played.filter(m=>m.result==='W').length;
+  const D = played.filter(m=>m.result==='D').length;
+  const L = played.filter(m=>m.result==='L').length;
+  const pts = W*3+D;
+  const gf = played.reduce((s,m)=>s+(m.scoredGoals||0),0);
+  const gs = played.reduce((s,m)=>s+(m.concededGoals||0),0);
+
+  // Opzioni filtro
+  const visibleSocs = role==='admin' ? S.societies : S.societies.filter(s=>
+    S.categories.some(c=>c.societyId===s.id && accCatIds.includes(c.id))
+  );
+  const visibleTeams = S.teams.filter(t=>accCatIds.some(cid=>{
+    const cat=S.categories.find(c=>c.id===cid);
+    return cat?.teamId===t.id || (cat?.teamIds||[]).includes(t.id);
+  }));
+
+  setTopbar('Partite', 'Riepilogo');
+
+  el.innerHTML = `
+    <!-- ── FILTRI ─────────────────────────────────────────── -->
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:18px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+      <span style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;align-self:center">🔍 Filtri</span>
+
+      ${visibleSocs.length > 1 ? `
+      <div class="form-field" style="margin:0;min-width:130px;flex:1">
+        <label style="font-size:.73rem">Società</label>
+        <select onchange="window._moState.socId=this.value;window._moState.teamId='';viewBuilders['matches-overview'](document.getElementById('view-matches-overview'))">
+          <option value="">Tutte le società</option>
+          ${visibleSocs.map(s=>`<option value="${s.id}" ${s.id===mo.socId?'selected':''}>${esc(s.name)}</option>`).join('')}
+        </select>
+      </div>` : ''}
+
+      <div class="form-field" style="margin:0;min-width:130px;flex:1">
+        <label style="font-size:.73rem">Squadra / Categoria</label>
+        <select onchange="window._moState.teamId=this.value;viewBuilders['matches-overview'](document.getElementById('view-matches-overview'))">
+          <option value="">Tutte</option>
+          ${visibleTeams.map(t=>`<option value="${t.id}" ${t.id===mo.teamId?'selected':''}>${esc(t.name)}</option>`).join('')}
+          ${S.categories.filter(c=>accCatIds.includes(c.id)).map(c=>`<option value="${c.id}" ${c.id===mo.teamId?'selected':''}>📋 ${esc(c.name)}</option>`).join('')}
+        </select>
+      </div>
+
+      <div class="form-field" style="margin:0;min-width:120px">
+        <label style="font-size:.73rem">Data da</label>
+        <input type="date" value="${mo.dateFrom}" onchange="window._moState.dateFrom=this.value;viewBuilders['matches-overview'](document.getElementById('view-matches-overview'))">
+      </div>
+
+      <div class="form-field" style="margin:0;min-width:120px">
+        <label style="font-size:.73rem">Data a</label>
+        <input type="date" value="${mo.dateTo}" onchange="window._moState.dateTo=this.value;viewBuilders['matches-overview'](document.getElementById('view-matches-overview'))">
+      </div>
+
+      ${(mo.socId||mo.teamId||mo.dateFrom||mo.dateTo) ? `
+      <button class="btn btn-ghost btn-sm" onclick="window._moState={socId:'',teamId:'',catId:'',dateFrom:'',dateTo:''};viewBuilders['matches-overview'](document.getElementById('view-matches-overview'))">
+        Azzera filtri
+      </button>` : ''}
+    </div>
+
+    <!-- ── STAT CARD ───────────────────────────────────────── -->
+    ${played.length > 0 ? `
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${pts}</div><div class="sub">${played.length} partite giocate</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Vittorie</div><div class="value">${W}</div><div class="sub">${played.length?Math.round(W/played.length*100):0}%</div></div>
+      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Pareggi</div><div class="value">${D}</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Sconfitte</div><div class="value">${L}</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${gf}</div><div class="sub">media ${played.length?(gf/played.length).toFixed(1):0}/partita</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${gs}</div><div class="sub">diff. ${gf-gs>=0?'+':''}${gf-gs}</div></div>
+    </div>` : ''}
+
+    <!-- ── ELENCO PARTITE ──────────────────────────────────── -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="card-title" style="padding:16px 20px;border-bottom:1px solid var(--mist-2);margin-bottom:0;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="icon" style="background:var(--gold-l);color:var(--gold)">⚽</div>
+          <span>Elenco Partite</span>
+          <span style="font-size:.78rem;color:#64748B;font-weight:400">${matches.length} partite trovate</span>
+        </div>
+        ${canEdit(accCatIds[0]) ? `<button class="btn btn-accent btn-sm" onclick="openMatchModal()">+ Nuova Partita</button>` : ''}
+      </div>
+      ${matches.length === 0
+        ? `<div class="empty-state"><div class="icon">⚽</div><h3>Nessuna partita trovata</h3><p>Modifica i filtri per vedere altre partite.</p></div>`
+        : `<div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Data</th>
+              <th>Squadra</th>
+              <th>vs Avversario</th>
+              <th>Risultato</th>
+              <th>Categoria</th>
+              <th>Campo</th>
+              <th>Azioni</th>
+            </tr></thead>
+            <tbody>
+              ${matches.map(m => {
+                const cat = S.categories.find(c=>c.id===m.categoryId);
+                const team = S.teams.find(t=>t.id===m.teamId) || S.teams.find(t=>t.id===cat?.teamId);
+                const resultColor = m.result==='W'?'var(--green)':m.result==='L'?'var(--red)':m.result==='D'?'var(--gold)':'#94A3B8';
+                const resultLabel = {W:'Vittoria',D:'Pareggio',L:'Sconfitta',TBD:'Da giocare'}[m.result||'TBD']||'—';
+                const scoreText = m.result&&m.result!=='TBD' ? m.scoredGoals+' — '+m.concededGoals : '—';
+                return `<tr style="cursor:pointer" onclick="window._matchState={catId:'${m.categoryId}'};showView('matches')">
+                  <td style="white-space:nowrap">${fmtDate(m.date)}</td>
+                  <td class="fw-600">${esc(team?.name||cat?.name||'—')}</td>
+                  <td class="fw-600">vs ${esc(m.opponent)}</td>
+                  <td>
+                    <span class="fw-700" style="color:${resultColor}">${scoreText}</span>
+                    <span style="font-size:.75rem;color:${resultColor};margin-left:4px">${resultLabel}</span>
+                  </td>
+                  <td><span class="badge badge-gray">${esc(cat?.name||'—')}</span></td>
+                  <td>${m.homeAway==='home'?'🏠 Casa':'✈️ Trasferta'}</td>
+                  <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();window._matchState={catId:'${m.categoryId}'};showView('matches')">Dettagli</button></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`
+      }
     </div>
   `;
 };
