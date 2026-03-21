@@ -7333,14 +7333,13 @@ viewBuilders['matches'] = (el) => {
 
     ${played > 0 ? `
     <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card green" style="cursor:pointer" onclick="document.getElementById('matches-list')?.scrollIntoView({behavior:'smooth'})" title="Vai alle partite"><div class="accent-bar"></div><div class="label">Vittorie</div><div class="value">${stats.W}</div></div>
-      <div class="stat-card gold" style="cursor:pointer" onclick="document.getElementById('matches-list')?.scrollIntoView({behavior:'smooth'})" title="Vai alle partite"><div class="accent-bar"></div><div class="label">Pareggi</div><div class="value">${stats.D}</div></div>
-      <div class="stat-card red" style="cursor:pointer" onclick="document.getElementById('matches-list')?.scrollIntoView({behavior:'smooth'})" title="Vai alle partite"><div class="accent-bar"></div><div class="label">Sconfitte</div><div class="value">${stats.L}</div></div>
-      <div class="stat-card blue" style="cursor:pointer" onclick="document.getElementById('matches-list')?.scrollIntoView({behavior:'smooth'})" title="Vai alle partite"><div class="accent-bar"></div><div class="label">Da giocare</div><div class="value">${stats.TBD}</div></div>
-      <div class="stat-card teal" style="cursor:pointer" onclick="document.getElementById('matches-list')?.scrollIntoView({behavior:'smooth'})" title="Vai alle partite"><div class="accent-bar"></div>
-        <div class="label">% Vittorie</div>
-        <div class="value">${played ? Math.round(stats.W/played*100) : 0}%</div>
-      </div>
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${stats.W*3 + stats.D}</div><div class="sub">${played} partite giocate</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Vittorie</div><div class="value">${stats.W}</div><div class="sub">${played ? Math.round(stats.W/played*100) : 0}%</div></div>
+      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Pareggi</div><div class="value">${stats.D}</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Sconfitte</div><div class="value">${stats.L}</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${matches.reduce((s,m)=>s+(m.scoredGoals||0),0)}</div><div class="sub">media ${played ? (matches.reduce((s,m)=>s+(m.scoredGoals||0),0)/played).toFixed(1) : 0}/partita</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${matches.reduce((s,m)=>s+(m.concededGoals||0),0)}</div><div class="sub">diff. ${matches.reduce((s,m)=>s+(m.scoredGoals||0)-(m.concededGoals||0),0) >= 0 ? '+' : ''}${matches.reduce((s,m)=>s+(m.scoredGoals||0)-(m.concededGoals||0),0)}</div></div>
+      ${stats.TBD > 0 ? `<div class="stat-card teal"><div class="accent-bar"></div><div class="label">Da giocare</div><div class="value">${stats.TBD}</div></div>` : ''}
     </div>` : ''}
 
     <div id="matches-list">
