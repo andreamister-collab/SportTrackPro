@@ -4614,21 +4614,23 @@ viewBuilders['category-home'] = (el) => {
   const roleLabel = ROLES[currentUser.role]?.label || '';
   const roleIcon  = ROLES[currentUser.role]?.icon  || '';
   el.innerHTML = `
-    <div class="page-header">
-      <div class="header-row">
-        <div>
-          <h2>${esc(cat.name)}</h2>
-          <p>${esc(sport?.icon||'⚽')} ${esc(sport?.name||'—')} · ${esc(soc?.name||'—')} · ${esc(team?.name||'—')}
+    <!-- Header categoria -->
+    <div class="page-header" style="margin-bottom:12px">
+      <div>
+        <h2>${esc(cat.name)}</h2>
+        <p style="color:#94A3B8;font-size:.88rem">${esc(sport?.icon||'⚽')} ${esc(sport?.name||'—')} · ${esc(soc?.name||'—')} · ${esc(team?.name||'—')}
           <span class="badge ${{'admin':'badge-blue','responsabile':'badge-purple','dirigente':'badge-green','allenatore':'badge-gold','professionista':'badge-teal'}[currentUser.role]||'badge-gray'}" style="margin-left:8px">${roleIcon} ${roleLabel}</span>
-          </p>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-ghost" onclick="showView('athletes')">👥 ${canEditCat?'Gestisci':'Visualizza'} Atleti</button>
-          <button class="btn btn-ghost" onclick="showView('matches')">⚽ Partite</button>
-          ${canSess ? `<button class="btn btn-accent" onclick="openNewSessionModal()">+ Nuova Sessione</button>` : ''}
-          ${currentUser.role==='responsabile' ? `<button class="btn btn-ghost" onclick="showView('admin-society')">🏛️ Vista Società</button>` : ''}
-        </div>
+        </p>
       </div>
+    </div>
+
+    <!-- Tab-bar azioni sticky -->
+    <div style="position:sticky;top:calc(56px + var(--header-h));z-index:40;background:#0D1117;border-bottom:1px solid #2D3748;padding:8px 0 10px;margin-bottom:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" onclick="showView('athletes')" style="background:#1E2433;border-color:#2D3748">👥 ${canEditCat?'Gestisci':'Visualizza'} Atleti</button>
+      <button class="btn btn-ghost btn-sm" onclick="showView('matches')" style="background:#1E2433;border-color:#2D3748">⚽ Partite</button>
+      ${canSess ? `<button class="btn btn-accent btn-sm" onclick="openNewSessionModal()">+ Nuova Sessione</button>` : ''}
+      ${currentUser.role==='responsabile' ? `<button class="btn btn-ghost btn-sm" onclick="showView('admin-society')" style="background:#1E2433;border-color:#2D3748">🏛️ Vista Società</button>` : ''}
+      <button class="btn btn-ghost btn-sm" onclick="showView('cat-dashboard')" style="background:#1E2D4A;border-color:var(--accent);color:var(--accent);margin-left:auto">📊 Dashboard</button>
     </div>
 
     ${(()=>{const ms=getCategoryMatchStats(selectedCategoryId);return ms.played>0?`
@@ -5476,13 +5478,12 @@ function buildCategoryDashboardView(el, catId) {
   const subInfo   = multiTeam ? (filterTeam ? esc(filterTeam.name) : 'Tutte le squadre') : esc(catTeams[0]?.name||'—');
 
   el.innerHTML = `
-    <!-- ── FILTER BAR ─────────────────────────────────────── -->
-    <div style="background:white;border:1px solid var(--mist-2);border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow-sm)">
-      <span style="font-size:.78rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em">🔍 Filtri</span>
+    <!-- ── FILTER BAR sticky stile tab-bar ─────────────────── -->
+    <div style="position:sticky;top:calc(56px + var(--header-h));z-index:40;background:#0D1117;border-bottom:1px solid #2D3748;padding:10px 0 10px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
 
-      <!-- Stagione -->
+      <!-- Stagione select -->
       <select onchange="window._dashSeas=this.value;buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
-        style="padding:6px 12px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.85rem;font-weight:600;background:var(--mist)">
+        style="padding:7px 12px;border:1.5px solid #2D3748;border-radius:8px;font-size:.85rem;font-weight:600;background:#1E2433;color:#E2E8F0;cursor:pointer;outline:none;">
         ${allSeasons.slice().reverse().map(s=>`<option value="${s.id}" ${s.id===filterSeasId?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
       </select>
 
@@ -5490,17 +5491,17 @@ function buildCategoryDashboardView(el, catId) {
       ${multiTeam ? `
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <button onclick="window._dashTeam='';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
-          style="padding:5px 12px;border-radius:99px;font-size:.8rem;font-weight:700;border:2px solid ${!filterTeamId?'var(--accent)':'var(--mist-3)'};background:${!filterTeamId?'var(--accent-l)':'white'};color:${!filterTeamId?'var(--accent)':'var(--ink-3)'};cursor:pointer">
+          style="padding:6px 14px;border-radius:8px;font-size:.82rem;font-weight:600;border:1.5px solid ${!filterTeamId?'var(--accent)':'#2D3748'};background:${!filterTeamId?'#1E2D4A':'#1E2433'};color:${!filterTeamId?'var(--accent)':'#94A3B8'};cursor:pointer;transition:all .15s">
           👕 Tutte
         </button>
         ${catTeams.map(t=>`
         <button onclick="window._dashTeam='${t.id}';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')"
-          style="padding:5px 12px;border-radius:99px;font-size:.8rem;font-weight:700;border:2px solid ${t.id===filterTeamId?'var(--accent)':'var(--mist-3)'};background:${t.id===filterTeamId?'var(--accent-l)':'white'};color:${t.id===filterTeamId?'var(--accent)':'var(--ink-3)'};cursor:pointer">
+          style="padding:6px 14px;border-radius:8px;font-size:.82rem;font-weight:600;border:1.5px solid ${t.id===filterTeamId?'var(--accent)':'#2D3748'};background:${t.id===filterTeamId?'#1E2D4A':'#1E2433'};color:${t.id===filterTeamId?'var(--accent)':'#94A3B8'};cursor:pointer;transition:all .15s">
           ${esc(t.name)}
         </button>`).join('')}
       </div>` : ''}
 
-      ${filterTeamId || filterSeasId!==activeSeas?.id ? `<button onclick="window._dashTeam='';window._dashSeas='';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')" class="btn btn-ghost btn-sm" style="margin-left:auto">✕ Reset</button>` : ''}
+      ${filterTeamId || filterSeasId!==activeSeas?.id ? `<button onclick="window._dashTeam='';window._dashSeas='';buildCategoryDashboardView(document.getElementById('view-cat-dashboard'),'${catId}')" style="margin-left:auto;padding:6px 12px;border-radius:8px;border:1.5px solid #2D3748;background:#1E2433;color:#94A3B8;font-size:.82rem;cursor:pointer">✕ Reset</button>` : ''}
     </div>
 
     <!-- ── HEADER ─────────────────────────────────────────── -->
