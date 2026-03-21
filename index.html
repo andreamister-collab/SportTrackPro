@@ -1494,8 +1494,8 @@ async function sbSync(table, objOrId, isDelete = false) {
     }
     const rows = Array.isArray(objOrId) ? objOrId : [objOrId];
     // Assicura che society_id sia valorizzato per tabelle che lo richiedono
-    const TABLES_WITH_SOCIETY = ['categories','athletes','sessions',
-      'attendances','performances','convocati','athlete_seasons','seasons','teams'];
+    // NOTA: sessions, attendances, performances, convocati NON hanno society_id nel DB
+    const TABLES_WITH_SOCIETY = ['categories','athletes','athlete_seasons','seasons','teams'];
     const fallbackSocId = currentUser.societyId || S.societies?.[0]?.id || null;
     const enriched = rows.map(obj => {
       if (TABLES_WITH_SOCIETY.includes(table) && !obj.societyId && !obj.society_id) {
@@ -7552,7 +7552,7 @@ function refreshMatchModalTeams(catId) {
     '</select>';
 }
 
-function saveMatch(id) {
+async function saveMatch(id) {
   const opponent  = document.getElementById('m-opp').value.trim();
   const homeAway  = document.getElementById('m-ha').value;
   const date      = document.getElementById('m-date').value;
@@ -7589,8 +7589,9 @@ function saveMatch(id) {
       }
     }
     const mSaved = S.matches.find(x=>x.id===id);
-    if(mSaved.sessionId){ const ls=S.sessions.find(s=>s.id===mSaved.sessionId); if(ls) sbSync('sessions',ls); }
-    saveState(); sbSync('matches', mSaved); closeModal();
+    saveState();
+    if(mSaved.sessionId){ const ls=S.sessions.find(s=>s.id===mSaved.sessionId); if(ls) await sbSync('sessions',ls); }
+    await sbSync('matches', mSaved); closeModal();
     toast('Partita aggiornata ✅','success');
     if (currentView === 'convocati') {
       viewBuilders['convocati'](document.getElementById('view-convocati'));
@@ -7620,7 +7621,11 @@ function saveMatch(id) {
     if (catId !== selectedCategoryId) { selectedCategoryId = catId; buildSidebarNav(); }
     const newM = S.matches[S.matches.length-1];
     const newSess = S.sessions[S.sessions.length-1];
-    saveState(); sbSync('sessions', newSess); sbSync('matches', newM); closeModal();
+    saveState();
+    // Salva sessione PRIMA della partita (FK constraint)
+    await sbSync('sessions', newSess);
+    await sbSync('matches', newM);
+    closeModal();
     toast('Partita aggiunta ✅ — Sessione creata automaticamente','success');
     showView('matches');
   }
