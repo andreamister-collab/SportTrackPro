@@ -2958,7 +2958,7 @@ function toSnakeCase(table, obj) {
   };
 
   // Campi da escludere sempre
-  const exclude = new Set(['password','role_label','gradient','password_hash','teamId_old','sessionId']);
+  const exclude = new Set(['password','role_label','gradient','password_hash','teamId_old']);
 
   const out = {};
   for (const [k, v] of Object.entries(obj)) {
