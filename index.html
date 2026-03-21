@@ -5758,6 +5758,19 @@ function buildCategoryDashboardView(el, catId) {
       ${actData.map(d=>`<div class="stat-card ${d.act.color}" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">${d.act.label}</div><div class="value">${d.presRate}%</div><div class="sub">${d.sessions} sessioni</div></div>`).join('')}
     </div>
 
+    ${(()=>{
+      const ms = getCategoryMatchStats(catId, filterTeamId||undefined);
+      if (!ms.played) return '';
+      const gdSign = ms.gd >= 0 ? '+' : '';
+      return `
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${ms.pts}</div><div class="sub">${ms.w}V ${ms.d}P ${ms.l}S</div></div>
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${ms.played}</div><div class="sub">giocate</div></div>
+      <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${ms.gf}</div><div class="sub">media ${ms.played ? (ms.gf/ms.played).toFixed(1) : 0}/partita</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${ms.gs}</div><div class="sub">diff. ${gdSign}${ms.gd}</div></div>
+    </div>`;
+    })()}
+
     <!-- ── PER-TEAM BREAKDOWN (shown only when "Tutte le squadre" selected and category has multi teams) ── -->
     ${multiTeam && !filterTeamId ? `
     <div class="card" style="margin-bottom:20px">
@@ -5803,6 +5816,18 @@ function buildCategoryDashboardView(el, catId) {
               <span>📅 ${tSessions.length} sessioni</span>
               <span>✅ ${tPresent} presenze</span>
             </div>
+            ${(()=>{
+              const tMs = getCategoryMatchStats(catId, team.id);
+              if (!tMs.played) return '';
+              const gdSign = tMs.gd >= 0 ? '+' : '';
+              return `<div style="display:flex;gap:10px;margin-top:8px;padding:8px 10px;background:var(--mist-2);border-radius:8px;flex-wrap:wrap">
+                <span style="font-size:.78rem;font-weight:700;color:var(--green)">🏆 ${tMs.pts}pt</span>
+                <span style="font-size:.78rem;color:var(--ink-3)">${tMs.w}V ${tMs.d}P ${tMs.l}S</span>
+                <span style="font-size:.78rem;color:var(--teal)">⚽ ${tMs.gf} fatti</span>
+                <span style="font-size:.78rem;color:var(--red)">⛔ ${tMs.gs} subiti</span>
+                <span style="font-size:.78rem;color:var(--ink-3)">diff. ${gdSign}${tMs.gd}</span>
+              </div>`;
+            })()}
             ${topAth ? `<div style="margin-top:8px;padding:6px 10px;background:var(--mist);border-radius:8px;font-size:.78rem">
               🏆 Migliore: <b>${esc(topAth.a.lastName)} ${esc(topAth.a.firstName)}</b> — ${topAth.pr}%
             </div>` : ''}
@@ -6105,20 +6130,45 @@ function buildSocDashContent(socId) {
       </div>
     </div>
 
+    ${(()=>{
+      const catIds = cats.map(c=>c.id);
+      const ms = getMultiCatMatchStats(catIds);
+      if (!ms.played) return '';
+      const gdSign = ms.gd >= 0 ? '+' : '';
+      return `<div class="stats-grid" style="margin-bottom:20px">
+        <div class="stat-card green"><div class="accent-bar"></div><div class="label">Punti Totali</div><div class="value">${ms.pts}</div><div class="sub">${ms.w}V ${ms.d}P ${ms.l}S</div></div>
+        <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${ms.played}</div><div class="sub">giocate</div></div>
+        <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${ms.gf}</div><div class="sub">media ${(ms.gf/ms.played).toFixed(1)}/partita</div></div>
+        <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${ms.gs}</div><div class="sub">diff. ${gdSign}${ms.gd}</div></div>
+      </div>`;
+    })()}
 
     <div class="grid-2">
       <div class="card">
         <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">👕</div>Squadre & Categorie</div>
         ${teams.map(team => {
           const teamCats = cats.filter(c=>c.teamId===team.id);
+          const teamMs = getMultiCatMatchStats(teamCats.map(c=>c.id));
+          const hasMs = teamMs.played > 0;
           return `<div style="margin-bottom:16px;padding:14px;background:var(--mist);border-radius:10px">
-            <div class="fw-700 mb-16">${esc(team.name)}</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div class="fw-700">${esc(team.name)}</div>
+              ${hasMs ? `<div style="display:flex;gap:8px;font-size:.78rem">
+                <span style="color:var(--green);font-weight:700">${teamMs.pts}pt</span>
+                <span style="color:var(--teal)">${teamMs.gf}⚽</span>
+                <span style="color:var(--red)">${teamMs.gs}⛔</span>
+                <span style="color:var(--ink-3)">${teamMs.w}V${teamMs.d}P${teamMs.l}S</span>
+              </div>` : ''}
+            </div>
             ${teamCats.map(cat=>{
               const st2 = getCategoryStats(cat.id);
+              const catMs = getCategoryMatchStats(cat.id);
               return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mist-2);cursor:pointer" onclick="showCatDashboard('${cat.id}')">
                 <span class="badge badge-blue">${esc(cat.name)}</span>
                 <div style="flex:1"><div class="progress-bar"><div class="progress-fill ${st2.presenceRate>=70?'green':st2.presenceRate>=50?'gold':'red'}" style="width:${st2.presenceRate}%"></div></div></div>
                 <span class="fw-700 text-sm">${st2.presenceRate}%</span>
+                ${catMs.played ? `<span style="font-size:.75rem;color:var(--green);font-weight:700">${catMs.pts}pt</span>
+                <span style="font-size:.75rem;color:var(--ink-3)">${catMs.gf}-${catMs.gs}</span>` : ''}
                 <span class="text-muted text-sm">${st2.athletes} atleti</span>
               </div>`;
             }).join('')}
@@ -8901,14 +8951,27 @@ function getMatchPoints(result) {
   return 0;
 }
 
-function getCategoryMatchStats(catId) {
-  const ms = S.matches.filter(m => m.categoryId === catId && m.result !== 'TBD');
+function getCategoryMatchStats(catId, teamId) {
+  let ms = S.matches.filter(m => m.categoryId === catId && m.result !== 'TBD');
+  if (teamId) ms = ms.filter(m => m.teamId === teamId);
   const pts  = ms.reduce((s,m) => s + getMatchPoints(m.result), 0);
   const gf   = ms.reduce((s,m) => s + (m.scoredGoals||0), 0);
   const gs   = ms.reduce((s,m) => s + (m.concededGoals||0), 0);
   const w    = ms.filter(m=>m.result==='W').length;
   const d    = ms.filter(m=>m.result==='D').length;
   const l    = ms.filter(m=>m.result==='L').length;
+  return { played: ms.length, w, d, l, pts, gf, gs, gd: gf-gs };
+}
+
+// Statistiche partite aggregate per una lista di categorie (usato in dashboard società)
+function getMultiCatMatchStats(catIds) {
+  const ms = S.matches.filter(m => catIds.includes(m.categoryId) && m.result !== 'TBD');
+  const pts = ms.reduce((s,m) => s + getMatchPoints(m.result), 0);
+  const gf  = ms.reduce((s,m) => s + (m.scoredGoals||0), 0);
+  const gs  = ms.reduce((s,m) => s + (m.concededGoals||0), 0);
+  const w   = ms.filter(m=>m.result==='W').length;
+  const d   = ms.filter(m=>m.result==='D').length;
+  const l   = ms.filter(m=>m.result==='L').length;
   return { played: ms.length, w, d, l, pts, gf, gs, gd: gf-gs };
 }
 
