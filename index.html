@@ -7912,6 +7912,11 @@ function refreshMatchModalTeams(catId) {
 }
 
 async function saveMatch(id) {
+  // Previeni doppio click
+  const saveBtn = document.querySelector('.modal .btn-accent');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvataggio...'; }
+  const restoreBtn = () => { if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Salva Partita'; } };
+
   const opponent  = document.getElementById('m-opp').value.trim();
   const homeAway  = document.getElementById('m-ha').value;
   const date      = document.getElementById('m-date').value;
@@ -7927,7 +7932,7 @@ async function saveMatch(id) {
   const modalCatId  = document.getElementById('m-cat')?.value  || '';
   const modalTeamId = document.getElementById('m-team')?.value || '';
 
-  if (!opponent || !date) { toast('Avversario e data obbligatori','error'); return; }
+  if (!opponent || !date) { toast('Avversario e data obbligatori','error'); restoreBtn(); return; }
   if (!S.matches) S.matches = [];
 
   if (id) {
@@ -7960,9 +7965,11 @@ async function saveMatch(id) {
   } else {
     const catId  = modalCatId  || selectedCategoryId;
     const teamId = modalTeamId || '';
-    if (!catId) { toast('Seleziona una categoria','error'); return; }
+    if (!catId) { toast('Seleziona una categoria','error'); restoreBtn(); return; }
     const mid    = uid();
     const sessId = uid();
+    // Controlla che non esista già una partita/sessione in corso di salvataggio
+    if (S.matches.find(x=>x.id===mid)) { restoreBtn(); return; }
     // Ricava teamId dalla categoria se non selezionato manualmente
     const cat = S.categories.find(c=>c.id===catId);
     const resolvedTeamId = teamId || cat?.teamId || null;
@@ -7972,7 +7979,7 @@ async function saveMatch(id) {
     S.matches.push({ id: mid, opponent, homeAway, date, time, meetTime, meetPlace,
       result, scoredGoals:gf, concededGoals:gs, notes, bgColor,
       categoryId: catId, teamId: resolvedTeamId||undefined, createdBy: currentUser.id,
-      sessionId: sessId });
+      sessionId: sessId, linkedSessionId: sessId });
     // Sync filter state
     if (!window._matchState) window._matchState = {};
     window._matchState.catId  = catId;
@@ -7986,6 +7993,7 @@ async function saveMatch(id) {
     // Salva sessione PRIMA della partita (FK constraint)
     await sbSync('sessions', newSess);
     await sbSync('matches', newM);
+    restoreBtn();
     closeModal();
     toast('Partita aggiunta ✅ — Sessione creata automaticamente','success');
     showView('matches');
