@@ -1283,6 +1283,8 @@ const DB = {
         scoredGoals: r.scored, concededGoals: r.conceded,
         bgColor: r.bg_color, createdBy: r.created_by,
         teamId: r.team_id || null,
+        sessionId: r.session_id || null,
+        linkedSessionId: r.session_id || null,
         meetTime: r.meet_time, meetPlace: r.meet_place
       })),
       convocati:      (convocati.data||[]).map(r => ({
@@ -2003,6 +2005,11 @@ function loadState() {
     if (S.sessionTypePerfParams === undefined) S.sessionTypePerfParams = null;
   } catch { S = defaultState(); }
 }
+  // Migrazione: allinea linkedSessionId ↔ sessionId per tutti i match
+  if (S.matches) S.matches.forEach(function(m) {
+    if (m.sessionId && !m.linkedSessionId) m.linkedSessionId = m.sessionId;
+    if (m.linkedSessionId && !m.sessionId) m.sessionId = m.linkedSessionId;
+  });
 let _prevState = null;
 function saveState() {
   localStorage.setItem(STORE_KEY, JSON.stringify(S));
@@ -7973,6 +7980,8 @@ async function saveMatch(id) {
     if (catId !== selectedCategoryId) { selectedCategoryId = catId; buildSidebarNav(); }
     const newM = S.matches[S.matches.length-1];
     const newSess = S.sessions[S.sessions.length-1];
+    // Allinea linkedSessionId con sessionId per la vista convocati
+    newM.linkedSessionId = sessId;
     saveState();
     // Salva sessione PRIMA della partita (FK constraint)
     await sbSync('sessions', newSess);
@@ -8028,8 +8037,11 @@ viewBuilders['convocati'] = (el) => {
 
   // Build attendance map from linked session
   const attMap = {};
-  if (m.linkedSessionId) {
-    getSessionAttendances(m.linkedSessionId).forEach(a => attMap[a.athleteId] = a);
+  // Allinea i due campi per compatibilità
+  const convSessId = m.linkedSessionId || m.sessionId || null;
+  if (convSessId && !m.linkedSessionId) m.linkedSessionId = convSessId;
+  if (convSessId) {
+    getSessionAttendances(convSessId).forEach(a => attMap[a.athleteId] = a);
   }
 
   const convocati    = athletes.filter(a => cvMap[a.id]?.status === 'convocato');
@@ -8071,12 +8083,12 @@ viewBuilders['convocati'] = (el) => {
         ${cvStatus !== 'non_convocato'? `<button class="att-cell" style="background:#FEE2E2;color:#991B1B;width:28px;height:28px;font-size:.7rem" data-matchid="${matchId}" data-athid="${ath.id}" data-cvst="non_convocato" onclick="cvClick(this)" title="Non conv.">❌</button>` : ''}
       </div>` : ''}
       <!-- Presenza P/A/G (solo se c'è sessione collegata) -->
-      ${m.linkedSessionId ? `<div style="width:1px;height:30px;background:var(--mist-2);margin:0 6px"></div>
+      ${(m.linkedSessionId||m.sessionId) ? `<div style="width:1px;height:30px;background:var(--mist-2);margin:0 6px"></div>
       ${attStatusBadge(attSt)}
       ${canEdit && (cvStatus==='convocato'||cvStatus==='riserva') ? `<div style="display:flex;gap:3px">
-        <button class="att-cell ${attSt==='P'?'att-P':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${m.linkedSessionId}" data-athid="${ath.id}" data-st="P" onclick="attClick(this)" title="Presente">P</button>
-        <button class="att-cell ${attSt==='A'?'att-A':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${m.linkedSessionId}" data-athid="${ath.id}" data-st="A" onclick="attClick(this)" title="Assente">A</button>
-        <button class="att-cell ${attSt==='G'?'att-G':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${m.linkedSessionId}" data-athid="${ath.id}" data-st="G" onclick="attClick(this)" title="Giustificato">G</button>
+        <button class="att-cell ${attSt==='P'?'att-P':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${m.linkedSessionId||m.sessionId}" data-athid="${ath.id}" data-st="P" onclick="attClick(this)" title="Presente">P</button>
+        <button class="att-cell ${attSt==='A'?'att-A':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${m.linkedSessionId||m.sessionId}" data-athid="${ath.id}" data-st="A" onclick="attClick(this)" title="Assente">A</button>
+        <button class="att-cell ${attSt==='G'?'att-G':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${m.linkedSessionId||m.sessionId}" data-athid="${ath.id}" data-st="G" onclick="attClick(this)" title="Giustificato">G</button>
       </div>` : ''}` : ''}
       <input type="text" placeholder="Note..." value="${esc(cv?.notes||'')}"
         style="width:90px;font-size:.75rem;padding:3px 6px;border:1px solid var(--mist-3);border-radius:6px;${canEdit?'':'background:#F8FAFC'}"
@@ -8103,7 +8115,7 @@ viewBuilders['convocati'] = (el) => {
             <div style="font-size:1.4rem;font-weight:800">${convocati.length}</div>
             <div style="font-size:.72rem;opacity:.8">Convocati</div>
           </div>
-          ${m.linkedSessionId ? `
+          ${(m.linkedSessionId||m.sessionId) ? `
           <div style="background:rgba(255,255,255,.15);border-radius:8px;padding:8px 14px;text-align:center">
             <div style="font-size:1.4rem;font-weight:800">${presCount}</div>
             <div style="font-size:.72rem;opacity:.8">Presenti</div>
@@ -8124,7 +8136,7 @@ viewBuilders['convocati'] = (el) => {
       <span style="font-size:.82rem;font-weight:600;color:#64748B">Azioni rapide:</span>
       <button class="btn btn-ghost btn-sm" onclick="convocaTutti('${matchId}')">✅ Convoca tutti</button>
       <button class="btn btn-ghost btn-sm" onclick="resetConvocati('${matchId}')">🔄 Reset convocazioni</button>
-      ${m.linkedSessionId ? `<button class="btn btn-ghost btn-sm" onclick="markAllConvocatiPresent('${matchId}')">📋 Segna presenti i convocati</button>` : ''}
+      ${(m.linkedSessionId||m.sessionId) ? `<button class="btn btn-ghost btn-sm" onclick="markAllConvocatiPresent('${matchId}')">📋 Segna presenti i convocati</button>` : ''}
       <button class="btn btn-accent btn-sm" style="margin-left:auto" onclick="exportConvocatiImage('${matchId}')">📸 Esporta Immagine</button>
     </div>` : `
     <div style="margin-bottom:14px;display:flex;justify-content:flex-end">
@@ -8136,7 +8148,7 @@ viewBuilders['convocati'] = (el) => {
       <div style="padding:14px 18px;border-bottom:2px solid var(--mist-2);display:flex;align-items:center;gap:10px">
         <div style="font-weight:700;font-size:.95rem;flex:1">Tutti gli Atleti</div>
         <span style="font-size:.78rem;color:#64748B">Conv. → ✅🔄❌</span>
-        ${m.linkedSessionId ? `<span style="font-size:.78rem;color:#64748B;margin-left:6px">Presenza → P A G</span>` : ''}
+        ${(m.linkedSessionId||m.sessionId) ? `<span style="font-size:.78rem;color:#64748B;margin-left:6px">Presenza → P A G</span>` : ''}
       </div>
       <div style="padding:8px 10px">
         ${athletes.map(ath => {
@@ -8196,7 +8208,8 @@ function createLinkedSession(matchId) {
 // Auto-mark all convocati as Present in the linked session
 function markAllConvocatiPresent(matchId) {
   const m = S.matches.find(x=>x.id===matchId);
-  if (!m?.linkedSessionId) return;
+  if (!m?.linkedSessionId && !m?.sessionId) return;
+  if (!m.linkedSessionId) m.linkedSessionId = m.sessionId;
   const convocati = (S.convocati||[]).filter(c=>c.matchId===matchId && c.status==='convocato').map(c=>c.athleteId);
   convocati.forEach(aid => setAttStatus(m.linkedSessionId, aid, 'P'));
   toast('Convocati segnati come Presenti','success');
