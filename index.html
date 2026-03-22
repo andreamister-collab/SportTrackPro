@@ -1792,6 +1792,7 @@ async function loadStateFromDB() {
 
       <!-- Admin Overview -->
       <div class="view" id="view-admin-overview"><!-- dynamic --></div>
+      <div class="view" id="view-responsabile-overview"><!-- dynamic --></div>
       <div class="view" id="view-matches-overview"><!-- dynamic --></div>
 
       <!-- Admin Config: Sport/Società/Squadre/Categorie/Dirigenti -->
@@ -2331,18 +2332,18 @@ function getMyChildren() {
 function canEdit(catId) {
   if (!currentUser) return false;
   if (currentUser.role === 'admin') return true;
-  if (currentUser.role === 'presidente') return false; // sola lettura
+  if (['presidente','responsabile'].includes(currentUser.role)) return false; // sola lettura
   const cat = S.categories.find(c=>c.id===catId);
   if (!cat) return false;
   const r = currentUser.role;
-  return ['responsabile','dirigente','allenatore'].includes(r) && canAccessCategory(catId);
+  return ['dirigente','allenatore'].includes(r) && canAccessCategory(catId);
 }
 
 function canEditSessions(catId) {
   if (!currentUser) return false;
   if (currentUser.role === 'admin') return true;
-  if (currentUser.role === 'presidente') return false; // sola lettura
-  return ['responsabile','dirigente','allenatore'].includes(currentUser.role) && canAccessCategory(catId);
+  if (['presidente','responsabile'].includes(currentUser.role)) return false; // sola lettura
+  return ['dirigente','allenatore'].includes(currentUser.role) && canAccessCategory(catId);
 }
 
 function isReadOnly(catId) {
@@ -2715,14 +2716,17 @@ function buildTopNav() {
     desktopHTML += catActionsDropdown;
     mobileHTML += catActionsMobile;
     if (r === 'responsabile') {
-      desktopHTML += dGroup('🏛️ Responsabile',
-        dItem('🏛️','Dashboard Società',`showView('admin-society')`) +
-        dItem('📈','Report Squadre',`showView('admin-reports')`)
-      );
-      mobileHTML += mSection('Responsabile',
-        mItem('🏛️','Dashboard Società',`showView('admin-society')`) +
-        mItem('📈','Report Squadre',`showView('admin-reports')`)
-      );
+      const respAccIds = getAccessibleCategoryIds();
+      desktopHTML =
+        dGroup('📊 Panoramica',
+          dItem('🏆','Dashboard',`showView('responsabile-overview')`)
+        ) +
+        dGroup('👕 Squadre',
+          buildTeamDropdownItems(respAccIds) || '<div class="dropdown-section-title">Nessuna squadra</div>'
+        );
+      mobileHTML =
+        mSection('Panoramica', mItem('🏆','Dashboard',`showView('responsabile-overview')`)) +
+        mSection('Squadre', buildMobileTeamItems(respAccIds));
     }
   }
 
@@ -2844,6 +2848,7 @@ function bottomNavGo(target) {
   const r = currentUser?.role;
   if (target === 'home') {
     if (r === 'admin') showView('admin-overview');
+      if (r === 'responsabile') showView('responsabile-overview');
     else showView('category-home');
   } else if (target === 'athletes') {
     showView('athletes');
@@ -3006,8 +3011,21 @@ function showView(viewId, pushHistory=true) {
     'athletes','matches','matches-overview','sessions','attendances',
     'convocati','cat-reports'
   ];
+  // Responsabile: solo lettura, può navigare le sue squadre
+  const respAllowed = [
+    'responsabile-overview','cat-dashboard','category-home',
+    'athletes','matches','matches-overview','sessions','attendances',
+    'convocati','cat-reports','session-entry','athlete-profile'
+  ];
+  if (currentUser?.role === 'responsabile' && !respAllowed.includes(viewId)) {
+    viewId = 'responsabile-overview';
+  }
   if (currentUser?.role === 'presidente' && !presidentAllowed.includes(viewId)) {
     viewId = 'president-view';
+  }
+  // Responsabile: se prova admin-overview va a responsabile-overview
+  if (currentUser?.role === 'responsabile' && viewId === 'admin-overview') {
+    viewId = 'responsabile-overview';
   }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const el = document.getElementById('view-' + viewId);
@@ -3472,6 +3490,105 @@ viewBuilders['matches-overview'] = (el) => {
   `;
 };
 
+viewBuilders['responsabile-overview'] = (el) => {
+  if (!currentUser || currentUser.role !== 'responsabile') {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Accesso non autorizzato</h3></div>';
+    return;
+  }
+  setTopbar('Dashboard Responsabile', '');
+
+  // Solo le categorie in cui è responsabile
+  const myCatIds = S.categories
+    .filter(c => (c.managerIds||[]).includes(currentUser.id))
+    .map(c => c.id);
+
+  const activeSeas = getActiveSeason();
+
+  if (!myCatIds.length) {
+    el.innerHTML = `
+      <div class="page-header"><h2>🏆 Dashboard Responsabile</h2>
+        <p>Benvenuto, ${esc(currentUser.name)}</p></div>
+      <div class="empty-state"><div class="icon">👕</div>
+        <h3>Nessuna squadra assegnata</h3>
+        <p>Contatta l'amministratore per essere assegnato a una categoria.</p>
+      </div>`;
+    return;
+  }
+
+  // Stats aggregate di tutte le sue squadre
+  const totalAthletes = S.athletes.filter(a => myCatIds.includes(a.categoryId)).length;
+  const mySessions = S.sessions.filter(s => myCatIds.includes(s.categoryId));
+  const myAtts = S.attendances.filter(a => mySessions.some(s=>s.id===a.sessionId));
+  const globalPct = pct(myAtts.filter(a=>a.status==='P').length, myAtts.length||1);
+  const myMatches = S.matches.filter(m => myCatIds.includes(m.categoryId) && m.result && m.result!=='TBD');
+  const totW = myMatches.filter(m=>m.result==='W').length;
+  const totD = myMatches.filter(m=>m.result==='D').length;
+  const totL = myMatches.filter(m=>m.result==='L').length;
+  const totPts = totW*3+totD;
+  const totGf = myMatches.reduce((s,m)=>s+(m.scoredGoals||0),0);
+  const totGs = myMatches.reduce((s,m)=>s+(m.concededGoals||0),0);
+
+  // Schede per categoria
+  const catCards = S.categories.filter(c=>myCatIds.includes(c.id)).map(cat => {
+    const st = getCategoryStats(cat.id);
+    const ms = getCategoryMatchStats(cat.id);
+    const team = S.teams.find(t=>t.id===cat.teamId);
+    const soc = S.societies.find(s=>s.id===cat.societyId);
+    return { cat, st, ms, team, soc };
+  }).sort((a,b) => b.ms.pts - a.ms.pts);
+
+  el.innerHTML = `
+    <div class="page-header">
+      <div class="header-row">
+        <div>
+          <h2>🏆 Dashboard Responsabile</h2>
+          <p>Benvenuto, ${esc(currentUser.name)} · ${activeSeas?'⚽ '+esc(activeSeas.name):'Tutte le stagioni'}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI globali delle sue squadre -->
+    <div class="stats-grid" style="margin-bottom:16px">
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Atleti totali</div><div class="value">${totalAthletes}</div><div class="sub">in ${myCatIds.length} categorie</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">% Presenze</div><div class="value">${globalPct}%</div><div class="sub">${mySessions.length} sessioni</div></div>
+      ${myMatches.length ? `
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti totali</div><div class="value">${totPts}</div><div class="sub">${totW}V ${totD}P ${totL}S</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${totGf}</div><div class="sub">diff. ${totGf-totGs>=0?'+':''}${totGf-totGs}</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${totGs}</div></div>
+      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${myMatches.length}</div><div class="sub">${totW} vittorie</div></div>
+      ` : ''}
+    </div>
+
+    <!-- Schede per ogni squadra -->
+    <div class="grid-2" style="margin-bottom:20px">
+      ${catCards.map(({cat,st,ms,team,soc}) => `
+      <div class="card" style="cursor:pointer" onclick="selectedCategoryId='${cat.id}';showView('category-home')">
+        <div class="card-title" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="icon" style="background:var(--accent-l);color:var(--accent)">👕</div>
+            <div>
+              <div class="fw-700">${esc(cat.name)}</div>
+              <div style="font-size:.75rem;color:#64748B">${esc(soc?.name||'—')} · ${esc(team?.name||'—')}</div>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();selectedCategoryId='${cat.id}';showView('cat-dashboard')">📊 Dashboard</button>
+        </div>
+        <div class="stats-grid" style="margin-bottom:0">
+          <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${st.athletes}</div></div>
+          <div class="stat-card green"><div class="accent-bar"></div><div class="label">Presenze</div><div class="value">${st.presenceRate}%</div></div>
+          <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${st.sessions}</div></div>
+          ${ms.played ? `<div class="stat-card blue"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${ms.pts}</div><div class="sub">${ms.w}V ${ms.d}P ${ms.l}S</div></div>` : ''}
+          ${ms.played ? `<div class="stat-card green"><div class="accent-bar"></div><div class="label">Gol F.</div><div class="value">${ms.gf}</div></div>` : ''}
+          ${ms.played ? `<div class="stat-card red"><div class="accent-bar"></div><div class="label">Gol S.</div><div class="value">${ms.gs}</div></div>` : ''}
+        </div>
+      </div>`).join('')}
+    </div>
+
+    <!-- Partite ultimo mese di tutte le sue squadre -->
+    ${buildRecentMatchesCard(myCatIds, {stateKey:'_respMatchState',viewId:'responsabile-overview',title:'Partite ultimo mese — tutte le squadre'})}
+  `;
+};
+
 function showCatDashboard(catId) {
   selectedCategoryId = catId;
   showView('cat-dashboard');
@@ -3493,6 +3610,7 @@ function goHome() {
   if (role === 'admin') showView('admin-overview');
   else if (role === 'presidente') showView('president-view');
   else if (role === 'genitore') showView('parent-view');
+  else if (role === 'responsabile') showView('responsabile-overview');
   else showView('category-home');
 }
 
