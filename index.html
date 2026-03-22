@@ -2106,6 +2106,7 @@ function avg(arr) { if(!arr.length) return 0; return arr.reduce((a,b)=>a+b,0)/ar
 const ACTIVITY_TYPES_DEFAULT = {
   A:  { label: 'Allenamento',    emoji: '🏃', color: 'blue',   cls: 'act-A' },
   P:  { label: 'Partita',        emoji: '⚽', color: 'gold',   cls: 'act-P' },
+  AM: { label: 'Amichevole',     emoji: '🤝', color: 'teal',   cls: 'act-AM' },
   I:  { label: 'Individual',     emoji: '🎯', color: 'green',  cls: 'act-I' },
   PS: { label: 'Psicomotricità', emoji: '🧠', color: 'purple', cls: 'act-PS' }
 };
@@ -3191,7 +3192,7 @@ viewBuilders['admin-overview'] = (el) => {
   const sessA  = allSess.filter(s=>s.type==='A').length;
   const sessI  = allSess.filter(s=>s.type==='I').length;
   const sessPS = allSess.filter(s=>s.type==='PS').length;
-  const sessAlt= allSess.filter(s=>!['P','A','I','PS'].includes(s.type)).length;
+  const sessAlt= allSess.filter(s=>!['P','A','AM','I','PS'].includes(s.type)).length;
 
   const nResp = S.users.filter(u=>u.role==='responsabile').length;
   const nDir  = S.users.filter(u=>u.role==='dirigente').length;
@@ -5305,7 +5306,7 @@ viewBuilders['category-home'] = (el) => {
               </div>
             </div>`;
           }).join('')}
-        <div class="mt-16"><button class="btn btn-accent w-full" onclick="openNewSessionModal()">+ Registra Nuova Sessione</button></div>
+        ${canEditSessions(selectedCategoryId||'') ? '<div class="mt-16"><button class="btn btn-accent w-full" onclick="openNewSessionModal()">+ Registra Nuova Sessione</button></div>' : ''}
       </div>
 
       <div class="card">
@@ -5756,7 +5757,7 @@ function renderSessionsList() {
   // If team filter active, only show sessions created for that team (or all-category sessions)
   if (teamFilter) sessions = sessions.filter(s => !s.teamId || s.teamId===teamFilter);
   if (!sessions.length) {
-    c.innerHTML = '<div class="empty-state"><div class="icon">📅</div><h3>Nessuna sessione</h3><p>Crea la prima sessione per questa categoria.</p><button class="btn btn-accent" onclick="openNewSessionModal()">+ Nuova Sessione</button></div>';
+    c.innerHTML = '<div class="empty-state"><div class="icon">📅</div><h3>Nessuna sessione</h3><p>' + (canEditSessions(selectedCategoryId||'') ? 'Crea la prima sessione per questa categoria.' : 'Nessuna sessione registrata.') + '</p>' + (canEditSessions(selectedCategoryId||'') ? '<button class="btn btn-accent" onclick="openNewSessionModal()">+ Nuova Sessione</button>' : '') + '</div>';
     return;
   }
   const athletes = getCategoryAthletes(catId, teamFilter||undefined);
@@ -6099,7 +6100,7 @@ function buildCategoryDashboardView(el, catId) {
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost" onclick="showView('sessions')">Sessioni</button>
-          <button class="btn btn-accent" onclick="openNewSessionModal()">+ Sessione</button>
+          ${canEditSessions(catId) ? '<button class="btn btn-accent" onclick="openNewSessionModal()">+ Sessione</button>' : ''}
         </div>
       </div>
     </div>
@@ -7985,19 +7986,21 @@ async function saveMatch(id) {
 function deleteMatch(id) {
   if (!confirm('Eliminare questa partita, i convocati e la sessione collegata?')) return;
   const m = S.matches.find(x=>x.id===id);
-  // Remove linked session and its attendances
-  if (m?.sessionId) {
-    S.attendances = (S.attendances||[]).filter(x => x.sessionId !== m.sessionId);
-    S.sessions = (S.sessions||[]).filter(x => x.id !== m.sessionId);
+  // Usa sia sessionId che linkedSessionId (due nomi usati storicamente)
+  const sessId = m?.sessionId || m?.linkedSessionId || null;
+  if (sessId) {
+    S.attendances = (S.attendances||[]).filter(x => x.sessionId !== sessId);
+    S.sessions    = (S.sessions||[]).filter(x => x.id !== sessId);
   }
-  const delMatchSessId = S.matches.find(x=>x.id===id)?.sessionId;
-  S.matches = (S.matches||[]).filter(x=>x.id!==id);
-  S.convocati = (S.convocati||[]).filter(x=>x.matchId!==id);
+  S.matches    = (S.matches||[]).filter(x=>x.id!==id);
+  S.convocati  = (S.convocati||[]).filter(x=>x.matchId!==id);
+  S.scorers    = (S.scorers||[]).filter(x=>x.matchId!==id);
   saveState();
   sbSync('matches', id, true);
   sbSyncDeleteWhere('convocati','match_id',id);
-  if(delMatchSessId){ sbSync('sessions', delMatchSessId, true); sbSyncDeleteWhere('attendances','session_id',delMatchSessId); }
-  showView('matches'); toast('Partita eliminata');
+  sbSyncDeleteWhere('scorers','match_id',id);
+  if(sessId){ sbSync('sessions', sessId, true); sbSyncDeleteWhere('attendances','session_id',sessId); }
+  showView('matches'); toast('Partita e sessione eliminate ✅');
 }
 
 // ── CONVOCATI VIEW ───────────────────────────────────────────
@@ -8114,7 +8117,7 @@ viewBuilders['convocati'] = (el) => {
       </div>
     </div>
 
-    ${!m.linkedSessionId ? `<div class="warning-box" style="margin-bottom:14px">⚠️ Questa partita non ha una sessione collegata. <button class="btn btn-ghost btn-sm" onclick="createLinkedSession('${matchId}')">🔗 Crea sessione ora</button></div>` : ''}
+    ${(!m.linkedSessionId && !m.sessionId) ? `<div class="warning-box" style="margin-bottom:14px">⚠️ Questa partita non ha una sessione collegata. <button class="btn btn-ghost btn-sm" onclick="createLinkedSession('${matchId}')">🔗 Crea sessione ora</button></div>` : ''}
 
     ${canMgr ? `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:#F8FAFC;border-radius:10px;align-items:center">
@@ -8171,14 +8174,22 @@ function setCvNoteInline(inp) {
 // Create a linked session for an existing match that doesn't have one
 function createLinkedSession(matchId) {
   const m = S.matches.find(x=>x.id===matchId);
-  if (!m || m.linkedSessionId) return;
+  // Blocca se la sessione esiste già
+  if (!m || m.sessionId || m.linkedSessionId) {
+    toast('Sessione già collegata a questa partita','warning');
+    return;
+  }
   const sessId = uid();
-  S.sessions.push({ id: sessId, categoryId: m.categoryId, date: m.date, type: 'P',
-    notes: 'Partita vs ' + m.opponent, createdBy: currentUser.id, matchId });
+  const newSess = { id: sessId, categoryId: m.categoryId, date: m.date, type: 'P',
+    notes: 'Partita vs ' + m.opponent, createdBy: currentUser.id, matchId };
+  S.sessions.push(newSess);
+  // Imposta entrambi i riferimenti per compatibilità
+  m.sessionId = sessId;
   m.linkedSessionId = sessId;
-  const lSess = S.sessions[S.sessions.length-1];
-  saveState(); sbSync('sessions', lSess);
-  toast('Sessione creata e collegata','success');
+  saveState();
+  sbSync('sessions', newSess);
+  sbSync('matches', m);
+  toast('Sessione creata e collegata ✅','success');
   viewBuilders['convocati'](document.getElementById('view-convocati'));
 }
 
