@@ -8000,6 +8000,28 @@ async function saveMatch(id) {
   }
 }
 
+// ── Helper: ricava la sessione collegata a una partita ──────────
+// Cerca prima nei campi locali, poi in S.sessions per match_id
+function getMatchSession(matchId) {
+  const m = S.matches.find(x=>x.id===matchId);
+  if (!m) return null;
+  // Prova sessionId/linkedSessionId (impostati dal frontend)
+  const localSessId = m.sessionId || m.linkedSessionId;
+  if (localSessId) {
+    const s = S.sessions.find(x=>x.id===localSessId);
+    if (s) return s;
+  }
+  // Fallback: cerca per match_id nella tabella sessions
+  const byMatchId = S.sessions.find(s=>s.matchId===matchId);
+  if (byMatchId) {
+    // Aggiorna i campi locali per le volte successive
+    m.sessionId = byMatchId.id;
+    m.linkedSessionId = byMatchId.id;
+    return byMatchId;
+  }
+  return null;
+}
+
 function deleteMatch(id) {
   if (!confirm('Eliminare questa partita, i convocati e la sessione collegata?')) return;
   const m = S.matches.find(x=>x.id===id);
@@ -8045,10 +8067,12 @@ viewBuilders['convocati'] = (el) => {
 
   // Build attendance map from linked session
   const attMap = {};
-  // Allinea i due campi per compatibilità
-  const convSessId = m.linkedSessionId || m.sessionId || null;
-  if (convSessId && !m.linkedSessionId) m.linkedSessionId = convSessId;
+  // Ricava sessione tramite helper (cerca anche per match_id nel DB locale)
+  const linkedSess = getMatchSession(matchId);
+  const convSessId = linkedSess?.id || null;
   if (convSessId) {
+    if (!m.linkedSessionId) m.linkedSessionId = convSessId;
+    if (!m.sessionId) m.sessionId = convSessId;
     getSessionAttendances(convSessId).forEach(a => attMap[a.athleteId] = a);
   }
 
@@ -8091,12 +8115,12 @@ viewBuilders['convocati'] = (el) => {
         ${cvStatus !== 'non_convocato'? `<button class="att-cell" style="background:#FEE2E2;color:#991B1B;width:28px;height:28px;font-size:.7rem" data-matchid="${matchId}" data-athid="${ath.id}" data-cvst="non_convocato" onclick="cvClick(this)" title="Non conv.">❌</button>` : ''}
       </div>` : ''}
       <!-- Presenza P/A/G (solo se c'è sessione collegata) -->
-      ${(m.linkedSessionId||m.sessionId) ? `<div style="width:1px;height:30px;background:var(--mist-2);margin:0 6px"></div>
+      ${convSessId ? `<div style="width:1px;height:30px;background:var(--mist-2);margin:0 6px"></div>
       ${attStatusBadge(attSt)}
       ${canEdit && (cvStatus==='convocato'||cvStatus==='riserva') ? `<div style="display:flex;gap:3px">
-        <button class="att-cell ${attSt==='P'?'att-P':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${m.linkedSessionId||m.sessionId}" data-athid="${ath.id}" data-st="P" onclick="attClick(this)" title="Presente">P</button>
-        <button class="att-cell ${attSt==='A'?'att-A':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${m.linkedSessionId||m.sessionId}" data-athid="${ath.id}" data-st="A" onclick="attClick(this)" title="Assente">A</button>
-        <button class="att-cell ${attSt==='G'?'att-G':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${m.linkedSessionId||m.sessionId}" data-athid="${ath.id}" data-st="G" onclick="attClick(this)" title="Giustificato">G</button>
+        <button class="att-cell ${attSt==='P'?'att-P':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${convSessId}" data-athid="${ath.id}" data-st="P" onclick="attClick(this)" title="Presente">P</button>
+        <button class="att-cell ${attSt==='A'?'att-A':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${convSessId}" data-athid="${ath.id}" data-st="A" onclick="attClick(this)" title="Assente">A</button>
+        <button class="att-cell ${attSt==='G'?'att-G':'att-empty'}" style="width:28px;height:28px;font-size:.8rem" data-sessid="${convSessId}" data-athid="${ath.id}" data-st="G" onclick="attClick(this)" title="Giustificato">G</button>
       </div>` : ''}` : ''}
       <input type="text" placeholder="Note..." value="${esc(cv?.notes||'')}"
         style="width:90px;font-size:.75rem;padding:3px 6px;border:1px solid var(--mist-3);border-radius:6px;${canEdit?'':'background:#F8FAFC'}"
@@ -8123,7 +8147,7 @@ viewBuilders['convocati'] = (el) => {
             <div style="font-size:1.4rem;font-weight:800">${convocati.length}</div>
             <div style="font-size:.72rem;opacity:.8">Convocati</div>
           </div>
-          ${(m.linkedSessionId||m.sessionId) ? `
+          ${convSessId ? `
           <div style="background:rgba(255,255,255,.15);border-radius:8px;padding:8px 14px;text-align:center">
             <div style="font-size:1.4rem;font-weight:800">${presCount}</div>
             <div style="font-size:.72rem;opacity:.8">Presenti</div>
@@ -8137,14 +8161,14 @@ viewBuilders['convocati'] = (el) => {
       </div>
     </div>
 
-    ${(!m.linkedSessionId && !m.sessionId) ? `<div class="warning-box" style="margin-bottom:14px">⚠️ Questa partita non ha una sessione collegata. <button class="btn btn-ghost btn-sm" onclick="createLinkedSession('${matchId}')">🔗 Crea sessione ora</button></div>` : ''}
+    ${!getMatchSession(matchId) ? `<div class="warning-box" style="margin-bottom:14px">⚠️ Questa partita non ha una sessione collegata. <button class="btn btn-ghost btn-sm" onclick="createLinkedSession('${matchId}')">🔗 Crea sessione ora</button></div>` : ''}
 
     ${canMgr ? `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:#F8FAFC;border-radius:10px;align-items:center">
       <span style="font-size:.82rem;font-weight:600;color:#64748B">Azioni rapide:</span>
       <button class="btn btn-ghost btn-sm" onclick="convocaTutti('${matchId}')">✅ Convoca tutti</button>
       <button class="btn btn-ghost btn-sm" onclick="resetConvocati('${matchId}')">🔄 Reset convocazioni</button>
-      ${(m.linkedSessionId||m.sessionId) ? `<button class="btn btn-ghost btn-sm" onclick="markAllConvocatiPresent('${matchId}')">📋 Segna presenti i convocati</button>` : ''}
+      ${convSessId ? `<button class="btn btn-ghost btn-sm" onclick="markAllConvocatiPresent('${matchId}')">📋 Segna presenti i convocati</button>` : ''}
       <button class="btn btn-accent btn-sm" style="margin-left:auto" onclick="exportConvocatiImage('${matchId}')">📸 Esporta Immagine</button>
     </div>` : `
     <div style="margin-bottom:14px;display:flex;justify-content:flex-end">
@@ -8156,7 +8180,7 @@ viewBuilders['convocati'] = (el) => {
       <div style="padding:14px 18px;border-bottom:2px solid var(--mist-2);display:flex;align-items:center;gap:10px">
         <div style="font-weight:700;font-size:.95rem;flex:1">Tutti gli Atleti</div>
         <span style="font-size:.78rem;color:#64748B">Conv. → ✅🔄❌</span>
-        ${(m.linkedSessionId||m.sessionId) ? `<span style="font-size:.78rem;color:#64748B;margin-left:6px">Presenza → P A G</span>` : ''}
+        ${convSessId ? `<span style="font-size:.78rem;color:#64748B;margin-left:6px">Presenza → P A G</span>` : ''}
       </div>
       <div style="padding:8px 10px">
         ${athletes.map(ath => {
@@ -8168,7 +8192,7 @@ viewBuilders['convocati'] = (el) => {
 
     <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="history.back()">← Torna</button>
-      ${m.sessionId ? `<button class="btn btn-ghost" onclick="openSessionEdit('${m.sessionId}')">📋 Gestisci Presenze</button>` : ''}
+      ${convSessId ? `<button class="btn btn-ghost" onclick="openSessionEdit('${convSessId}')">📋 Gestisci Presenze</button>` : ''}
       ${canMgr ? `<button class="btn btn-accent" onclick="openMatchModal('${matchId}')">✏️ Modifica Partita</button>` : ''}
       ${canMgr ? `<button class="btn btn-ghost" onclick="exportMatchImage('${matchId}')">🖼️ Esporta Immagine</button>` : ''}
     </div>
@@ -8195,7 +8219,7 @@ function setCvNoteInline(inp) {
 function createLinkedSession(matchId) {
   const m = S.matches.find(x=>x.id===matchId);
   // Blocca se la sessione esiste già
-  if (!m || m.sessionId || m.linkedSessionId) {
+  if (!m || getMatchSession(matchId)) {
     toast('Sessione già collegata a questa partita','warning');
     return;
   }
@@ -8216,10 +8240,11 @@ function createLinkedSession(matchId) {
 // Auto-mark all convocati as Present in the linked session
 function markAllConvocatiPresent(matchId) {
   const m = S.matches.find(x=>x.id===matchId);
-  if (!m?.linkedSessionId && !m?.sessionId) return;
-  if (!m.linkedSessionId) m.linkedSessionId = m.sessionId;
+  const markSess = getMatchSession(matchId);
+  if (!markSess) return;
+  m.linkedSessionId = markSess.id;
   const convocati = (S.convocati||[]).filter(c=>c.matchId===matchId && c.status==='convocato').map(c=>c.athleteId);
-  convocati.forEach(aid => setAttStatus(m.linkedSessionId, aid, 'P'));
+  convocati.forEach(aid => setAttStatus(markSess.id, aid, 'P'));
   toast('Convocati segnati come Presenti','success');
   viewBuilders['convocati'](document.getElementById('view-convocati'));
 }
