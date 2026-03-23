@@ -4132,7 +4132,7 @@ function buildNewUserSeasonPanel(role, userId, seasId) {
       html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--mist-2);border-radius:8px">'
         + '<span class="badge '+rl+'">'+( ROLES[ue.role]?.label||ue.role)+'</span>'
         + '<span style="font-size:.85rem;font-weight:600;flex:1">'+(cat?.name||'—')+'</span>'
-        + '<button class="btn btn-danger btn-sm" onclick="removeUCSEntry(&quot;'+ue.id+'&quot;,&quot;'+userId+'&quot;,&quot;'+role+'&quot;);refreshAddUserSeasonPanel(document.getElementById(&quot;au-role&quot;).value,&quot;'+userId+'&quot;)">✕</button>'
+        + '<button class="btn btn-danger btn-sm" onclick="removeUCSEntry(\'' + ue.id + '\',\'' + userId + '\',\'' + role + '\');refreshAddUserSeasonPanel(document.getElementById(\'au-role\').value,\'' + userId + '\')">✕</button>'
         + '</div>';
     });
     html += '</div>';
@@ -5219,7 +5219,7 @@ function buildUCSList(userId, role) {
       + '<span style="font-size:.85rem;font-weight:600">'+(cat?.name||'—')+'</span>'
       + (soc?'<span style="font-size:.78rem;color:#64748B">'+esc(soc.name)+'</span>':'')
       + '<span class="badge badge-'+getRoleBadge(roleLabel)+'">'+esc(ROLES[roleLabel]?.label||roleLabel)+'</span>'
-      + '<button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--red);font-size:.75rem" onclick="removeUCSEntry(&quot;'+ucs.id+'&quot;,&quot;'+userId+'&quot;,&quot;'+role+'&quot;)">✕</button>'
+      + '<button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--red);font-size:.75rem" onclick="removeUCSEntry(\'' + ucs.id + '\',\'' + userId + '\',\'' + role + '\')">✕</button>'
       + '</div>';
   });
   html += '</div>';
@@ -5241,7 +5241,7 @@ function buildUCSList(userId, role) {
     + '<div class="form-field" style="margin:0;min-width:110px;flex:1"><label style="font-size:.72rem">Stagione</label><select id="ucs-new-season">'+seasOpts+'</select></div>'
     + '<div class="form-field" style="margin:0;min-width:120px;flex:2"><label style="font-size:.72rem">Categoria</label><select id="ucs-new-cat"><option value="">— Seleziona —</option>'+catOpts+'</select></div>'
     + '<div class="form-field" style="margin:0;min-width:110px"><label style="font-size:.72rem">Ruolo</label><select id="ucs-new-role">'+roleOpts+'</select></div>'
-    + '<button class="btn btn-accent btn-sm" onclick="addUCSEntry(&quot;'+userId+'&quot;)" style="align-self:flex-end">Aggiungi</button>'
+    + '<button class="btn btn-accent btn-sm" onclick="addUCSEntry(\'' + userId + '\')" style="align-self:flex-end">Aggiungi</button>'
     + '</div></div>';
 
   return html;
@@ -6324,7 +6324,7 @@ function buildAthleteSeasonsList(athleteId) {
       + (as.role?'<span class="badge badge-gold">'+esc(as.role)+'</span>':'')
       + (as.shirtNumber?'<span style="font-size:.8rem;color:#64748B">#'+as.shirtNumber+'</span>':'')
       + (athleteId
-          ? '<button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--red);font-size:.75rem" onclick="removeAthleteSeasonEntry(&quot;'+as.id+'&quot;)">✕ Rimuovi</button>'
+          ? '<button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--red);font-size:.75rem" onclick="removeAthleteSeasonEntry(\'' + as.id + '\')" >✕ Rimuovi</button>'
           : '')
       + '</div>';
   });
@@ -6345,7 +6345,7 @@ function buildAthleteSeasonsList(athleteId) {
     + '<div class="form-field" style="margin:0;min-width:110px;flex:1"><label style="font-size:.72rem">Categoria</label><select id="as-new-cat" onchange="refreshASTeams(this.value)"><option value="">— Seleziona —</option>'+catOpts+'</select></div>'
     + '<div class="form-field" style="margin:0;min-width:100px;flex:1" id="as-team-wrapper"><label style="font-size:.72rem">Squadra</label><select id="as-new-team"><option value="">— Intera cat. —</option></select></div>'
     + '<div class="form-field" style="margin:0;width:70px"><label style="font-size:.72rem">Maglia</label><input id="as-new-shirt" type="number" placeholder="10" style="text-align:center"></div>'
-    + '<button class="btn btn-accent btn-sm" onclick="addAthleteSeasonEntry(&quot;"+athleteId+"&quot;)" style="align-self:flex-end">Aggiungi</button>'
+    + '<button class="btn btn-accent btn-sm" onclick="addAthleteSeasonEntry(\'' + athleteId + '\')" style="align-self:flex-end">Aggiungi</button>'
     + '</div></div>';
 
   return html;
