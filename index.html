@@ -2252,6 +2252,37 @@ function getAthletePresenceRate(athleteId, categoryId) {
   // Guard: never exceed 100%
   return Math.min(100, pct(present, sessions.length));
 }
+
+// ────────────────────────────────────────────────────────────
+//  HELPER STAGIONE — usati da tutte le viste
+// ────────────────────────────────────────────────────────────
+
+/** Ritorna {start, end} ISO per la stagione (es. 2025-07-01 / 2026-06-30) */
+function getSeasonDates(season) {
+  if (!season) return { start: '1900-01-01', end: '2100-12-31' };
+  const sy = season.startYear || season.start_year || 2000;
+  const ey = season.endYear   || season.end_year   || 2001;
+  return { start: sy + '-07-01', end: ey + '-06-30' };
+}
+
+/** Filtra array di sessioni (hanno campo .date) per stagione */
+function filterSessionsBySeason(sessions, seasonId) {
+  if (!seasonId) return sessions;
+  const seas = S.seasons.find(s => s.id === seasonId);
+  if (!seas) return sessions;
+  const { start, end } = getSeasonDates(seas);
+  return sessions.filter(s => s.date >= start && s.date <= end);
+}
+
+/** Filtra array di partite per stagione */
+function filterMatchesBySeason(matches, seasonId) {
+  if (!seasonId) return matches;
+  const seas = S.seasons.find(s => s.id === seasonId);
+  if (!seas) return matches;
+  const { start, end } = getSeasonDates(seas);
+  return matches.filter(m => m.date >= start && m.date <= end);
+}
+
 function getCategoryStats(catId, seasonId) {
   const seasId = seasonId || S.activeSeason;
   // getCategoryAthletesForSeason gestisce già il fallback correttamente
@@ -3481,7 +3512,7 @@ viewBuilders['admin-overview'] = (el) => {
           <label style="font-size:.73rem">Stagione</label>
           <select id="at-seas" onchange="renderAdminTable()">
             <option value="">Tutte le stagioni</option>
-            ${(S.seasons||[]).slice().reverse().map(s=>`<option value="${s.id}" ${s.active?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+            ${(S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear).map(s=>`<option value="${s.id}" ${s.id===S.activeSeason?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -3500,7 +3531,11 @@ function renderAdminTable() {
 
   const filterSoc  = document.getElementById('at-soc')?.value  || '';
   const filterTeam = document.getElementById('at-team')?.value || '';
-  const filterSeas = document.getElementById('at-seas')?.value || '';
+  // Priorità: filtro UI → stagione globale S.activeSeason
+  const atSeasEl   = document.getElementById('at-seas');
+  const filterSeas = (atSeasEl?.value) || S.activeSeason || '';
+  // Sincronizza il select UI con la stagione globale
+  if (atSeasEl && S.activeSeason && !atSeasEl.value) atSeasEl.value = S.activeSeason;
 
   let cats = S.categories.slice();
   if (filterSoc)  cats = cats.filter(c => c.societyId === filterSoc);
@@ -6940,6 +6975,7 @@ viewBuilders['sessions'] = (el) => {
   if (!window._sessState) window._sessState = {};
   const ss = window._sessState;
   if (!ss.catId && selectedCategoryId) ss.catId = selectedCategoryId;
+  if (S.activeSeason && ss.seasId !== S.activeSeason) ss.seasId = S.activeSeason;
   if (!ss.seasId) ss.seasId = activeSeas?.id || '';
 
   const curCat   = S.categories.find(c=>c.id===ss.catId) || cat;
@@ -7324,6 +7360,7 @@ function buildCategoryDashboardView(el, catId) {
   if (S.activeSeason && window._dashSeas !== S.activeSeason) {
     window._dashSeas = S.activeSeason;
   }
+  if (S.activeSeason && window._dashSeas !== S.activeSeason) window._dashSeas = S.activeSeason;
   const filterSeasId= window._dashSeas || activeSeas?.id;
   const filterTeamId= window._dashTeam || '';
   const filterSeas  = allSeasons.find(s=>s.id===filterSeasId) || activeSeas;
@@ -9682,7 +9719,15 @@ function setActiveSeason(id) {
   S.activeSeason = id;
   saveState();
   rebuildSeasonSelector();
-  // Refresh current view
+  // ── Sincronizza TUTTI i flag stagione usati dalle singole viste ──
+  window._dashSeas       = id;   // cat-dashboard
+  window._athSeasId      = id;   // roster atleti
+  window._athProfSeas    = id;   // profilo atleta
+  window._configSeasonId = id;   // configurazione
+  if (window._sessState)  { window._sessState.seasId = id; window._sessState.dateFrom=''; window._sessState.dateTo=''; }
+  if (window._matchState) window._matchState.seasId  = id;
+  if (window._moState)    window._moState.seasId      = id;
+  // ── Refresh vista corrente ──
   const fn = viewBuilders[currentView];
   if (fn) { const el = document.getElementById('view-' + currentView); if (el) { el.innerHTML=''; fn(el); } }
 }
@@ -9744,8 +9789,7 @@ function getCategorySessionsForSeason(catId, seasonId) {
   if (!seasonId) return getCategorySessions(catId);
   const season = S.seasons.find(s => s.id === seasonId);
   if (!season) return getCategorySessions(catId);
-  const startDate = `${season.startYear}-07-01`; // July 1st start
-  const endDate   = `${season.endYear}-06-30`;   // June 30th end
+  const { start: startDate, end: endDate } = getSeasonDates(season);
   return getCategorySessions(catId).filter(s => s.date >= startDate && s.date <= endDate);
 }
 
@@ -9754,8 +9798,7 @@ function getCategoryMatchesForSeason(catId, seasonId) {
   if (!seasonId) return getCategoryMatches(catId);
   const season = S.seasons.find(s => s.id === seasonId);
   if (!season) return getCategoryMatches(catId);
-  const startDate = `${season.startYear}-07-01`;
-  const endDate   = `${season.endYear}-06-30`;
+  const { start: startDate, end: endDate } = getSeasonDates(season);
   return getCategoryMatches(catId).filter(m => m.date >= startDate && m.date <= endDate);
 }
 
@@ -10806,15 +10849,9 @@ function getMatchPoints(result) {
 
 function getCategoryMatchStats(catId, teamId, seasonId) {
   // Filtra per stagione se specificata o usa la stagione attiva
-  const seasId = seasonId || S.activeSeason;
+  const seasId = (seasonId !== undefined) ? seasonId : S.activeSeason;
   let ms = S.matches.filter(m => m.categoryId === catId);
-  if (seasId) {
-    const seas = S.seasons.find(s=>s.id===seasId);
-    if (seas) {
-      const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
-      ms = ms.filter(m => m.date >= start && m.date <= end);
-    }
-  }
+  if (seasId) ms = filterMatchesBySeason(ms, seasId);
   if (teamId) ms = ms.filter(m => m.teamId === teamId || (!m.teamId));
   const played = ms.filter(m => m.result && m.result !== 'TBD');
   const pts  = played.reduce((s,m) => s + getMatchPoints(m.result), 0);
