@@ -2254,9 +2254,9 @@ function getAthletePresenceRate(athleteId, categoryId) {
 }
 function getCategoryStats(catId, seasonId) {
   const seasId = seasonId || S.activeSeason;
-  // Usa athlete_seasons se disponibile (più preciso per stagione)
+  // getCategoryAthletesForSeason gestisce già il fallback correttamente
   let athletes = getCategoryAthletesForSeason(catId, seasId);
-  if (!athletes.length) athletes = getCategoryAthletes(catId);
+  // NON fare fallback qui: se 0 atleti per stagione, mostra 0
   const sessions = seasId
     ? getCategorySessionsForSeason(catId, seasId)
     : getCategorySessions(catId);
@@ -5450,7 +5450,7 @@ function exportData() {
 viewBuilders['category-home'] = (el) => {
   const myCategories = currentUser.role === 'admin'
     ? S.categories
-    : S.categories.filter(c => (c.directorIds||[]).includes(currentUser.id));
+    : S.categories.filter(c => canAccessCategory(c.id));
 
   if (!selectedCategoryId && myCategories.length > 0) selectedCategoryId = myCategories[0].id;
   const cat = S.categories.find(c=>c.id===selectedCategoryId);
@@ -5459,16 +5459,28 @@ viewBuilders['category-home'] = (el) => {
     setTopbar('Categoria','');
     return;
   }
-  const st = getCategoryStats(cat.id);
+
+  // Stagione: usa S.activeSeason (topnav globale)
+  const chSeasId = S.activeSeason || getActiveSeason()?.id || '';
+  const chSeas = S.seasons.find(s=>s.id===chSeasId) || getActiveSeason();
+
+  const st = getCategoryStats(cat.id, chSeasId);
   const team = S.teams.find(t=>t.id===cat.teamId);
   const soc = S.societies.find(s=>s.id===cat.societyId);
   const sport = S.sports.find(s=>s.id===cat.sportId);
-  const recentSess = getCategorySessions(cat.id).reverse().slice(0,5);
+  const recentSess = getCategorySessionsForSeason(cat.id, chSeasId).reverse().slice(0,5);
   setTopbar(cat.name, team?.name||'');
 
-  // activity breakdown
+  // Selettore stagione nel topbar
+  const seasSelectHtml = '<select style="padding:4px 10px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.82rem;font-weight:600;background:#F8FAFC;cursor:pointer" onchange="S.activeSeason=this.value;rebuildSeasonSelector();viewBuilders[&quot;category-home&quot;](document.getElementById(&quot;view-category-home&quot;))">'
+    + S.seasons.slice().sort((a,b)=>b.startYear-a.startYear).map(s=>'<option value="'+s.id+'" '+(s.id===chSeasId?'selected':'')+'>'+esc(s.name)+(s.active?' ★':'')+'</option>').join('')
+    + '</select>';
+  setTopbar(esc(cat.name), esc(team?.name||''), '', seasSelectHtml);
+
+  // activity breakdown filtrato per stagione
+  const chSessions = getCategorySessionsForSeason(cat.id, chSeasId);
   const actBreakdown = getActivityTypes().map(([k,v]) => {
-    const count = S.sessions.filter(s=>s.categoryId===cat.id && s.type===k).length;
+    const count = chSessions.filter(s=>s.type===k).length;
     return { key:k, act:v, count };
   });
 
@@ -6489,6 +6501,10 @@ function buildCategoryDashboardView(el, catId) {
   // Read filter state (season + team)
   const allSeasons  = (S.seasons||[]);
   const activeSeas  = getActiveSeason();
+  // Sincronizza sempre con la stagione globale (topnav)
+  if (S.activeSeason && window._dashSeas !== S.activeSeason) {
+    window._dashSeas = S.activeSeason;
+  }
   const filterSeasId= window._dashSeas || activeSeas?.id;
   const filterTeamId= window._dashTeam || '';
   const filterSeas  = allSeasons.find(s=>s.id===filterSeasId) || activeSeas;
