@@ -1736,10 +1736,7 @@ async function loadStateFromDB() {
       <div class="topnav-menu" id="topnav-menu"></div>
       <!-- Right side -->
       <div class="topnav-right">
-        <div class="season-pill">
-          <label>⚽ Stagione</label>
-          <select id="season-select" onchange="setActiveSeason(this.value)"></select>
-        </div>
+        <!-- season-pill rimosso: filtro stagione ora nella dashboard admin -->
         <div class="topnav-user" id="topnav-user-wrap">
           <button class="topnav-user-btn" onclick="toggleDropdown(this.parentElement,event)" aria-label="Profilo utente">
             <div class="user-avatar" id="sidebar-avatar">A</div>
@@ -1801,6 +1798,7 @@ async function loadStateFromDB() {
       <!-- Admin Overview -->
       <div class="view" id="view-admin-overview"><!-- dynamic --></div>
       <div class="view" id="view-user-detail"><!-- dynamic --></div>
+      <div class="view" id="view-add-user"><!-- dynamic --></div>
       <div class="view" id="view-responsabile-overview"><!-- dynamic --></div>
       <div class="view" id="view-matches-overview"><!-- dynamic --></div>
 
@@ -3319,9 +3317,18 @@ viewBuilders['admin-overview'] = (el) => {
       <div class="header-row">
         <div>
           <h2>Benvenuto, ${esc(currentUser.name)} 👋</h2>
-          <p>Panoramica globale · <span class="season-badge">${activeSeas ? '⚽ Stagione: ' + esc(activeSeas.name) : 'Tutte le stagioni'}</span> · ${new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+          <p>${new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
-        <button class="btn btn-accent btn-lg" onclick="showAdminConfig('category')">+ Nuova Categoria</button>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1.5px solid #CBD5E0;border-radius:10px;padding:6px 14px">
+            <span style="font-size:.82rem;font-weight:700;color:#64748B">⚽ Stagione</span>
+            <select id="admin-season-select" style="border:none;background:transparent;font-size:.9rem;font-weight:700;color:var(--accent);cursor:pointer;outline:none;padding:0 4px"
+              onchange="setActiveSeason(this.value)">
+              ${S.seasons.slice().sort((a,b)=>b.startYear-a.startYear).map(s=>`<option value="${s.id}" ${s.id===activeSeas?.id?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+            </select>
+          </div>
+          <button class="btn btn-accent btn-lg" onclick="showAdminConfig('category')">+ Nuova Categoria</button>
+        </div>
       </div>
     </div>
 
@@ -3816,7 +3823,7 @@ viewBuilders['user-detail'] = (el) => {
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost" onclick="showAdminConfig('users')">← Torna alla lista</button>
-          <button class="btn btn-accent" onclick="openUserModal('${u.id}')">✏️ Modifica Anagrafica</button>
+          <button class="btn btn-accent" onclick="openAddUserPage('${u.id}')">✏️ Modifica Anagrafica</button>
         </div>
       </div>
     </div>
@@ -3979,6 +3986,233 @@ function updateUCSFromModal(ucsId, userId) {
 function openUserDetail(userId) {
   window._userDetailId = userId;
   showView('user-detail');
+}
+
+
+viewBuilders['add-user'] = (el) => {
+  const isEdit  = !!window._addUserEditId;
+  const u       = isEdit ? S.users.find(x=>x.id===window._addUserEditId) : null;
+  const activeSeasId = S.activeSeason || getActiveSeason()?.id || '';
+  const activeSeas   = S.seasons.find(s=>s.id===activeSeasId) || getActiveSeason();
+
+  setTopbar(isEdit ? 'Modifica Utente' : 'Nuovo Utente Staff', isEdit ? esc(u?.name||'') : '');
+
+  const roleOpts = ['responsabile','dirigente','allenatore','professionista','genitore','presidente']
+    .map(r=>`<option value="${r}" ${u?.role===r?'selected':''}>${ROLES[r].icon} ${ROLES[r].label}</option>`).join('');
+
+  const initRole = u?.role || 'allenatore';
+  const pwLabel  = u ? 'Nuova Password <span style="font-weight:400;color:#64748B">(lascia vuoto per non cambiare)</span>' : 'Password Temporanea <span style="color:var(--red)">*</span>';
+
+  el.innerHTML = `
+    <div class="page-header">
+      <div class="header-row">
+        <div>
+          <h2>${isEdit ? '✏️ Modifica — '+esc(u?.name||'') : '➕ Nuovo Utente Staff'}</h2>
+          <p>Ogni anno è una stagione indipendente — le assegnazioni categorie si gestiscono per stagione</p>
+        </div>
+        <button class="btn btn-ghost" onclick="showAdminConfig('users')">← Torna alla lista</button>
+      </div>
+    </div>
+
+    <div class="grid-2" style="align-items:flex-start">
+
+      <!-- Colonna 1: Dati anagrafici -->
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">👤</div>Dati Anagrafici</div>
+          <div class="form-row">
+            <div class="form-field"><label>Nome Completo</label><input id="au-name" value="${esc(u?.name||'')}" placeholder="Mario Rossi"></div>
+            <div class="form-field"><label>Professione / Qualifica</label><input id="au-prof" value="${esc(u?.profession||'')}" placeholder="es. Allenatore UEFA B"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-field"><label>Email</label><input id="au-email" type="email" value="${esc(u?.email||'')}" placeholder="mario@esempio.it"></div>
+            <div class="form-field"><label>Telefono</label><input id="au-phone" value="${esc(u?.phone||'')}" placeholder="333-1234567"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title"><div class="icon" style="background:var(--gold-l);color:var(--gold)">🔐</div>Credenziali Accesso</div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Username</label>
+              <input id="au-uname" value="${esc(u?.username||'')}" placeholder="mario.rossi" ${u?'readonly style="background:#F1F5F9;color:#64748B"':''}>
+              ${u?'<div style="font-size:.72rem;color:#64748B;margin-top:3px">Lo username non può essere modificato dopo la creazione</div>':'<div style="font-size:.72rem;color:#64748B;margin-top:3px">Email di accesso: <b id="au-email-preview">…@sporttrackpro.it</b></div>'}
+            </div>
+            <div class="form-field">
+              <label>${pwLabel}</label>
+              <div style="display:flex;gap:6px">
+                <input id="au-pass" type="password" placeholder="••••••••" style="flex:1">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="fillGeneratedPassword('au-pass')">🎲</button>
+              </div>
+            </div>
+          </div>
+          ${u?'':'<div class="form-row"><div class="form-field"></div><div class="form-field"><label>Conferma Password</label><input id="au-pass-confirm" type="password" placeholder="••••••••"></div></div>'}
+        </div>
+
+        <div class="card">
+          <div class="card-title"><div class="icon" style="background:var(--purple-l);color:var(--purple)">⭐</div>Ruolo nel Sistema</div>
+          <div class="form-field">
+            <label>Ruolo</label>
+            <select id="au-role" onchange="refreshAddUserSeasonPanel(this.value,'${u?.id||''}')">
+              ${roleOpts}
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Società</label>
+            <select id="au-soc">
+              <option value="">— Nessuna —</option>
+              ${S.societies.map(s=>`<option value="${s.id}" ${s.id===u?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Colonna 2: Stagioni e assegnazioni -->
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title" style="justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px"><div class="icon" style="background:var(--teal-l);color:var(--teal)">📅</div>Stagione Corrente</div>
+            <span class="badge badge-blue">${esc(activeSeas?.name||'—')}</span>
+          </div>
+          <div class="highlight-box" style="margin-bottom:12px;font-size:.82rem">
+            💡 Ogni stagione è indipendente. Le assegnazioni a categorie e squadre vengono salvate per stagione in modo da ricostruire la storia completa dell'utente.
+          </div>
+          <div id="au-season-panel">
+            ${buildNewUserSeasonPanel(initRole, u?.id||null, activeSeasId)}
+          </div>
+        </div>
+
+        ${isEdit ? `
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px"><div class="icon" style="background:var(--gold-l);color:var(--gold)">🗓️</div>Tutte le stagioni</div>
+          </div>
+          ${buildUCSList(u.id, u.role)}
+        </div>` : ''}
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:24px;padding-top:16px;border-top:1px solid var(--mist-2)">
+      <button class="btn btn-accent btn-lg" onclick="saveUserFromPage('${u?.id||''}')">💾 ${isEdit?'Salva Modifiche':'Crea Utente'}</button>
+      <button class="btn btn-ghost btn-lg" onclick="showAdminConfig('users')">Annulla</button>
+    </div>
+  `;
+
+  // Preview email in tempo reale
+  const unameEl = document.getElementById('au-uname');
+  const previewEl = document.getElementById('au-email-preview');
+  if (unameEl && previewEl) {
+    unameEl.addEventListener('input', () => {
+      previewEl.textContent = (unameEl.value||'…') + '@sporttrackpro.it';
+    });
+  }
+};
+
+function buildNewUserSeasonPanel(role, userId, seasId) {
+  const isStaff = ['responsabile','dirigente','allenatore','professionista'].includes(role);
+  if (!isStaff) return '<div style="font-size:.82rem;color:#64748B">Questo ruolo non richiede assegnazione a categorie.</div>';
+
+  // UCS esistenti per questa stagione
+  const existing = userId
+    ? (S.userCategorySeasons||[]).filter(u=>u.userId===userId && u.seasonId===seasId)
+    : [];
+
+  const seas = S.seasons.find(s=>s.id===seasId);
+  const catOpts  = S.categories.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');
+  const roleOpts = ['responsabile','dirigente','allenatore','professionista']
+    .map(r=>'<option value="'+r+'"'+(r===role?' selected':'')+'>'+ROLES[r].icon+' '+ROLES[r].label+'</option>').join('');
+
+  let html = '<div style="font-size:.78rem;font-weight:700;color:#64748B;margin-bottom:8px">Categorie assegnate in '+esc(seas?.name||'—')+'</div>';
+
+  if (existing.length) {
+    html += '<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px">';
+    existing.forEach(ue => {
+      const cat = S.categories.find(c=>c.id===ue.categoryId);
+      const rl  = {responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal'}[ue.role]||'badge-gray';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--mist-2);border-radius:8px">'
+        + '<span class="badge '+rl+'">'+( ROLES[ue.role]?.label||ue.role)+'</span>'
+        + '<span style="font-size:.85rem;font-weight:600;flex:1">'+(cat?.name||'—')+'</span>'
+        + '<button class="btn btn-danger btn-sm" onclick="removeUCSEntry(&quot;'+ue.id+'&quot;,&quot;'+userId+'&quot;,&quot;'+role+'&quot;);refreshAddUserSeasonPanel(document.getElementById(&quot;au-role&quot;).value,&quot;'+userId+'&quot;)">✕</button>'
+        + '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:10px;background:var(--accent-l);border-radius:8px;border:1px dashed var(--accent)">'
+    + '<div class="form-field" style="margin:0;min-width:110px;flex:2"><label style="font-size:.72rem">Categoria</label><select id="au-new-cat"><option value="">— Seleziona —</option>'+catOpts+'</select></div>'
+    + '<div class="form-field" style="margin:0;min-width:110px"><label style="font-size:.72rem">Ruolo</label><select id="au-new-role">'+roleOpts+'</select></div>'
+    + '<button class="btn btn-accent btn-sm" onclick="addUCSFromPage(&quot;'+userId+'&quot;,&quot;'+seasId+'&quot;)" style="align-self:flex-end">+ Aggiungi</button>'
+    + '</div>';
+
+  return html;
+}
+
+function refreshAddUserSeasonPanel(role, userId) {
+  const panel = document.getElementById('au-season-panel');
+  if (!panel) return;
+  const seasId = S.activeSeason || getActiveSeason()?.id || '';
+  panel.innerHTML = buildNewUserSeasonPanel(role, userId||'', seasId);
+}
+
+function addUCSFromPage(userId, seasId) {
+  const catId  = document.getElementById('au-new-cat')?.value;
+  const role   = document.getElementById('au-new-role')?.value;
+  if (!catId) { toast('Seleziona una categoria','error'); return; }
+  if (!userId) { toast('Salva prima i dati anagrafici dell\'utente','warning'); return; }
+  const dup = (S.userCategorySeasons||[]).find(u=>u.userId===userId && u.seasonId===seasId && u.categoryId===catId);
+  if (dup) { toast('Assegnazione già presente','warning'); return; }
+  const cat   = S.categories.find(c=>c.id===catId);
+  const entry = { id: uid(), userId, seasonId: seasId, categoryId: catId, role, societyId: cat?.societyId||null };
+  if (!S.userCategorySeasons) S.userCategorySeasons = [];
+  S.userCategorySeasons.push(entry);
+  saveState(); sbSync('user_category_seasons', entry);
+  toast('Categoria aggiunta ✅','success');
+  const curRole = document.getElementById('au-role')?.value || role;
+  refreshAddUserSeasonPanel(curRole, userId);
+}
+
+async function saveUserFromPage(id) {
+  const name  = document.getElementById('au-name')?.value.trim();
+  const prof  = document.getElementById('au-prof')?.value.trim();
+  const email = document.getElementById('au-email')?.value.trim();
+  const phone = document.getElementById('au-phone')?.value.trim();
+  const uname = document.getElementById('au-uname')?.value.trim();
+  const pass  = document.getElementById('au-pass')?.value;
+  const pass2 = document.getElementById('au-pass-confirm')?.value;
+  const role  = document.getElementById('au-role')?.value;
+  const socId = document.getElementById('au-soc')?.value;
+
+  if (!name) { toast('Nome obbligatorio','error'); return; }
+  if (!id && !pass) { toast('Password obbligatoria per nuovo utente','error'); return; }
+  if (!id && pass !== pass2) { toast('Le password non coincidono','error'); return; }
+
+  if (id) {
+    // Update esistente
+    const u = S.users.find(x=>x.id===id);
+    if (!u) return;
+    Object.assign(u, { name, profession:prof, email, phone, role, societyId:socId||null });
+    saveState(); await sbSync('users', u);
+    if (pass) { try { await DB.adminSetPassword(id, pass); } catch(e) { toast('⚠️ Password non aggiornata','warning'); } }
+    toast('Utente aggiornato ✅','success');
+    showView('user-detail');
+  } else {
+    // Nuovo utente
+    if (!uname) { toast('Username obbligatorio','error'); return; }
+    const fullEmail = uname + '@sporttrackpro.it';
+    const newId = uid();
+    try {
+      await DB.createUser(newId, fullEmail, pass, name, role, uname, prof, phone, socId||null);
+      toast('Utente creato ✅','success');
+      showAdminConfig('users');
+    } catch(e) {
+      toast('Errore creazione: ' + e.message, 'error');
+    }
+  }
+}
+
+function openAddUserPage(userId) {
+  window._addUserEditId = userId || null;
+  showView('add-user');
 }
 
 function showAdminConfig(tab, seasId) {
@@ -4584,7 +4818,7 @@ function buildUsersConfig() {
             <option value="">Tutti i ruoli</option>
             ${['responsabile','dirigente','allenatore','professionista','genitore','presidente'].map(r=>'<option value="'+r+'"'+(r===(window._usrFilterRole||'')?'selected':'')+'>'+ROLES[r].icon+' '+ROLES[r].label+'</option>').join('')}
           </select>
-          <button class="btn btn-accent btn-sm" onclick="openUserModal()">+ Aggiungi Utente</button>
+          <button class="btn btn-accent btn-sm" onclick="openAddUserPage()">+ Aggiungi Utente</button>
         </div>
       </div>
       <div class="highlight-box" style="margin-bottom:16px">
@@ -5273,7 +5507,27 @@ function deleteUser(id) {
   const u = S.users.find(x=>x.id===id);
   if (!u) return;
   if (u.role === 'admin') { toast('Non puoi eliminare questo utente','error'); return; }
-  if (!confirm(`Eliminare l'utente "${u.name}" anche da Supabase Auth?`)) return;
+  const seasId2 = S.activeSeason || getActiveSeason()?.id || '';
+  const seas2   = S.seasons.find(s=>s.id===seasId2);
+  const ucsCount2 = (S.userCategorySeasons||[]).filter(ue=>ue.userId===id).length;
+  const ucsSeasCount2 = (S.userCategorySeasons||[]).filter(ue=>ue.userId===id && ue.seasonId===seasId2).length;
+
+  openModal(
+    '<div class="modal-header"><h3 style="color:var(--red)">🗑️ Elimina Utente</h3></div>'
+    + '<div style="margin-bottom:16px"><div class="fw-700" style="font-size:1rem;margin-bottom:8px">'+esc(u.name)+'</div></div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">'
+    + '<div style="border:2px solid var(--gold);border-radius:10px;padding:14px;cursor:pointer;background:#FFFBEB" onclick="confirmDeleteUserSeason(&quot;'+id+'&quot;,&quot;'+seasId2+'&quot;)">'
+    + '<div class="fw-700" style="color:var(--gold);margin-bottom:4px">⚽ Solo la stagione '+esc(seas2?.name||'corrente')+'</div>'
+    + '<div style="font-size:.82rem;color:#475569">Rimuove le '+ucsSeasCount2+' assegnazioni di questa stagione. L\'utente rimane nel sistema.</div>'
+    + '</div>'
+    + '<div style="border:2px solid var(--red);border-radius:10px;padding:14px;cursor:pointer;background:#FFF5F5" onclick="confirmDeleteUserAll(&quot;'+id+'&quot;)">'
+    + '<div class="fw-700" style="color:var(--red);margin-bottom:4px">🗑️ Elimina tutto ('+ucsCount2+' stagioni)</div>'
+    + '<div style="font-size:.82rem;color:#475569">Elimina completamente l\'utente e tutti i suoi dati. Non reversibile.</div>'
+    + '</div>'
+    + '</div>'
+    + '<button class="btn btn-ghost w-full" onclick="closeModal()">Annulla</button>'
+  );
+  return; // La funzione continua nei confirm* separati
 
   S.users = S.users.filter(x=>x.id!==id);
   S.categories.forEach(c => {
@@ -6307,14 +6561,68 @@ function saveAthlete(id) {
   }
 }
 function deleteAthlete(id) {
-  if (!confirm('Eliminare questo atleta e tutte le presenze?')) return;
-  S.athletes = S.athletes.filter(x=>x.id!==id);
+  const ath = S.athletes.find(x=>x.id===id);
+  if (!ath) return;
+  const seasId = S.activeSeason || getActiveSeason()?.id || '';
+  const seas   = S.seasons.find(s=>s.id===seasId);
+  const asAll  = (S.athleteSeasons||[]).filter(as=>as.athleteId===id);
+  const asSeas = asAll.find(as=>as.seasonId===seasId);
+  const totalSeas = asAll.length;
+
+  openModal(
+    '<div class="modal-header"><h3 style="color:var(--red)">🗑️ Elimina Atleta</h3></div>'
+    + '<div style="margin-bottom:16px">'
+    + '<div class="fw-700" style="font-size:1rem;margin-bottom:4px">'+esc(ath.lastName+' '+ath.firstName)+'</div>'
+    + '<div style="font-size:.88rem;color:#64748B">Scegli cosa eliminare:</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">'
+
+    + (asSeas ? '<div style="border:2px solid var(--gold);border-radius:10px;padding:14px;cursor:pointer;background:#FFFBEB" onclick="confirmDeleteAthleteSeason(&quot;"+id+"&quot;,&quot;"+seasId+"&quot;)">'
+    + '<div class="fw-700" style="color:var(--gold);margin-bottom:4px">⚽ Solo la stagione '+esc(seas?.name||'corrente')+'</div>'
+    + '<div style="font-size:.82rem;color:#475569">Rimuove l\'iscrizione di questa stagione (presenze, performance). L\'atleta rimane con le '+totalSeas+' stagioni totali.</div>'
+    + '</div>' : '')
+
+    + '<div style="border:2px solid var(--red);border-radius:10px;padding:14px;cursor:pointer;background:#FFF5F5" onclick="confirmDeleteAthleteAll(&quot;"+id+"&quot;)">'
+    + '<div class="fw-700" style="color:var(--red);margin-bottom:4px">🗑️ Elimina tutto ('+totalSeas+' stagioni)</div>'
+    + '<div style="font-size:.82rem;color:#475569">Elimina l\'atleta completamente: anagrafica, tutte le stagioni, presenze e performance. Non reversibile.</div>'
+    + '</div>'
+
+    + '</div>'
+    + '<button class="btn btn-ghost w-full" onclick="closeModal()">Annulla</button>'
+  );
+}
+
+function confirmDeleteAthleteSeason(id, seasId) {
+  closeModal();
+  const asId = (S.athleteSeasons||[]).find(as=>as.athleteId===id && as.seasonId===seasId)?.id;
+  if (asId) {
+    S.athleteSeasons = S.athleteSeasons.filter(x=>x.id!==asId);
+    sbSync('athlete_seasons', asId, true);
+  }
+  // Rimuovi presenze delle sessioni di quella stagione
+  const seas = S.seasons.find(s=>s.id===seasId);
+  if (seas) {
+    const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
+    const seasSessIds = S.sessions.filter(s=>s.categoryId && s.date>=start && s.date<=end).map(s=>s.id);
+    S.attendances = S.attendances.filter(a=>!(a.athleteId===id && seasSessIds.includes(a.sessionId)));
+  }
+  saveState();
+  const view = currentView === 'athlete-profile' ? 'athletes' : currentView;
+  if (currentView === 'athlete-profile') showView('athletes');
+  else buildAdminConfigTab('users');
+  toast('Stagione rimossa dall\'atleta ✅','success');
+}
+
+function confirmDeleteAthleteAll(id) {
+  closeModal();
+  S.athletes    = S.athletes.filter(x=>x.id!==id);
   S.attendances = S.attendances.filter(x=>x.athleteId!==id);
+  S.athleteSeasons = (S.athleteSeasons||[]).filter(x=>x.athleteId!==id);
   saveState();
   sbSync('athletes', id, true);
   sbSyncDeleteWhere('attendances','athlete_id',id);
   sbSyncDeleteWhere('athlete_seasons','athlete_id',id);
-  showView('athletes'); toast('Atleta eliminato');
+  showView('athletes'); toast('Atleta eliminato','success');
 }
 
 // ── RUOLI CONFIGURABILI PER CATEGORIA ──────────────────────────
@@ -9096,11 +9404,20 @@ function setActiveSeason(id) {
 }
 
 function rebuildSeasonSelector() {
+  // Aggiorna il selettore admin-overview (nuovo)
+  const adminSel = document.getElementById('admin-season-select');
+  if (adminSel && S.seasons) {
+    adminSel.innerHTML = S.seasons.slice().sort((a,b)=>b.startYear-a.startYear).map(s =>
+      `<option value="${s.id}" ${s.id === S.activeSeason ? 'selected' : ''}>${esc(s.name)}${s.active ? ' ★' : ''}</option>`
+    ).join('');
+  }
+  // Mantieni compatibilità con altri selettori stagione
   const sel = document.getElementById('season-select');
-  if (!sel || !S.seasons) return;
-  sel.innerHTML = S.seasons.slice().reverse().map(s =>
-    `<option value="${s.id}" ${s.id === S.activeSeason ? 'selected' : ''}>${esc(s.name)}${s.active ? ' ★' : ''}</option>`
-  ).join('');
+  if (sel && S.seasons) {
+    sel.innerHTML = S.seasons.slice().sort((a,b)=>b.startYear-a.startYear).map(s =>
+      `<option value="${s.id}" ${s.id === S.activeSeason ? 'selected' : ''}>${esc(s.name)}${s.active ? ' ★' : ''}</option>`
+    ).join('');
+  }
 }
 
 // Get athletes in a category for a given season
