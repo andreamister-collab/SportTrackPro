@@ -2252,14 +2252,14 @@ function getAthletePresenceRate(athleteId, categoryId) {
   // Guard: never exceed 100%
   return Math.min(100, pct(present, sessions.length));
 }
-function getCategoryStats(catId) {
-  let athletes = getCategoryAthletes(catId);
-  // Fallback: se nessun atleta ha categoryId, usa athlete_seasons
-  if (!athletes.length && S.athleteSeasons && S.athleteSeasons.length) {
-    const asIds = [...new Set((S.athleteSeasons||[]).filter(as=>as.categoryId===catId).map(as=>as.athleteId))];
-    athletes = S.athletes.filter(a => asIds.includes(a.id));
-  }
-  const sessions = getCategorySessions(catId);
+function getCategoryStats(catId, seasonId) {
+  const seasId = seasonId || S.activeSeason;
+  // Usa athlete_seasons se disponibile (più preciso per stagione)
+  let athletes = getCategoryAthletesForSeason(catId, seasId);
+  if (!athletes.length) athletes = getCategoryAthletes(catId);
+  const sessions = seasId
+    ? getCategorySessionsForSeason(catId, seasId)
+    : getCategorySessions(catId);
   const allAtts = S.attendances.filter(a => sessions.some(s => s.id === a.sessionId));
   const present = allAtts.filter(a => a.status === 'P').length;
   const total = athletes.length * sessions.length;
@@ -5631,7 +5631,11 @@ viewBuilders['athletes'] = (el) => {
   if (!selectedCategoryId) { el.innerHTML = '<div class="empty-state"><p>Seleziona una categoria</p></div>'; return; }
   const cat = S.categories.find(c=>c.id===selectedCategoryId);
   if (!canAccessCategory(selectedCategoryId)) { el.innerHTML = '<div class="empty-state"><p>Accesso non autorizzato</p></div>'; return; }
-  const activeSeas  = getActiveSeason();
+  // Stagione: usa quella globale (S.activeSeason), con fallback alla stagione attiva
+  if (!window._athSeasId) window._athSeasId = S.activeSeason || getActiveSeason()?.id || '';
+  // Sincronizza con S.activeSeason quando cambia dalla topnav
+  if (S.activeSeason && window._athSeasId !== S.activeSeason) window._athSeasId = S.activeSeason;
+  const activeSeas  = S.seasons.find(s=>s.id===window._athSeasId) || getActiveSeason();
   const catTeamsAth = getCategoryTeams(selectedCategoryId);
   const multiTeamAth= catTeamsAth.length > 1;
   const athletes = getCategoryAthletesForSeason(selectedCategoryId, activeSeas?.id).sort((a,b)=>(a.lastName||'').localeCompare(b.lastName||''));
@@ -5645,6 +5649,9 @@ viewBuilders['athletes'] = (el) => {
     </div>
     <div class="filter-bar">
       <input id="ath-search" placeholder="🔍  Cerca atleta..." oninput="filterAthletes()">
+      <select style="font-weight:600;min-width:130px" title="Stagione" onchange="window._athSeasId=this.value;S.activeSeason=this.value;rebuildSeasonSelector();viewBuilders['athletes'](document.getElementById('view-athletes'))">
+        ${S.seasons.slice().sort((a,b)=>b.startYear-a.startYear).map(s=>`<option value="${s.id}" ${s.id===activeSeas?.id?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+      </select>
       ${multiTeamAth ? `<select id="ath-team-filter" onchange="filterAthletes()"><option value="">👕 Tutte le squadre</option>${catTeamsAth.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select>` : ''}
       <select onchange="filterAthletes()" id="ath-sort">
         <option value="name">Ordina per cognome</option>
@@ -9848,8 +9855,17 @@ function getMatchPoints(result) {
   return 0;
 }
 
-function getCategoryMatchStats(catId, teamId) {
+function getCategoryMatchStats(catId, teamId, seasonId) {
+  // Filtra per stagione se specificata o usa la stagione attiva
+  const seasId = seasonId || S.activeSeason;
   let ms = S.matches.filter(m => m.categoryId === catId);
+  if (seasId) {
+    const seas = S.seasons.find(s=>s.id===seasId);
+    if (seas) {
+      const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
+      ms = ms.filter(m => m.date >= start && m.date <= end);
+    }
+  }
   if (teamId) ms = ms.filter(m => m.teamId === teamId || (!m.teamId));
   const played = ms.filter(m => m.result && m.result !== 'TBD');
   const pts  = played.reduce((s,m) => s + getMatchPoints(m.result), 0);
