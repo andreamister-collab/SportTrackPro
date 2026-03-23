@@ -3428,7 +3428,7 @@ function renderAdminTable() {
       athletes = (S.athleteSeasons||[]).filter(as => as.categoryId===cat.id && as.seasonId===filterSeas);
       const seas = S.seasons.find(s=>s.id===filterSeas);
       if (seas) {
-        const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
+        const { start, end } = getSeasonDates(seas);
         sessions = S.sessions.filter(s => s.categoryId===cat.id && s.date>=start && s.date<=end);
       } else {
         sessions = S.sessions.filter(s => s.categoryId===cat.id);
@@ -5778,7 +5778,7 @@ function buildSeasonsConfig() {
   const rowsHtml = seasons.map(s => {
     const enrolled = (S.athleteSeasons||[]).filter(as => as.seasonId===s.id).length;
     const sessCnt = S.sessions.filter(sess => {
-      const start = s.startYear+'-07-01', end = s.endYear+'-06-30';
+      const { start, end } = getSeasonDates(s);
       return sess.date >= start && sess.date <= end;
     }).length;
     const statusBadge = s.active
@@ -6606,7 +6606,7 @@ function confirmDeleteAthleteSeason(id, seasId) {
   // Rimuovi presenze delle sessioni di quella stagione
   const seas = S.seasons.find(s=>s.id===seasId);
   if (seas) {
-    const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
+    const { start, end } = getSeasonDates(seas);
     const seasSessIds = S.sessions.filter(s=>s.categoryId && s.date>=start && s.date<=end).map(s=>s.id);
     S.attendances = S.attendances.filter(a=>!(a.athleteId===id && seasSessIds.includes(a.sessionId)));
   }
@@ -9393,6 +9393,26 @@ function resetConvocati(matchId) {
 //  STAGIONI CALCISTICHE
 // ══════════════════════════════════════════════════════════════════
 
+// ── Date di stagione: 1 agosto → 31 luglio ────────────────────
+// Es. stagione 2025/2026: 2025-08-01 → 2026-07-31
+function getSeasonStartDate(season) {
+  if (!season) return null;
+  return `${season.startYear}-08-01`;
+}
+function getSeasonEndDate(season) {
+  if (!season) return null;
+  return `${season.endYear}-07-31`;
+}
+function getSeasonDates(season) {
+  if (!season) return { start: null, end: null };
+  return { start: getSeasonStartDate(season), end: getSeasonEndDate(season) };
+}
+function isDateInSeason(date, season) {
+  if (!date || !season) return true;
+  const { start, end } = getSeasonDates(season);
+  return date >= start && date <= end;
+}
+
 function getActiveSeason() {
   if (!S.seasons || !S.seasons.length) return null;
   return S.seasons.find(s => s.id === S.activeSeason) || S.seasons[S.seasons.length-1];
@@ -9464,9 +9484,8 @@ function getCategorySessionsForSeason(catId, seasonId) {
   if (!seasonId) return getCategorySessions(catId);
   const season = S.seasons.find(s => s.id === seasonId);
   if (!season) return getCategorySessions(catId);
-  const startDate = `${season.startYear}-07-01`; // July 1st start
-  const endDate   = `${season.endYear}-06-30`;   // June 30th end
-  return getCategorySessions(catId).filter(s => s.date >= startDate && s.date <= endDate);
+  const { start, end } = getSeasonDates(season);
+  return getCategorySessions(catId).filter(s => s.date >= start && s.date <= end);
 }
 
 // Get matches for category in season
@@ -9474,9 +9493,8 @@ function getCategoryMatchesForSeason(catId, seasonId) {
   if (!seasonId) return getCategoryMatches(catId);
   const season = S.seasons.find(s => s.id === seasonId);
   if (!season) return getCategoryMatches(catId);
-  const startDate = `${season.startYear}-07-01`;
-  const endDate   = `${season.endYear}-06-30`;
-  return getCategoryMatches(catId).filter(m => m.date >= startDate && m.date <= endDate);
+  const { start, end } = getSeasonDates(season);
+  return getCategoryMatches(catId).filter(m => m.date >= start && m.date <= end);
 }
 
 // Get stats for a category in a given season
@@ -10531,7 +10549,7 @@ function getCategoryMatchStats(catId, teamId, seasonId) {
   if (seasId) {
     const seas = S.seasons.find(s=>s.id===seasId);
     if (seas) {
-      const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
+      const { start, end } = getSeasonDates(seas);
       ms = ms.filter(m => m.date >= start && m.date <= end);
     }
   }
