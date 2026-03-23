@@ -2315,6 +2315,9 @@ async function saveAthleteSeasonEntry(entry) {
     S.athleteSeasons.push(entry);
   }
   saveState();
+  // Assicura che l'atleta sia nel DB prima dell'insert FK
+  const athExists = S.athletes.find(a=>a.id===entry.athleteId);
+  if (athExists) await sbSync('athletes', athExists);
   await sbSync('athlete_seasons', entry);
   toast('Iscrizione stagionale salvata ✅', 'success');
 }
@@ -6459,7 +6462,7 @@ function refreshASTeams(catId) {
     + '</select>';
 }
 
-function addAthleteSeasonEntry(athleteId) {
+async function addAthleteSeasonEntry(athleteId) {
   const seasonId = document.getElementById('as-new-season')?.value;
   const catId    = document.getElementById('as-new-cat')?.value;
   const teamId   = document.getElementById('as-new-team')?.value || '';
@@ -6479,7 +6482,12 @@ function addAthleteSeasonEntry(athleteId) {
   if (!S.athleteSeasons) S.athleteSeasons = [];
   S.athleteSeasons.push(entry);
   saveState();
-  sbSync('athlete_seasons', entry);
+  // Verifica che l'atleta esista nel DB prima di inserire la FK
+  const athExists = S.athletes.find(a=>a.id===athleteId);
+  if (!athExists) { toast('Atleta non trovato','error'); return; }
+  // Attende che l'atleta sia nel DB (può essere appena creato)
+  await sbSync('athletes', athExists);
+  await sbSync('athlete_seasons', entry);
   toast('Iscrizione aggiunta ✅','success');
   // Refresh panel (sia nel modal che nella pagina profilo)
   const panel = document.getElementById('ath-seasons-panel');
@@ -6615,7 +6623,7 @@ function refreshAthleteModalTeams(newCatId, athleteId) {
     // Could upgrade to select, but keep as input to not break layout
   }
 }
-function saveAthlete(id) {
+async function saveAthlete(id) {
   const firstName  = document.getElementById('ath-fname').value.trim();
   const lastName   = document.getElementById('ath-lname').value.trim();
   const categoryId = document.getElementById('ath-cat')?.value || selectedCategoryId || '';
@@ -6652,7 +6660,10 @@ function saveAthlete(id) {
     toast('Atleta aggiunto ✅','success');
   }
   const savedAth = id ? S.athletes.find(x=>x.id===id) : S.athletes[S.athletes.length-1];
-  saveState(); sbSync('athletes', savedAth); closeModal();
+  saveState();
+  // Attendi che l'atleta sia salvato nel DB prima di procedere (FK constraint)
+  await sbSync('athletes', savedAth);
+  closeModal();
   // Refresh the right view depending on context
   if (currentView === 'admin-athletes') {
     viewBuilders['admin-athletes'](document.getElementById('view-admin-athletes'));
