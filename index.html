@@ -2273,12 +2273,13 @@ function getCategoryStats(catId, seasonId) {
 // ── ROLE DEFINITIONS ──────────────────────────────────────────
 const ROLES = {
   admin:          { label: 'Amministratore',   icon: '🔑', color: '#1A56DB', gradient: 'linear-gradient(135deg,#1A56DB,#3B82F6)' },
+  segretario:     { label: 'Segretario',       icon: '📋', color: '#0891B2', gradient: 'linear-gradient(135deg,#0891B2,#67E8F9)' },
+  presidente:     { label: 'Presidente',       icon: '🏆', color: '#92400E', gradient: 'linear-gradient(135deg,#92400E,#F59E0B)' },
   responsabile:   { label: 'Responsabile',     icon: '⭐', color: '#7C3AED', gradient: 'linear-gradient(135deg,#7C3AED,#A78BFA)' },
   dirigente:      { label: 'Dirigente',        icon: '🏛️', color: '#059669', gradient: 'linear-gradient(135deg,#059669,#34D399)' },
   allenatore:     { label: 'Allenatore',       icon: '⚽', color: '#D97706', gradient: 'linear-gradient(135deg,#D97706,#FCD34D)' },
-  professionista: { label: 'Professionista',   icon: '🩺', color: '#0891B2', gradient: 'linear-gradient(135deg,#0891B2,#67E8F9)' },
+  professionista: { label: 'Professionista',   icon: '🩺', color: '#7C3AED', gradient: 'linear-gradient(135deg,#7C3AED,#A78BFA)' },
   genitore:       { label: 'Genitore',         icon: '👨‍👧', color: '#BE185D', gradient: 'linear-gradient(135deg,#BE185D,#F472B6)' },
-  presidente:     { label: 'Presidente',       icon: '🏆', color: '#92400E', gradient: 'linear-gradient(135deg,#92400E,#F59E0B)' },
 };
 
 // Returns list of category IDs accessible to the current user
@@ -2375,7 +2376,8 @@ function getAccessibleCategoryIds() {
 
   if (r === 'admin') return S.categories.map(c => c.id);
 
-  if (r === 'presidente') {
+  // Segretario: accesso completo alla sua società (o tutte se non ha società)
+  if (r === 'segretario' || r === 'presidente') {
     const socId = currentUser.societyId;
     return socId
       ? S.categories.filter(c => c.societyId === socId).map(c => c.id)
@@ -2409,7 +2411,7 @@ function getAccessibleCategoryIds() {
 function canAccessCategory(catId) {
   if (!currentUser) return false;
   if (currentUser.role === 'admin') return true;
-  if (currentUser.role === 'presidente') {
+  if (currentUser.role === 'segretario' || currentUser.role === 'presidente') {
     const cat = S.categories.find(c=>c.id===catId);
     return !currentUser.societyId || cat?.societyId === currentUser.societyId;
   }
@@ -2435,7 +2437,11 @@ function getMyChildren() {
 function canEdit(catId) {
   if (!currentUser) return false;
   if (currentUser.role === 'admin') return true;
-  if (['presidente','responsabile'].includes(currentUser.role)) return false; // sola lettura
+  // Segretario: pieno accesso operativo (gestisce atleti, sessioni, associazioni)
+  if (currentUser.role === 'segretario') return canAccessCategory(catId);
+  // Presidente: sola lettura (agisce solo in assenza del segretario)
+  if (currentUser.role === 'presidente') return false;
+  if (currentUser.role === 'responsabile') return false;
   const cat = S.categories.find(c=>c.id===catId);
   if (!cat) return false;
   const r = currentUser.role;
@@ -2445,7 +2451,8 @@ function canEdit(catId) {
 function canEditSessions(catId) {
   if (!currentUser) return false;
   if (currentUser.role === 'admin') return true;
-  if (['presidente','responsabile'].includes(currentUser.role)) return false; // sola lettura
+  if (currentUser.role === 'segretario') return canAccessCategory(catId);
+  if (['presidente','responsabile'].includes(currentUser.role)) return false;
   return ['dirigente','allenatore'].includes(currentUser.role) && canAccessCategory(catId);
 }
 
@@ -2810,26 +2817,95 @@ function buildTopNav() {
       ) +
       catActionsMobile;
   } else {
-    // Non-admin
-    const myCategories = S.categories.filter(c => accIds.includes(c.id));
-    if (myCategories.length > 0) {
-      desktopHTML += dGroup('👕 Le mie Squadre', buildTeamDropdownItems(accIds));
-      mobileHTML += mSection('Le mie Squadre', buildMobileTeamItems(accIds));
-    }
-    desktopHTML += catActionsDropdown;
-    mobileHTML += catActionsMobile;
-    if (r === 'responsabile') {
-      const respAccIds = getAccessibleCategoryIds();
+    // Non-admin: navigazione per ruolo
+    const myAccIds = getAccessibleCategoryIds();
+
+    if (r === 'segretario') {
+      // Segretario: pieno accesso operativo sulla società — come presidente ma con editing
+      const segAccIds = myAccIds;
       desktopHTML =
         dGroup('📊 Panoramica',
-          dItem('🏆','Dashboard',`showView('responsabile-overview')`)
+          dItem('🏆','Dashboard',`showView('president-view')`) +
+          dItem('⚽','Partite',`showView('matches-overview')`)
         ) +
-        dGroup('👕 Squadre',
-          buildTeamDropdownItems(respAccIds) || '<div class="dropdown-section-title">Nessuna squadra</div>'
+        dGroup('👕 Squadre', buildTeamDropdownItems(segAccIds) || '<div class="dropdown-section-title">Nessuna squadra</div>') +
+        dGroup('⚙️ Gestione',
+          dItem('👥','Staff & Utenti',`showAdminConfig('users')`) +
+          dItem('🏃','Atleti',`showView('admin-athletes')`) +
+          dItem('🏷️','Categorie',`showAdminConfig('category')`) +
+          dItem('📆','Stagioni',`showAdminConfig('seasons')`)
         );
       mobileHTML =
-        mSection('Panoramica', mItem('🏆','Dashboard',`showView('responsabile-overview')`)) +
-        mSection('Squadre', buildMobileTeamItems(respAccIds));
+        mSection('Panoramica',
+          mItem('🏆','Dashboard',`showView('president-view')`) +
+          mItem('⚽','Partite',`showView('matches-overview')`)
+        ) +
+        mSection('Squadre', buildMobileTeamItems(segAccIds)) +
+        mSection('Gestione',
+          mItem('👥','Staff',`showAdminConfig('users')`) +
+          mItem('🏃','Atleti',`showView('admin-athletes')`) +
+          mItem('🏷️','Categorie',`showAdminConfig('category')`)
+        );
+
+    } else if (r === 'presidente') {
+      // Presidente: sola lettura, visibilità società
+      const presAccIds = myAccIds;
+      desktopHTML =
+        dGroup('📊 Panoramica',
+          dItem('🏆','Dashboard',`showView('president-view')`) +
+          dItem('⚽','Partite',`showView('matches-overview')`)
+        ) +
+        dGroup('👕 Squadre', buildTeamDropdownItems(presAccIds) || '<div class="dropdown-section-title">Nessuna squadra</div>');
+      mobileHTML =
+        mSection('Panoramica',
+          mItem('🏆','Dashboard',`showView('president-view')`) +
+          mItem('⚽','Partite',`showView('matches-overview')`)
+        ) +
+        mSection('Squadre', buildMobileTeamItems(presAccIds));
+
+    } else if (r === 'responsabile') {
+      // Responsabile: visibilità sulle sue squadre, sola lettura
+      desktopHTML =
+        dGroup('📊 Panoramica',
+          dItem('🏆','Dashboard',`showView('responsabile-overview')`) +
+          dItem('⚽','Partite',`showView('matches-overview')`)
+        ) +
+        dGroup('👕 Squadre',
+          buildTeamDropdownItems(myAccIds) || '<div class="dropdown-section-title">Nessuna squadra</div>'
+        );
+      mobileHTML =
+        mSection('Panoramica',
+          mItem('🏆','Dashboard',`showView('responsabile-overview')`) +
+          mItem('⚽','Partite',`showView('matches-overview')`)
+        ) +
+        mSection('Squadre', buildMobileTeamItems(myAccIds));
+
+    } else if (r === 'dirigente' || r === 'allenatore') {
+      // Dirigente / Allenatore: gestione operativa squadre assegnate
+      desktopHTML =
+        dGroup('📊 Panoramica',
+          dItem('🏠','Home',`goHome()`) +
+          dItem('⚽','Partite',`showView('matches-overview')`)
+        ) +
+        dGroup('👕 Le mie Squadre',
+          buildTeamDropdownItems(myAccIds) || '<div class="dropdown-section-title">Nessuna squadra assegnata</div>'
+        );
+      mobileHTML =
+        mSection('Panoramica',
+          mItem('🏠','Home',`goHome()`) +
+          mItem('⚽','Partite',`showView('matches-overview')`)
+        ) +
+        mSection('Le mie Squadre', buildMobileTeamItems(myAccIds));
+
+    } else {
+      // Professionista, genitore, altri
+      const myCategories = S.categories.filter(c => myAccIds.includes(c.id));
+      if (myCategories.length > 0) {
+        desktopHTML += dGroup('👕 Le mie Squadre', buildTeamDropdownItems(myAccIds));
+        mobileHTML += mSection('Le mie Squadre', buildMobileTeamItems(myAccIds));
+      }
+      desktopHTML += catActionsDropdown;
+      mobileHTML += catActionsMobile;
     }
   }
 
@@ -3118,7 +3194,14 @@ function showView(viewId, pushHistory=true) {
     'president-view','admin-config','cat-dashboard',
     'admin-society','admin-reports',
     'athletes','matches','matches-overview','sessions','attendances',
-    'convocati','cat-reports'
+    'convocati','cat-reports','user-detail','add-user'
+  ];
+  // Segretario: stessi permessi del presidente + gestione atleti e sessioni
+  const segretarioAllowed = [
+    'president-view','admin-config','cat-dashboard','category-home',
+    'admin-society','admin-reports',
+    'athletes','admin-athletes','matches','matches-overview','sessions','attendances',
+    'convocati','cat-reports','user-detail','add-user','athlete-profile','session-entry'
   ];
   // Responsabile: solo lettura, può navigare le sue squadre
   const respAllowed = [
@@ -3128,6 +3211,9 @@ function showView(viewId, pushHistory=true) {
   ];
   if (currentUser?.role === 'responsabile' && !respAllowed.includes(viewId)) {
     viewId = 'responsabile-overview';
+  }
+  if (currentUser?.role === 'segretario' && !segretarioAllowed.includes(viewId)) {
+    viewId = 'president-view';
   }
   if (currentUser?.role === 'presidente' && !presidentAllowed.includes(viewId)) {
     viewId = 'president-view';
@@ -3303,6 +3389,7 @@ viewBuilders['admin-overview'] = (el) => {
   const nProf = S.users.filter(u=>u.role==='professionista').length;
   const nGen  = S.users.filter(u=>u.role==='genitore').length;
   const nPres = S.users.filter(u=>u.role==='presidente').length;
+  const nSeg  = S.users.filter(u=>u.role==='segretario').length;
   const nTot  = S.users.length;
 
   const catRows = S.categories.map(cat => {
@@ -3428,7 +3515,7 @@ function renderAdminTable() {
       athletes = (S.athleteSeasons||[]).filter(as => as.categoryId===cat.id && as.seasonId===filterSeas);
       const seas = S.seasons.find(s=>s.id===filterSeas);
       if (seas) {
-        const { start, end } = getSeasonDates(seas);
+        const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
         sessions = S.sessions.filter(s => s.categoryId===cat.id && s.date>=start && s.date<=end);
       } else {
         sessions = S.sessions.filter(s => s.categoryId===cat.id);
@@ -3883,7 +3970,7 @@ viewBuilders['user-detail'] = (el) => {
               const soc  = S.societies.find(s=>s.id===cat?.societyId);
               const team = S.teams.find(t=>t.id===cat?.teamId);
               const roleLabel = ue.role || u.role;
-              const roleCls   = {responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal'}[roleLabel]||'badge-gray';
+              const roleCls   = {segretario:'badge-teal',presidente:'badge-gold',responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-purple'}[roleLabel]||'badge-gray';
               return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--mist-2);border-radius:10px;background:var(--white);flex-wrap:wrap">
                 <span class="badge ${roleCls}">${ROLES[roleLabel]?.icon||'👤'} ${ROLES[roleLabel]?.label||roleLabel}</span>
                 <div style="flex:1;min-width:120px">
@@ -3917,7 +4004,7 @@ function openAddUCSForUser(userId, role) {
   const activeSeasId = S.activeSeason || getActiveSeason()?.id || '';
   const seasOpts = seasons.map(s=>'<option value="'+s.id+'"'+(s.id===activeSeasId?' selected':'')+'>'+esc(s.name)+(s.active?' ★':'')+'</option>').join('');
   const catOpts  = cats.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');
-  const roleOpts = ['responsabile','dirigente','allenatore','professionista']
+  const roleOpts = ['segretario','presidente','responsabile','dirigente','allenatore','professionista']
     .map(r=>'<option value="'+r+'"'+(r===role?' selected':'')+'>'+ROLES[r].icon+' '+ROLES[r].label+'</option>').join('');
 
   openModal('<div class="modal-header"><h3>Aggiungi Assegnazione Stagionale</h3><div style="font-size:.85rem;color:#64748B">'+esc(u.name)+'</div></div>'
@@ -3997,7 +4084,7 @@ viewBuilders['add-user'] = (el) => {
 
   setTopbar(isEdit ? 'Modifica Utente' : 'Nuovo Utente Staff', isEdit ? esc(u?.name||'') : '');
 
-  const roleOpts = ['responsabile','dirigente','allenatore','professionista','genitore','presidente']
+  const roleOpts = ['segretario','presidente','responsabile','dirigente','allenatore','professionista','genitore']
     .map(r=>`<option value="${r}" ${u?.role===r?'selected':''}>${ROLES[r].icon} ${ROLES[r].label}</option>`).join('');
 
   const initRole = u?.role || 'allenatore';
@@ -4119,7 +4206,7 @@ function buildNewUserSeasonPanel(role, userId, seasId) {
 
   const seas = S.seasons.find(s=>s.id===seasId);
   const catOpts  = S.categories.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');
-  const roleOpts = ['responsabile','dirigente','allenatore','professionista']
+  const roleOpts = ['segretario','presidente','responsabile','dirigente','allenatore','professionista']
     .map(r=>'<option value="'+r+'"'+(r===role?' selected':'')+'>'+ROLES[r].icon+' '+ROLES[r].label+'</option>').join('');
 
   let html = '<div style="font-size:.78rem;font-weight:700;color:#64748B;margin-bottom:8px">Categorie assegnate in '+esc(seas?.name||'—')+'</div>';
@@ -4228,6 +4315,8 @@ function showAdminConfig(tab, seasId) {
   setTimeout(() => buildAdminConfigTab(tab), 80);
 }
 viewBuilders['admin-config'] = (el) => {
+  // Segretario: accesso limitato a users, category, seasons
+  const isSegretario = currentUser?.role === 'segretario';
   setTopbar('Configurazione', 'Censimento');
   const configSeas = S.seasons.slice().sort((a,b)=>b.startYear-a.startYear);
   const curSeaId = window._configSeasonId || getActiveSeason()?.id || '';
@@ -4249,15 +4338,24 @@ viewBuilders['admin-config'] = (el) => {
       </div>
     </div>
     <div class="tabs" id="config-tabs">
-      <button class="tab-btn" onclick="buildAdminConfigTab('sport')">🏅 Sport</button>
-      <button class="tab-btn" onclick="buildAdminConfigTab('society')">🏛️ Società</button>
-      <button class="tab-btn" onclick="buildAdminConfigTab('team')">👕 Squadre</button>
-      <button class="tab-btn" onclick="buildAdminConfigTab('category')">🏷️ Categorie</button>
-      <button class="tab-btn" onclick="buildAdminConfigTab('users')">👥 Staff & Utenti</button>
-      <button class="tab-btn" onclick="buildAdminConfigTab('activities')">🏃 Attività & Performance</button>
-      <button class="tab-btn" onclick="buildAdminConfigTab('seasons')">⚽ Stagioni</button>
-      <button class="tab-btn" onclick="buildAdminConfigTab('roles')">🏷️ Ruoli Atleti</button>
-      <button class="tab-btn" onclick="buildAdminConfigTab('settings')">⚙️ Impostazioni</button>
+      ${(()=>{
+        const adminTabs = !isSegretario ? [
+          '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;sport&quot;)">🏅 Sport</button>',
+          '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;society&quot;)">🏛️ Società</button>',
+          '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;team&quot;)">👕 Squadre</button>',
+        ] : [];
+        const sharedTabs = [
+          '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;category&quot;)">🏷️ Categorie</button>',
+          '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;users&quot;)">👥 Staff & Utenti</button>',
+          '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;seasons&quot;)">⚽ Stagioni</button>',
+        ];
+        const adminOnlyTabs = !isSegretario ? [
+          '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;activities&quot;)">🏃 Attività & Performance</button>',
+          '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;roles&quot;)">🏷️ Ruoli Atleti</button>',
+          '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;settings&quot;)">⚙️ Impostazioni</button>',
+        ] : [];
+        return [...adminTabs, ...sharedTabs, ...adminOnlyTabs].join('');
+      })()}
     </div>
     <div id="config-content"></div>
   `;
@@ -4783,7 +4881,7 @@ function buildUsersConfig() {
       .map(u=>u.role);
     return ucsRoles.length ? [...new Set(ucsRoles)] : null;
   };
-  const roleGroups = ['admin','responsabile','dirigente','allenatore','professionista','presidente'];
+  const roleGroups = ['admin','segretario','presidente','responsabile','dirigente','allenatore','professionista'];
   const roleBadge = r => {
     const rd = ROLES[r]||{label:r,icon:'👤'};
     const cls = {admin:'badge-blue',responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal'}[r]||'badge-gray';
@@ -5778,7 +5876,7 @@ function buildSeasonsConfig() {
   const rowsHtml = seasons.map(s => {
     const enrolled = (S.athleteSeasons||[]).filter(as => as.seasonId===s.id).length;
     const sessCnt = S.sessions.filter(sess => {
-      const { start, end } = getSeasonDates(s);
+      const start = s.startYear+'-07-01', end = s.endYear+'-06-30';
       return sess.date >= start && sess.date <= end;
     }).length;
     const statusBadge = s.active
@@ -6606,7 +6704,7 @@ function confirmDeleteAthleteSeason(id, seasId) {
   // Rimuovi presenze delle sessioni di quella stagione
   const seas = S.seasons.find(s=>s.id===seasId);
   if (seas) {
-    const { start, end } = getSeasonDates(seas);
+    const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
     const seasSessIds = S.sessions.filter(s=>s.categoryId && s.date>=start && s.date<=end).map(s=>s.id);
     S.attendances = S.attendances.filter(a=>!(a.athleteId===id && seasSessIds.includes(a.sessionId)));
   }
@@ -9393,26 +9491,6 @@ function resetConvocati(matchId) {
 //  STAGIONI CALCISTICHE
 // ══════════════════════════════════════════════════════════════════
 
-// ── Date di stagione: 1 agosto → 31 luglio ────────────────────
-// Es. stagione 2025/2026: 2025-08-01 → 2026-07-31
-function getSeasonStartDate(season) {
-  if (!season) return null;
-  return `${season.startYear}-08-01`;
-}
-function getSeasonEndDate(season) {
-  if (!season) return null;
-  return `${season.endYear}-07-31`;
-}
-function getSeasonDates(season) {
-  if (!season) return { start: null, end: null };
-  return { start: getSeasonStartDate(season), end: getSeasonEndDate(season) };
-}
-function isDateInSeason(date, season) {
-  if (!date || !season) return true;
-  const { start, end } = getSeasonDates(season);
-  return date >= start && date <= end;
-}
-
 function getActiveSeason() {
   if (!S.seasons || !S.seasons.length) return null;
   return S.seasons.find(s => s.id === S.activeSeason) || S.seasons[S.seasons.length-1];
@@ -9484,8 +9562,9 @@ function getCategorySessionsForSeason(catId, seasonId) {
   if (!seasonId) return getCategorySessions(catId);
   const season = S.seasons.find(s => s.id === seasonId);
   if (!season) return getCategorySessions(catId);
-  const { start, end } = getSeasonDates(season);
-  return getCategorySessions(catId).filter(s => s.date >= start && s.date <= end);
+  const startDate = `${season.startYear}-07-01`; // July 1st start
+  const endDate   = `${season.endYear}-06-30`;   // June 30th end
+  return getCategorySessions(catId).filter(s => s.date >= startDate && s.date <= endDate);
 }
 
 // Get matches for category in season
@@ -9493,8 +9572,9 @@ function getCategoryMatchesForSeason(catId, seasonId) {
   if (!seasonId) return getCategoryMatches(catId);
   const season = S.seasons.find(s => s.id === seasonId);
   if (!season) return getCategoryMatches(catId);
-  const { start, end } = getSeasonDates(season);
-  return getCategoryMatches(catId).filter(m => m.date >= start && m.date <= end);
+  const startDate = `${season.startYear}-07-01`;
+  const endDate   = `${season.endYear}-06-30`;
+  return getCategoryMatches(catId).filter(m => m.date >= startDate && m.date <= endDate);
 }
 
 // Get stats for a category in a given season
@@ -10549,7 +10629,7 @@ function getCategoryMatchStats(catId, teamId, seasonId) {
   if (seasId) {
     const seas = S.seasons.find(s=>s.id===seasId);
     if (seas) {
-      const { start, end } = getSeasonDates(seas);
+      const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
       ms = ms.filter(m => m.date >= start && m.date <= end);
     }
   }
@@ -10687,7 +10767,7 @@ function buildRecentMatchesCard(catIds, opts) {
 }
 
 viewBuilders['president-view'] = (el) => {
-  if (!currentUser || currentUser.role !== 'presidente') {
+  if (!currentUser || !['presidente','segretario'].includes(currentUser.role)) {
     el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Accesso non autorizzato</h3></div>';
     return;
   }
@@ -10729,7 +10809,7 @@ viewBuilders['president-view'] = (el) => {
     <div class="page-header">
       <div class="header-row">
         <div>
-          <h2>🏆 Dashboard Presidente</h2>
+          <h2>${currentUser.role==='segretario'?'📋 Dashboard Segretario':'🏆 Dashboard Presidente'}</h2>
           <p>Benvenuto, ${esc(currentUser.name)} · ${activeSeas ? '⚽ '+esc(activeSeas.name) : 'Tutte le stagioni'}</p>
         </div>
         <button class="btn btn-ghost" onclick="showView('president-view')" style="gap:6px">🏠 Home</button>
