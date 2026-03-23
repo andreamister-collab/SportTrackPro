@@ -1249,13 +1249,14 @@ const DB = {
     // Converti snake_case → camelCase per compatibilità con il codice esistente
     return {
       sports:         (sports.data||[]).map(r => ({ id:r.id, name:r.name, icon:r.icon||'⚽' })),
-      societies:      (societies.data||[]).map(r => ({ id:r.id, name:r.name, sportId:r.sport_id, city:r.city||'', email:r.email||'' })),
+      societies:      (societies.data||[]).map(r => ({ id:r.id, name:r.name, sportId:r.sport_id, city:r.city||'', email:r.email||'', seasonId:r.season_id||'' })),
       teams:          (teams.data||[]).map(r => ({ ...r, societyId: r.society_id, sportId: r.sport_id })),
       categories:     (categories.data||[]).map(r => ({
         ...r, societyId: r.society_id, sportId: r.sport_id,
         teamId: r.team_id, teamIds: r.team_ids||[r.team_id].filter(Boolean),
         managerIds: r.manager_ids||[], directorIds: r.director_ids||[],
-        coachIds: r.coach_ids||[], professionalIds: r.prof_ids||[]
+        coachIds: r.coach_ids||[], professionalIds: r.prof_ids||[],
+        seasonId: r.season_id||''
       })),
       users:          (users.data||[]).map(r => ({
         ...r, societyId: r.society_id
@@ -3123,11 +3124,11 @@ const TABLE_COLUMNS = {
 const TABLE_REAL_COLUMNS = {
   // Schema verificato sul DB reale — tutti gli ID sono text tranne users.id (uuid)
   sports:          ['id','name','icon'],
-  societies:       ['id','name','sport_id','city','email'],
+  societies:       ['id','name','sport_id','city','email','season_id'],
   teams:           ['id','name','society_id','sport_id'],
   seasons:         ['id','name','start_year','end_year','active','society_id'],
   users:           ['id','name','username','email','role','profession','phone','society_id'],
-  categories:      ['id','name','sport_id','society_id','team_id','team_ids','director_ids','manager_ids','coach_ids','prof_ids'],
+  categories:      ['id','name','sport_id','society_id','team_id','team_ids','director_ids','manager_ids','coach_ids','prof_ids','season_id'],
   athletes:        ['id','first_name','last_name','dob','nickname','category_id','team_id','number','role','notes','parent_ids'],
   athlete_seasons: ['id','athlete_id','category_id','season_id','team_id','role','shirt_number','join_date','notes'],
   sessions:        ['id','category_id','date','type','notes','match_id','created_by'],
@@ -3518,7 +3519,7 @@ function renderAdminTable() {
       athletes = (S.athleteSeasons||[]).filter(as => as.categoryId===cat.id && as.seasonId===filterSeas);
       const seas = S.seasons.find(s=>s.id===filterSeas);
       if (seas) {
-        const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
+        const { start, end } = getSeasonDates(seas);
         sessions = S.sessions.filter(s => s.categoryId===cat.id && s.date>=start && s.date<=end);
       } else {
         sessions = S.sessions.filter(s => s.categoryId===cat.id);
@@ -3596,7 +3597,7 @@ viewBuilders['matches-overview'] = (el) => {
   const accCatIds = getAccessibleCategoryIds();
 
   // Stato filtri
-  if (!window._moState) window._moState = { socId:'', teamId:'', catId:'', dateFrom:'', dateTo:'' };
+  if (!window._moState) window._moState = { socId:'', teamId:'', catId:'', seasId:'', dateFrom:'', dateTo:'' };
   const mo = window._moState;
 
   const allSeasons = S.seasons || [];
@@ -3612,6 +3613,14 @@ viewBuilders['matches-overview'] = (el) => {
   }
   // Filtro squadra/categoria
   if (mo.teamId) matches = matches.filter(m=>m.teamId===mo.teamId || m.categoryId===mo.teamId);
+  // Filtro stagione
+  if (mo.seasId) {
+    const seas = S.seasons.find(s=>s.id===mo.seasId);
+    if (seas) {
+      const { start, end } = getSeasonDates(seas);
+      matches = matches.filter(m=>m.date>=start && m.date<=end);
+    }
+  }
   // Filtro data da
   if (mo.dateFrom) matches = matches.filter(m=>m.date>=mo.dateFrom);
   // Filtro data a
@@ -3662,6 +3671,14 @@ viewBuilders['matches-overview'] = (el) => {
         </select>
       </div>
 
+      <div class="form-field" style="margin:0;min-width:130px;flex:1">
+        <label style="font-size:.73rem">Stagione</label>
+        <select onchange="window._moState.seasId=this.value;viewBuilders['matches-overview'](document.getElementById('view-matches-overview'))">
+          <option value="">Tutte le stagioni</option>
+          ${(S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear).map(s=>`<option value="${s.id}" ${s.id===mo.seasId?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+        </select>
+      </div>
+
       <div class="form-field" style="margin:0;min-width:120px">
         <label style="font-size:.73rem">Data da</label>
         <input type="date" value="${mo.dateFrom}" onchange="window._moState.dateFrom=this.value;viewBuilders['matches-overview'](document.getElementById('view-matches-overview'))">
@@ -3673,7 +3690,7 @@ viewBuilders['matches-overview'] = (el) => {
       </div>
 
       ${(mo.socId||mo.teamId||mo.dateFrom||mo.dateTo) ? `
-      <button class="btn btn-ghost btn-sm" onclick="window._moState={socId:'',teamId:'',catId:'',dateFrom:'',dateTo:''};viewBuilders['matches-overview'](document.getElementById('view-matches-overview'))">
+      <button class="btn btn-ghost btn-sm" onclick="window._moState={socId:'',teamId:'',catId:'',seasId:'',dateFrom:'',dateTo:''};viewBuilders['matches-overview'](document.getElementById('view-matches-overview'))">
         Azzera filtri
       </button>` : ''}
     </div>
@@ -4492,6 +4509,9 @@ function buildSocietyConfig() {
 }
 function openSocietyModal(id) {
   const s = id ? S.societies.find(x=>x.id===id) : null;
+  const activeSeasId = getActiveSeason()?.id || '';
+  const seasOpts = (S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear)
+    .map(se=>`<option value="${se.id}" ${se.id===(s?.seasonId||activeSeasId)?'selected':''}>${esc(se.name)}${se.active?' ★':''}</option>`).join('');
   openModal(`
     <div class="modal-header"><h3>${s?'Modifica Società':'Nuova Società'}</h3></div>
     <div class="form-row">
@@ -4502,27 +4522,86 @@ function openSocietyModal(id) {
       <div class="form-field"><label>Città</label><input id="soc-city" value="${esc(s?.city||'')}" placeholder="Milano"></div>
       <div class="form-field"><label>Email</label><input id="soc-email" value="${esc(s?.email||'')}" placeholder="info@..."></div>
     </div>
+    <div class="form-row">
+      <div class="form-field"><label>⚽ Stagione di riferimento</label><select id="soc-season">${seasOpts}</select></div>
+    </div>
     <div class="form-actions">
       <button class="btn btn-accent" onclick="saveSociety('${id||''}')">💾 Salva</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
-    </div>`);
+    </div>
+    <hr style="margin:14px 0">
+    <div style="font-size:.82rem;font-weight:700;color:#64748B;margin-bottom:8px">📋 Copia da stagione precedente</div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Copia da Società</label>
+        <select id="copy-soc-from">
+          <option value="">— Seleziona —</option>
+          ${S.societies.map(sx=>`<option value="${sx.id}">${esc(sx.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Stagione di origine</label>
+        <select id="copy-seas-from">
+          <option value="">— Seleziona —</option>
+          ${(S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear).map(se=>`<option value="${se.id}">${esc(se.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Stagione di destinazione</label>
+        <select id="copy-seas-to">
+          <option value="">— Seleziona —</option>
+          ${(S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear).map(se=>`<option value="${se.id}">${esc(se.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:4px" onclick="copySocietySeason()">📋 Copia Struttura (categorie e staff)</button>
+  `);
 }
 function saveSociety(id) {
   const name = document.getElementById('soc-name').value.trim();
   const sportId = document.getElementById('soc-sport').value;
   const city = document.getElementById('soc-city').value.trim();
   const email = document.getElementById('soc-email').value.trim();
+  const seasonId = document.getElementById('soc-season')?.value || '';
   if (!name) { toast('Nome obbligatorio','error'); return; }
   if (id) {
     const s = S.societies.find(x=>x.id===id);
-    Object.assign(s, {name,sportId,city,email});
+    Object.assign(s, {name,sportId,city,email,seasonId});
     toast('Società aggiornata','success');
   } else {
-    S.societies.push({ id: uid(), name, sportId, city, email });
+    S.societies.push({ id: uid(), name, sportId, city, email, seasonId });
     toast('Società aggiunta','success');
   }
   const saved = id ? S.societies.find(x=>x.id===id) : S.societies[S.societies.length-1];
   saveState(); sbSync('societies', saved); closeModal(); buildAdminConfigTab('society');
+}
+
+// Copia struttura società da una stagione all'altra
+function copySocietySeason() {
+  const fromSocId = document.getElementById('copy-soc-from')?.value;
+  const fromSeasId = document.getElementById('copy-seas-from')?.value;
+  const toSeasId = document.getElementById('copy-seas-to')?.value;
+  if (!fromSocId || !fromSeasId || !toSeasId) { toast('Seleziona società, stagione origine e destinazione','error'); return; }
+  if (fromSeasId === toSeasId) { toast('Le stagioni devono essere diverse','error'); return; }
+  const fromSoc = S.societies.find(s=>s.id===fromSocId);
+  const toSeas = S.seasons.find(s=>s.id===toSeasId);
+  if (!fromSoc || !toSeas) { toast('Dati non trovati','error'); return; }
+  // Copia categorie della società dalla stagione di origine
+  const fromCats = S.categories.filter(c=>c.societyId===fromSocId);
+  let copied = 0;
+  fromCats.forEach(cat => {
+    const exists = S.categories.some(c=>c.societyId===fromSocId && c.name===cat.name && c.seasonId===toSeasId);
+    if (!exists) {
+      const newCat = { ...cat, id: uid(), seasonId: toSeasId };
+      S.categories.push(newCat);
+      sbSync('categories', newCat);
+      copied++;
+    }
+  });
+  saveState();
+  closeModal();
+  toast(`✅ Copiate ${copied} categorie da ${fromSoc.name} → ${toSeas.name}`, 'success');
+  buildAdminConfigTab('society');
 }
 function deleteSociety(id) {
   if (!confirm('Eliminare questa società e tutti i dati collegati?')) return;
@@ -4703,6 +4782,9 @@ function openCategoryModal(id) {
       <div class="form-field"><label>Sport</label><select id="cat-sport">${S.sports.map(s=>`<option value="${s.id}" ${s.id===cat?.sportId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
     </div>
     <div class="form-row">
+      <div class="form-field"><label>⚽ Stagione</label><select id="cat-season">
+        ${(S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear).map(s=>`<option value="${s.id}" ${s.id===(cat?.seasonId||getActiveSeason()?.id)?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+      </select></div>
       <div class="form-field"><label>Società</label><select id="cat-soc" onchange="refreshCatTeamSelect(this.value)">${visibleSocs.map(s=>`<option value="${s.id}" ${s.id===cat?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
       <div class="form-field">
         <label>Squadre (una o più — Ctrl/Cmd per selezionare più squadre)</label>
@@ -4772,7 +4854,8 @@ function saveCategory(id) {
   const coachIds        = pick('cat-coaches');
   const professionalIds = pick('cat-profs');
   if (!name) { toast('Nome obbligatorio','error'); return; }
-  const data = {name,sportId,societyId,teamId,teamIds,directorIds,managerIds,coachIds,professionalIds};
+  const seasonId = document.getElementById('cat-season')?.value || getActiveSeason()?.id || '';
+  const data = {name,sportId,societyId,teamId,teamIds,directorIds,managerIds,coachIds,professionalIds,seasonId};
   if (id) {
     Object.assign(S.categories.find(x=>x.id===id), data);
     toast('Categoria aggiornata','success');
@@ -4901,6 +4984,9 @@ function buildUsersConfig() {
     if (ufQ && !(u.name+' '+u.username+' '+(u.profession||'')).toLowerCase().includes(ufQ)) return false;
     // Filtro stagione: se seasId, mostra solo chi ha UCS per quella stagione o categorie legacy
     if (seasId) {
+      // Ruoli non stagionali: sempre visibili indipendentemente dalla stagione
+      const noSeasonRoles = ['presidente','segretario','genitore','admin'];
+      if (noSeasonRoles.includes(u.role)) return true;
       const hasUCS = (S.userCategorySeasons||[]).some(ue=>ue.userId===u.id && ue.seasonId===seasId);
       const hasLegacy = ['responsabile','dirigente','allenatore','professionista'].includes(u.role);
       if (!hasUCS && !hasLegacy) return false;
@@ -6046,6 +6132,71 @@ function exportData() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'sporttrack_export_' + new Date().toISOString().slice(0,10) + '.json';
   a.click(); toast('Esportazione completata','success');
+}
+
+function exportReportExcel() {
+  if (typeof XLSX === 'undefined') { toast('Libreria Excel non disponibile','error'); return; }
+  const wb = XLSX.utils.book_new();
+  const activeSeas = getActiveSeason();
+
+  // Foglio 1: Riepilogo Categorie
+  const catData = [['Categoria','Sport','Squadra','Società','Atleti','Sessioni','% Presenze','Allenamenti','Partite']];
+  S.categories.forEach(cat => {
+    const st = getCategoryStats(cat.id);
+    catData.push([
+      cat.name,
+      S.sports.find(s=>s.id===cat.sportId)?.name||'—',
+      S.teams.find(t=>t.id===cat.teamId)?.name||'—',
+      S.societies.find(s=>s.id===cat.societyId)?.name||'—',
+      st.athletes, st.sessions, st.presenceRate+'%',
+      st.byType?.A||0, st.byType?.P||0
+    ]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(catData), 'Categorie');
+
+  // Foglio 2: Classifica Atleti
+  const athData = [['#','Cognome','Nome','Categoria','% Presenze','Tecnica','Fisico','Tattica','Mentale','Overall']];
+  S.athletes.map(a => {
+    const cat = S.categories.find(c=>c.id===a.categoryId);
+    const pr = getAthletePresenceRate(a.id, a.categoryId);
+    const perf = getAthleteAvgPerf(a.id);
+    return {a, cat, pr, perf};
+  }).sort((x,y)=>y.pr-x.pr).forEach(({a,cat,pr,perf},i) => {
+    athData.push([i+1, a.lastName, a.firstName, cat?.name||'—',
+      pr+'%', perf.tecnica?.toFixed(1)||0, perf.fisico?.toFixed(1)||0,
+      perf.tattica?.toFixed(1)||0, perf.mentale?.toFixed(1)||0, perf.overall?.toFixed(1)||0]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(athData), 'Classifica Atleti');
+
+  // Foglio 3: Partite
+  const matchData = [['Data','Categoria','Squadra','Avversario','Casa/Trasferta','Risultato','Gol Fatti','Gol Subiti','Note']];
+  S.matches.sort((a,b)=>a.date.localeCompare(b.date)).forEach(m => {
+    const cat = S.categories.find(c=>c.id===m.categoryId);
+    const team = S.teams.find(t=>t.id===m.teamId)||S.teams.find(t=>t.id===cat?.teamId);
+    matchData.push([fmtDate(m.date), cat?.name||'—', team?.name||'—', m.opponent||'—',
+      m.homeAway==='home'?'Casa':'Trasferta', m.result||'TBD',
+      m.scoredGoals||0, m.concededGoals||0, m.notes||'']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(matchData), 'Partite');
+
+  // Foglio 4: Presenze per Sessione
+  const presData = [['Data','Tipo','Categoria','Atleta','Stato']];
+  S.sessions.sort((a,b)=>a.date.localeCompare(b.date)).forEach(sess => {
+    const cat = S.categories.find(c=>c.id===sess.categoryId);
+    const atts = S.attendances.filter(a=>a.sessionId===sess.id);
+    atts.forEach(att => {
+      const ath = S.athletes.find(a=>a.id===att.athleteId);
+      if (!ath) return;
+      presData.push([fmtDate(sess.date), sess.type||'—', cat?.name||'—',
+        (ath.lastName+' '+ath.firstName).trim(),
+        {P:'Presente',A:'Assente',G:'Giustificato'}[att.status]||att.status]);
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(presData), 'Presenze');
+
+  const fname = 'sporttrack_report_' + (activeSeas?.name?.replace('/','_')||new Date().getFullYear()) + '.xlsx';
+  XLSX.writeFile(wb, fname);
+  toast('Report Excel esportato ✅','success');
 }
 
 // ── [3] CATEGORY HOME ─────────────────────────────────────────
@@ -7644,9 +7795,20 @@ viewBuilders['admin-society'] = (el) => {
   const tabs = S.societies.map(s=>s.id);
   const activeSoc = window._activeSoc || (tabs[0]||null);
   window._activeSoc = activeSoc;
+  if (!window._socSeasId) window._socSeasId = getActiveSeason()?.id || '';
 
   el.innerHTML = `
-    <div class="page-header"><div class="header-row"><div><h2>🏛️ Dashboard Società</h2><p>Analisi per società, squadra e atleta</p></div></div></div>
+    <div class="page-header"><div class="header-row">
+      <div><h2>🏛️ Dashboard Società</h2><p>Analisi per società, squadra e atleta</p></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:.8rem;font-weight:700;color:#64748B">⚽ Stagione:</span>
+        <select style="padding:6px 12px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.85rem;background:#F8FAFC;font-weight:600;color:var(--accent)"
+          onchange="window._socSeasId=this.value;buildSocDashContent(window._activeSoc)">
+          <option value="">Tutte le stagioni</option>
+          ${(S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear).map(s=>`<option value="${s.id}" ${s.id===window._socSeasId?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+        </select>
+      </div>
+    </div></div>
     <div class="tabs" id="soc-tabs">
       ${S.societies.map(s=>`<button class="tab-btn ${s.id===activeSoc?'active':''}" onclick="showSocTab('${s.id}')">${esc(S.sports.find(sp=>sp.id===s.sportId)?.icon||'🏅')} ${esc(s.name)}</button>`).join('')}
     </div>
@@ -7669,8 +7831,12 @@ function buildSocDashContent(socId) {
   const teams = S.teams.filter(t=>t.societyId===socId);
   const accIds = getAccessibleCategoryIds();
   const cats = S.categories.filter(c=>c.societyId===socId && (currentUser.role==='admin' || accIds.includes(c.id)));
+  // Filtro stagione
+  const socSeasId = window._socSeasId || '';
+  const socSeas = socSeasId ? S.seasons.find(s=>s.id===socSeasId) : null;
+  const { start: socStart, end: socEnd } = socSeas ? getSeasonDates(socSeas) : { start: null, end: null };
   const allAths = S.athletes.filter(a=>cats.some(c=>c.id===a.categoryId));
-  const allSess = S.sessions.filter(s=>cats.some(c=>c.id===s.categoryId));
+  const allSess = S.sessions.filter(s=>cats.some(c=>c.id===s.categoryId) && (!socSeas || (s.date>=socStart && s.date<=socEnd)));
   const allAtts = S.attendances.filter(a=>allSess.some(s=>s.id===a.sessionId));
   const presAtts = allAtts.filter(a=>a.status==='P').length;
   const globalPct2 = pct(presAtts, allAtts.length||1);
@@ -7770,7 +7936,12 @@ viewBuilders['admin-reports'] = (el) => {
   }).sort((x,y)=>y.pr-x.pr);
 
   el.innerHTML = `
-    <div class="page-header"><div class="header-row"><div><h2>📈 Report Avanzati</h2><p>Analisi globale di tutta la società</p></div></div></div>
+    <div class="page-header"><div class="header-row">
+      <div><h2>📈 Report Avanzati</h2><p>Analisi globale di tutta la società</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="exportReportExcel()">📊 Esporta Excel</button>
+      </div>
+    </div></div>
 
     <div class="stats-grid">
       <div class="stat-card blue" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">Slot Totali</div><div class="value">${totalAtts}</div></div>
