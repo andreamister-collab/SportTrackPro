@@ -8768,31 +8768,35 @@ function rebuildSeasonSelector() {
 function getCategoryAthletesForSeason(catId, seasonId, teamId) {
   if (!seasonId) return getCategoryAthletes(catId, teamId);
 
-  // Try to find athletes via athleteSeasons enrollment records first
+  // Cerca iscrizioni stagionali per questa categoria + stagione
   let enrollments = (S.athleteSeasons||[]).filter(as => as.categoryId===catId && as.seasonId===seasonId);
   if (teamId) enrollments = enrollments.filter(as => (as.teamId||'') === teamId);
 
-  // FALLBACK: if no enrollment records for this season, use athletes directly via categoryId
-  // This handles the case where athletes were added without going through season enrollment
-  let athletes;
-  if (enrollments.length === 0) {
-    athletes = getCategoryAthletes(catId, teamId);
-    return athletes;
+  // Se esistono iscrizioni stagionali → usa SOLO quelle (nessun fallback)
+  if (enrollments.length > 0) {
+    const enrolledIds = enrollments.map(as => as.athleteId);
+    let athletes = S.athletes.filter(a => enrolledIds.includes(a.id));
+    if (teamId) athletes = athletes.filter(a => (a.teamId||'') === teamId);
+    return athletes.map(a => {
+      const as = enrollments.find(x => x.athleteId===a.id);
+      return { ...a, role: as?.role||a.role, number: as?.shirtNumber||a.number,
+               teamId: as?.teamId||a.teamId, _asId: as?.id };
+    });
   }
 
-  const enrolledIds = enrollments.map(as => as.athleteId);
-  // Also include athletes directly in category that aren't in athleteSeasons
-  // (union of enrolled + direct members)
-  const directAthletes = getCategoryAthletes(catId, teamId);
-  const allIds = [...new Set([...enrolledIds, ...directAthletes.map(a=>a.id)])];
-  athletes = S.athletes.filter(a => allIds.includes(a.id));
-  if (teamId) athletes = athletes.filter(a => (a.teamId||'') === teamId);
+  // Nessuna iscrizione stagionale: controlla se la stagione selezionata è quella attiva
+  // o l'unica disponibile — in quel caso usa fallback con atleti diretti
+  const activeSeasId = getActiveSeason()?.id;
+  const hasAnySeason = (S.athleteSeasons||[]).some(as => as.categoryId===catId);
 
-  return athletes.map(a => {
-    const as = enrollments.find(x => x.athleteId===a.id);
-    return { ...a, role: as?.role||a.role, number: as?.shirtNumber||a.number,
-             teamId: as?.teamId||a.teamId, _asId: as?.id };
-  });
+  if (!hasAnySeason || seasonId === activeSeasId) {
+    // Nessun dato stagionale ancora: fallback agli atleti diretti
+    return getCategoryAthletes(catId, teamId);
+  }
+
+  // La stagione ha athlete_seasons in altre categorie ma non questa → 0 atleti
+  // (oppure stagione futura senza iscrizioni)
+  return [];
 }
 
 // Get sessions for a category in a given season
