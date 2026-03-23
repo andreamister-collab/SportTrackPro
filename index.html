@@ -2903,7 +2903,12 @@ function selectTeamView(catId, teamId) {
   // Presidente può vedere la cat-dashboard ma non le altre viste
   selectedCategoryId = catId;
   window._dashTeam = teamId;
-  window._dashSeas = window._dashSeas || getActiveSeason()?.id || '';
+  // Sincronizza _dashSeas con stagione globale
+  if (S.activeSeason && window._dashSeas !== S.activeSeason) {
+    window._dashSeas = S.activeSeason;
+  } else {
+    window._dashSeas = window._dashSeas || getActiveSeason()?.id || '';
+  }
   closeAllDropdowns();
   closeMobileMenu();
   buildSidebarNav();
@@ -3682,8 +3687,8 @@ viewBuilders['responsabile-overview'] = (el) => {
 
   // Schede per categoria
   const catCards = S.categories.filter(c=>myCatIds.includes(c.id)).map(cat => {
-    const st = getCategoryStats(cat.id);
-    const ms = getCategoryMatchStats(cat.id);
+    const st = getCategoryStats(cat.id, S.activeSeason);
+    const ms = getCategoryMatchStats(cat.id, undefined, S.activeSeason);
     const team = S.teams.find(t=>t.id===cat.teamId);
     const soc = S.societies.find(s=>s.id===cat.societyId);
     return { cat, st, ms, team, soc };
@@ -5512,7 +5517,7 @@ viewBuilders['category-home'] = (el) => {
       <div class="stat-card green" style="cursor:pointer" onclick="showView('sessions')"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${st.sessions}</div><div class="sub">totali</div></div>
       <div class="stat-card gold" style="cursor:pointer" onclick="showView('sessions')"><div class="accent-bar"></div><div class="label">% Presenze</div><div class="value">${st.presenceRate}%</div><div class="sub">${st.present}/${st.total}</div></div>
       ${actBreakdown.map(({key,act,count})=>`<div class="stat-card ${act.color}" style="cursor:pointer" onclick="showView('sessions')"><div class="accent-bar"></div><div class="label">${act.label}</div><div class="value">${count}</div><div class="sub">sessioni</div></div>`).join('')}
-      ${(()=>{const ms=getCategoryMatchStats(selectedCategoryId);return ms.played>0?
+      ${(()=>{const ms=getCategoryMatchStats(selectedCategoryId,undefined,S.activeSeason);return ms.played>0?
         `<div class="stat-card blue" style="cursor:pointer" onclick="showView('matches')"><div class="accent-bar"></div><div class="label">Punti</div><div class="value">${ms.pts}</div><div class="sub">${ms.w}V ${ms.d}P ${ms.l}S</div></div>
         <div class="stat-card green" style="cursor:pointer" onclick="showView('matches')"><div class="accent-bar"></div><div class="label">Gol Fatti</div><div class="value">${ms.gf}</div><div class="sub">media ${(ms.gf/ms.played).toFixed(1)}/p</div></div>
         <div class="stat-card red" style="cursor:pointer" onclick="showView('matches')"><div class="accent-bar"></div><div class="label">Gol Subiti</div><div class="value">${ms.gs}</div><div class="sub">diff. ${ms.gd>=0?'+':''}${ms.gd}</div></div>
@@ -6561,7 +6566,7 @@ function buildCategoryDashboardView(el, catId) {
     </div>
 
     ${(()=>{
-      const ms = getCategoryMatchStats(catId, filterTeamId||undefined);
+      const ms = getCategoryMatchStats(catId, filterTeamId||undefined, filterSeasId);
       if (!ms.total) return '';
       const gdSign = ms.gd >= 0 ? '+' : '';
       return `
@@ -6619,7 +6624,7 @@ function buildCategoryDashboardView(el, catId) {
               <span>✅ ${tPresent} presenze</span>
             </div>
             ${(()=>{
-              const tMs = getCategoryMatchStats(catId, team.id);
+              const tMs = getCategoryMatchStats(catId, team.id, filterSeasId);
               if (!tMs.played) return '';
               const gdSign = tMs.gd >= 0 ? '+' : '';
               return `<div style="display:flex;gap:10px;margin-top:8px;padding:8px 10px;background:var(--mist-2);border-radius:8px;flex-wrap:wrap">
@@ -6964,7 +6969,7 @@ function buildSocDashContent(socId) {
             </div>
             ${teamCats.map(cat=>{
               const st2 = getCategoryStats(cat.id);
-              const catMs = getCategoryMatchStats(cat.id);
+              const catMs = getCategoryMatchStats(cat.id, undefined, S.activeSeason);
               return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mist-2);cursor:pointer" onclick="showCatDashboard('${cat.id}')">
                 <span class="badge badge-blue">${esc(cat.name)}</span>
                 <div style="flex:1"><div class="progress-bar"><div class="progress-fill ${st2.presenceRate>=70?'green':st2.presenceRate>=50?'gold':'red'}" style="width:${st2.presenceRate}%"></div></div></div>
@@ -9613,7 +9618,7 @@ viewBuilders['parent-view'] = (el) => {
     teamAtts.filter(a=>a.status==='P').length,
     teamAtts.length || 1
   );
-  const teamMs = getCategoryMatchStats(activeChild.categoryId);
+  const teamMs = getCategoryMatchStats(activeChild.categoryId, undefined, S.activeSeason);
 
   // Tabs figli (sempre visibili se più di 1)
   const childTabs = children.length > 1 ? `
@@ -10032,7 +10037,7 @@ viewBuilders['president-view'] = (el) => {
   const catStats = S.categories
     .filter(cat => !presidentSocId || cat.societyId === presidentSocId)
     .map(cat => {
-      const ms = getCategoryMatchStats(cat.id);
+      const ms = getCategoryMatchStats(cat.id, undefined, S.activeSeason);
       const st = getCategoryStats(cat.id);
       const team = S.teams.find(t=>t.id===cat.teamId);
       return { cat, ms, st, team };
@@ -10162,7 +10167,7 @@ viewBuilders['president-view'] = (el) => {
           '</div></div>' +
           '<div class="stats-grid">' +
           socCats.map(cat => {
-            const ms = getCategoryMatchStats(cat.id);
+            const ms = getCategoryMatchStats(cat.id, undefined, S.activeSeason);
             const st = getCategoryStats(cat.id);
             return '<div class="stat-card blue">' +
               '<div class="accent-bar"></div>' +
