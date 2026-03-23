@@ -1503,7 +1503,7 @@ async function sbSync(table, objOrId, isDelete = false) {
     const rows = Array.isArray(objOrId) ? objOrId : [objOrId];
     // Assicura che society_id sia valorizzato per tabelle che lo richiedono
     // NOTA: sessions, attendances, performances, convocati NON hanno society_id nel DB
-    const TABLES_WITH_SOCIETY = ['categories','athletes','athlete_seasons','seasons','teams'];
+    const TABLES_WITH_SOCIETY = ['categories','athletes','seasons','teams'];
     const fallbackSocId = currentUser.societyId || S.societies?.[0]?.id || null;
     const enriched = rows.map(obj => {
       if (TABLES_WITH_SOCIETY.includes(table) && !obj.societyId && !obj.society_id) {
@@ -6375,16 +6375,20 @@ function addAthleteSeasonEntry(athleteId) {
 
   const entry = {
     id: uid(), athleteId, seasonId, categoryId: catId,
-    teamId: teamId||null, shirtNumber: shirt||null, role: '', notes: ''
+    teamId: teamId||null, shirtNumber: shirt||null, role: '', notes: '',
+    joinDate: new Date().toISOString().slice(0,10)
   };
   if (!S.athleteSeasons) S.athleteSeasons = [];
   S.athleteSeasons.push(entry);
   saveState();
   sbSync('athlete_seasons', entry);
   toast('Iscrizione aggiunta ✅','success');
-  // Refresh panel
+  // Refresh panel (sia nel modal che nella pagina profilo)
   const panel = document.getElementById('ath-seasons-panel');
   if (panel) panel.innerHTML = buildAthleteSeasonsList(athleteId);
+  // Refresh anche nella pagina profilo se aperta
+  const profEl = document.getElementById('view-athlete-profile');
+  if (profEl && currentView === 'athlete-profile') viewBuilders['athlete-profile'](profEl);
 }
 
 function removeAthleteSeasonEntry(asId) {
