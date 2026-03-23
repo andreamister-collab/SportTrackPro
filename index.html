@@ -1800,6 +1800,7 @@ async function loadStateFromDB() {
 
       <!-- Admin Overview -->
       <div class="view" id="view-admin-overview"><!-- dynamic --></div>
+      <div class="view" id="view-user-detail"><!-- dynamic --></div>
       <div class="view" id="view-responsabile-overview"><!-- dynamic --></div>
       <div class="view" id="view-matches-overview"><!-- dynamic --></div>
 
@@ -3125,7 +3126,7 @@ function showView(viewId, pushHistory=true) {
   const respAllowed = [
     'responsabile-overview','cat-dashboard','category-home',
     'athletes','matches','matches-overview','sessions','attendances',
-    'convocati','cat-reports','session-entry','athlete-profile'
+    'convocati','cat-reports','session-entry','athlete-profile','user-detail'
   ];
   if (currentUser?.role === 'responsabile' && !respAllowed.includes(viewId)) {
     viewId = 'responsabile-overview';
@@ -3783,6 +3784,203 @@ function setTopbar(title, bc, actionsHtml='', filterHtml='') {
 }
 
 // ── [2] ADMIN CONFIG ──────────────────────────────────────────
+
+viewBuilders['user-detail'] = (el) => {
+  const userId = window._userDetailId;
+  const u = userId ? S.users.find(x=>x.id===userId) : null;
+  if (!u) { el.innerHTML = '<div class="empty-state"><div class="icon">👤</div><h3>Utente non trovato</h3></div>'; return; }
+
+  const rd  = ROLES[u.role] || { label: u.role, icon: '👤', gradient: '#999' };
+  const cls = {responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal',genitore:'badge-pink',presidente:'badge-gold'}[u.role]||'badge-gray';
+
+  // UCS storico per stagione
+  const ucsEntries = getUserSeasons(userId); // ordinate per stagione desc
+  const allSeasons = S.seasons.slice().sort((a,b)=>b.startYear-a.startYear);
+
+  setTopbar('Scheda Utente', esc(u.name));
+
+  el.innerHTML = `
+    <!-- Header utente -->
+    <div class="page-header">
+      <div class="header-row">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div class="user-avatar" style="background:${rd.gradient};width:56px;height:56px;font-size:1.2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;flex-shrink:0">${initials(u.name)}</div>
+          <div>
+            <h2 style="margin:0">${esc(u.name)}</h2>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap">
+              <span class="badge ${cls}">${rd.icon} ${rd.label}</span>
+              ${u.profession?`<span class="badge badge-gray">${esc(u.profession)}</span>`:''}
+              <span style="font-size:.82rem;color:#64748B">${esc(u.username)}</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="showAdminConfig('users')">← Torna alla lista</button>
+          <button class="btn btn-accent" onclick="openUserModal('${u.id}')">✏️ Modifica Anagrafica</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dati anagrafici -->
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">👤</div>Dati Anagrafici</div>
+        <div class="table-wrap"><table>
+          <tbody>
+            <tr><td class="fw-600" style="width:140px">Email</td><td>${esc(u.email||'—')}</td></tr>
+            <tr><td class="fw-600">Telefono</td><td>${esc(u.phone||'—')}</td></tr>
+            <tr><td class="fw-600">Username</td><td><span class="badge badge-gray" style="font-family:var(--font-mono)">${esc(u.username)}</span></td></tr>
+            <tr><td class="fw-600">Professione</td><td>${esc(u.profession||'—')}</td></tr>
+            <tr><td class="fw-600">Ruolo sistema</td><td><span class="badge ${cls}">${rd.icon} ${rd.label}</span></td></tr>
+            <tr><td class="fw-600">Società</td><td>${esc(S.societies.find(s=>s.id===u.societyId)?.name||'—')}</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <!-- Riepilogo stagioni -->
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px"><div class="icon" style="background:var(--gold-l);color:var(--gold)">📅</div>Riepilogo Stagioni</div>
+          <span style="font-size:.8rem;color:#64748B">${ucsEntries.length} assegnazioni</span>
+        </div>
+        ${ucsEntries.length === 0
+          ? '<div class="text-muted text-sm">Nessuna assegnazione stagionale registrata.<br>Usa il pulsante Modifica Anagrafica per aggiungerne.</div>'
+          : `<div class="stats-grid">
+              ${[...new Set(ucsEntries.map(u=>u.seasonId))].map(sId=>{
+                const seas = S.seasons.find(s=>s.id===sId);
+                const n = ucsEntries.filter(u=>u.seasonId===sId).length;
+                return `<div class="stat-card blue"><div class="accent-bar"></div><div class="label">${esc(seas?.name||'—')}</div><div class="value">${n}</div><div class="sub">categorie</div></div>`;
+              }).join('')}
+            </div>`
+        }
+      </div>
+    </div>
+
+    <!-- Storia stagionale completa -->
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px"><div class="icon" style="background:var(--teal-l);color:var(--teal)">🗓️</div>Storia Stagionale</div>
+        <button class="btn btn-accent btn-sm" onclick="openAddUCSForUser('${u.id}','${u.role}')">+ Aggiungi assegnazione</button>
+      </div>
+
+      ${allSeasons.map(seas => {
+        const seasUCS = ucsEntries.filter(ue=>ue.seasonId===seas.id);
+        if (!seasUCS.length) return '';
+        return `<div style="margin-bottom:16px">
+          <div style="font-size:.8rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid var(--accent-l)">
+            ⚽ ${esc(seas.name)}${seas.active?' <span class="badge badge-green" style="font-size:.7rem">Attiva</span>':''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${seasUCS.map(ue => {
+              const cat  = S.categories.find(c=>c.id===ue.categoryId);
+              const soc  = S.societies.find(s=>s.id===cat?.societyId);
+              const team = S.teams.find(t=>t.id===cat?.teamId);
+              const roleLabel = ue.role || u.role;
+              const roleCls   = {responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal'}[roleLabel]||'badge-gray';
+              return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--mist-2);border-radius:10px;background:var(--white);flex-wrap:wrap">
+                <span class="badge ${roleCls}">${ROLES[roleLabel]?.icon||'👤'} ${ROLES[roleLabel]?.label||roleLabel}</span>
+                <div style="flex:1;min-width:120px">
+                  <div class="fw-600" style="font-size:.9rem">${esc(cat?.name||'Categoria eliminata')}</div>
+                  ${soc?`<div style="font-size:.78rem;color:#64748B">${esc(soc.name)}${team?' · '+esc(team.name):''}</div>`:''}
+                </div>
+                <div style="display:flex;gap:6px;flex-shrink:0">
+                  <button class="btn btn-ghost btn-sm" onclick="openEditUCS('${ue.id}','${u.id}','${u.role}')">✏️</button>
+                  <button class="btn btn-danger btn-sm" onclick="removeUCSEntry('${ue.id}','${u.id}','${u.role}');viewBuilders['user-detail'](document.getElementById('view-user-detail'))">🗑️</button>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+
+      ${allSeasons.every(seas => !ucsEntries.some(ue=>ue.seasonId===seas.id))
+        ? '<div class="empty-state"><div class="icon">📅</div><p>Nessuna assegnazione stagionale ancora.</p><button class="btn btn-accent" onclick="openAddUCSForUser(&quot;'+u.id+'&quot;,&quot;'+u.role+'&quot;)">+ Aggiungi la prima</button></div>'
+        : ''
+      }
+    </div>
+  `;
+};
+
+function openAddUCSForUser(userId, role) {
+  const u = S.users.find(x=>x.id===userId);
+  if (!u) return;
+  // Apri modal con form aggiunta UCS
+  const seasons  = S.seasons.slice().sort((a,b)=>b.startYear-a.startYear);
+  const cats     = S.categories;
+  const activeSeasId = S.activeSeason || getActiveSeason()?.id || '';
+  const seasOpts = seasons.map(s=>'<option value="'+s.id+'"'+(s.id===activeSeasId?' selected':'')+'>'+esc(s.name)+(s.active?' ★':'')+'</option>').join('');
+  const catOpts  = cats.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');
+  const roleOpts = ['responsabile','dirigente','allenatore','professionista']
+    .map(r=>'<option value="'+r+'"'+(r===role?' selected':'')+'>'+ROLES[r].icon+' '+ROLES[r].label+'</option>').join('');
+
+  openModal('<div class="modal-header"><h3>Aggiungi Assegnazione Stagionale</h3><div style="font-size:.85rem;color:#64748B">'+esc(u.name)+'</div></div>'
+    + '<div class="form-row">'
+    + '<div class="form-field"><label>Stagione</label><select id="ucs-add-seas">'+seasOpts+'</select></div>'
+    + '<div class="form-field"><label>Ruolo</label><select id="ucs-add-role">'+roleOpts+'</select></div>'
+    + '</div>'
+    + '<div class="form-field"><label>Categoria</label><select id="ucs-add-cat"><option value="">— Seleziona —</option>'+catOpts+'</select></div>'
+    + '<div class="form-actions">'
+    + '<button class="btn btn-accent" onclick="saveUCSFromModal(&quot;"+userId+"&quot;)">💾 Salva</button>'
+    + '<button class="btn btn-ghost" onclick="closeModal()">Annulla</button>'
+    + '</div>');
+}
+
+function openEditUCS(ucsId, userId, role) {
+  const ue  = (S.userCategorySeasons||[]).find(x=>x.id===ucsId);
+  if (!ue) return;
+  const seasons = S.seasons.slice().sort((a,b)=>b.startYear-a.startYear);
+  const cats    = S.categories;
+  const seasOpts = seasons.map(s=>'<option value="'+s.id+'"'+(s.id===ue.seasonId?' selected':'')+'>'+esc(s.name)+(s.active?' ★':'')+'</option>').join('');
+  const catOpts  = cats.map(c=>'<option value="'+c.id+'"'+(c.id===ue.categoryId?' selected':'')+'>'+esc(c.name)+'</option>').join('');
+  const roleOpts = ['responsabile','dirigente','allenatore','professionista']
+    .map(r=>'<option value="'+r+'"'+(r===ue.role?' selected':'')+'>'+ROLES[r].icon+' '+ROLES[r].label+'</option>').join('');
+
+  openModal('<div class="modal-header"><h3>Modifica Assegnazione</h3></div>'
+    + '<div class="form-row">'
+    + '<div class="form-field"><label>Stagione</label><select id="ucs-edit-seas">'+seasOpts+'</select></div>'
+    + '<div class="form-field"><label>Ruolo</label><select id="ucs-edit-role">'+roleOpts+'</select></div>'
+    + '</div>'
+    + '<div class="form-field"><label>Categoria</label><select id="ucs-edit-cat">'+catOpts+'</select></div>'
+    + '<div class="form-actions">'
+    + '<button class="btn btn-accent" onclick="updateUCSFromModal(&quot;"+ucsId+"&quot;,&quot;"+userId+"&quot;)">💾 Aggiorna</button>'
+    + '<button class="btn btn-ghost" onclick="closeModal()">Annulla</button>'
+    + '</div>');
+}
+
+function saveUCSFromModal(userId) {
+  const seasonId = document.getElementById('ucs-add-seas')?.value;
+  const catId    = document.getElementById('ucs-add-cat')?.value;
+  const role     = document.getElementById('ucs-add-role')?.value;
+  if (!seasonId || !catId) { toast('Seleziona stagione e categoria','error'); return; }
+  const dup = (S.userCategorySeasons||[]).find(u=>u.userId===userId && u.seasonId===seasonId && u.categoryId===catId);
+  if (dup) { toast('Assegnazione già presente','warning'); return; }
+  const cat = S.categories.find(c=>c.id===catId);
+  const entry = { id: uid(), userId, seasonId, categoryId: catId, role, societyId: cat?.societyId||null };
+  if (!S.userCategorySeasons) S.userCategorySeasons = [];
+  S.userCategorySeasons.push(entry);
+  saveState(); sbSync('user_category_seasons', entry);
+  closeModal(); toast('Assegnazione aggiunta ✅','success');
+  viewBuilders['user-detail'](document.getElementById('view-user-detail'));
+}
+
+function updateUCSFromModal(ucsId, userId) {
+  const ue = (S.userCategorySeasons||[]).find(x=>x.id===ucsId);
+  if (!ue) return;
+  ue.seasonId    = document.getElementById('ucs-edit-seas')?.value || ue.seasonId;
+  ue.categoryId  = document.getElementById('ucs-edit-cat')?.value  || ue.categoryId;
+  ue.role        = document.getElementById('ucs-edit-role')?.value  || ue.role;
+  const cat = S.categories.find(c=>c.id===ue.categoryId);
+  ue.societyId = cat?.societyId || null;
+  saveState(); sbSync('user_category_seasons', ue);
+  closeModal(); toast('Assegnazione aggiornata ✅','success');
+  viewBuilders['user-detail'](document.getElementById('view-user-detail'));
+}
+
+function openUserDetail(userId) {
+  window._userDetailId = userId;
+  showView('user-detail');
+}
+
 function showAdminConfig(tab, seasId) {
   window._pendingConfigTab = tab;
   // Imposta stagione: usa quella passata, poi quella attiva, poi prima disponibile
@@ -4358,11 +4556,36 @@ function buildUsersConfig() {
     return `<span class="badge ${cls}">${rd.icon} ${rd.label}</span>`;
   };
   const nonAdmins = S.users.filter(u=>u.role!=='admin');
+  // Stato filtri tabella utenti
+  if (!window._usrFilterRole) window._usrFilterRole = '';
+  if (!window._usrFilterQ)    window._usrFilterQ    = '';
+  const ufRole = window._usrFilterRole;
+  const ufQ    = window._usrFilterQ.toLowerCase();
+  let filteredUsers = nonAdmins.filter(u => {
+    if (ufRole && u.role !== ufRole) return false;
+    if (ufQ && !(u.name+' '+u.username+' '+(u.profession||'')).toLowerCase().includes(ufQ)) return false;
+    // Filtro stagione: se seasId, mostra solo chi ha UCS per quella stagione o categorie legacy
+    if (seasId) {
+      const hasUCS = (S.userCategorySeasons||[]).some(ue=>ue.userId===u.id && ue.seasonId===seasId);
+      const hasLegacy = ['responsabile','dirigente','allenatore','professionista'].includes(u.role);
+      if (!hasUCS && !hasLegacy) return false;
+    }
+    return true;
+  });
   return `
     <div class="card">
       <div class="card-title" style="justify-content:space-between">
         <div style="display:flex;align-items:center;gap:8px"><div class="icon" style="background:var(--green-l);color:var(--green)">👥</div>Staff & Utenti del Sistema${seas ? ' <span class="badge badge-blue" style="font-size:.75rem">'+esc(seas.name)+'</span>' : ''}</div>
-        <button class="btn btn-accent btn-sm" onclick="openUserModal()">+ Aggiungi Utente</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input placeholder="🔍 Cerca..." style="padding:7px 12px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.85rem;background:#F8FAFC;min-width:160px"
+            value="${window._usrFilterQ||''}" oninput="window._usrFilterQ=this.value;buildAdminConfigTab('users')">
+          <select style="padding:7px 10px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.85rem;background:#F8FAFC"
+            onchange="window._usrFilterRole=this.value;buildAdminConfigTab('users')">
+            <option value="">Tutti i ruoli</option>
+            ${['responsabile','dirigente','allenatore','professionista','genitore','presidente'].map(r=>'<option value="'+r+'"'+(r===(window._usrFilterRole||'')?'selected':'')+'>'+ROLES[r].icon+' '+ROLES[r].label+'</option>').join('')}
+          </select>
+          <button class="btn btn-accent btn-sm" onclick="openUserModal()">+ Aggiungi Utente</button>
+        </div>
       </div>
       <div class="highlight-box" style="margin-bottom:16px">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -4376,37 +4599,61 @@ function buildUsersConfig() {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>Ruolo</th><th>Professione / Qualifica</th><th>Username</th><th>Email</th><th>Telefono</th><th>Categorie Assegnate</th><th>Azioni</th></tr></thead>
-          <tbody>${nonAdmins.map(u=>{
-            const rd = ROLES[u.role]||{};
-            const cls = {responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal'}[u.role]||'badge-gray';
-            const cats = S.categories.filter(c => {
-              if(u.role==='responsabile') return (c.managerIds||[]).includes(u.id);
-              if(u.role==='dirigente')    return (c.directorIds||[]).includes(u.id);
-              if(u.role==='allenatore')   return (c.coachIds||[]).includes(u.id);
-              if(u.role==='professionista') return (c.professionalIds||[]).includes(u.id);
-              return false;
-            });
-            return `<tr>
-              <td class="fw-700">${esc(u.name)}</td>
-              <td><span class="badge ${cls}">${rd.icon||'👤'} ${rd.label||u.role}</span></td>
-              <td class="text-sm text-muted">${esc(u.profession||'—')}</td>
-              <td><span class="badge badge-gray" style="font-family:var(--font-mono)">${esc(u.username)}</span></td>
-              <td class="text-sm">${esc(u.email||'—')}</td>
-              <td class="text-sm">${esc(u.phone||'—')}</td>
-              <td style="max-width:240px">
-                ${cats.map(c=>`<span class="badge badge-blue" style="cursor:pointer;margin:1px" onclick="selectCategoryView('${c.id}')" title="Vai alla categoria">${esc(c.name)}</span>`).join(' ')||'<span class="text-muted" style="font-size:.8rem">Nessuna categoria assegnata</span>'}
-                ${cats.length===0?`<button class="btn btn-ghost btn-sm" style="margin-top:4px;font-size:.75rem" onclick="openUserModal('${u.id}')">+ Assegna categorie</button>`:''}
-              </td>
-              <td style="display:flex;gap:6px;flex-wrap:wrap">
-                <button class="btn btn-ghost btn-sm" onclick="openUserModal('${u.id}')">✏️ Modifica</button>
-                <button class="btn btn-ghost btn-sm" onclick="openAdminResetPasswordModal('${u.id}','${esc(u.name)}')" title="Reset password">🔑</button>
-                <button class="btn btn-ghost btn-sm" onclick="openStaffSeasonModal('${u.id}')">⚽ Storico</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">🗑️</button>
-              </td>
-            </tr>`;}).join('')}
-          </tbody>
-        </table>
+          <thead><tr>
+  <th>Nome</th>
+  <th>Ruolo</th>
+  <th>Professione / Qualifica</th>
+  <th>Username</th>
+  <th>Email</th>
+  <th>Telefono</th>
+  <th>Stagione</th>
+  <th>Categorie Assegnate</th>
+  <th>Azioni</th>
+</tr></thead>
+<tbody>${filteredUsers.map(u=>{
+  const rd  = ROLES[u.role]||{};
+  const cls = {responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal',presidente:'badge-gold'}[u.role]||'badge-gray';
+  // Categorie legacy
+  const legacyCats = S.categories.filter(c=>{
+    if(u.role==='responsabile') return (c.managerIds||[]).includes(u.id);
+    if(u.role==='dirigente')    return (c.directorIds||[]).includes(u.id);
+    if(u.role==='allenatore')   return (c.coachIds||[]).includes(u.id);
+    if(u.role==='professionista') return (c.professionalIds||[]).includes(u.id);
+    return false;
+  });
+  // UCS per stagione filtrata
+  const ucsForFilter = (S.userCategorySeasons||[]).filter(ue=>
+    ue.userId===u.id && (!seasId || ue.seasonId===seasId)
+  );
+  const ucsCats = ucsForFilter.map(ue=>S.categories.find(c=>c.id===ue.categoryId)).filter(Boolean);
+  const allCats = [...new Map([...legacyCats,...ucsCats].map(c=>[c.id,c])).values()];
+  const seasForUser = seasId
+    ? (S.seasons.find(s=>s.id===seasId)?.name||'—')
+    : [...new Set((S.userCategorySeasons||[]).filter(ue=>ue.userId===u.id).map(ue=>{
+        return S.seasons.find(s=>s.id===ue.seasonId)?.name;
+      }).filter(Boolean))].join(', ') || '—';
+  return '<tr>'
+    + '<td class="fw-700" style="white-space:nowrap">'
+    +   '<div style="display:flex;align-items:center;gap:8px">'
+    +   '<div class="user-avatar" style="background:'+rd.gradient+';width:28px;height:28px;font-size:.65rem;flex-shrink:0">'+initials(u.name)+'</div>'
+    +   esc(u.name)+'</div></td>'
+    + '<td><span class="badge '+cls+'">'+( rd.icon||'👤')+' '+(rd.label||u.role)+'</span></td>'
+    + '<td class="text-sm text-muted">'+esc(u.profession||'—')+'</td>'
+    + '<td><span class="badge badge-gray" style="font-family:var(--font-mono)">'+esc(u.username)+'</span></td>'
+    + '<td class="text-sm">'+esc(u.email||'—')+'</td>'
+    + '<td class="text-sm">'+esc(u.phone||'—')+'</td>'
+    + '<td style="font-size:.8rem;color:var(--accent);font-weight:600">'+esc(seasForUser)+'</td>'
+    + '<td style="max-width:220px">'
+    +   (allCats.map(c=>'<span class="badge badge-blue" style="cursor:pointer;margin:1px" onclick="selectCategoryView(\''+c.id+'\')">'+esc(c.name)+'</span>').join(' ')||'<span class="text-muted text-sm">—</span>')
+    + '</td>'
+    + '<td style="display:flex;gap:4px;flex-wrap:nowrap">'
+    +   '<button class="btn btn-accent btn-sm" onclick="openUserDetail(\''+u.id+'\')" title="Scheda utente">📋 Scheda</button>'
+    +   '<button class="btn btn-ghost btn-sm" onclick="openUserModal(\''+u.id+'\')">✏️</button>'
+    +   '<button class="btn btn-danger btn-sm" onclick="deleteUser(\''+u.id+'\')">🗑️</button>'
+    + '</td>'
+    + '</tr>';
+}).join('')}
+</tbody>
       </div>
     </div>`;
 }
@@ -6796,117 +7043,180 @@ function openAthleteProfile(id) {
   showView('athlete-profile');
 }
 viewBuilders['athlete-profile'] = (el) => {
-  const id = window._athProfileId;
+  const id  = window._athProfileId;
   const ath = S.athletes.find(a=>a.id===id);
   if (!ath) { el.innerHTML = '<div class="empty-state"><p>Atleta non trovato</p></div>'; return; }
-  const cat = S.categories.find(c=>c.id===ath.categoryId);
-  const sessions = getCategorySessions(ath.categoryId);
-  const atts = getAthleteAttendances(id);
-  const sessAtts = atts.filter(a=>sessions.some(s=>s.id===a.sessionId));
-  const pres = sessAtts.filter(a=>a.status==='P').length;
-  const ass = sessAtts.filter(a=>a.status==='A').length;
-  const giust = sessAtts.filter(a=>a.status==='G').length;
-  const pr = pct(pres, sessions.length);
-  const perf = getAthleteAvgPerf(id);
-  const color = avatarColor((ath.firstName||'')+(ath.lastName||''));
-  setTopbar(ath.lastName+' '+ath.firstName, cat?.name||'');
 
-  // per-type stats
+  const cat   = S.categories.find(c=>c.id===ath.categoryId);
+  const color = avatarColor((ath.firstName||'')+(ath.lastName||''));
+  const perf  = getAthleteAvgPerf(id);
+
+  // Stagione correntemente visualizzata nel profilo (default: attiva)
+  if (!window._athProfSeas) window._athProfSeas = S.activeSeason || getActiveSeason()?.id || '';
+  if (S.activeSeason && window._athProfSeas !== S.activeSeason) window._athProfSeas = S.activeSeason;
+  const profSeasId = window._athProfSeas;
+  const profSeas   = S.seasons.find(s=>s.id===profSeasId) || getActiveSeason();
+
+  // Iscrizioni stagionali dell'atleta
+  const allAS = getAthleteSeasons(id); // tutte le stagioni, desc
+  const activeSeasAS = allAS.find(as=>as.seasonId===profSeasId);
+
+  // Dati per la stagione selezionata
+  const seasCatId  = activeSeasAS?.categoryId || ath.categoryId;
+  const seasTeamId = activeSeasAS?.teamId || ath.teamId;
+  const seasNum    = activeSeasAS?.shirtNumber || ath.number;
+  const seasRole   = activeSeasAS?.role || ath.role;
+  const seasCat    = S.categories.find(c=>c.id===seasCatId);
+  const seasTeam   = S.teams.find(t=>t.id===seasTeamId);
+  const seasSoc    = S.societies.find(s=>s.id===seasCat?.societyId);
+
+  // Presenze per la stagione selezionata
+  const seasSessions = getCategorySessionsForSeason(seasCatId, profSeasId);
+  const atts = getAthleteAttendances(id);
+  const seasAtts = atts.filter(a=>seasSessions.some(s=>s.id===a.sessionId));
+  const pres  = seasAtts.filter(a=>a.status==='P').length;
+  const ass   = seasAtts.filter(a=>a.status==='A').length;
+  const giust = seasAtts.filter(a=>a.status==='G').length;
+  const pr    = pct(pres, seasSessions.length);
+
+  // Per tipo attività (stagione corrente)
   const typeStats = getActivityTypes().map(([k,v]) => {
-    const typeSess = sessions.filter(s=>s.type===k);
+    const typeSess = seasSessions.filter(s=>s.type===k);
     const typeAtts = atts.filter(a=>typeSess.some(s=>s.id===a.sessionId));
     const tp = pct(typeAtts.filter(a=>a.status==='P').length, typeSess.length);
     return { key:k, act:v, sessions: typeSess.length, presRate: tp };
   });
 
-  // session history
-  const history = sessions.map(s => {
-    const att = atts.find(a=>a.sessionId===s.id);
-    return { s, att };
-  }).reverse();
+  // Statistiche partite stagione corrente
+  const matchMs = getCategoryMatchStats(seasCatId, seasTeamId||undefined, profSeasId);
+
+  // Storia sessioni per stagione selezionata
+  const history = seasSessions.map(s => ({
+    s, att: atts.find(a=>a.sessionId===s.id)
+  })).reverse();
+
+  // Selettore stagione
+  const seasSelector = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
+    + '<span style="font-size:.8rem;font-weight:700;color:#64748B">📅 Stagione:</span>'
+    + '<select style="padding:5px 12px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.85rem;font-weight:600;background:#F8FAFC" onchange="window._athProfSeas=this.value;S.activeSeason=this.value;rebuildSeasonSelector();viewBuilders[&quot;athlete-profile&quot;](document.getElementById(&quot;view-athlete-profile&quot;))">'
+    + S.seasons.slice().sort((a,b)=>b.startYear-a.startYear).map(function(s){ return '<option value="'+s.id+'"'+(s.id===profSeasId?' selected':'')+'>'+esc(s.name)+(s.active?' ★':'')+'</option>'; }).join('')
+    + '</select>'
+    + (allAS.length ? '<span style="font-size:.78rem;color:#64748B">'+allAS.length+' stagioni in carriera</span>' : '')
+    + '</div>';
+
+  setTopbar(esc(ath.lastName+' '+ath.firstName), esc(seasCat?.name||''));
 
   el.innerHTML = `
-    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-bottom:24px">
-      <div style="width:90px;height:90px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:800;color:white;flex-shrink:0">
+    <!-- ── HEADER ──────────────────────────────────────────── -->
+    <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:24px">
+      <div style="width:88px;height:88px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:white;flex-shrink:0">
         ${initials((ath.firstName||'')+(ath.lastName||''))}
       </div>
       <div style="flex:1;min-width:200px">
-        <h2 style="font-size:1.8rem;letter-spacing:-.03em">${esc(ath.lastName)} ${esc(ath.firstName)}</h2>
-        <div style="font-size:.95rem;color:#64748B;margin-top:4px">#${ath.number||'—'} · ${esc(ath.role||'—')}</div>
-        <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <span class="badge badge-blue" style="font-size:.8rem">🏷️ ${esc(cat?.name||'—')}</span>
-          ${ath.teamId ? `<span class="badge badge-gray" style="font-size:.8rem">👕 ${esc(S.teams.find(t=>t.id===ath.teamId)?.name||'—')}</span>` : ''}
-          ${ath.nickname ? `<span class="badge badge-gold" style="font-size:.8rem">"${esc(ath.nickname)}"</span>` : ''}
+        <h2 style="font-size:1.8rem;letter-spacing:-.03em;margin:0">${esc(ath.lastName)} ${esc(ath.firstName)}</h2>
+        <div style="color:#64748B;margin-top:4px">
+          ${seasNum?'#'+seasNum+' · ':''}${esc(seasRole||'—')}
+          ${ath.nickname?'<span class="badge badge-gold" style="margin-left:6px">"'+esc(ath.nickname)+'"</span>':''}
         </div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${seasCat?'<span class="badge badge-blue">🏷️ '+esc(seasCat.name)+'</span>':''}
+          ${seasTeam?'<span class="badge badge-gray">👕 '+esc(seasTeam.name)+'</span>':''}
+          ${seasSoc?'<span class="badge badge-teal">🏛️ '+esc(seasSoc.name)+'</span>':''}
+          <span class="badge badge-gray">📅 Nato ${fmtDate(ath.dob)||'—'}</span>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
           ${ratingBadge(pr)}
-          <span class="badge badge-gray">Nato ${fmtDate(ath.dob)||'—'}</span>
           <span class="badge badge-blue">${pres} presenze</span>
           <span class="badge badge-red">${ass} assenze</span>
-          <span class="badge badge-gold">${giust} giust.</span>
+          ${giust?'<span class="badge badge-gold">'+giust+' giust.</span>':''}
         </div>
-        ${ath.notes?`<div style="margin-top:12px;padding:10px 14px;background:#F8FAFC;border-radius:8px;font-size:.88rem;color:#64748B">📝 ${esc(ath.notes)}</div>`:''}
+        ${ath.notes?'<div style="margin-top:10px;padding:10px 14px;background:#F8FAFC;border-radius:8px;font-size:.85rem;color:#475569">'+esc(ath.notes)+'</div>':''}
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${canEdit(ath.categoryId) ? `<button class="btn btn-ghost" onclick="openAthleteModal('${id}')">✏️ Modifica</button>` : ''}
-        <button class="btn btn-ghost" onclick="openAthleteSeasonModal('${id}')">⚽ Stagioni</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-self:flex-start">
+        ${canEdit(ath.categoryId)?'<button class="btn btn-accent" onclick="openAthleteModal(&quot;'+id+'&quot;)">✏️ Modifica</button>':''}
         <button class="btn btn-ghost" onclick="history.back()">← Torna</button>
       </div>
     </div>
 
+    ${seasSelector}
+
+    <!-- ── STAT CARD STAGIONE ──────────────────────────────── -->
     <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card blue" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">% Presenze</div><div class="value">${pr}%</div><div class="sub">${pres}/${sessions.length}</div></div>
-      ${typeStats.filter(t=>t.sessions>0).map(t=>`<div class="stat-card ${t.act.color}" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">${t.act.label}</div><div class="value">${t.presRate}%</div><div class="sub">${t.sessions} sess.</div></div>`).join('')}
-      <div class="stat-card gold" style="cursor:pointer" onclick="showView('sessions')" title="Vai a Sessioni"><div class="accent-bar"></div><div class="label">Performance</div><div class="value">${perf.overall?perf.overall.toFixed(1):'—'}</div><div class="sub">media overall</div></div>
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Sessioni</div><div class="value">${seasSessions.length}</div><div class="sub">${esc(profSeas?.name||'—')}</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Presenze</div><div class="value">${pres}</div><div class="sub">${pr}%</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Assenze</div><div class="value">${ass}</div></div>
+      ${typeStats.filter(t=>t.sessions>0).map(t=>`<div class="stat-card ${t.act.color}"><div class="accent-bar"></div><div class="label">${t.act.emoji} ${t.act.label}</div><div class="value">${t.presRate}%</div><div class="sub">${t.sessions} sess.</div></div>`).join('')}
+      ${matchMs.played?`<div class="stat-card gold"><div class="accent-bar"></div><div class="label">Punti squadra</div><div class="value">${matchMs.pts}</div><div class="sub">${matchMs.w}V ${matchMs.d}P ${matchMs.l}S</div></div>`:''}
     </div>
 
     <div class="grid-2" style="margin-bottom:20px">
+      <!-- Performance media -->
       <div class="card">
-        <div class="card-title"><div class="icon" style="background:var(--gold-l);color:var(--gold)">⭐</div>Profilo Performance</div>
+        <div class="card-title"><div class="icon" style="background:var(--gold-l);color:var(--gold)">⭐</div>Performance Media</div>
         <div class="perf-bars">
           ${getPerfParams().map(normPerfParam).map(({key,label}) => perfBar(label, perf[key]||0)).join('')}
         </div>
       </div>
+
+      <!-- Carriera — tutte le stagioni -->
       <div class="card">
-        <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">📊</div>Presenze per Tipo</div>
-        ${typeStats.map(t => t.sessions>0 ? `
-          <div style="margin-bottom:14px">
-            <div class="flex items-center justify-between mb-8">${actBadge(t.key)}<span class="fw-700 text-sm">${t.presRate}%</span></div>
-            <div class="progress-bar"><div class="progress-fill ${t.presRate>=70?'green':t.presRate>=50?'gold':'red'}" style="width:${t.presRate}%"></div></div>
-          </div>` : '').join('')}
-        ${typeStats.every(t=>t.sessions===0)?'<div class="text-muted text-sm">Nessuna sessione</div>':''}
+        <div class="card-title" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px"><div class="icon" style="background:var(--teal-l);color:var(--teal)">📅</div>Carriera</div>
+          ${canEdit(ath.categoryId)?'<button class="btn btn-ghost btn-sm" onclick="openAthleteModal(&quot;'+id+'&quot;)">+ Modifica stagioni</button>':''}
+        </div>
+        ${allAS.length === 0
+          ? '<div class="text-muted text-sm">Nessuna iscrizione stagionale registrata.</div>'
+          : allAS.map(as => {
+              const asCat  = S.categories.find(c=>c.id===as.categoryId);
+              const asTeam = S.teams.find(t=>t.id===as.teamId);
+              const asSeas = S.seasons.find(s=>s.id===as.seasonId);
+              const isCur  = as.seasonId === profSeasId;
+              return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mist-2);cursor:pointer" onclick="window._athProfSeas=&quot;'+as.seasonId+'&quot;;viewBuilders[&quot;athlete-profile&quot;](document.getElementById(&quot;view-athlete-profile&quot;))">'
+                + '<span class="badge badge-'+(isCur?'blue':'gray')+'" style="min-width:72px;justify-content:center">'+(asSeas?.name||'—')+'</span>'
+                + '<div style="flex:1;min-width:0">'
+                + '<div class="fw-600" style="font-size:.85rem">'+(asCat?.name||'—')+(asTeam?' <span style="color:#64748B;font-weight:400">↳ '+esc(asTeam.name)+'</span>':'')+'</div>'
+                + (as.role?'<div style="font-size:.75rem;color:#64748B">'+esc(as.role)+'</div>':'')
+                + '</div>'
+                + (as.shirtNumber?'<span style="font-size:.78rem;font-weight:700;color:#64748B">#'+as.shirtNumber+'</span>':'')
+                + '</div>';
+            }).join('')
+        }
       </div>
     </div>
 
+    <!-- ── STORIA SESSIONI ─────────────────────────────────── -->
     <div class="card">
-      <div class="card-title"><div class="icon" style="background:var(--teal-l);color:var(--teal)">📋</div>Storico Sessioni</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Data</th><th>Tipo</th><th>Stato</th><th>Tecnica</th><th>Fisico</th><th>Tattica</th><th>Mentale</th><th>Comun.</th><th>Note</th></tr></thead>
-          <tbody>${history.map(({s,att})=>{
-            const st = att?.status||'—';
-            const p = att?.perf||{};
-            const stCls = st==='P'?'badge-green':st==='A'?'badge-red':st==='G'?'badge-gold':'badge-gray';
-            const stars = v => v>0?`<span style="color:var(--gold);font-size:.85rem">${'★'.repeat(v)}</span>`:'—';
-            return `<tr>
-              <td class="fw-700">${fmtDate(s.date)}</td>
-              <td>${actBadge(s.type)}</td>
-              <td><span class="badge ${stCls}">${STATUS_LABELS[st]||'—'}</span></td>
-              <td>${stars(p.tecnica)}</td>
-              <td>${stars(p.fisico)}</td>
-              <td>${stars(p.tattica)}</td>
-              <td>${stars(p.mentale)}</td>
-              <td>${stars(p.comunicazione)}</td>
-              <td class="text-sm text-muted">${esc(att?.notes||'')}</td>
-            </tr>`;
-          }).join('')}</tbody>
-        </table>
+      <div class="card-title">
+        <div class="icon" style="background:var(--teal-l);color:var(--teal)">📋</div>
+        Storico Presenze — ${esc(profSeas?.name||'tutte le stagioni')}
+        <span style="margin-left:auto;font-size:.8rem;font-weight:400;color:#64748B">${history.length} sessioni</span>
       </div>
+      ${history.length === 0
+        ? '<div class="text-muted text-sm">Nessuna sessione in questa stagione.</div>'
+        : '<div class="table-wrap"><table>'
+          + '<thead><tr><th>Data</th><th>Tipo</th><th>Stato</th>'
+          + getPerfParams().map(normPerfParam).map(({label})=>'<th>'+esc(label)+'</th>').join('')
+          + '<th>Note</th></tr></thead><tbody>'
+          + history.map(({s,att})=>{
+              const st    = att?.status||'—';
+              const p     = att?.perf||{};
+              const stCls = st==='P'?'badge-green':st==='A'?'badge-red':st==='G'?'badge-gold':'badge-gray';
+              const stars = v => v>0?'<span style="color:var(--gold);font-size:.85rem">'+'★'.repeat(v)+'</span>':'—';
+              return '<tr>'
+                + '<td class="fw-700">'+fmtDate(s.date)+'</td>'
+                + '<td>'+actBadge(s.type)+'</td>'
+                + '<td><span class="badge '+stCls+'">'+(STATUS_LABELS[st]||'—')+'</span></td>'
+                + getPerfParams().map(normPerfParam).map(({key})=>'<td>'+stars(p[key]||0)+'</td>').join('')
+                + '<td class="text-sm text-muted">'+esc(att?.notes||'')+'</td>'
+                + '</tr>';
+            }).join('')
+          + '</tbody></table></div>'
+      }
     </div>
   `;
-}
+};
 
-// ── [9] ADMIN SOCIETY DASHBOARD ───────────────────────────────
+
 viewBuilders['admin-society'] = (el) => {
   const isResp = currentUser.role === 'responsabile';
   setTopbar(isResp ? 'Dashboard Squadre — Responsabile' : 'Dashboard Società','');
