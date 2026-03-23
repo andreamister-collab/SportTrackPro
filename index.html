@@ -1226,7 +1226,8 @@ const DB = {
     const [
       sports, societies, teams, categories, users,
       athletes, athleteSeasons, seasons,
-      sessions, attendances, matches, convocati, performances, scorers
+      sessions, attendances, matches, convocati, performances, scorers,
+      userCategorySeasons
     ] = await Promise.all([
       sb.from('sports').select('*'),
       sb.from('societies').select('*'),
@@ -1242,6 +1243,7 @@ const DB = {
       sb.from('convocati').select('*'),
       sb.from('performances').select('*'),
       sb.from('scorers').select('*'),
+      sb.from('user_category_seasons').select('*'),
     ]);
 
     // Converti snake_case → camelCase per compatibilità con il codice esistente
@@ -1296,11 +1298,15 @@ const DB = {
       performances:   (performances.data||[]).map(r => ({
         ...r, sessionId: r.session_id, athleteId: r.athlete_id, societyId: r.society_id
       })),
-      activeSeason:   null, // calcolato dopo
+      activeSeason:   null,
       staffHistory:   [],
       activityTypes:  null,
       perfParams:     null,
       sessionTypePerfParams: null,
+      userCategorySeasons: (userCategorySeasons?.data||[]).map(r => ({
+        ...r, userId: r.user_id, categoryId: r.category_id,
+        seasonId: r.season_id, societyId: r.society_id
+      })),
     };
   },
 
@@ -2002,6 +2008,7 @@ function loadState() {
     });
     if (S.activityTypes === undefined) S.activityTypes = null;
     if (S.perfParams    === undefined) S.perfParams    = null;
+  if (!S.userCategorySeasons) S.userCategorySeasons = [];
     if (S.sessionTypePerfParams === undefined) S.sessionTypePerfParams = null;
   } catch { S = defaultState(); }
 }
@@ -2276,53 +2283,128 @@ const ROLES = {
 };
 
 // Returns list of category IDs accessible to the current user
+
+// ════════════════════════════════════════════════════════════════
+//  MULTI-STAGIONE: helper functions
+// ════════════════════════════════════════════════════════════════
+
+// Ritorna le iscrizioni stagionali di un atleta (ordinate per stagione desc)
+function getAthleteSeasons(athleteId) {
+  return (S.athleteSeasons||[]).filter(as => as.athleteId === athleteId)
+    .sort((a,b) => {
+      const sa = S.seasons.find(s=>s.id===a.seasonId);
+      const sb2 = S.seasons.find(s=>s.id===b.seasonId);
+      return (sb2?.startYear||0) - (sa?.startYear||0);
+    });
+}
+
+// Ritorna l'iscrizione stagionale attiva per un atleta (stagione corrente)
+function getAthleteActiveSeason(athleteId) {
+  const active = getActiveSeason();
+  if (!active) return null;
+  return (S.athleteSeasons||[]).find(as => as.athleteId===athleteId && as.seasonId===active.id) || null;
+}
+
+// Salva/aggiorna un'iscrizione stagionale atleta
+async function saveAthleteSeasonEntry(entry) {
+  if (!S.athleteSeasons) S.athleteSeasons = [];
+  const existing = S.athleteSeasons.find(as => as.id === entry.id);
+  if (existing) {
+    Object.assign(existing, entry);
+  } else {
+    S.athleteSeasons.push(entry);
+  }
+  saveState();
+  await sbSync('athlete_seasons', entry);
+  toast('Iscrizione stagionale salvata ✅', 'success');
+}
+
+// Elimina un'iscrizione stagionale atleta
+async function deleteAthleteSeasonEntry(id) {
+  S.athleteSeasons = (S.athleteSeasons||[]).filter(as => as.id !== id);
+  saveState();
+  await sbSync('athlete_seasons', id, true);
+}
+
+// Ritorna le UCS di un utente (user_category_seasons)
+function getUserSeasons(userId) {
+  return (S.userCategorySeasons||[]).filter(ucs => ucs.userId === userId)
+    .sort((a,b) => {
+      const sa = S.seasons.find(s=>s.id===a.seasonId);
+      const sb2 = S.seasons.find(s=>s.id===b.seasonId);
+      return (sb2?.startYear||0) - (sa?.startYear||0);
+    });
+}
+
+// Ritorna categorie accessibili per un utente in una stagione specifica
+function getUserCatIdsForSeason(userId, seasonId) {
+  const ucs = (S.userCategorySeasons||[]).filter(u => u.userId===userId && (!seasonId||u.seasonId===seasonId));
+  if (ucs.length) return ucs.map(u=>u.categoryId);
+  // Fallback ai vecchi campi category.managerIds ecc.
+  return S.categories.filter(c =>
+    (c.managerIds||[]).includes(userId) ||
+    (c.directorIds||[]).includes(userId) ||
+    (c.coachIds||[]).includes(userId) ||
+    (c.professionalIds||[]).includes(userId)
+  ).map(c=>c.id);
+}
+
+// Salva/aggiorna una UCS
+async function saveUCS(entry) {
+  if (!S.userCategorySeasons) S.userCategorySeasons = [];
+  const existing = S.userCategorySeasons.find(u => u.id === entry.id);
+  if (existing) {
+    Object.assign(existing, entry);
+  } else {
+    S.userCategorySeasons.push(entry);
+  }
+  saveState();
+  await sbSync('user_category_seasons', entry);
+}
+
+// Elimina una UCS
+async function deleteUCS(id) {
+  S.userCategorySeasons = (S.userCategorySeasons||[]).filter(u => u.id !== id);
+  saveState();
+  await sbSync('user_category_seasons', id, true);
+}
+
 function getAccessibleCategoryIds() {
   if (!currentUser) return [];
   const r = currentUser.role;
+  const uid = currentUser.id;
+
   if (r === 'admin') return S.categories.map(c => c.id);
-  // Presidente vede solo le categorie della sua società
+
   if (r === 'presidente') {
     const socId = currentUser.societyId;
     return socId
       ? S.categories.filter(c => c.societyId === socId).map(c => c.id)
       : S.categories.map(c => c.id);
   }
-  return S.categories.filter(c => {
-    if (r === 'responsabile')   return (c.managerIds||[]).includes(currentUser.id);
-    if (r === 'dirigente')      return (c.directorIds||[]).includes(currentUser.id);
-    if (r === 'allenatore')     return (c.coachIds||[]).includes(currentUser.id);
-    if (r === 'professionista') return (c.professionalIds||[]).includes(currentUser.id);
-    if (r === 'presidente') {
-    const presAccIds = getAccessibleCategoryIds();
-    desktopHTML =
-      dGroup('📊 Panoramica',
-        dItem('🏆','Panoramica',`showView('president-view')`)
-      ) +
-      dGroup('👕 Squadre',
-        buildTeamDropdownItems(presAccIds) || '<div class="dropdown-section-title">Nessuna squadra</div>'
-      ) +
-      dGroup('⚙️ Gestione',
-        dItem('👥','Staff & Utenti',`showAdminConfig('users')`) +
-        dItem('🏛️','Società',`showAdminConfig('society')`) +
-        dItem('🏷️','Categorie',`showAdminConfig('category')`)
-      );
-    mobileHTML =
-      mSection('Panoramica', mItem('🏆','Panoramica',`showView('president-view')`)) +
-      mSection('Squadre', buildMobileTeamItems(presAccIds)) +
-      mSection('Gestione',
-        mItem('👥','Staff & Utenti',`showAdminConfig('users')`) +
-        mItem('🏛️','Società',`showAdminConfig('society')`) +
-        mItem('🏷️','Categorie',`showAdminConfig('category')`)
-      );
-  }
 
   if (r === 'genitore') {
-      // Il genitore accede alle categorie degli atleti a lui associati
-      const myAthletes = S.athletes.filter(a => (a.parentIds||[]).includes(currentUser.id));
-      return myAthletes.some(a => a.categoryId === c.id);
-    }
+    const myAthletes = S.athletes.filter(a => (a.parentIds||[]).includes(uid));
+    const catIds = myAthletes.map(a => a.categoryId).filter(Boolean);
+    // Aggiungi anche da athlete_seasons
+    (S.athleteSeasons||[]).filter(as => myAthletes.some(a=>a.id===as.athleteId))
+      .forEach(as => { if (as.categoryId && !catIds.includes(as.categoryId)) catIds.push(as.categoryId); });
+    return [...new Set(catIds)];
+  }
+
+  // Staff roles (responsabile, dirigente, allenatore, professionista)
+  // 1. UCS multi-stagione
+  const ucsIds = (S.userCategorySeasons||[]).filter(u=>u.userId===uid).map(u=>u.categoryId);
+  // 2. Fallback legacy (campi diretti sulla categoria)
+  const legacyIds = S.categories.filter(c => {
+    if (r === 'responsabile')   return (c.managerIds||[]).includes(uid);
+    if (r === 'dirigente')      return (c.directorIds||[]).includes(uid);
+    if (r === 'allenatore')     return (c.coachIds||[]).includes(uid);
+    if (r === 'professionista') return (c.professionalIds||[]).includes(uid);
     return false;
   }).map(c => c.id);
+
+  return [...new Set([...ucsIds, ...legacyIds])];
 }
 
 function canAccessCategory(catId) {
@@ -2332,7 +2414,16 @@ function canAccessCategory(catId) {
     const cat = S.categories.find(c=>c.id===catId);
     return !currentUser.societyId || cat?.societyId === currentUser.societyId;
   }
-  return getAccessibleCategoryIds().includes(catId);
+  // Controlla UCS (multi-stagione) + fallback legacy
+  const uid = currentUser.id;
+  const ucsMatch = (S.userCategorySeasons||[]).some(u => u.userId===uid && u.categoryId===catId);
+  if (ucsMatch) return true;
+  const cat = S.categories.find(c=>c.id===catId);
+  if (!cat) return false;
+  return (cat.managerIds||[]).includes(uid) ||
+         (cat.directorIds||[]).includes(uid) ||
+         (cat.coachIds||[]).includes(uid) ||
+         (cat.professionalIds||[]).includes(uid);
 }
 
 // What can a role DO in a category?
@@ -2464,7 +2555,7 @@ function _afterLogin() {
   S = {
     users:[], sports:[], societies:[], teams:[], categories:[],
     athletes:[], sessions:[], attendances:[], matches:[], convocati:[],
-    seasons:[], athleteSeasons:[], staffHistory:[], scorers:[],
+    seasons:[], athleteSeasons:[], staffHistory:[], scorers:[], userCategorySeasons:[],
     activityTypes:null, perfParams:null, sessionTypePerfParams:null,
     activeSeason:null, athleteRoles:{}
   };
@@ -2963,6 +3054,7 @@ const TABLE_REAL_COLUMNS = {
   convocati:       ['id','match_id','athlete_id','status','notes'],
   scorers:         ['id','match_id','athlete_id','goals','notes'],
   config:          ['key','value'],
+  user_category_seasons: ['id','user_id','category_id','season_id','role','society_id'],
 };
 
 function toSnakeCase(table, obj) {
@@ -4554,6 +4646,94 @@ function fillGeneratedPassword(inputId) {
     .catch(()=>toast('Password generata — copiala prima che scompaia','warning'));
 }
 
+
+// ── Sezione UCS (user_category_seasons) nel modal utente ────────
+function buildUCSList(userId, role) {
+  if (!userId) return '<div style="font-size:.8rem;color:#64748B">Salva prima l\'utente per assegnare stagioni.</div>';
+
+  const isStaff = ['responsabile','dirigente','allenatore','professionista'].includes(role);
+  if (!isStaff) return '<div style="font-size:.8rem;color:#64748B">Le assegnazioni stagionali sono disponibili per Responsabili, Dirigenti, Allenatori e Professionisti.</div>';
+
+  const entries  = getUserSeasons(userId);
+  const seasons  = S.seasons.slice().sort((a,b)=>b.startYear-a.startYear);
+  const cats     = S.categories;
+
+  let html = '<div style="display:flex;flex-direction:column;gap:6px" id="ucs-entries">';
+
+  entries.forEach(ucs => {
+    const seas = S.seasons.find(s=>s.id===ucs.seasonId);
+    const cat  = S.categories.find(c=>c.id===ucs.categoryId);
+    const soc  = S.societies.find(s=>s.id===cat?.societyId);
+    const roleLabel = ucs.role || role;
+    html += '<div style="display:flex;gap:8px;align-items:center;background:var(--mist);border:1px solid var(--mist-2);border-radius:8px;padding:8px 12px;flex-wrap:wrap">'
+      + '<span class="badge badge-blue">'+(seas?.name||'—')+'</span>'
+      + '<span style="font-size:.85rem;font-weight:600">'+(cat?.name||'—')+'</span>'
+      + (soc?'<span style="font-size:.78rem;color:#64748B">'+esc(soc.name)+'</span>':'')
+      + '<span class="badge badge-'+getRoleBadge(roleLabel)+'">'+esc(ROLES[roleLabel]?.label||roleLabel)+'</span>'
+      + '<button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--red);font-size:.75rem" onclick="removeUCSEntry(&quot;'+ucs.id+'&quot;,&quot;'+userId+'&quot;,&quot;'+role+'&quot;)">✕</button>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  // Form aggiungi
+  const seasOpts = seasons.map(s=>
+    '<option value="'+s.id+'"'+(s.active?' selected':'')+'>'+esc(s.name)+(s.active?' ★':'')+'</option>'
+  ).join('');
+  const catOpts = cats.map(cat=>
+    '<option value="'+cat.id+'">'+esc(cat.name)+'</option>'
+  ).join('');
+  const roleOpts = ['responsabile','dirigente','allenatore','professionista'].map(r=>
+    '<option value="'+r+'"'+(r===role?' selected':'')+'>'+(ROLES[r]?.icon||'')+' '+(ROLES[r]?.label||r)+'</option>'
+  ).join('');
+
+  html += '<div style="margin-top:8px;padding:10px;background:var(--accent-l);border-radius:8px;border:1px dashed var(--accent)">'
+    + '<div style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:6px">+ Aggiungi assegnazione stagionale</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">'
+    + '<div class="form-field" style="margin:0;min-width:110px;flex:1"><label style="font-size:.72rem">Stagione</label><select id="ucs-new-season">'+seasOpts+'</select></div>'
+    + '<div class="form-field" style="margin:0;min-width:120px;flex:2"><label style="font-size:.72rem">Categoria</label><select id="ucs-new-cat"><option value="">— Seleziona —</option>'+catOpts+'</select></div>'
+    + '<div class="form-field" style="margin:0;min-width:110px"><label style="font-size:.72rem">Ruolo</label><select id="ucs-new-role">'+roleOpts+'</select></div>'
+    + '<button class="btn btn-accent btn-sm" onclick="addUCSEntry(&quot;'+userId+'&quot;)" style="align-self:flex-end">Aggiungi</button>'
+    + '</div></div>';
+
+  return html;
+}
+
+function getRoleBadge(role) {
+  return {responsabile:'purple',dirigente:'green',allenatore:'gold',professionista:'teal'}[role]||'gray';
+}
+
+function addUCSEntry(userId) {
+  const seasonId = document.getElementById('ucs-new-season')?.value;
+  const catId    = document.getElementById('ucs-new-cat')?.value;
+  const role     = document.getElementById('ucs-new-role')?.value || 'allenatore';
+  if (!seasonId || !catId) { toast('Seleziona stagione e categoria','error'); return; }
+  const dup = (S.userCategorySeasons||[]).find(u => u.userId===userId && u.seasonId===seasonId && u.categoryId===catId);
+  if (dup) { toast('Assegnazione già presente','warning'); return; }
+
+  const cat = S.categories.find(c=>c.id===catId);
+  const entry = {
+    id: uid(), userId, seasonId, categoryId: catId,
+    role, societyId: cat?.societyId || null
+  };
+  if (!S.userCategorySeasons) S.userCategorySeasons = [];
+  S.userCategorySeasons.push(entry);
+  saveState();
+  sbSync('user_category_seasons', entry);
+  toast('Assegnazione aggiunta ✅','success');
+  const panel = document.getElementById('ucs-panel');
+  if (panel) panel.innerHTML = buildUCSList(userId, role);
+}
+
+function removeUCSEntry(ucsId, userId, role) {
+  if (!confirm('Rimuovere questa assegnazione?')) return;
+  S.userCategorySeasons = (S.userCategorySeasons||[]).filter(u=>u.id!==ucsId);
+  saveState();
+  sbSync('user_category_seasons', ucsId, true);
+  toast('Assegnazione rimossa','success');
+  const panel = document.getElementById('ucs-panel');
+  if (panel) panel.innerHTML = buildUCSList(userId, role);
+}
+
 function openUserModal(id) {
   const u = id ? S.users.find(x=>x.id===id) : null;
   const roleOpts = ['responsabile','dirigente','allenatore','professionista','genitore','presidente']
@@ -4619,6 +4799,13 @@ function openUserModal(id) {
       🔒 <strong>Requisiti password:</strong> min. 10 caratteri, almeno una maiuscola, una minuscola, un numero e un carattere speciale (!@#$%…). Usa 🎲 per generarne una sicura.
     </div>
 
+    <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--mist-2)">
+      📅 Assegnazioni per Stagione
+    </div>
+    <div id="ucs-panel" style="margin-bottom:8px">
+      ${buildUCSList(id||null, initRole)}
+    </div>
+
     <div class="form-actions" style="margin-top:16px">
       <button class="btn btn-accent btn-lg" onclick="saveUser('${id||''}')">💾 Salva Utente</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
@@ -4646,6 +4833,8 @@ function togglePwVisibility(inputId, iconId) {
 function refreshUserCatSelector(userId, role) {
   const sec = document.getElementById('usr-cat-section');
   if (sec) sec.innerHTML = buildUserCatSelector(userId||null, role);
+  const ucsPanel = document.getElementById('ucs-panel');
+  if (ucsPanel) ucsPanel.innerHTML = buildUCSList(userId||null, role);
 }
 
 function saveUser(id) {
@@ -5527,6 +5716,101 @@ function _updateParentOptStyle(cb) {
   }
 }
 
+
+// ── Sezione iscrizioni stagionali nel modal atleta ──────────────
+function buildAthleteSeasonsList(athleteId) {
+  const seasons = S.seasons.slice().sort((a,b)=>b.startYear-a.startYear);
+  const entries = athleteId ? getAthleteSeasons(athleteId) : [];
+
+  let html = '<div style="display:flex;flex-direction:column;gap:6px" id="as-entries">';
+
+  // Riga per ogni stagione esistente
+  entries.forEach(as => {
+    const seas = S.seasons.find(s=>s.id===as.seasonId);
+    const cat  = S.categories.find(c=>c.id===as.categoryId);
+    const team = S.teams.find(t=>t.id===as.teamId);
+    html += '<div style="display:flex;gap:8px;align-items:center;background:var(--mist);border:1px solid var(--mist-2);border-radius:8px;padding:8px 12px;flex-wrap:wrap">'
+      + '<span class="badge badge-blue">'+(seas?.name||'—')+'</span>'
+      + '<span style="font-size:.85rem;font-weight:600">'+(cat?.name||'—')+'</span>'
+      + (team?'<span style="font-size:.8rem;color:#64748B">↳ '+(team.name)+'</span>':'')
+      + (as.role?'<span class="badge badge-gold">'+esc(as.role)+'</span>':'')
+      + (as.shirtNumber?'<span style="font-size:.8rem;color:#64748B">#'+as.shirtNumber+'</span>':'')
+      + (athleteId
+          ? '<button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--red);font-size:.75rem" onclick="removeAthleteSeasonEntry(&quot;'+as.id+'&quot;)">✕ Rimuovi</button>'
+          : '')
+      + '</div>';
+  });
+
+  // Form per aggiungere nuova iscrizione
+  const catOpts = S.categories.map(cat=>
+    '<option value="'+cat.id+'">'+esc(cat.name)+'</option>'
+  ).join('');
+  const seasOpts = seasons.map(s=>
+    '<option value="'+s.id+'"'+(s.active?' selected':'')+'>'+esc(s.name)+(s.active?' ★':'')+'</option>'
+  ).join('');
+
+  html += '</div>';
+  html += '<div style="margin-top:8px;padding:10px;background:var(--accent-l);border-radius:8px;border:1px dashed var(--accent)">'
+    + '<div style="font-size:.75rem;font-weight:700;color:var(--accent);margin-bottom:6px">+ Aggiungi iscrizione stagionale</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">'
+    + '<div class="form-field" style="margin:0;min-width:110px;flex:1"><label style="font-size:.72rem">Stagione</label><select id="as-new-season">'+seasOpts+'</select></div>'
+    + '<div class="form-field" style="margin:0;min-width:110px;flex:1"><label style="font-size:.72rem">Categoria</label><select id="as-new-cat" onchange="refreshASTeams(this.value)"><option value="">— Seleziona —</option>'+catOpts+'</select></div>'
+    + '<div class="form-field" style="margin:0;min-width:100px;flex:1" id="as-team-wrapper"><label style="font-size:.72rem">Squadra</label><select id="as-new-team"><option value="">— Intera cat. —</option></select></div>'
+    + '<div class="form-field" style="margin:0;width:70px"><label style="font-size:.72rem">Maglia</label><input id="as-new-shirt" type="number" placeholder="10" style="text-align:center"></div>'
+    + '<button class="btn btn-accent btn-sm" onclick="addAthleteSeasonEntry(&quot;"+athleteId+"&quot;)" style="align-self:flex-end">Aggiungi</button>'
+    + '</div></div>';
+
+  return html;
+}
+
+function refreshASTeams(catId) {
+  const wrap = document.getElementById('as-team-wrapper');
+  if (!wrap) return;
+  const teams = getCategoryTeams(catId);
+  wrap.innerHTML = '<label style="font-size:.72rem">Squadra</label>'
+    + '<select id="as-new-team"><option value="">— Intera cat. —</option>'
+    + teams.map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('')
+    + '</select>';
+}
+
+function addAthleteSeasonEntry(athleteId) {
+  const seasonId = document.getElementById('as-new-season')?.value;
+  const catId    = document.getElementById('as-new-cat')?.value;
+  const teamId   = document.getElementById('as-new-team')?.value || '';
+  const shirt    = document.getElementById('as-new-shirt')?.value || '';
+  if (!seasonId || !catId) { toast('Seleziona stagione e categoria','error'); return; }
+  // Controlla duplicati
+  const dup = (S.athleteSeasons||[]).find(as =>
+    as.athleteId===athleteId && as.seasonId===seasonId && as.categoryId===catId
+  );
+  if (dup) { toast('Iscrizione già presente per questa stagione/categoria','warning'); return; }
+
+  const entry = {
+    id: uid(), athleteId, seasonId, categoryId: catId,
+    teamId: teamId||null, shirtNumber: shirt||null, role: '', notes: ''
+  };
+  if (!S.athleteSeasons) S.athleteSeasons = [];
+  S.athleteSeasons.push(entry);
+  saveState();
+  sbSync('athlete_seasons', entry);
+  toast('Iscrizione aggiunta ✅','success');
+  // Refresh panel
+  const panel = document.getElementById('ath-seasons-panel');
+  if (panel) panel.innerHTML = buildAthleteSeasonsList(athleteId);
+}
+
+function removeAthleteSeasonEntry(asId) {
+  if (!confirm('Rimuovere questa iscrizione stagionale?')) return;
+  const as = (S.athleteSeasons||[]).find(x=>x.id===asId);
+  const athleteId = as?.athleteId;
+  S.athleteSeasons = (S.athleteSeasons||[]).filter(x=>x.id!==asId);
+  saveState();
+  sbSync('athlete_seasons', asId, true);
+  toast('Iscrizione rimossa','success');
+  const panel = document.getElementById('ath-seasons-panel');
+  if (panel && athleteId) panel.innerHTML = buildAthleteSeasonsList(athleteId);
+}
+
 function openAthleteModal(id) {
   const a = id ? S.athletes.find(x=>x.id===id) : null;
   const catId = a?.categoryId || selectedCategoryId || '';
@@ -5602,6 +5886,13 @@ function buildAthleteModalHtml(id, catId, a) {
       </div>
     </div>
     <div class="form-field" style="margin-top:8px"><label>Note</label><textarea id="ath-notes" placeholder="Note sull'atleta...">${esc(a?.notes||'')}</textarea></div>
+
+    <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--mist-2)">
+      📅 Iscrizioni Stagionali
+    </div>
+    <div id="ath-seasons-panel" style="margin-bottom:8px">
+      ${buildAthleteSeasonsList(id||null)}
+    </div>
 
     <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--mist-2)">
       👨‍👧 Genitori / Tutori
