@@ -7095,7 +7095,17 @@ viewBuilders['admin-athletes'] = (el) => {
 
   const _accIds = getAccessibleCategoryIds();
   const isAdminUser = currentUser.role === 'admin';
-  let athletes = S.athletes.filter(a => isAdminUser || _accIds.includes(a.categoryId));
+  // Filtra per stagione attiva usando athlete_seasons
+  const _aaSeasId = S.activeSeason;
+  const _aaEnrolled = _aaSeasId
+    ? (S.athleteSeasons||[]).filter(as=>as.seasonId===_aaSeasId).map(as=>as.athleteId)
+    : null;
+  let athletes = S.athletes.filter(a => {
+    if (!isAdminUser && !_accIds.includes(a.categoryId)) return false;
+    // Se ci sono iscrizioni stagionali per questa stagione, filtra
+    if (_aaEnrolled && _aaEnrolled.length > 0) return _aaEnrolled.includes(a.id);
+    return true;
+  });
   if (filterCat)  athletes = athletes.filter(a => a.categoryId === filterCat);
   if (filterTeam) athletes = athletes.filter(a => (a.teamId||'') === filterTeam);
   if (filterSoc) {
@@ -7125,6 +7135,9 @@ viewBuilders['admin-athletes'] = (el) => {
     <div class="filter-bar">
       <input id="ga-search" placeholder="🔍  Cerca per nome, cognome, ruolo..." value="${esc(filterQ)}"
         oninput="window._filterQ=this.value; viewBuilders['admin-athletes'](document.getElementById('view-admin-athletes'))">
+      <select style="font-weight:600" title="Stagione" onchange="S.activeSeason=this.value;rebuildSeasonSelector();viewBuilders['admin-athletes'](document.getElementById('view-admin-athletes'))">
+        ${S.seasons.slice().sort((a,b)=>b.startYear-a.startYear).map(s=>`<option value="${s.id}" ${s.id===S.activeSeason?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+      </select>
       <select id="ga-soc" onchange="window._filterSoc=this.value;window._filterCat='';viewBuilders['admin-athletes'](document.getElementById('view-admin-athletes'))">
         <option value="">Tutte le Società</option>
         ${S.societies.map(s=>`<option value="${s.id}" ${s.id===filterSoc?'selected':''}>${esc(s.name)}</option>`).join('')}
@@ -7162,7 +7175,7 @@ viewBuilders['admin-athletes'] = (el) => {
               return `<tr>
                 <td class="fw-700" style="font-family:var(--font-mono)">${ath.number||'—'}</td>
                 <td>
-                  <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="openAthleteProfile('${ath.id}')">
+                  <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="openAthleteProfile(&quot;${ath.id}&quot;)">
                     ${athleteAvatar(ath, 32)}
                     <div>
                       <div class="fw-600">${esc(ath.lastName)} ${esc(ath.firstName)}${ath.nickname?` <span style="color:#64748B;font-size:.8rem">"${esc(ath.nickname)}"</span>`:''}</div>
@@ -7180,9 +7193,9 @@ viewBuilders['admin-athletes'] = (el) => {
                 <td style="max-width:110px" class="text-sm text-muted truncate">${esc(ath.notes||'—')}</td>
                 <td>
                   <div style="display:flex;gap:4px">
-                    <button class="btn btn-ghost btn-sm" onclick="openAthleteProfile('${ath.id}')">👤</button>
-                    <button class="btn btn-ghost btn-sm" onclick="openAthleteModal('${ath.id}')">✏️ Modifica</button>
-                    <button class="btn btn-danger btn-sm" onclick="selectedCategoryId='${ath.categoryId}';deleteAthlete('${ath.id}')">🗑️</button>
+                    <button class="btn btn-ghost btn-sm" onclick="openAthleteProfile(&quot;${ath.id}&quot;)">👤</button>
+                    <button class="btn btn-ghost btn-sm" onclick="openAthleteModal(&quot;${ath.id}&quot;)">✏️ Modifica</button>
+                    <button class="btn btn-danger btn-sm" onclick="selectedCategoryId=&quot;${ath.categoryId}&quot;;deleteAthlete(&quot;${ath.id}&quot;)">🗑️</button>
                   </div>
                 </td>
               </tr>`;
