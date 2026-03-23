@@ -1891,21 +1891,21 @@ function defaultState() {
     ],
     attendances: [
       // {id, sessionId, athleteId, status: P|A|G, perf: {tecnica,fisico,tattica,mentale,comunicazione}, notes}
-      { id: 'att1', sessionId: 'sess1', athleteId: 'a1', status: 'P', perf: { tecnica: 4, fisico: 3, tattica: 3, mentale: 4, comunicazione: 5 }, notes: '' },
-      { id: 'att2', sessionId: 'sess1', athleteId: 'a2', status: 'P', perf: { tecnica: 5, fisico: 4, tattica: 5, mentale: 4, comunicazione: 3 }, notes: 'Ottima performance' },
+      { id: 'att1', sessionId: 'sess1', athleteId: 'a1', status: 'P', perf: { tecnica: 4, fisico: 3, tattica: 3, mentale: 4, velocita: 5 }, notes: '' },
+      { id: 'att2', sessionId: 'sess1', athleteId: 'a2', status: 'P', perf: { tecnica: 5, fisico: 4, tattica: 5, mentale: 4, velocita: 3 }, notes: 'Ottima performance' },
       { id: 'att3', sessionId: 'sess1', athleteId: 'a3', status: 'A', perf: { tecnica: 0, fisico: 0, tattica: 0, mentale: 0, comunicazione: 0 }, notes: 'Infortunio' },
-      { id: 'att4', sessionId: 'sess1', athleteId: 'a4', status: 'P', perf: { tecnica: 3, fisico: 4, tattica: 3, mentale: 3, comunicazione: 3 }, notes: '' },
+      { id: 'att4', sessionId: 'sess1', athleteId: 'a4', status: 'P', perf: { tecnica: 3, fisico: 4, tattica: 3, mentale: 3, velocita: 3 }, notes: '' },
       { id: 'att5', sessionId: 'sess1', athleteId: 'a5', status: 'G', perf: { tecnica: 0, fisico: 0, tattica: 0, mentale: 0, comunicazione: 0 }, notes: 'Giustificato scuola' },
-      { id: 'att6', sessionId: 'sess2', athleteId: 'a1', status: 'P', perf: { tecnica: 4, fisico: 5, tattica: 4, mentale: 3, comunicazione: 4 }, notes: '' },
-      { id: 'att7', sessionId: 'sess2', athleteId: 'a2', status: 'P', perf: { tecnica: 4, fisico: 4, tattica: 4, mentale: 5, comunicazione: 4 }, notes: '' },
-      { id: 'att8', sessionId: 'sess2', athleteId: 'a3', status: 'P', perf: { tecnica: 3, fisico: 3, tattica: 2, mentale: 3, comunicazione: 2 }, notes: '' },
-      { id: 'att9', sessionId: 'sess2', athleteId: 'a4', status: 'P', perf: { tecnica: 4, fisico: 3, tattica: 4, mentale: 4, comunicazione: 3 }, notes: '' },
-      { id: 'att10', sessionId: 'sess2', athleteId: 'a5', status: 'P', perf: { tecnica: 5, fisico: 5, tattica: 4, mentale: 4, comunicazione: 4 }, notes: '' },
-      { id: 'att11', sessionId: 'sess3', athleteId: 'a1', status: 'P', perf: { tecnica: 4, fisico: 4, tattica: 5, mentale: 5, comunicazione: 4 }, notes: 'Gol decisivo' },
-      { id: 'att12', sessionId: 'sess3', athleteId: 'a2', status: 'P', perf: { tecnica: 3, fisico: 4, tattica: 4, mentale: 3, comunicazione: 4 }, notes: '' },
-      { id: 'att13', sessionId: 'sess3', athleteId: 'a3', status: 'P', perf: { tecnica: 5, fisico: 4, tattica: 4, mentale: 4, comunicazione: 3 }, notes: '' },
+      { id: 'att6', sessionId: 'sess2', athleteId: 'a1', status: 'P', perf: { tecnica: 4, fisico: 5, tattica: 4, mentale: 3, velocita: 4 }, notes: '' },
+      { id: 'att7', sessionId: 'sess2', athleteId: 'a2', status: 'P', perf: { tecnica: 4, fisico: 4, tattica: 4, mentale: 5, velocita: 4 }, notes: '' },
+      { id: 'att8', sessionId: 'sess2', athleteId: 'a3', status: 'P', perf: { tecnica: 3, fisico: 3, tattica: 2, mentale: 3, velocita: 2 }, notes: '' },
+      { id: 'att9', sessionId: 'sess2', athleteId: 'a4', status: 'P', perf: { tecnica: 4, fisico: 3, tattica: 4, mentale: 4, velocita: 3 }, notes: '' },
+      { id: 'att10', sessionId: 'sess2', athleteId: 'a5', status: 'P', perf: { tecnica: 5, fisico: 5, tattica: 4, mentale: 4, velocita: 4 }, notes: '' },
+      { id: 'att11', sessionId: 'sess3', athleteId: 'a1', status: 'P', perf: { tecnica: 4, fisico: 4, tattica: 5, mentale: 5, velocita: 4 }, notes: 'Gol decisivo' },
+      { id: 'att12', sessionId: 'sess3', athleteId: 'a2', status: 'P', perf: { tecnica: 3, fisico: 4, tattica: 4, mentale: 3, velocita: 4 }, notes: '' },
+      { id: 'att13', sessionId: 'sess3', athleteId: 'a3', status: 'P', perf: { tecnica: 5, fisico: 4, tattica: 4, mentale: 4, velocita: 3 }, notes: '' },
       { id: 'att14', sessionId: 'sess3', athleteId: 'a4', status: 'A', perf: { tecnica: 0, fisico: 0, tattica: 0, mentale: 0, comunicazione: 0 }, notes: '' },
-      { id: 'att15', sessionId: 'sess3', athleteId: 'a5', status: 'P', perf: { tecnica: 5, fisico: 5, tattica: 5, mentale: 5, comunicazione: 5 }, notes: 'MVP' },
+      { id: 'att15', sessionId: 'sess3', athleteId: 'a5', status: 'P', perf: { tecnica: 5, fisico: 5, tattica: 5, mentale: 5, velocita: 5 }, notes: 'MVP' },
     ],
     managers: [], // legacy
     // Tipi attività configurabili (se null usa i default hardcoded)
@@ -2120,8 +2120,8 @@ const ACTIVITY_TYPES_DEFAULT = {
 // Keep backward-compatible reference
 const ACTIVITY_TYPES = ACTIVITY_TYPES_DEFAULT;
 
-const PERF_PARAMS_DEFAULT = ['tecnica','fisico','tattica','mentale','comunicazione'];
-const PERF_LABELS_DEFAULT = { tecnica:'Tecnica', fisico:'Fisico', tattica:'Tattica', mentale:'Mentale', comunicazione:'Comunicaz.' };
+const PERF_PARAMS_DEFAULT = ['tecnica','fisico','tattica','mentale','velocita'];
+const PERF_LABELS_DEFAULT = { tecnica:'Tecnica', fisico:'Fisico', tattica:'Tattica', mentale:'Mentale', velocita:'Velocità' };
 const PERF_PARAMS = PERF_PARAMS_DEFAULT;
 const PERF_LABELS = PERF_LABELS_DEFAULT;
 
@@ -3997,10 +3997,20 @@ function openCategoryModal(id) {
     return u.societyId === refSocId;
   });
 
-  const multiSel = (elemId, users, selectedIds) =>
-    `<select id="${elemId}" multiple style="height:90px;background:#F8FAFC;font-size:.85rem">
-      ${users.map(u=>`<option value="${u.id}" ${(selectedIds||[]).includes(u.id)?'selected':''}>${esc(u.name)} (${esc(u.username)})</option>`).join('')}
-    </select><span class="text-muted text-sm">Ctrl/Cmd per multipli</span>`;
+  const multiSel = (elemId, users, selectedIds) => {
+    const sel = selectedIds || [];
+    if (!users.length) return '<div style="font-size:.8rem;color:#64748B;padding:4px 0">Nessun utente disponibile per questo ruolo</div>';
+    return '<div id="'+elemId+'-wrap" style="display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;padding:4px 2px">'
+      + users.map(u => {
+          const checked = sel.includes(u.id);
+          return '<label style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:7px;cursor:pointer;border:1.5px solid '+(checked?'var(--accent)':'#E2E8F0')+';background:'+(checked?'var(--accent-l)':'var(--white)')+'" id="'+elemId+'-opt-'+u.id+'">'
+            + '<input type="checkbox" value="'+u.id+'" id="'+elemId+'-cb-'+u.id+'" '+(checked?'checked':'')+' onchange="toggleStaffCB(this,&quot;'+elemId+'&quot;)">'
+            + '<span style="font-size:.85rem;'+(checked?'color:var(--accent);font-weight:600':'')+'">' + esc(u.name)
+            + ' <span style="color:#94A3B8;font-size:.78rem">('+esc(u.username)+')</span></span>'
+            + '</label>';
+        }).join('')
+      + '</div>';
+  };
 
   // Filtra società visibili
   const visibleSocs = currentUser?.role === 'admin' && !currentUser?.societyId
@@ -4049,6 +4059,22 @@ function openCategoryModal(id) {
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`, 'modal-lg');
 }
+function toggleStaffCB(cb, elemId) {
+  const label = document.getElementById(elemId+'-opt-'+cb.value);
+  if (!label) return;
+  if (cb.checked) {
+    label.style.borderColor = 'var(--accent)';
+    label.style.background = 'var(--accent-l)';
+    const sp = label.querySelector('span');
+    if (sp) { sp.style.color='var(--accent)'; sp.style.fontWeight='600'; }
+  } else {
+    label.style.borderColor = '#E2E8F0';
+    label.style.background = 'var(--white)';
+    const sp = label.querySelector('span');
+    if (sp) { sp.style.color=''; sp.style.fontWeight=''; }
+  }
+}
+
 function saveCategory(id) {
   const name     = document.getElementById('cat-name').value.trim();
   const sportId  = document.getElementById('cat-sport').value;
@@ -4056,7 +4082,12 @@ function saveCategory(id) {
   const teamMultiEl = document.getElementById('cat-team-multi');
   const teamIds  = teamMultiEl ? Array.from(teamMultiEl.selectedOptions).map(o=>o.value) : [];
   const teamId   = teamIds[0] || '';
-  const pick = elId => Array.from(document.getElementById(elId)?.selectedOptions||[]).map(o=>o.value);
+  const pick = elId => {
+    const wrap = document.getElementById(elId+'-wrap');
+    if (wrap) return Array.from(wrap.querySelectorAll('input[type=checkbox]:checked')).map(cb=>cb.value);
+    const el = document.getElementById(elId);
+    return el ? Array.from(el.selectedOptions||[]).map(o=>o.value) : [];
+  };
   const directorIds     = pick('cat-dirs');
   const managerIds      = pick('cat-managers');
   const coachIds        = pick('cat-coaches');
@@ -5122,7 +5153,7 @@ function buildSettingsConfig() {
   return `
     <div class="card">
       <div class="card-title"><div class="icon" style="background:var(--mist-2)">⚙️</div>Impostazioni Generali</div>
-      <div class="highlight-box"><b>ℹ️ Parametri di Performance:</b> I parametri tecnica, fisico, tattica, mentale e comunicazione sono registrati per ogni atleta in ogni sessione. Vengono visualizzati nei profili atleta e nelle dashboard.</div>
+      <div class="highlight-box"><b>ℹ️ Parametri di Performance:</b> I parametri tecnica, fisico, tattica, mentale e velocità sono registrati per ogni atleta in ogni sessione. Vengono visualizzati nei profili atleta e nelle dashboard.</div>
       <div class="grid-2">
         <div>
           <div class="fw-700 mb-16">Tipi di Attività Disponibili</div>
@@ -5413,7 +5444,7 @@ function renderAthleteTable(athletes) {
       <td>${pBadge(perf.fisico)}</td>
       <td>${pBadge(perf.tattica)}</td>
       <td>${pBadge(perf.mentale)}</td>
-      <td>${pBadge(perf.comunicazione)}</td>
+      <td>${pBadge(perf.velocita)}</td>
       <td style="max-width:120px" class="text-sm text-muted truncate">${esc(ath.notes||'—')}</td>
       <td style="display:flex;gap:4px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="openAthleteProfile('${ath.id}')">👤</button>
@@ -5441,14 +5472,59 @@ function filterAthletes() {
 
 function buildParentSelector(athleteId, selectedIds) {
   const parents = S.users.filter(u => u.role === 'genitore');
-  if (!parents.length) {
-    return '<div style="font-size:.82rem;color:#64748B">Nessun genitore registrato. Aggiungi prima un utente con ruolo Genitore.</div>';
-  }
   const sel = selectedIds || [];
-  return `<select id="ath-parents" multiple style="min-height:80px;padding:6px;border:1.5px solid var(--mist-3);border-radius:var(--radius);width:100%;font-size:.88rem">
-    ${parents.map(p => `<option value="${p.id}" ${sel.includes(p.id)?'selected':''}>${esc(p.name)} (${esc(p.username)})</option>`).join('')}
-  </select>
-  <div style="font-size:.72rem;color:#64748B;margin-top:3px">Ctrl/Cmd per selezionare più genitori</div>`;
+  // ND = nessun genitore collegato
+  const isND = !sel.length || sel[0] === '_ND';
+
+  let html = '<div id="parent-checkboxes" style="display:flex;flex-direction:column;gap:6px">';
+  // Voce ND
+  html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;cursor:pointer;border:1.5px solid '+(isND?'var(--accent)':'var(--mist-3)')+';background:'+(isND?'var(--accent-l)':'var(--white)')+'" id="parent-opt-ND">'
+    + '<input type="checkbox" value="_ND" id="parent-cb-ND" '+(isND?'checked':'')+' onchange="handleParentCB(this)">'
+    + '<span style="font-size:.88rem;font-weight:600;color:'+(isND?'var(--accent)':'var(--ink)')+'">ND — Nessun genitore collegato</span>'
+    + '</label>';
+  if (!parents.length) {
+    html += '<div style="font-size:.78rem;color:#64748B;padding:4px 6px">Nessun utente con ruolo Genitore registrato.</div>';
+  } else {
+    parents.forEach(p => {
+      const checked = !isND && sel.includes(p.id);
+      html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;cursor:pointer;border:1.5px solid '+(checked?'var(--accent)':'var(--mist-3)')+';background:'+(checked?'var(--accent-l)':'var(--white)')+'" id="parent-opt-'+p.id+'">'
+        + '<input type="checkbox" value="'+p.id+'" id="parent-cb-'+p.id+'" '+(checked?'checked':'')+' onchange="handleParentCB(this)">'
+        + '<span style="font-size:.88rem">' + esc(p.name) + ' <span style="color:#64748B;font-size:.8rem">(' + esc(p.username) + ')</span></span>'
+        + '</label>';
+    });
+  }
+  html += '</div>';
+  return html;
+}
+
+function handleParentCB(cb) {
+  const isND = cb.value === '_ND';
+  // Se si seleziona ND, deseleziona tutti gli altri
+  if (isND && cb.checked) {
+    document.querySelectorAll('#parent-checkboxes input[type=checkbox]').forEach(el => {
+      if (el.value !== '_ND') { el.checked = false; _updateParentOptStyle(el); }
+    });
+  }
+  // Se si seleziona un genitore, deseleziona ND
+  if (!isND && cb.checked) {
+    const ndCb = document.getElementById('parent-cb-ND');
+    if (ndCb) { ndCb.checked = false; _updateParentOptStyle(ndCb); }
+  }
+  _updateParentOptStyle(cb);
+}
+
+function _updateParentOptStyle(cb) {
+  const label = document.getElementById('parent-opt-' + cb.value);
+  if (!label) return;
+  if (cb.checked) {
+    label.style.borderColor = 'var(--accent)';
+    label.style.background = 'var(--accent-l)';
+    label.querySelector('span').style.color = 'var(--accent)';
+  } else {
+    label.style.borderColor = 'var(--mist-3)';
+    label.style.background = 'var(--white)';
+    label.querySelector('span').style.color = 'var(--ink)';
+  }
 }
 
 function openAthleteModal(id) {
@@ -5572,8 +5648,8 @@ function saveAthlete(id) {
     toast('Non hai i permessi per questa categoria','error'); return;
   }
 
-  const parentSelect = document.getElementById('ath-parents');
-  const parentIds = parentSelect ? Array.from(parentSelect.selectedOptions).map(o => o.value) : [];
+  const parentCBs = document.querySelectorAll('#parent-checkboxes input[type=checkbox]:checked');
+  const parentIds = Array.from(parentCBs).map(cb=>cb.value).filter(v=>v!=='_ND');
 
   const data = {
     firstName, lastName, categoryId, teamId,
@@ -5731,6 +5807,11 @@ viewBuilders['sessions'] = (el) => {
       <div style="display:flex;gap:6px;align-items:flex-end;flex-shrink:0">
         ${canS ? `<button class="btn btn-accent" onclick="openNewSessionModal()">+ Nuova Sessione</button>` : ''}
       </div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:64px;background:var(--accent-l);border-radius:var(--radius);padding:6px 12px;flex-shrink:0;align-self:center">
+        <div style="font-size:1.4rem;font-weight:800;color:var(--accent);line-height:1">${sessions.length}</div>
+        <div style="font-size:.65rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em">sessioni</div>
+      </div>
     </div>
 
     <!-- Header info -->
@@ -5738,7 +5819,6 @@ viewBuilders['sessions'] = (el) => {
       <h2 style="font-size:1.2rem;font-weight:800;margin:0">${esc(curCat?.name||'—')}</h2>
       <span class="season-badge">⚽ ${esc(curSeas?.name||'')}</span>
       ${ss.type ? `<span class="badge badge-blue">${getActivityTypesMap()[ss.type]?.emoji||''} ${esc(getActivityTypesMap()[ss.type]?.label||ss.type)}</span>` : ''}
-      <span class="text-muted text-sm" style="margin-left:auto">${sessions.length} sessioni</span>
     </div>
 
     <div id="sessions-list"></div>
@@ -5991,7 +6071,7 @@ function attClick(btn) {
 function setAttStatus(sessId, athleteId, status) {
   let att = S.attendances.find(a => a.sessionId===sessId && a.athleteId===athleteId);
   if (!att) {
-    att = { id: uid(), sessionId: sessId, athleteId, status, perf: { tecnica:0, fisico:0, tattica:0, mentale:0, comunicazione:0 }, notes: '' };
+    att = { id: uid(), sessionId: sessId, athleteId, status, perf: { tecnica:0, fisico:0, tattica:0, mentale:0, velocita:0 }, notes: '' };
     S.attendances.push(att);
   } else {
     att.status = status;
