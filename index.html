@@ -2808,7 +2808,7 @@ function _afterLogin() {
       buildSidebarNav();       // navbar con dati freschi
       rebuildSeasonSelector(); // stagioni aggiornate
       if (currentUser.role === 'admin') {
-        showView('admin-overview');
+        showView('admin-stats-detail');
       } else if (currentUser.role === 'genitore') {
         showView('parent-view');
       } else if (currentUser.role === 'presidente') {
@@ -2822,7 +2822,7 @@ function _afterLogin() {
   } else {
     buildSidebarNav();
     if (currentUser.role === 'admin') {
-      showView('admin-overview');
+      showView('admin-stats-detail');
     } else if (currentUser.role === 'genitore') {
       showView('parent-view');
     } else if (currentUser.role === 'presidente') {
@@ -3607,6 +3607,106 @@ function athleteAvatar(athlete, size=36) {
 // ══════════════════════════════════════════════════════════════════
 const viewBuilders = {};
 
+// ── [0] ADMIN STATS DETAIL ────────────────────────────────────
+viewBuilders['admin-stats-detail'] = (el) => {
+  if (currentUser.role !== 'admin') {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Accesso non autorizzato</h3></div>';
+    return;
+  }
+  setTopbar('Statistiche Sito', '');
+  const activeSeas = getActiveSeason();
+  // Filtra sessioni per stagione attiva
+  const { start: seasStart, end: seasEnd } = activeSeas ? getSeasonDates(activeSeas) : { start: null, end: null };
+  const allSess = seasStart
+    ? S.sessions.filter(s => s.date >= seasStart && s.date <= seasEnd)
+    : S.sessions;
+  // Filtra atleti per stagione (tramite athleteSeasons se disponibile)
+  const seasAthleteIds = activeSeas && (S.athleteSeasons||[]).length
+    ? new Set((S.athleteSeasons||[]).filter(as=>as.seasonId===activeSeas.id).map(as=>as.athleteId))
+    : null;
+  const filteredAthletes = seasAthleteIds ? S.athletes.filter(a=>seasAthleteIds.has(a.id)) : S.athletes;
+
+  const sessP  = allSess.filter(s=>s.type==='P').length;
+  const sessA  = allSess.filter(s=>s.type==='A').length;
+  const sessI  = allSess.filter(s=>s.type==='I').length;
+  const sessPS = allSess.filter(s=>s.type==='PS').length;
+  const sessAlt= allSess.filter(s=>!['P','A','AM','I','PS'].includes(s.type)).length;
+
+  const nResp = S.users.filter(u=>u.role==='responsabile').length;
+  const nDir  = S.users.filter(u=>u.role==='dirigente').length;
+  const nAll  = S.users.filter(u=>u.role==='allenatore').length;
+  const nProf = S.users.filter(u=>u.role==='professionista').length;
+  const nGen  = S.users.filter(u=>u.role==='genitore').length;
+  const nPres = S.users.filter(u=>u.role==='presidente').length;
+  const nSeg  = S.users.filter(u=>u.role==='segretario').length;
+  const nTot  = S.users.length;
+
+  el.innerHTML = `
+    <div class="page-header">
+      <div class="header-row">
+        <div>
+          <h2>Benvenuto, ${esc(currentUser.name)} 👋</h2>
+          <p>${new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1.5px solid #CBD5E0;border-radius:10px;padding:6px 14px">
+            <span style="font-size:.82rem;font-weight:700;color:#64748B">⚽ Stagione</span>
+            <select id="admin-season-select" style="border:none;background:transparent;font-size:.9rem;font-weight:700;color:var(--accent);cursor:pointer;outline:none;padding:0 4px"
+              onchange="setActiveSeason(this.value)">
+              ${S.seasons.slice().sort((a,b)=>b.startYear-a.startYear).map(s=>`<option value="${s.id}" ${s.id===activeSeas?.id?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Struttura Globale — ${activeSeas ? esc(activeSeas.name) : 'Tutte le stagioni'}</div>
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Atleti Totali</div><div class="value">${filteredAthletes.length}</div></div>
+      <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Società</div><div class="value">${S.societies.length}</div><div class="sub">${S.teams.length} squadre</div></div>
+      <div class="stat-card purple"><div class="accent-bar"></div><div class="label">Categorie</div><div class="value">${S.categories.length}</div></div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Sessioni Globali — ${activeSeas ? esc(activeSeas.name) : 'Tutte le stagioni'}</div>
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Totale Sessioni</div><div class="value">${allSess.length}</div></div>
+      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${sessP}</div><div class="sub">tipo P</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Allenamenti</div><div class="value">${sessA}</div><div class="sub">tipo A</div></div>
+      ${(()=>{
+        const sc=(cls,lbl,val,sub)=>'<div class="stat-card '+cls+'"><div class="accent-bar"></div><div class="label">'+lbl+'</div><div class="value">'+val+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div>';
+        let x='';
+        if(sessI>0) x+=sc('teal','Individual',sessI,'tipo I');
+        if(sessPS>0) x+=sc('purple','Psicomotricità',sessPS,'tipo PS');
+        if(sessAlt>0) x+=sc('gold','Altro',sessAlt,'');
+        return x;})()}
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Utenti Registrati</div>
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Utenti Totali</div><div class="value">${nTot}</div><div class="sub">tutti i ruoli</div></div>
+      <div class="stat-card purple"><div class="accent-bar"></div><div class="label">Responsabili</div><div class="value">${nResp}</div></div>
+      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Dirigenti</div><div class="value">${nDir}</div></div>
+      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Allenatori</div><div class="value">${nAll}</div></div>
+      <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Professionisti</div><div class="value">${nProf}</div></div>
+      <div class="stat-card pink"><div class="accent-bar"></div><div class="label">Genitori</div><div class="value">${nGen}</div></div>
+      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Presidenti</div><div class="value">${nPres}</div></div>
+      <div class="stat-card gray"><div class="accent-bar"></div><div class="label">Segretari</div><div class="value">${nSeg}</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">⚙️</div>Accesso Rapido</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+        <button class="btn btn-ghost" onclick="showView('admin-overview')" style="text-align:left;justify-content:flex-start">📊 Dashboard Categorie</button>
+        <button class="btn btn-ghost" onclick="showView('admin-athletes')" style="text-align:left;justify-content:flex-start">👥 Atleti</button>
+        <button class="btn btn-ghost" onclick="showAdminConfig('society')" style="text-align:left;justify-content:flex-start">🏢 Società</button>
+        <button class="btn btn-ghost" onclick="showAdminConfig('users')" style="text-align:left;justify-content:flex-start">👤 Utenti</button>
+        <button class="btn btn-ghost" onclick="showView('sessions')" style="text-align:left;justify-content:flex-start">📅 Sessioni</button>
+        <button class="btn btn-ghost" onclick="showView('admin-reports')" style="text-align:left;justify-content:flex-start">📈 Report</button>
+      </div>
+    </div>
+  `;
+};
+
 // ── [1] ADMIN OVERVIEW ────────────────────────────────────────
 viewBuilders['admin-overview'] = (el) => {
   if (currentUser.role !== 'admin') {
@@ -4132,7 +4232,7 @@ function goHome() {
   const ta = document.getElementById('topbar-actions');
   if (ta) ta.innerHTML = '';
   const role = currentUser.role;
-  if (role === 'admin') showView('admin-overview');
+  if (role === 'admin') showView('admin-stats-detail');
   else if (role === 'presidente') showView('president-view');
   else if (role === 'genitore') showView('parent-view');
   else if (role === 'responsabile') showView('responsabile-overview');
