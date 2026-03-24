@@ -2,6 +2,29 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
+<!-- ══ Content Security Policy ══════════════════════════════════
+     'unsafe-inline' è necessario perché l'app usa estensivamente
+     handler inline (onclick=…) sia nel markup statico sia in HTML
+     generato dinamicamente via innerHTML.
+     I CDN esplicitati sono gli unici script esterni ammessi.
+     ════════════════════════════════════════════════════════════ -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src  'self' 'unsafe-inline'
+                            https://cdn.jsdelivr.net
+                            https://fonts.googleapis.com;
+               style-src   'self' 'unsafe-inline'
+                            https://fonts.googleapis.com
+                            https://fonts.gstatic.com;
+               font-src    'self'
+                            https://fonts.gstatic.com
+                            data:;
+               img-src     'self' data: blob:;
+               connect-src 'self'
+                            https://*.supabase.co
+                            wss://*.supabase.co;
+               object-src  'none';
+               base-uri    'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0D1117">
 
@@ -1651,12 +1674,13 @@ async function saveStateDB() {
 // (le funzioni specifiche chiamano sbSync direttamente)
 
 // ── PATCH: loadState usa Supabase ────────────────────────────────
+// Guard: evita chiamate parallele multiple (bug che causava 3x log consecutivi)
+let _loadStateInProgress = false;
 async function loadStateFromDB() {
+  if (_loadStateInProgress) return;
+  _loadStateInProgress = true;
   try {
     const data = await DB.loadAll();
-    console.log('[loadStateFromDB] societies:', data.societies?.length, data.societies?.map(s=>s.name));
-    console.log('[loadStateFromDB] sports:', data.sports?.length);
-    console.log('[loadStateFromDB] seasons:', data.seasons?.length);
     // Pulisci localStorage e sovrascrivi S completamente con dati freschi dal DB
     localStorage.removeItem(STORE_KEY);
     const activeSeason = (data.seasons||[]).find(s=>s.active);
@@ -1691,10 +1715,12 @@ async function loadStateFromDB() {
     await loadConfigFromDB();
     // Snapshot per il dirty-tracking
     _prevState = JSON.parse(JSON.stringify(S));
-    console.log('[loadStateFromDB] OK — societies:', S.societies.map(s=>s.name));
+
   } catch(e) {
     console.error('Errore caricamento DB:', e);
     toast('Errore caricamento dati: ' + e.message, 'error');
+  } finally {
+    _loadStateInProgress = false;
   }
 }
 </script>
