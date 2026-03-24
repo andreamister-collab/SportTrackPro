@@ -1250,7 +1250,10 @@ const DB = {
     return {
       sports:         (sports.data||[]).map(r => ({ id:r.id, name:r.name, icon:r.icon||'⚽' })),
       societies:      (societies.data||[]).map(r => ({ id:r.id, name:r.name, sportId:r.sport_id, city:r.city||'', email:r.email||'', seasonId:r.season_id||'' })),
-      teams:          (teams.data||[]).map(r => ({ ...r, societyId: r.society_id, sportId: r.sport_id })),
+      teams:          (teams.data||[]).map(r => ({
+        id: r.id, name: r.name, sportId: r.sport_id,
+        societyId: r.society_id || null, // mantenuto per retrocompatibilità
+      })),
       categories:     (categories.data||[]).map(r => ({
         ...r, societyId: r.society_id, sportId: r.sport_id,
         teamId: r.team_id, teamIds: r.team_ids||[r.team_id].filter(Boolean),
@@ -1259,12 +1262,24 @@ const DB = {
         seasonId: r.season_id||''
       })),
       users:          (users.data||[]).map(r => ({
-        ...r, societyId: r.society_id
+        id: r.id, name: r.name, username: r.username,
+        email: r.email, profession: r.profession || '',
+        phone: r.phone || '',
+        // role e societyId: mantenuti per compatibilità, ma la fonte di verità è UCS
+        role: r.role || 'allenatore',
+        societyId: r.society_id || null,
       })),
       athletes:       (athletes.data||[]).map(r => ({
-        ...r, firstName: r.first_name, lastName: r.last_name,
-        categoryId: r.category_id, teamId: r.team_id, societyId: r.society_id,
-        parentIds: r.parent_ids || []
+        id: r.id,
+        firstName: r.first_name, lastName: r.last_name,
+        dob: r.dob, nickname: r.nickname || '',
+        notes: r.notes || '',
+        parentIds: r.parent_ids || [],
+        // Campi legacy — derivabili da athlete_seasons per la stagione attiva
+        categoryId: r.category_id || null,
+        teamId: r.team_id || null,
+        number: r.number || null,
+        role: r.role || '',
       })),
       athleteSeasons: (athleteSeasons.data||[]).map(r => ({
         ...r, athleteId: r.athlete_id, categoryId: r.category_id,
@@ -2215,6 +2230,21 @@ function getSessionAttendances(sessionId) {
 }
 // Returns athletes in a category, with optional teamId filter
 function getCategoryAthletes(catId, teamId) {
+  // Prima: cerca in athlete_seasons per stagione attiva
+  const seasId = S.activeSeason;
+  if (seasId) {
+    const enrolled = (S.athleteSeasons||[]).filter(as => as.categoryId===catId && as.seasonId===seasId);
+    if (enrolled.length > 0) {
+      let list = enrolled.map(as => {
+        const ath = S.athletes.find(a => a.id===as.athleteId);
+        if (!ath) return null;
+        return enrichAthleteForSeason(ath, seasId);
+      }).filter(Boolean);
+      if (teamId) list = list.filter(a => (a.teamId||'') === teamId);
+      return list;
+    }
+  }
+  // Fallback: legge categoryId dal campo legacy
   let list = S.athletes.filter(a => a.categoryId === catId);
   if (teamId) list = list.filter(a => a.teamId === teamId);
   return list;
@@ -2281,6 +2311,167 @@ function filterMatchesBySeason(matches, seasonId) {
   if (!seas) return matches;
   const { start, end } = getSeasonDates(seas);
   return matches.filter(m => m.date >= start && m.date <= end);
+}
+
+
+// ════════════════════════════════════════════════════════════════
+//  HELPER ASSOCIAZIONI STAGIONALI
+//  Derivano categoria/squadra/ruolo dall'athlete_seasons o UCS
+//  invece di leggere i campi diretti sull'entità
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Ritorna i dati stagionali di un atleta per la stagione indicata.
+ * Fallback ai campi legacy se non ci sono athlete_seasons.
+ */
+function getAthleteSeasonData(athleteId, seasonId) {
+  const sid = seasonId || S.activeSeason;
+  const as  = (S.athleteSeasons||[]).find(x => x.athleteId===athleteId && (!sid || x.seasonId===sid));
+  const ath = S.athletes.find(a => a.id===athleteId);
+  if (!as) {
+    // Fallback ai campi diretti sull'atleta (dati pre-migrazione)
+    return {
+      categoryId:  ath?.categoryId  || null,
+      teamId:      ath?.teamId      || null,
+      role:        ath?.role        || '',
+      shirtNumber: ath?.number      || null,
+      seasonId:    sid,
+    };
+  }
+  return {
+    categoryId:  as.categoryId,
+    teamId:      as.teamId,
+    role:        as.role || ath?.role || '',
+    shirtNumber: as.shirtNumber || ath?.number || null,
+    seasonId:    as.seasonId,
+  };
+}
+
+/**
+ * Ritorna la categoria di un atleta per la stagione attiva.
+ */
+function getAthleteCategoryId(athleteId, seasonId) {
+  return getAthleteSeasonData(athleteId, seasonId).categoryId;
+}
+
+/**
+ * Ritorna la squadra di un atleta per la stagione attiva.
+ */
+function getAthleteTeamId(athleteId, seasonId) {
+  return getAthleteSeasonData(athleteId, seasonId).teamId;
+}
+
+/**
+ * Ritorna il ruolo di un atleta per la stagione attiva.
+ */
+function getAthleteRole(athleteId, seasonId) {
+  return getAthleteSeasonData(athleteId, seasonId).role;
+}
+
+/**
+ * Ritorna il numero di maglia di un atleta per la stagione attiva.
+ */
+function getAthleteShirtNumber(athleteId, seasonId) {
+  return getAthleteSeasonData(athleteId, seasonId).shirtNumber;
+}
+
+/**
+ * Ritorna il ruolo principale di un utente nella stagione indicata.
+ * Usa UCS come fonte primaria, fallback al campo legacy users.role.
+ */
+function getUserRole(userId, seasonId) {
+  const sid = seasonId || S.activeSeason;
+  const ucs = (S.userCategorySeasons||[]).find(u => u.userId===userId && (!sid || u.seasonId===sid));
+  if (ucs) return ucs.role;
+  // Fallback al campo legacy
+  return S.users.find(u => u.id===userId)?.role || 'allenatore';
+}
+
+/**
+ * Ritorna la società di un utente nella stagione indicata.
+ * Usa UCS come fonte primaria, fallback a users.societyId.
+ */
+function getUserSocietyId(userId, seasonId) {
+  const sid = seasonId || S.activeSeason;
+  const ucs = (S.userCategorySeasons||[]).find(u => u.userId===userId && (!sid || u.seasonId===sid));
+  if (ucs?.societyId) return ucs.societyId;
+  return S.users.find(u => u.id===userId)?.societyId || null;
+}
+
+/**
+ * Ritorna la società di una categoria nella stagione indicata.
+ * Usa UCS (unico legame stagionale cat↔soc), fallback a categories.societyId.
+ */
+function getCategorySocietyId(catId, seasonId) {
+  const sid = seasonId || S.activeSeason;
+  // La società della categoria si ricava dagli UCS della stagione
+  const ucs = (S.userCategorySeasons||[]).find(u => u.categoryId===catId && (!sid || u.seasonId===sid));
+  if (ucs?.societyId) return ucs.societyId;
+  // Fallback legacy
+  return S.categories.find(c => c.id===catId)?.societyId || null;
+}
+
+/**
+ * Ritorna la società di una squadra nella stagione indicata.
+ * Usa athlete_seasons o UCS, fallback a teams.societyId.
+ */
+function getTeamSocietyId(teamId, seasonId) {
+  const sid = seasonId || S.activeSeason;
+  const as = (S.athleteSeasons||[]).find(x => x.teamId===teamId && (!sid || x.seasonId===sid));
+  if (as) return getCategorySocietyId(as.categoryId, sid);
+  return S.teams.find(t => t.id===teamId)?.societyId || null;
+}
+
+/**
+ * Ritorna le categorie di una società nella stagione indicata.
+ */
+function getSocietyCategoryIds(societyId, seasonId) {
+  const sid = seasonId || S.activeSeason;
+  // Fonte: UCS (associazioni stagionali utente-categoria)
+  const fromUCS = [...new Set(
+    (S.userCategorySeasons||[])
+      .filter(u => u.societyId===societyId && (!sid || u.seasonId===sid))
+      .map(u => u.categoryId)
+  )];
+  // Fonte: athlete_seasons (associazioni stagionali atleta-categoria)
+  const fromAS = [...new Set(
+    (S.athleteSeasons||[])
+      .filter(as => (!sid || as.seasonId===sid))
+      .map(as => as.categoryId)
+      .filter(catId => {
+        const cat = S.categories.find(c=>c.id===catId);
+        return cat?.societyId === societyId;
+      })
+  )];
+  // Fonte: legacy categories.societyId
+  const fromLegacy = S.categories.filter(c=>c.societyId===societyId).map(c=>c.id);
+  return [...new Set([...fromUCS, ...fromAS, ...fromLegacy])];
+}
+
+/**
+ * Arricchisce un atleta con i dati stagionali per la stagione indicata.
+ * Ritorna l'atleta con categoryId, teamId, role, number aggiornati.
+ */
+function enrichAthleteForSeason(ath, seasonId) {
+  const sd = getAthleteSeasonData(ath.id, seasonId);
+  return {
+    ...ath,
+    categoryId:  sd.categoryId  || ath.categoryId,
+    teamId:      sd.teamId      || ath.teamId,
+    role:        sd.role        || ath.role,
+    number:      sd.shirtNumber || ath.number,
+  };
+}
+
+/**
+ * Arricchisce un utente con i dati stagionali (ruolo, società) per la stagione.
+ */
+function enrichUserForSeason(u, seasonId) {
+  return {
+    ...u,
+    role:      getUserRole(u.id, seasonId),
+    societyId: getUserSocietyId(u.id, seasonId),
+  };
 }
 
 function getCategoryStats(catId, seasonId) {
@@ -2406,17 +2597,15 @@ async function deleteUCS(id) {
 
 function getAccessibleCategoryIds() {
   if (!currentUser) return [];
-  const r = currentUser.role;
   const uid = currentUser.id;
+  const r   = getUserRole(uid) || currentUser.role;
 
   if (r === 'admin') return S.categories.map(c => c.id);
 
-  // Segretario: accesso completo alla sua società (o tutte se non ha società)
   if (r === 'segretario' || r === 'presidente') {
-    const socId = currentUser.societyId;
-    return socId
-      ? S.categories.filter(c => c.societyId === socId).map(c => c.id)
-      : S.categories.map(c => c.id);
+    const mySocId = getUserSocietyId(uid);
+    if (!mySocId) return S.categories.map(c => c.id);
+    return getSocietyCategoryIds(mySocId);
   }
 
   if (r === 'genitore') {
@@ -2446,14 +2635,17 @@ function getAccessibleCategoryIds() {
 function canAccessCategory(catId) {
   if (!currentUser) return false;
   if (currentUser.role === 'admin') return true;
-  if (currentUser.role === 'segretario' || currentUser.role === 'presidente') {
-    const cat = S.categories.find(c=>c.id===catId);
-    return !currentUser.societyId || cat?.societyId === currentUser.societyId;
+  const r = getUserRole(currentUser.id) || currentUser.role;
+  if (r === 'segretario' || r === 'presidente') {
+    const mySocId = getUserSocietyId(currentUser.id);
+    if (!mySocId) return true; // nessuna società → vede tutto
+    return getCategorySocietyId(catId) === mySocId;
   }
-  // Controlla UCS (multi-stagione) + fallback legacy
+  // Staff: controlla UCS per qualsiasi stagione
   const uid = currentUser.id;
   const ucsMatch = (S.userCategorySeasons||[]).some(u => u.userId===uid && u.categoryId===catId);
   if (ucsMatch) return true;
+  // Fallback legacy
   const cat = S.categories.find(c=>c.id===catId);
   if (!cat) return false;
   return (cat.managerIds||[]).includes(uid) ||
@@ -3153,23 +3345,36 @@ const TABLE_COLUMNS = {
 
 // Colonne reali per ogni tabella (da schema Supabase verificato)
 const TABLE_REAL_COLUMNS = {
-  // Schema verificato sul DB reale — tutti gli ID sono text tranne users.id (uuid)
-  sports:          ['id','name','icon'],
-  societies:       ['id','name','sport_id','city','email','season_id'],
-  teams:           ['id','name','society_id','sport_id'],
-  seasons:         ['id','name','start_year','end_year','active','society_id'],
-  users:           ['id','name','username','email','role','profession','phone','society_id'],
-  categories:      ['id','name','sport_id','society_id','team_id','team_ids','director_ids','manager_ids','coach_ids','prof_ids','season_id'],
-  athletes:        ['id','first_name','last_name','dob','nickname','category_id','team_id','number','role','notes','parent_ids'],
-  athlete_seasons: ['id','athlete_id','category_id','season_id','team_id','role','shirt_number','join_date','notes'],
-  sessions:        ['id','category_id','date','type','notes','match_id','created_by'],
-  attendances:     ['id','session_id','athlete_id','status'],
-  performances:    ['id','session_id','athlete_id','params','notes'],
-  matches:         ['id','category_id','date','time','meet_time','meet_place','opponent','home_away','result','scored','conceded','notes','bg_color','created_by','team_id'],
-  convocati:       ['id','match_id','athlete_id','status','notes'],
-  scorers:         ['id','match_id','athlete_id','goals','notes'],
-  config:          ['key','value'],
+  // ══════════════════════════════════════════════════════════
+  // MODELLO SEPARATO: anagrafica permanente vs associazioni stagionali
+  // Le entità contengono solo dati anagrafici stabili.
+  // Tutte le associazioni (categoria, squadra, ruolo, società)
+  // sono gestite per stagione in athlete_seasons e user_category_seasons.
+  // ══════════════════════════════════════════════════════════
+
+  // ANAGRAFICHE (dati permanenti, indipendenti dalla stagione)
+  sports:     ['id','name','icon'],
+  societies:  ['id','name','sport_id','city','email'],
+  teams:      ['id','name','sport_id'],
+  seasons:    ['id','name','start_year','end_year','active'],
+  users:      ['id','name','username','email','profession','phone'],
+  categories: ['id','name','sport_id'],
+  athletes:   ['id','first_name','last_name','dob','nickname','notes','parent_ids'],
+
+  // ASSOCIAZIONI STAGIONALI (chi fa cosa, in quale stagione e dove)
+  // athlete_seasons: collega atleta ↔ categoria ↔ squadra ↔ stagione
+  athlete_seasons:       ['id','athlete_id','category_id','season_id','team_id','role','shirt_number','join_date','notes'],
+  // user_category_seasons: collega utente ↔ categoria ↔ stagione ↔ ruolo ↔ società
   user_category_seasons: ['id','user_id','category_id','season_id','role','society_id'],
+
+  // ATTIVITÀ (sempre legate a categoria + data, quindi implicitamente alla stagione)
+  sessions:     ['id','category_id','date','type','notes','match_id','created_by'],
+  attendances:  ['id','session_id','athlete_id','status'],
+  performances: ['id','session_id','athlete_id','params','notes'],
+  matches:      ['id','category_id','team_id','date','time','meet_time','meet_place','opponent','home_away','result','scored','conceded','notes','bg_color','created_by'],
+  convocati:    ['id','match_id','athlete_id','status','notes'],
+  scorers:      ['id','match_id','athlete_id','goals','notes'],
+  config:       ['key','value'],
 };
 
 function toSnakeCase(table, obj) {
@@ -4329,11 +4534,27 @@ async function saveUserFromPage(id) {
   if (!id && pass !== pass2) { toast('Le password non coincidono','error'); return; }
 
   if (id) {
-    // Update esistente
+    // Aggiorna anagrafica (senza role/societyId — gestiti da UCS)
     const u = S.users.find(x=>x.id===id);
     if (!u) return;
-    Object.assign(u, { name, profession:prof, email, phone, role, societyId:socId||null });
+    Object.assign(u, { name, profession:prof, email, phone,
+      // Mantieni legacy per compatibilità
+      role, societyId:socId||null });
     saveState(); await sbSync('users', u);
+    // Aggiorna UCS della stagione attiva se c'è una categoria selezionata
+    const activeSeasId2 = S.activeSeason;
+    if (activeSeasId2 && role && !['admin','segretario','presidente','genitore'].includes(role)) {
+      // Crea/aggiorna UCS per stagione attiva con la società
+      const existUCS = (S.userCategorySeasons||[]).filter(
+        ue => ue.userId===id && ue.seasonId===activeSeasId2
+      );
+      existUCS.forEach(ue => {
+        if (socId && !ue.societyId) {
+          ue.societyId = socId;
+          sbSync('user_category_seasons', ue);
+        }
+      });
+    }
     if (pass) { try { await DB.adminSetPassword(id, pass); } catch(e) { toast('⚠️ Password non aggiornata','warning'); } }
     toast('Utente aggiornato ✅','success');
     showView('user-detail');
@@ -5014,7 +5235,9 @@ function buildUsersConfig() {
   if (!window._usrFilterQ)    window._usrFilterQ    = '';
   const ufRole = window._usrFilterRole;
   const ufQ    = window._usrFilterQ.toLowerCase();
-  let filteredUsers = nonAdmins.filter(u => {
+  // Arricchisce ogni utente con ruolo/società dalla stagione filtrata
+  const enrichedUsers = nonAdmins.map(u => enrichUserForSeason(u, seasId));
+  let filteredUsers = enrichedUsers.filter(u => {
     if (ufRole && u.role !== ufRole) return false;
     if (ufQ && !(u.name+' '+u.username+' '+(u.profession||'')).toLowerCase().includes(ufQ)) return false;
     // Filtro stagione: se seasId, mostra solo chi ha UCS per quella stagione o categorie legacy
@@ -6826,14 +7049,17 @@ async function saveAthlete(id) {
   const parentCBs = document.querySelectorAll('#parent-checkboxes input[type=checkbox]:checked');
   const parentIds = Array.from(parentCBs).map(cb=>cb.value).filter(v=>v!=='_ND');
 
+  // Dati anagrafici puri (indipendenti dalla stagione)
   const data = {
-    firstName, lastName, categoryId, teamId,
+    firstName, lastName,
     nickname:  document.getElementById('ath-nick')?.value.trim() || '',
     dob:       document.getElementById('ath-dob').value,
-    number:    parseInt(document.getElementById('ath-num').value)||null,
-    role:      document.getElementById('ath-role')?.value.trim() || '',
     notes:     document.getElementById('ath-notes')?.value.trim() || '',
     parentIds: parentIds,
+    // Campi legacy mantenuti per compatibilità (la fonte di verità è athlete_seasons)
+    categoryId, teamId,
+    number:    parseInt(document.getElementById('ath-num').value)||null,
+    role:      document.getElementById('ath-role')?.value.trim() || '',
   };
 
   if (id) {
@@ -6847,8 +7073,39 @@ async function saveAthlete(id) {
   }
   const savedAth = id ? S.athletes.find(x=>x.id===id) : S.athletes[S.athletes.length-1];
   saveState();
-  // Attendi che l'atleta sia salvato nel DB prima di procedere (FK constraint)
   await sbSync('athletes', savedAth);
+
+  // ── Crea automaticamente athlete_season per la stagione attiva ──
+  const activeSeasId = S.activeSeason;
+  if (activeSeasId && categoryId) {
+    const existingAS = (S.athleteSeasons||[]).find(
+      as => as.athleteId===savedAth.id && as.seasonId===activeSeasId && as.categoryId===categoryId
+    );
+    if (!existingAS) {
+      const asEntry = {
+        id: uid(),
+        athleteId:   savedAth.id,
+        seasonId:    activeSeasId,
+        categoryId:  categoryId,
+        teamId:      teamId || null,
+        role:        document.getElementById('ath-role')?.value.trim() || '',
+        shirtNumber: parseInt(document.getElementById('ath-num')?.value)||null,
+        joinDate:    new Date().toISOString().slice(0,10),
+        notes: ''
+      };
+      if (!S.athleteSeasons) S.athleteSeasons = [];
+      S.athleteSeasons.push(asEntry);
+      saveState();
+      await sbSync('athlete_seasons', asEntry);
+    } else {
+      // Aggiorna l'iscrizione stagionale esistente
+      existingAS.teamId      = teamId || existingAS.teamId;
+      existingAS.role        = document.getElementById('ath-role')?.value.trim() || existingAS.role;
+      existingAS.shirtNumber = parseInt(document.getElementById('ath-num')?.value)||existingAS.shirtNumber;
+      saveState();
+      await sbSync('athlete_seasons', existingAS);
+    }
+  }
   closeModal();
   // Refresh the right view depending on context
   if (currentView === 'admin-athletes') {
@@ -8050,17 +8307,23 @@ viewBuilders['admin-athletes'] = (el) => {
 
   const _accIds = getAccessibleCategoryIds();
   const isAdminUser = currentUser.role === 'admin';
-  // Filtra per stagione attiva usando athlete_seasons
   const _aaSeasId = S.activeSeason;
+  // Iscrizioni stagionali per la stagione attiva
   const _aaEnrolled = _aaSeasId
-    ? (S.athleteSeasons||[]).filter(as=>as.seasonId===_aaSeasId).map(as=>as.athleteId)
+    ? (S.athleteSeasons||[]).filter(as=>as.seasonId===_aaSeasId)
     : null;
+  const _aaEnrolledIds = _aaEnrolled ? _aaEnrolled.map(as=>as.athleteId) : null;
+  // Atleti base
   let athletes = S.athletes.filter(a => {
-    if (!isAdminUser && !_accIds.includes(a.categoryId)) return false;
-    // Se ci sono iscrizioni stagionali per questa stagione, filtra
-    if (_aaEnrolled && _aaEnrolled.length > 0) return _aaEnrolled.includes(a.id);
+    if (_aaEnrolledIds && _aaEnrolledIds.length > 0) {
+      if (!_aaEnrolledIds.includes(a.id)) return false;
+    }
     return true;
   });
+  // Arricchisce con dati stagionali (categoria, squadra, ruolo, maglia)
+  athletes = athletes.map(a => enrichAthleteForSeason(a, _aaSeasId));
+  // Filtra per categoria accessibile (dopo arricchimento)
+  if (!isAdminUser) athletes = athletes.filter(a => _accIds.includes(a.categoryId));
   if (filterCat)  athletes = athletes.filter(a => a.categoryId === filterCat);
   if (filterTeam) athletes = athletes.filter(a => (a.teamId||'') === filterTeam);
   if (filterSoc) {
