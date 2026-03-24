@@ -1677,8 +1677,7 @@ async function saveStateDB() {
 // Guard: evita chiamate parallele multiple (bug che causava 3x log consecutivi)
 let _loadStateInProgress = false;
 async function loadStateFromDB() {
-  if (_loadStateInProgress) return;
-  _loadStateInProgress = true;
+  if (_loadStateInProgress) return; // già in corso — esce senza fare nulla
   try {
     const data = await DB.loadAll();
     // Pulisci localStorage e sovrascrivi S completamente con dati freschi dal DB
@@ -2751,7 +2750,7 @@ async function doLogin() {
       if (localUser) {
         DB_MODE = 'local';
         currentUser = localUser;
-        _afterLogin();
+        _afterLogin(false); // locale: nessun DB, _afterLogin gestisce da sola
         toast('Connesso in modalità locale', 'warning');
         return;
       }
@@ -2798,7 +2797,7 @@ async function doLogin() {
       console.warn('[Login] DB load error (uso localStorage):', dbErr);
     }
 
-    _afterLogin();
+    _afterLogin(true); // DB già caricato con await sopra
 
   } catch(e) {
     console.error('[Login] Unexpected error:', e);
@@ -2808,16 +2807,9 @@ async function doLogin() {
   }
 }
 
-function _afterLogin() {
+function _afterLogin(dbAlreadyLoaded = false) {
   // Svuota localStorage e resetta S per forzare caricamento fresco da DB
   localStorage.removeItem(STORE_KEY);
-  S = {
-    users:[], sports:[], societies:[], teams:[], categories:[],
-    athletes:[], sessions:[], attendances:[], matches:[], convocati:[],
-    seasons:[], athleteSeasons:[], staffHistory:[], scorers:[], userCategorySeasons:[],
-    activityTypes:null, perfParams:null, sessionTypePerfParams:null,
-    activeSeason:null, athleteRoles:{}
-  };
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   updateSidebarUser();
@@ -2828,36 +2820,35 @@ function _afterLogin() {
     const dbEl = document.getElementById('db-status');
     if (dbEl) dbEl.style.display = 'flex';
   }
-  if (DB_MODE === 'supabase') {
-    // Carica DB prima di costruire navbar e mostrare view
-    loadStateFromDB().then(() => {
-      buildSidebarNav();       // navbar con dati freschi
-      rebuildSeasonSelector(); // stagioni aggiornate
-      if (currentUser.role === 'admin') {
-        showView('admin-overview');
-      } else if (currentUser.role === 'genitore') {
-        showView('parent-view');
-      } else if (currentUser.role === 'presidente') {
-        showView('president-view');
-      } else {
+
+  // Funzione che naviga alla home corretta in base al ruolo
+  function _goHome() {
+    buildSidebarNav();
+    rebuildSeasonSelector();
+    // Pulisce l'hash residuo dall'URL per evitare che il browser ripristini
+    // una vista sbagliata al prossimo reload (es. #category-home per un admin)
+    const homeView =
+      currentUser.role === 'admin'       ? 'admin-overview'      :
+      currentUser.role === 'genitore'    ? 'parent-view'         :
+      currentUser.role === 'presidente'  ? 'president-view'      :
+      currentUser.role === 'responsabile'? 'responsabile-overview':
+      (() => {
         const accIds = getAccessibleCategoryIds();
         if (accIds.length > 0) selectedCategoryId = accIds[0];
-        showView('category-home');
-      }
+        return 'category-home';
+      })();
+    showView(homeView);
+  }
+
+  if (DB_MODE === 'supabase' && !dbAlreadyLoaded) {
+    // Carica DB prima di costruire navbar e mostrare view
+    loadStateFromDB().then(_goHome).catch(err => {
+      console.warn('DB load failed in _afterLogin, using cache:', err);
+      _goHome();
     });
   } else {
-    buildSidebarNav();
-    if (currentUser.role === 'admin') {
-      showView('admin-overview');
-    } else if (currentUser.role === 'genitore') {
-      showView('parent-view');
-    } else if (currentUser.role === 'presidente') {
-      showView('president-view');
-    } else {
-      const accIds = getAccessibleCategoryIds();
-      if (accIds.length > 0) selectedCategoryId = accIds[0];
-      showView('category-home');
-    }
+    // DB già caricato (chiamato da doLogin o auto-restore) — vai direttamente
+    _goHome();
   }
 }
 document.addEventListener('keydown', e => {
@@ -11481,7 +11472,7 @@ restoreSidebarState();
       if (profile) {
         currentUser = { ...profile, societyId: profile.society_id };
         await loadStateFromDB();
-        _afterLogin();
+        _afterLogin(true); // DB già caricato con await sopra
         return;
       }
     }
