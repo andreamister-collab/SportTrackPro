@@ -3615,8 +3615,21 @@ viewBuilders['admin-overview'] = (el) => {
   }
   setTopbar('Dashboard Amministratore', '');
   const activeSeas = getActiveSeason();
+  // Filtra sessioni per stagione attiva
+  const { start: seasStart, end: seasEnd } = activeSeas ? getSeasonDates(activeSeas) : { start: null, end: null };
+  const allSess = seasStart
+    ? S.sessions.filter(s => s.date >= seasStart && s.date <= seasEnd)
+    : S.sessions;
+  // Filtra atleti per stagione (tramite athleteSeasons se disponibile)
+  const seasAthleteIds = activeSeas && (S.athleteSeasons||[]).length
+    ? new Set((S.athleteSeasons||[]).filter(as=>as.seasonId===activeSeas.id).map(as=>as.athleteId))
+    : null;
+  const filteredAthletes = seasAthleteIds ? S.athletes.filter(a=>seasAthleteIds.has(a.id)) : S.athletes;
+  // Filtra categorie per stagione
+  const filteredCats = activeSeas && S.categories.some(c=>c.seasonId)
+    ? S.categories.filter(c=>!c.seasonId || c.seasonId===activeSeas.id)
+    : S.categories;
 
-  const allSess = S.sessions;
   const sessP  = allSess.filter(s=>s.type==='P').length;
   const sessA  = allSess.filter(s=>s.type==='A').length;
   const sessI  = allSess.filter(s=>s.type==='I').length;
@@ -3632,7 +3645,7 @@ viewBuilders['admin-overview'] = (el) => {
   const nSeg  = S.users.filter(u=>u.role==='segretario').length;
   const nTot  = S.users.length;
 
-  const catRows = S.categories.map(cat => {
+  const catRows = filteredCats.map(cat => {
     const st = getCategoryStats(cat.id);
     const team = S.teams.find(t=>t.id===cat.teamId);
     const soc = S.societies.find(s=>s.id===cat.societyId);
@@ -3659,14 +3672,14 @@ viewBuilders['admin-overview'] = (el) => {
       </div>
     </div>
 
-    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Struttura</div>
+    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Struttura — ${activeSeas ? esc(activeSeas.name) : 'Tutte le stagioni'}</div>
     <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card blue" style="cursor:pointer" onclick="showView('admin-athletes')"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${S.athletes.length}</div><div class="sub">in ${S.categories.length} categorie</div></div>
+      <div class="stat-card blue" style="cursor:pointer" onclick="showView('admin-athletes')"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${filteredAthletes.length}</div><div class="sub">in ${filteredCats.length} categorie</div></div>
       <div class="stat-card teal" style="cursor:pointer" onclick="showAdminConfig('society')"><div class="accent-bar"></div><div class="label">Società</div><div class="value">${S.societies.length}</div><div class="sub">${S.teams.length} squadre</div></div>
-      <div class="stat-card purple" style="cursor:pointer" onclick="showAdminConfig('category')"><div class="accent-bar"></div><div class="label">Categorie</div><div class="value">${S.categories.length}</div><div class="sub">attive</div></div>
+      <div class="stat-card purple" style="cursor:pointer" onclick="showAdminConfig('category')"><div class="accent-bar"></div><div class="label">Categorie</div><div class="value">${filteredCats.length}</div><div class="sub">stagione</div></div>
     </div>
 
-    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Sessioni — tutte le stagioni</div>
+    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Sessioni — ${activeSeas ? esc(activeSeas.name) : 'Tutte le stagioni'}</div>
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card blue" style="cursor:pointer" onclick="showView('sessions')"><div class="accent-bar"></div><div class="label">Totale Sessioni</div><div class="value">${allSess.length}</div></div>
       <div class="stat-card gold" style="cursor:pointer" onclick="showView('sessions')"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${sessP}</div><div class="sub">tipo P</div></div>
@@ -11670,113 +11683,7 @@ function athleteExists(nome,cognome,dob){
 }
 
 
-function importAthletesExcel(){
 
-  const input = document.getElementById("excelFile");
-  if(!input){ alert("Input file non trovato"); return; }
-  input.click();
-
-  input.onchange = function(e){
-
-    const file = e.target.files[0];
-    if(!file) return;
-
-    const reader = new FileReader();
-
-    reader.onload = function(evt){
-
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data,{type:"array"});
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet);
-
-      let imported = 0;
-      let duplicates = 0;
-      let missingCategory = 0;
-
-      rows.forEach(r=>{
-
-        if(!r.Nome || !r.Cognome) return;
-
-        if(athleteExists(r.Nome,r.Cognome,r.Nascita)){
-          duplicates++;
-          return;
-        }
-
-        const cat = S.categories?.find(c=>c.id===r.Categoria);
-
-        if(!cat){
-          missingCategory++;
-          return;
-        }
-
-        const athleteId = 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-
-        S.athletes.push({
-          id: athleteId,
-          firstName: r.Nome,
-          lastName: r.Cognome,
-          dob: r.Nascita || "",
-          nickname: r.Nickname || "",
-          notes: ""
-        });
-
-        S.athleteSeasons.push({
-          id:'id_'+Math.random().toString(36).slice(2,9),
-          athleteId: athleteId,
-          categoryId: r.Categoria,
-          seasonId: S.activeSeason,
-          role: r.Ruolo || "",
-          shirtNumber: r.Numero || "",
-          joinDate: new Date().toISOString().slice(0,10),
-          notes:""
-        });
-
-        imported++;
-
-      });
-
-      localStorage.setItem("sporttrack_data", JSON.stringify(S));
-
-      alert(
-        "IMPORT COMPLETATO\n\n" +
-        "Atleti importati: "+imported+"\n"+
-        "Duplicati ignorati: "+duplicates+"\n"+
-        "Categoria non trovata: "+missingCategory
-      );
-
-      location.reload();
-
-    };
-
-    reader.readAsArrayBuffer(file);
-
-  };
-}
-
-
-// =========================
-// DASHBOARD
-// =========================
-function renderDashboard(){
-
-  const athletes = S.athletes?.length || 0;
-  const trainings = S.trainings?.length || 0;
-  const attendance = S.attendance?.length || 0;
-
-  const a=document.getElementById("dash-athletes");
-  const t=document.getElementById("dash-trainings");
-  const p=document.getElementById("dash-attendance");
-
-  if(a) a.innerText = athletes;
-  if(t) t.innerText = trainings;
-  if(p) p.innerText = attendance;
-
-}
-
-// =========================
-// ALLENAMENTI
-// =========================
 
 if(!S.trainings) S.trainings=[];
 if(!S.attendance) S.attendance=[];
