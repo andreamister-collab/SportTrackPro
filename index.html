@@ -22,7 +22,8 @@
                img-src     'self' data: blob:;
                connect-src 'self'
                             https://*.supabase.co
-                            wss://*.supabase.co;
+                            wss://*.supabase.co
+                            https://cdn.jsdelivr.net;
                object-src  'none';
                base-uri    'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
@@ -2771,7 +2772,18 @@ async function doLogin() {
     if (profileErr) {
       console.warn('[Login] Profile error:', profileErr.message);
     } else if (profileData) {
-      profile = profileData;
+      // Normalizza raw Supabase row (snake_case) con fallback robusti
+      profile = {
+        id:         profileData.id,
+        name:       profileData.name       || profileData.username || u,
+        username:   profileData.username   || u,
+        email:      profileData.email      || authData.user.email,
+        role:       profileData.role       || authData.user.user_metadata?.role || 'admin',
+        society_id: profileData.society_id || null,
+        societyId:  profileData.society_id || null,
+        profession: profileData.profession || '',
+        phone:      profileData.phone      || '',
+      };
       console.log('[Login] Profile loaded:', profile.username, profile.role);
     }
 
@@ -2779,16 +2791,17 @@ async function doLogin() {
     if (!profile) {
       console.warn('[Login] Profilo non in public.users, uso metadati auth');
       profile = {
-        id: authData.user.id,
-        email: authData.user.email,
-        name: authData.user.user_metadata?.name || u,
-        username: u,
-        role: 'admin',
+        id:         authData.user.id,
+        email:      authData.user.email,
+        name:       authData.user.user_metadata?.name || u,
+        username:   u,
+        role:       authData.user.user_metadata?.role || 'admin',
         society_id: null,
+        societyId:  null,
       };
     }
 
-    currentUser = { ...profile, societyId: profile.society_id };
+    currentUser = { ...profile, societyId: profile.society_id || profile.societyId };
 
     // Step 3: carica dati dal DB
     try {
@@ -11470,7 +11483,18 @@ restoreSidebarState();
       const { data: profile } = await sb.from('users')
         .select('*').eq('id', session.user.id).single();
       if (profile) {
-        currentUser = { ...profile, societyId: profile.society_id };
+        // Normalizza raw Supabase row (snake_case) con fallback robusti
+        currentUser = {
+          id:         profile.id,
+          name:       profile.name       || profile.username || session.user.email,
+          username:   profile.username   || session.user.email,
+          email:      profile.email      || session.user.email,
+          role:       profile.role       || session.user.user_metadata?.role || 'admin',
+          society_id: profile.society_id || null,
+          societyId:  profile.society_id || null,
+          profession: profile.profession || '',
+          phone:      profile.phone      || '',
+        };
         await loadStateFromDB();
         _afterLogin(true); // DB già caricato con await sopra
         return;
