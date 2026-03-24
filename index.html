@@ -14,6 +14,10 @@
       <form id="login-form">
         <label>Username</label>
         <input type="text" id="login-username" required>
+
+        <label>Password</label>
+        <input type="password" id="login-password" required>
+
         <button type="submit">Accedi</button>
       </form>
       <div id="login-error" class="error-msg"></div>
@@ -27,7 +31,7 @@
           <div id="user-info" class="user-email"></div>
         </div>
         <nav class="sidebar-nav" id="sidebar-nav">
-          <!-- voci generate da JS in base al ruolo -->
+          <!-- voci generate da JS -->
         </nav>
       </aside>
 
@@ -40,16 +44,16 @@
             </div>
           </div>
         </header>
+
         <section id="content"></section>
         <div id="toast" class="toast hidden"></div>
       </main>
     </div>
   </div>
 
-  <!-- Supabase UMD  -->
+  <!-- Supabase UMD -->
   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <!-- Config -->
-  <script type="module" src="config.js"></script>
+
   <!-- App -->
   <script type="module" src="app.js"></script>
 </body>
