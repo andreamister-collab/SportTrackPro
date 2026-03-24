@@ -1,200 +1,253 @@
-/* ============================================================
-   IMPORT CONFIG SUPABASE
-   ============================================================ */
-
 import { supabaseUrl, supabaseAnonKey } from './config.js';
+
 const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
+const S = {
+  user: null,              // riga di users
+  systemRole: null,        // 'admin' o null (per ora dedotto da profession)
+  rolesSportivi: [],       // righe user_category_seasons per stagione attiva
+  activeSeason: null
+};
 
-/* ============================================================
-   1. NAVIGAZIONE — buildTopNav()
-   ============================================================ */
+/* UTIL */
 
-function buildTopNav() {
-  const nav = document.getElementById('top-nav');
-  nav.innerHTML = `
-    <a href="#home">Home</a>
-    <a href="#admin">Admin</a>
-    <a href="#admin-utenti">Utenti</a>
-    <a href="#admin-categorie">Categorie</a>
-    <a href="#admin-squadre">Squadre</a>
-    <a href="#admin-atleti">Atleti</a>
-    <a href="#admin-staff">Staff</a>
-    <a href="#settings">Impostazioni</a>
-    <a href="#profilo">Profilo</a>
-    <a href="#logout">Logout</a>
-  `;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 2500);
 }
 
+function setViewTitle(title) {
+  document.getElementById('view-title').textContent = title;
+}
 
-/* ============================================================
-   2. BADGE RUOLI — FUNZIONE CENTRALIZZATA
-   ============================================================ */
+function setActiveSeasonLabel() {
+  document.getElementById('active-season-label').textContent =
+    S.activeSeason ? S.activeSeason.name : '-';
+}
+
+/* BADGE RUOLI */
 
 function getRoleBadgeClass(role) {
   const map = {
     admin: 'badge-blue',
-    responsabile: 'badge-purple',
-    dirigente: 'badge-green',
-    allenatore: 'badge-gold',
-    professionista: 'badge-teal'
+    presidente: 'badge-purple',
+    responsabile: 'badge-green',
+    dirigente: 'badge-gold',
+    professionista: 'badge-teal',
+    allenatore: 'badge-blue',
+    genitore: 'badge-gray'
   };
   return map[role] || 'badge-gray';
 }
 
+/* STAGIONE ATTIVA */
 
-/* ============================================================
-   3. STAGIONE ATTIVA — SINGLE SOURCE OF TRUTH
-   ============================================================ */
-
-const S = {
-  activeSeason: null
-};
-
-function getActiveSeason() {
-  return { id: "2024-2025" };
-}
-
-function ensureActiveSeason() {
-  if (!S.activeSeason) {
-    const active = getActiveSeason();
-    S.activeSeason = active ? active.id : '';
+async function ensureActiveSeason() {
+  if (S.activeSeason) return;
+  const { data, error } = await supabase
+    .from('seasons')
+    .select('*')
+    .eq('active', true)
+    .maybeSingle();
+  if (error) {
+    console.error(error);
+    showToast('Errore nel recupero stagione attiva');
+    return;
   }
+  S.activeSeason = data;
+  setActiveSeasonLabel();
 }
 
+/* LOGIN (username da tabella users) */
 
-/* ============================================================
-   4. PERMESSI OTTIMIZZATI
-   ============================================================ */
+async function handleLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('login-username').value.trim();
+  const errBox = document.getElementById('login-error');
+  errBox.textContent = '';
 
-const baseAllowed = [
-  "view-dashboard",
-  "view-users",
-  "view-categories"
-];
+  if (!username) {
+    errBox.textContent = 'Inserisci uno username';
+    return;
+  }
 
-const presidentAllowed = [...baseAllowed];
-const segretarioAllowed = [...baseAllowed, "edit-users", "edit-categories"];
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('username', username)
+    .maybeSingle();
 
+  if (error || !data) {
+    errBox.textContent = 'Utente non trovato';
+    return;
+  }
 
-/* ============================================================
-   5. VIEW BUILDERS — TUTTE LE SEZIONI
-   ============================================================ */
+  S.user = data;
+  // per ora: admin di sistema se profession = 'admin'
+  S.systemRole = (data.profession && data.profession.toLowerCase() === 'admin') ? 'admin' : null;
+
+  document.getElementById('user-info').textContent = `${data.name || ''} (${data.username})`;
+
+  document.getElementById('login-view').classList.add('hidden');
+  document.getElementById('main-layout').classList.remove('hidden');
+
+  await ensureActiveSeason();
+  await loadRuoliSportivi();
+  buildSidebar();
+  navigate('dashboard');
+}
+
+async function handleLogout() {
+  S.user = null;
+  S.systemRole = null;
+  S.rolesSportivi = [];
+  document.getElementById('main-layout').classList.add('hidden');
+  document.getElementById('login-view').classList.remove('hidden');
+}
+
+/* RUOLI SPORTIVI (user_category_seasons) */
+
+async function loadRuoliSportivi() {
+  if (!S.user || !S.activeSeason) return;
+  const { data, error } = await supabase
+    .from('user_category_seasons')
+    .select('*, categories(name), societies(name)')
+    .eq('user_id', S.user.id)
+    .eq('season_id', S.activeSeason.id);
+
+  if (error) {
+    console.error(error);
+    showToast('Errore nel recupero ruoli');
+    return;
+  }
+  S.rolesSportivi = data || [];
+}
+
+/* SIDEBAR DINAMICA */
+
+function buildSidebar() {
+  const nav = document.getElementById('sidebar-nav');
+  const items = [];
+
+  // tutti vedono dashboard
+  items.push({ id: 'dashboard', label: 'Dashboard' });
+
+  if (S.systemRole === 'admin') {
+    items.push(
+      { id: 'societies', label: 'Società' },
+      { id: 'categories', label: 'Categorie' },
+      { id: 'teams', label: 'Squadre' },
+      { id: 'athletes', label: 'Atleti' },
+      { id: 'staff', label: 'Staff' },
+      { id: 'matches', label: 'Partite' },
+      { id: 'sessions', label: 'Sessioni' },
+      { id: 'config', label: 'Config' },
+      { id: 'profile', label: 'Profilo' },
+      { id: 'logout', label: 'Logout' }
+    );
+  } else {
+    const ruoli = S.rolesSportivi.map(r => r.role);
+
+    if (ruoli.includes('presidente')) {
+      items.push(
+        { id: 'societies', label: 'Società' },
+        { id: 'staff', label: 'Staff' }
+      );
+    }
+    if (ruoli.includes('responsabile')) {
+      items.push(
+        { id: 'categories', label: 'Categorie' },
+        { id: 'teams', label: 'Squadre' }
+      );
+    }
+    if (ruoli.includes('allenatore') || ruoli.includes('dirigente')) {
+      items.push(
+        { id: 'athletes', label: 'Atleti' },
+        { id: 'matches', label: 'Partite' },
+        { id: 'sessions', label: 'Sessioni' }
+      );
+    }
+    // genitore: deducibile da contesto, per ora se profession = 'genitore'
+    if (S.user.profession && S.user.profession.toLowerCase() === 'genitore') {
+      items.push({ id: 'my-athletes', label: 'I miei figli' });
+    }
+
+    items.push(
+      { id: 'profile', label: 'Profilo' },
+      { id: 'logout', label: 'Logout' }
+    );
+  }
+
+  nav.innerHTML = items.map(i => `<a href="#${i.id}" data-view="${i.id}">${i.label}</a>`).join('');
+
+  nav.onclick = (ev) => {
+    const a = ev.target.closest('a');
+    if (!a) return;
+    const view = a.dataset.view;
+    navigate(view);
+  };
+}
+
+/* VIEW BUILDERS */
 
 const viewBuilders = {
 
-  "home": () => {
-    document.getElementById("content").innerHTML = `
-      <h1>Benvenuto</h1>
-      <p>Seleziona una sezione dal menu.</p>
-    `;
-  },
-
-  "admin": () => {
-    document.getElementById("content").innerHTML = `
-      <h1>Area Amministrativa</h1>
-      <ul class="admin-menu">
-        <li><a href="#admin-overview">Panoramica</a></li>
-        <li><a href="#admin-utenti">Gestione Utenti</a></li>
-        <li><a href="#admin-categorie">Gestione Categorie</a></li>
-        <li><a href="#admin-squadre">Gestione Squadre</a></li>
-        <li><a href="#admin-atleti">Gestione Atleti</a></li>
-        <li><a href="#admin-staff">Gestione Staff</a></li>
-        <li><a href="#settings">Impostazioni</a></li>
+  dashboard: async () => {
+    setViewTitle('Dashboard');
+    const el = document.getElementById('content');
+    el.innerHTML = `
+      <h2>Panoramica</h2>
+      <p>Stagione attiva: <strong>${S.activeSeason ? S.activeSeason.name : '-'}</strong></p>
+      <p>Ruoli stagionali:</p>
+      <ul>
+        ${S.rolesSportivi.map(r => `
+          <li>
+            <span class="${getRoleBadgeClass(r.role)}">${r.role}</span>
+            — ${r.categories ? r.categories.name : ''} ${r.societies ? '(' + r.societies.name + ')' : ''}
+          </li>
+        `).join('') || '<li>Nessun ruolo assegnato per questa stagione.</li>'}
       </ul>
     `;
   },
 
-  "admin-overview": () => {
-    const season = S.activeSeason;
-    document.getElementById("content").innerHTML = `
-      <h1>Admin Overview</h1>
-      <p>Stagione attiva: ${season}</p>
-      <p>Statistiche, riepiloghi e notifiche.</p>
+  /* SOCIETÀ (societies, legate opzionalmente a season_id) */
+
+  societies: async () => {
+    setViewTitle('Società');
+    const el = document.getElementById('content');
+    el.innerHTML = `
+      <div class="form-inline">
+        <input type="text" id="new-soc-name" placeholder="Nome società">
+        <input type="text" id="new-soc-city" placeholder="Città">
+        <input type="email" id="new-soc-email" placeholder="Email">
+        <button class="btn btn-primary" id="btn-add-soc">Aggiungi</button>
+      </div>
+      <table>
+        <thead><tr><th>Nome</th><th>Città</th><th>Email</th><th>Stagione</th><th>Azioni</th></tr></thead>
+        <tbody id="soc-tbody"></tbody>
+      </table>
     `;
-  },
 
-  "admin-utenti": () => {
-    document.getElementById("content").innerHTML = `
-      <h1>Gestione Utenti</h1>
-      <p>Elenco utenti, ruoli e permessi.</p>
-    `;
-  },
+    document.getElementById('btn-add-soc').onclick = async () => {
+      const name = document.getElementById('new-soc-name').value.trim();
+      const city = document.getElementById('new-soc-city').value.trim();
+      const email = document.getElementById('new-soc-email').value.trim();
+      if (!name || !S.activeSeason) return;
+      const { error } = await supabase.from('societies').insert({
+        id: crypto.randomUUID(),
+        name,
+        city,
+        email,
+        season_id: S.activeSeason.id
+      });
+      if (error) { showToast('Errore creazione società'); return; }
+      showToast('Società creata');
+      viewBuilders.societies();
+    };
 
-  "admin-categorie": () => {
-    document.getElementById("content").innerHTML = `
-      <h1>Gestione Categorie</h1>
-      <p>Creazione e modifica categorie.</p>
-    `;
-  },
-
-  "admin-squadre": () => {
-    document.getElementById("content").innerHTML = `
-      <h1>Gestione Squadre</h1>
-      <p>Creazione squadre e assegnazione atleti.</p>
-    `;
-  },
-
-  "admin-atleti": () => {
-    document.getElementById("content").innerHTML = `
-      <h1>Gestione Atleti</h1>
-      <p>Schede atleti, documenti e stato tesseramento.</p>
-    `;
-  },
-
-  "admin-staff": () => {
-    document.getElementById("content").innerHTML = `
-      <h1>Gestione Staff</h1>
-      <p>Allenatori, dirigenti e ruoli tecnici.</p>
-    `;
-  },
-
-  "settings": () => {
-    document.getElementById("content").innerHTML = `
-      <h1>Impostazioni</h1>
-      <p>Preferenze e configurazioni.</p>
-    `;
-  },
-
-  "profilo": () => {
-    document.getElementById("content").innerHTML = `
-      <h1>Profilo Utente</h1>
-      <p>Informazioni personali e password.</p>
-    `;
-  },
-
-  "logout": () => {
-    document.getElementById("content").innerHTML = `
-      <h1>Logout</h1>
-      <p>Sei stato disconnesso.</p>
-    `;
-  }
-
-};
-
-
-/* ============================================================
-   6. ROUTER
-   ============================================================ */
-
-function showView(view) {
-  if (!viewBuilders[view]) {
-    document.getElementById("content").innerHTML = `<h1>404</h1><p>Pagina non trovata.</p>`;
-    return;
-  }
-  viewBuilders[view]();
-}
-
-window.addEventListener("hashchange", () => {
-  const view = location.hash.replace("#", "") || "home";
-  showView(view);
-});
-
-
-/* ============================================================
-   7. AVVIO APP
-   ============================================================ */
-
-ensureActiveSeason();
-buildTopNav();
-showView("home");
+    const { data, error } = await supabase
+      .from('societies')
+      .select('*')
+      .eq('season_id', S.activeSeason
