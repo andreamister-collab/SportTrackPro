@@ -1811,8 +1811,6 @@ async function loadStateFromDB() {
 
       <!-- ── VIEWS ─────────────────────────────────────────── -->
 
-      <!-- Admin Stats Detail -->
-      <div class="view" id="view-admin-stats-detail"><!-- dynamic --></div>
       <!-- Admin Overview -->
       <div class="view" id="view-admin-overview"><!-- dynamic --></div>
       <div class="view" id="view-user-detail"><!-- dynamic --></div>
@@ -2810,7 +2808,7 @@ function _afterLogin() {
       buildSidebarNav();       // navbar con dati freschi
       rebuildSeasonSelector(); // stagioni aggiornate
       if (currentUser.role === 'admin') {
-        showView('admin-stats-detail');
+        showView('admin-overview');
       } else if (currentUser.role === 'genitore') {
         showView('parent-view');
       } else if (currentUser.role === 'presidente') {
@@ -2824,7 +2822,7 @@ function _afterLogin() {
   } else {
     buildSidebarNav();
     if (currentUser.role === 'admin') {
-      showView('admin-stats-detail');
+      showView('admin-overview');
     } else if (currentUser.role === 'genitore') {
       showView('parent-view');
     } else if (currentUser.role === 'presidente') {
@@ -3000,7 +2998,6 @@ function buildTopNav() {
   if (r === 'admin') {
     desktopHTML =
       dGroup('📊 Panoramica',
-        dItem('📈','Statistiche Sito',`showView('admin-stats-detail')`) +
         dItem('📊','Dashboard Globale',`showView('admin-overview')`) +
         dItem('⚽','Tutte le Partite',`showView('matches-overview')`) +
         dItem('🏛️','Dashboard Società',`showView('admin-society')`) +
@@ -3028,7 +3025,6 @@ function buildTopNav() {
 
     mobileHTML =
       mSection('Panoramica',
-        mItem('📈','Statistiche Sito',`showView('admin-stats-detail')`) +
         mItem('📊','Dashboard Globale',`showView('admin-overview')`) +
         mItem('🏛️','Dashboard Società',`showView('admin-society')`) +
         mItem('📈','Report Avanzati',`showView('admin-reports')`)
@@ -3257,13 +3253,13 @@ function closeMobileMenu() {
   document.getElementById('bn-menu')?.classList.remove('active');
 }
 
-// ── BOTTOM NAV ────────────────────────────────────────
+// ── BOTTOM NAV ────────────────────────────────────────────────
 function bottomNavGo(target) {
   closeMobileMenu();
   const r = currentUser?.role;
   if (target === 'home') {
-    if (r === 'admin') showView('admin-stats-detail');
-    else if (r === 'responsabile') showView('responsabile-overview');
+    if (r === 'admin') showView('admin-overview');
+      if (r === 'responsabile') showView('responsabile-overview');
     else showView('category-home');
   } else if (target === 'athletes') {
     showView('athletes');
@@ -3278,7 +3274,7 @@ function bottomNavGo(target) {
 function updateBottomNav() {
   document.querySelectorAll('.bn-item').forEach(b => b.classList.remove('active'));
   const map = {
-    'admin-stats-detail': 'bn-home', 'admin-overview': 'bn-home', 'category-home': 'bn-home', 'matches-overview': 'bn-matches',
+    'admin-overview': 'bn-home', 'category-home': 'bn-home', 'matches-overview': 'bn-matches',
     'athletes': 'bn-athletes', 'admin-athletes': 'bn-athletes',
     'sessions': 'bn-sessions', 'session-entry': 'bn-sessions',
     'matches': 'bn-matches', 'match-detail': 'bn-matches', 'convocati': 'bn-matches',
@@ -3423,7 +3419,7 @@ function toSnakeCase(table, obj) {
 }
 
 const DB_REFRESH_VIEWS = new Set([
-  'admin-stats-detail','admin-overview','admin-society','admin-reports',
+  'admin-overview','admin-society','admin-reports',
   'cat-dashboard','athletes','sessions','matches',
   'attendances','category-home'
 ]);
@@ -3611,106 +3607,6 @@ function athleteAvatar(athlete, size=36) {
 // ══════════════════════════════════════════════════════════════════
 const viewBuilders = {};
 
-// ── [0] ADMIN STATS DETAIL ────────────────────────────────────
-viewBuilders['admin-stats-detail'] = (el) => {
-  if (currentUser.role !== 'admin') {
-    el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Accesso non autorizzato</h3></div>';
-    return;
-  }
-  setTopbar('Statistiche Sito', '');
-  const activeSeas = getActiveSeason();
-  // Filtra sessioni per stagione attiva
-  const { start: seasStart, end: seasEnd } = activeSeas ? getSeasonDates(activeSeas) : { start: null, end: null };
-  const allSess = seasStart
-    ? S.sessions.filter(s => s.date >= seasStart && s.date <= seasEnd)
-    : S.sessions;
-  // Filtra atleti per stagione (tramite athleteSeasons se disponibile)
-  const seasAthleteIds = activeSeas && (S.athleteSeasons||[]).length
-    ? new Set((S.athleteSeasons||[]).filter(as=>as.seasonId===activeSeas.id).map(as=>as.athleteId))
-    : null;
-  const filteredAthletes = seasAthleteIds ? S.athletes.filter(a=>seasAthleteIds.has(a.id)) : S.athletes;
-
-  const sessP  = allSess.filter(s=>s.type==='P').length;
-  const sessA  = allSess.filter(s=>s.type==='A').length;
-  const sessI  = allSess.filter(s=>s.type==='I').length;
-  const sessPS = allSess.filter(s=>s.type==='PS').length;
-  const sessAlt= allSess.filter(s=>!['P','A','AM','I','PS'].includes(s.type)).length;
-
-  const nResp = S.users.filter(u=>u.role==='responsabile').length;
-  const nDir  = S.users.filter(u=>u.role==='dirigente').length;
-  const nAll  = S.users.filter(u=>u.role==='allenatore').length;
-  const nProf = S.users.filter(u=>u.role==='professionista').length;
-  const nGen  = S.users.filter(u=>u.role==='genitore').length;
-  const nPres = S.users.filter(u=>u.role==='presidente').length;
-  const nSeg  = S.users.filter(u=>u.role==='segretario').length;
-  const nTot  = S.users.length;
-
-  el.innerHTML = `
-    <div class="page-header">
-      <div class="header-row">
-        <div>
-          <h2>Benvenuto, ${esc(currentUser.name)} 👋</h2>
-          <p>${new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1.5px solid #CBD5E0;border-radius:10px;padding:6px 14px">
-            <span style="font-size:.82rem;font-weight:700;color:#64748B">⚽ Stagione</span>
-            <select id="admin-season-select" style="border:none;background:transparent;font-size:.9rem;font-weight:700;color:var(--accent);cursor:pointer;outline:none;padding:0 4px"
-              onchange="setActiveSeason(this.value)">
-              ${S.seasons.slice().sort((a,b)=>b.startYear-a.startYear).map(s=>`<option value="${s.id}" ${s.id===activeSeas?.id?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Struttura Globale — ${activeSeas ? esc(activeSeas.name) : 'Tutte le stagioni'}</div>
-    <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Atleti Totali</div><div class="value">${filteredAthletes.length}</div></div>
-      <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Società</div><div class="value">${S.societies.length}</div><div class="sub">${S.teams.length} squadre</div></div>
-      <div class="stat-card purple"><div class="accent-bar"></div><div class="label">Categorie</div><div class="value">${S.categories.length}</div></div>
-    </div>
-
-    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Sessioni Globali — ${activeSeas ? esc(activeSeas.name) : 'Tutte le stagioni'}</div>
-    <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Totale Sessioni</div><div class="value">${allSess.length}</div></div>
-      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${sessP}</div><div class="sub">tipo P</div></div>
-      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Allenamenti</div><div class="value">${sessA}</div><div class="sub">tipo A</div></div>
-      ${(()=>{
-        const sc=(cls,lbl,val,sub)=>'<div class="stat-card '+cls+'"><div class="accent-bar"></div><div class="label">'+lbl+'</div><div class="value">'+val+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div>';
-        let x='';
-        if(sessI>0) x+=sc('teal','Individual',sessI,'tipo I');
-        if(sessPS>0) x+=sc('purple','Psicomotricità',sessPS,'tipo PS');
-        if(sessAlt>0) x+=sc('gold','Altro',sessAlt,'');
-        return x;})()}
-    </div>
-
-    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Utenti Registrati</div>
-    <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card blue"><div class="accent-bar"></div><div class="label">Utenti Totali</div><div class="value">${nTot}</div><div class="sub">tutti i ruoli</div></div>
-      <div class="stat-card purple"><div class="accent-bar"></div><div class="label">Responsabili</div><div class="value">${nResp}</div></div>
-      <div class="stat-card green"><div class="accent-bar"></div><div class="label">Dirigenti</div><div class="value">${nDir}</div></div>
-      <div class="stat-card gold"><div class="accent-bar"></div><div class="label">Allenatori</div><div class="value">${nAll}</div></div>
-      <div class="stat-card teal"><div class="accent-bar"></div><div class="label">Professionisti</div><div class="value">${nProf}</div></div>
-      <div class="stat-card pink"><div class="accent-bar"></div><div class="label">Genitori</div><div class="value">${nGen}</div></div>
-      <div class="stat-card red"><div class="accent-bar"></div><div class="label">Presidenti</div><div class="value">${nPres}</div></div>
-      <div class="stat-card gray"><div class="accent-bar"></div><div class="label">Segretari</div><div class="value">${nSeg}</div></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="icon" style="background:var(--accent-l);color:var(--accent)">⚙️</div>Accesso Rapido</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
-        <button class="btn btn-ghost" onclick="showView('admin-overview')" style="text-align:left;justify-content:flex-start">📊 Dashboard Categorie</button>
-        <button class="btn btn-ghost" onclick="showView('admin-athletes')" style="text-align:left;justify-content:flex-start">👥 Atleti</button>
-        <button class="btn btn-ghost" onclick="showAdminConfig('society')" style="text-align:left;justify-content:flex-start">🏢 Società</button>
-        <button class="btn btn-ghost" onclick="showAdminConfig('users')" style="text-align:left;justify-content:flex-start">👤 Utenti</button>
-        <button class="btn btn-ghost" onclick="showView('sessions')" style="text-align:left;justify-content:flex-start">📅 Sessioni</button>
-        <button class="btn btn-ghost" onclick="showView('admin-reports')" style="text-align:left;justify-content:flex-start">📈 Report</button>
-      </div>
-    </div>
-  `;
-};
-
 // ── [1] ADMIN OVERVIEW ────────────────────────────────────────
 viewBuilders['admin-overview'] = (el) => {
   if (currentUser.role !== 'admin') {
@@ -3719,21 +3615,8 @@ viewBuilders['admin-overview'] = (el) => {
   }
   setTopbar('Dashboard Amministratore', '');
   const activeSeas = getActiveSeason();
-  // Filtra sessioni per stagione attiva
-  const { start: seasStart, end: seasEnd } = activeSeas ? getSeasonDates(activeSeas) : { start: null, end: null };
-  const allSess = seasStart
-    ? S.sessions.filter(s => s.date >= seasStart && s.date <= seasEnd)
-    : S.sessions;
-  // Filtra atleti per stagione (tramite athleteSeasons se disponibile)
-  const seasAthleteIds = activeSeas && (S.athleteSeasons||[]).length
-    ? new Set((S.athleteSeasons||[]).filter(as=>as.seasonId===activeSeas.id).map(as=>as.athleteId))
-    : null;
-  const filteredAthletes = seasAthleteIds ? S.athletes.filter(a=>seasAthleteIds.has(a.id)) : S.athletes;
-  // Filtra categorie per stagione
-  const filteredCats = activeSeas && S.categories.some(c=>c.seasonId)
-    ? S.categories.filter(c=>!c.seasonId || c.seasonId===activeSeas.id)
-    : S.categories;
 
+  const allSess = S.sessions;
   const sessP  = allSess.filter(s=>s.type==='P').length;
   const sessA  = allSess.filter(s=>s.type==='A').length;
   const sessI  = allSess.filter(s=>s.type==='I').length;
@@ -3749,7 +3632,7 @@ viewBuilders['admin-overview'] = (el) => {
   const nSeg  = S.users.filter(u=>u.role==='segretario').length;
   const nTot  = S.users.length;
 
-  const catRows = filteredCats.map(cat => {
+  const catRows = S.categories.map(cat => {
     const st = getCategoryStats(cat.id);
     const team = S.teams.find(t=>t.id===cat.teamId);
     const soc = S.societies.find(s=>s.id===cat.societyId);
@@ -3776,14 +3659,14 @@ viewBuilders['admin-overview'] = (el) => {
       </div>
     </div>
 
-    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Struttura — ${activeSeas ? esc(activeSeas.name) : 'Tutte le stagioni'}</div>
+    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Struttura</div>
     <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card blue" style="cursor:pointer" onclick="showView('admin-athletes')"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${filteredAthletes.length}</div><div class="sub">in ${filteredCats.length} categorie</div></div>
+      <div class="stat-card blue" style="cursor:pointer" onclick="showView('admin-athletes')"><div class="accent-bar"></div><div class="label">Atleti</div><div class="value">${S.athletes.length}</div><div class="sub">in ${S.categories.length} categorie</div></div>
       <div class="stat-card teal" style="cursor:pointer" onclick="showAdminConfig('society')"><div class="accent-bar"></div><div class="label">Società</div><div class="value">${S.societies.length}</div><div class="sub">${S.teams.length} squadre</div></div>
-      <div class="stat-card purple" style="cursor:pointer" onclick="showAdminConfig('category')"><div class="accent-bar"></div><div class="label">Categorie</div><div class="value">${filteredCats.length}</div><div class="sub">stagione</div></div>
+      <div class="stat-card purple" style="cursor:pointer" onclick="showAdminConfig('category')"><div class="accent-bar"></div><div class="label">Categorie</div><div class="value">${S.categories.length}</div><div class="sub">attive</div></div>
     </div>
 
-    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Sessioni — ${activeSeas ? esc(activeSeas.name) : 'Tutte le stagioni'}</div>
+    <div style="font-size:.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Sessioni — tutte le stagioni</div>
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card blue" style="cursor:pointer" onclick="showView('sessions')"><div class="accent-bar"></div><div class="label">Totale Sessioni</div><div class="value">${allSess.length}</div></div>
       <div class="stat-card gold" style="cursor:pointer" onclick="showView('sessions')"><div class="accent-bar"></div><div class="label">Partite</div><div class="value">${sessP}</div><div class="sub">tipo P</div></div>
@@ -4236,7 +4119,7 @@ function goHome() {
   const ta = document.getElementById('topbar-actions');
   if (ta) ta.innerHTML = '';
   const role = currentUser.role;
-  if (role === 'admin') showView('admin-stats-detail');
+  if (role === 'admin') showView('admin-overview');
   else if (role === 'presidente') showView('president-view');
   else if (role === 'genitore') showView('parent-view');
   else if (role === 'responsabile') showView('responsabile-overview');
@@ -11787,7 +11670,113 @@ function athleteExists(nome,cognome,dob){
 }
 
 
+function importAthletesExcel(){
 
+  const input = document.getElementById("excelFile");
+  if(!input){ alert("Input file non trovato"); return; }
+  input.click();
+
+  input.onchange = function(e){
+
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(evt){
+
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data,{type:"array"});
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet);
+
+      let imported = 0;
+      let duplicates = 0;
+      let missingCategory = 0;
+
+      rows.forEach(r=>{
+
+        if(!r.Nome || !r.Cognome) return;
+
+        if(athleteExists(r.Nome,r.Cognome,r.Nascita)){
+          duplicates++;
+          return;
+        }
+
+        const cat = S.categories?.find(c=>c.id===r.Categoria);
+
+        if(!cat){
+          missingCategory++;
+          return;
+        }
+
+        const athleteId = 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+
+        S.athletes.push({
+          id: athleteId,
+          firstName: r.Nome,
+          lastName: r.Cognome,
+          dob: r.Nascita || "",
+          nickname: r.Nickname || "",
+          notes: ""
+        });
+
+        S.athleteSeasons.push({
+          id:'id_'+Math.random().toString(36).slice(2,9),
+          athleteId: athleteId,
+          categoryId: r.Categoria,
+          seasonId: S.activeSeason,
+          role: r.Ruolo || "",
+          shirtNumber: r.Numero || "",
+          joinDate: new Date().toISOString().slice(0,10),
+          notes:""
+        });
+
+        imported++;
+
+      });
+
+      localStorage.setItem("sporttrack_data", JSON.stringify(S));
+
+      alert(
+        "IMPORT COMPLETATO\n\n" +
+        "Atleti importati: "+imported+"\n"+
+        "Duplicati ignorati: "+duplicates+"\n"+
+        "Categoria non trovata: "+missingCategory
+      );
+
+      location.reload();
+
+    };
+
+    reader.readAsArrayBuffer(file);
+
+  };
+}
+
+
+// =========================
+// DASHBOARD
+// =========================
+function renderDashboard(){
+
+  const athletes = S.athletes?.length || 0;
+  const trainings = S.trainings?.length || 0;
+  const attendance = S.attendance?.length || 0;
+
+  const a=document.getElementById("dash-athletes");
+  const t=document.getElementById("dash-trainings");
+  const p=document.getElementById("dash-attendance");
+
+  if(a) a.innerText = athletes;
+  if(t) t.innerText = trainings;
+  if(p) p.innerText = attendance;
+
+}
+
+// =========================
+// ALLENAMENTI
+// =========================
 
 if(!S.trainings) S.trainings=[];
 if(!S.attendance) S.attendance=[];
