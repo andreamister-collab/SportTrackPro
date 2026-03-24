@@ -157,6 +157,7 @@ function navigate(v) {
   if (views[v]) views[v]();
 }
 /* VIEW BUILDERS */
+/* VIEW BUILDERS */
 const views = {
 
   dashboard() {
@@ -348,6 +349,7 @@ const views = {
     handleLogout();
   }
 };
+
 /* LOADERS & DELETE FUNCTIONS */
 
 /* SOCIETÀ */
