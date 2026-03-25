@@ -6798,10 +6798,8 @@ viewBuilders['athletes'] = (el) => {
   if (!selectedCategoryId) { el.innerHTML = '<div class="empty-state"><p>Seleziona una categoria</p></div>'; return; }
   const cat = S.categories.find(c=>c.id===selectedCategoryId);
   if (!canAccessCategory(selectedCategoryId)) { el.innerHTML = '<div class="empty-state"><p>Accesso non autorizzato</p></div>'; return; }
-  // Stagione: usa quella globale (S.activeSeason), con fallback alla stagione attiva
+  // Stagione: inizializza solo al primo accesso — non sovrascrivere la scelta utente
   if (!window._athSeasId) window._athSeasId = S.activeSeason || getActiveSeason()?.id || '';
-  // Sincronizza con S.activeSeason quando cambia dalla topnav
-  if (S.activeSeason && window._athSeasId !== S.activeSeason) window._athSeasId = S.activeSeason;
   const activeSeas  = S.seasons.find(s=>s.id===window._athSeasId) || getActiveSeason();
   const catTeamsAth = getCategoryTeams(selectedCategoryId);
   const multiTeamAth= catTeamsAth.length > 1;
@@ -7370,8 +7368,10 @@ viewBuilders['sessions'] = (el) => {
   // Persist filter state across renders
   if (!window._sessState) window._sessState = {};
   const ss = window._sessState;
+  // Inizializza catId solo se non ancora impostato (non sovrascrivere la scelta utente)
   if (!ss.catId && selectedCategoryId) ss.catId = selectedCategoryId;
-  if (S.activeSeason && ss.seasId !== S.activeSeason) ss.seasId = S.activeSeason;
+  // Inizializza seasId solo al primo accesso — NON forzare la stagione attiva ad ogni render
+  // (altrimenti ogni re-render resetta il filtro che l'utente ha appena cambiato)
   if (!ss.seasId) ss.seasId = activeSeas?.id || '';
 
   const curCat   = S.categories.find(c=>c.id===ss.catId) || cat;
