@@ -6869,9 +6869,10 @@ function renderAthleteTable(athletes) {
       <td>${pBadge(perf.velocita)}</td>
       <td style="max-width:120px" class="text-sm text-muted truncate">${esc(ath.notes||'—')}</td>
       <td style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="openAthleteProfile('${ath.id}')">👤</button>
-        ${canEdit(selectedCategoryId)?`<button class="btn btn-ghost btn-sm" onclick="openAthleteModal('${ath.id}')">✏️</button>`:''}
-        ${canEdit(selectedCategoryId)?`<button class="btn btn-danger btn-sm" onclick="deleteAthlete('${ath.id}')">🗑️</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="openAthleteProfile('${ath.id}')" title="Profilo">👤</button>
+        ${canEdit(selectedCategoryId)?`<button class="btn btn-ghost btn-sm" onclick="openAthleteModal('${ath.id}')" title="Modifica dati personali">✏️</button>`:''}
+        ${canEdit(selectedCategoryId)?`<button class="btn btn-accent btn-sm" onclick="openAthleteSeasonModal('${ath.id}')" title="Gestisci associazioni stagionali" style="background:var(--teal);border-color:var(--teal)">🔗 Assoc.</button>`:''}
+        ${canEdit(selectedCategoryId)?`<button class="btn btn-danger btn-sm" onclick="deleteAthlete('${ath.id}')" title="Elimina">🗑️</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -7055,53 +7056,15 @@ function removeAthleteSeasonEntry(asId) {
 
 function openAthleteModal(id) {
   const a = id ? S.athletes.find(x=>x.id===id) : null;
-  const catId = a?.categoryId || selectedCategoryId || '';
-
-  openModal(buildAthleteModalHtml(id, catId, a), 'modal-lg');
+  openModal(buildAthleteModalHtml(id, a), 'modal-lg');
 }
 
-// Rebuild modal HTML (called also on category change)
-function buildAthleteModalHtml(id, catId, a) {
-  const roles = (S.athleteRoles && S.athleteRoles[catId]) || [];
-  const roleOptions = roles.map(r =>
-    `<option value="${esc(r)}" ${r===(a?.role||'')?'selected':''}>${esc(r)}</option>`
-  ).join('');
-  const hasRoles = roles.length > 0;
-  const catTeams = getCategoryTeams(catId);
-  const isAdmin  = currentUser?.role === 'admin';
-
-  // Category options — admin sees all, others only accessible
-  const accessibleCatIds = getAccessibleCategoryIds();
-  const catOpts = S.categories
-    .filter(c => isAdmin || accessibleCatIds.includes(c.id))
-    .map(c => `<option value="${c.id}" ${c.id===catId?'selected':''}>${esc(c.name)}</option>`)
-    .join('');
-
+// buildAthleteModalHtml — solo dati anagrafici e legame genitoriale
+// Le associazioni stagionali (categoria, squadra, ruolo) si gestiscono in openAthleteSeasonModal
+function buildAthleteModalHtml(id, a) {
   return `
     <div class="modal-header">
-      <h3>${a?'Modifica Atleta — '+esc(a.lastName)+' '+esc(a.firstName):'Nuovo Atleta'}</h3>
-      
-    </div>
-
-    <div style="background:#F8FAFC;border-radius:10px;padding:14px 16px;margin-bottom:16px">
-      <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">📋 Assegnazione</div>
-      <div class="form-row" style="margin-bottom:0">
-        <div class="form-field">
-          <label>Categoria <span style="color:var(--red)">*</span></label>
-          <select id="ath-cat" onchange="refreshAthleteModalTeams(this.value,'${id||''}')">
-            <option value="">— Seleziona categoria —</option>
-            ${catOpts}
-          </select>
-        </div>
-        <div class="form-field" id="ath-team-wrapper">
-          <label>Squadra</label>
-          <select id="ath-team">
-            <option value="">— Categoria intera —</option>
-            ${catTeams.map(t=>`<option value="${t.id}" ${(a?.teamId||'')===(t.id)?'selected':''}>${esc(t.name)}</option>`).join('')}
-          </select>
-          ${catTeams.length === 0 ? '<span class="text-muted text-sm">Nessuna squadra assegnata alla categoria</span>' : ''}
-        </div>
-      </div>
+      <h3>${a ? '✏️ Modifica — '+esc(a.lastName)+' '+esc(a.firstName) : '➕ Nuovo Atleta'}</h3>
     </div>
 
     <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">👤 Dati Personali</div>
@@ -7114,42 +7077,24 @@ function buildAthleteModalHtml(id, catId, a) {
       <div class="form-field"><label>Data Nascita</label><input id="ath-dob" type="date" value="${a?.dob||''}"></div>
     </div>
     <div class="form-row">
-      <div class="form-field"><label>Numero Maglia</label><input id="ath-num" type="number" value="${a?.number||''}" placeholder="10"></div>
-      <div class="form-field">
-        <label>Ruolo</label>
-        ${hasRoles
-          ? `<select id="ath-role"><option value="">— Seleziona ruolo —</option>${roleOptions}</select>
-             <span class="text-muted text-sm" style="display:block;margin-top:3px"><a href="#" onclick="openRoleConfigModal('${catId}');return false">✏️ Gestisci lista ruoli</a></span>`
-          : `<div style="display:flex;gap:6px">
-               <input id="ath-role" value="${esc(a?.role||'')}" placeholder="Attaccante" style="flex:1">
-               ${catId ? `<button class="btn btn-ghost btn-sm" onclick="openRoleConfigModal('${catId}')">⚙️</button>` : ''}
-             </div>`
-        }
-      </div>
-    </div>
-    <div class="form-field" style="margin-top:8px"><label>Note</label><textarea id="ath-notes" placeholder="Note sull'atleta...">${esc(a?.notes||'')}</textarea></div>
-
-    <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--mist-2)">
-      📅 Iscrizioni Stagionali
-    </div>
-    <div id="ath-seasons-panel" style="margin-bottom:8px">
-      ${buildAthleteSeasonsList(id||null)}
+      <div class="form-field"><label>Note</label><textarea id="ath-notes" rows="2" style="resize:vertical">${esc(a?.notes||'')}</textarea></div>
     </div>
 
-    <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--mist-2)">
-      👨‍👧 Genitori / Tutori
-    </div>
+    <hr style="margin:14px 0">
+    <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">👨‍👩‍👦 Legame Genitore</div>
     <div class="form-field">
       ${buildParentSelector(id||null, a?.parentIds||[])}
     </div>
 
-    <div class="form-actions" style="margin-top:14px">
-      <button class="btn btn-accent btn-lg" onclick="saveAthlete('${id||''}')">💾 Salva Atleta</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
-    </div>`;
+    <div class="form-actions" style="margin-top:18px">
+      <button class="btn btn-accent" onclick="saveAthlete('${id||''}')">💾 Salva</button>
+      ${!id ? `<button class="btn btn-ghost" onclick="closeModal()">Annulla</button>` :
+               `<button class="btn" style="background:var(--teal);color:#fff;border-color:var(--teal)" onclick="closeModal();openAthleteSeasonModal('${id}')">🔗 Gestisci Associazioni</button>
+                <button class="btn btn-ghost" onclick="closeModal()">Chiudi</button>`}
+    </div>
+  `;
 }
 
-// Called when category changes in athlete modal — refresh team dropdown
 function refreshAthleteModalTeams(newCatId, athleteId) {
   const wrapper = document.getElementById('ath-team-wrapper');
   if (!wrapper) return;
@@ -7168,35 +7113,23 @@ function refreshAthleteModalTeams(newCatId, athleteId) {
   }
 }
 async function saveAthlete(id) {
-  const firstName  = document.getElementById('ath-fname').value.trim();
-  const lastName   = document.getElementById('ath-lname').value.trim();
-  const categoryId = document.getElementById('ath-cat')?.value || selectedCategoryId || '';
-  const teamId     = document.getElementById('ath-team')?.value || '';
-
-  if (!firstName||!lastName) { toast('Nome e cognome obbligatori','error'); return; }
-  if (!categoryId) { toast('Seleziona una categoria','error'); return; }
-
-  // Permission check: admin can always edit; others need canEdit on the target category
-  if (currentUser.role !== 'admin' && !canEdit(categoryId)) {
-    toast('Non hai i permessi per questa categoria','error'); return;
-  }
+  const firstName = document.getElementById('ath-fname').value.trim();
+  const lastName  = document.getElementById('ath-lname').value.trim();
+  if (!firstName || !lastName) { toast('Nome e cognome obbligatori','error'); return; }
 
   const parentCBs = document.querySelectorAll('#parent-checkboxes input[type=checkbox]:checked');
   const parentIds = Array.from(parentCBs).map(cb=>cb.value).filter(v=>v!=='_ND');
 
-  // Dati anagrafici puri (indipendenti dalla stagione)
+  // Dati anagrafici puri — immutabili nel tempo, indipendenti dalla stagione
   const data = {
     firstName, lastName,
     nickname:  document.getElementById('ath-nick')?.value.trim() || '',
-    dob:       document.getElementById('ath-dob').value,
+    dob:       document.getElementById('ath-dob').value || null,
     notes:     document.getElementById('ath-notes')?.value.trim() || '',
-    parentIds: parentIds,
-    // Campi legacy mantenuti per compatibilità (la fonte di verità è athlete_seasons)
-    categoryId, teamId,
-    number:    parseInt(document.getElementById('ath-num').value)||null,
-    role:      document.getElementById('ath-role')?.value.trim() || '',
+    parentIds,
   };
 
+  const isNew = !id;
   if (id) {
     const existing = S.athletes.find(x=>x.id===id);
     if (!existing) { toast('Atleta non trovato','error'); return; }
@@ -7204,53 +7137,27 @@ async function saveAthlete(id) {
     toast('Atleta aggiornato ✅','success');
   } else {
     S.athletes.push({ id: uid(), ...data });
-    toast('Atleta aggiunto ✅','success');
+    toast('Atleta aggiunto ✅ — usa "Assoc." per aggiungere le iscrizioni stagionali','success');
   }
   const savedAth = id ? S.athletes.find(x=>x.id===id) : S.athletes[S.athletes.length-1];
   saveState();
-  await sbSync('athletes', savedAth);
+  sbSync('athletes', savedAth);
 
-  // ── Crea automaticamente athlete_season per la stagione attiva ──
-  const activeSeasId = S.activeSeason;
-  if (activeSeasId && categoryId) {
-    const existingAS = (S.athleteSeasons||[]).find(
-      as => as.athleteId===savedAth.id && as.seasonId===activeSeasId && as.categoryId===categoryId
-    );
-    if (!existingAS) {
-      const asEntry = {
-        id: uid(),
-        athleteId:   savedAth.id,
-        seasonId:    activeSeasId,
-        categoryId:  categoryId,
-        teamId:      teamId || null,
-        role:        document.getElementById('ath-role')?.value.trim() || '',
-        shirtNumber: parseInt(document.getElementById('ath-num')?.value)||null,
-        joinDate:    new Date().toISOString().slice(0,10),
-        notes: ''
-      };
-      if (!S.athleteSeasons) S.athleteSeasons = [];
-      S.athleteSeasons.push(asEntry);
-      saveState();
-      await sbSync('athlete_seasons', asEntry);
-    } else {
-      // Aggiorna l'iscrizione stagionale esistente
-      existingAS.teamId      = teamId || existingAS.teamId;
-      existingAS.role        = document.getElementById('ath-role')?.value.trim() || existingAS.role;
-      existingAS.shirtNumber = parseInt(document.getElementById('ath-num')?.value)||existingAS.shirtNumber;
-      saveState();
-      await sbSync('athlete_seasons', existingAS);
-    }
-  }
   closeModal();
-  // Refresh the right view depending on context
+
+  // Dopo la creazione, apri subito la modale associazioni
+  if (isNew) {
+    setTimeout(() => openAthleteSeasonModal(savedAth.id), 150);
+    return;
+  }
+
   if (currentView === 'admin-athletes') {
     viewBuilders['admin-athletes'](document.getElementById('view-admin-athletes'));
   } else {
-    // Reset selectedCategoryId to the saved category if it changed
-    if (categoryId && categoryId !== selectedCategoryId) selectedCategoryId = categoryId;
     showView('athletes');
   }
 }
+
 function deleteAthlete(id) {
   const ath = S.athletes.find(x=>x.id===id);
   if (!ath) return;
@@ -7293,7 +7200,7 @@ function confirmDeleteAthleteSeason(id, seasId) {
   // Rimuovi presenze delle sessioni di quella stagione
   const seas = S.seasons.find(s=>s.id===seasId);
   if (seas) {
-    const start = seas.startYear+'-07-01', end = seas.endYear+'-06-30';
+    const { start, end } = getSeasonDates(seas); // 1 ago → 31 lug
     const seasSessIds = S.sessions.filter(s=>s.categoryId && s.date>=start && s.date<=end).map(s=>s.id);
     S.attendances = S.attendances.filter(a=>!(a.athleteId===id && seasSessIds.includes(a.sessionId)));
   }
@@ -10307,86 +10214,242 @@ function deleteSeason(id) {
 function openAthleteSeasonModal(athleteId) {
   const ath = S.athletes.find(a => a.id === athleteId);
   if (!ath) return;
-  const history = (S.athleteSeasons||[]).filter(as => as.athleteId === athleteId)
-    .sort((a,b) => b.seasonId.localeCompare(a.seasonId));
-  const activeSeasId = S.activeSeason;
-
-  openModal(`
-    <div class="modal-header">
-      <h3>📋 Stagioni — ${esc(ath.lastName)} ${esc(ath.firstName)}</h3>
-      
-    </div>
-    <div style="margin-bottom:16px">
-      <div style="font-weight:700;font-size:.9rem;margin-bottom:10px">Storico Iscrizioni</div>
-      ${history.length ? history.map(as => {
-        const cat = S.categories.find(c => c.id === as.categoryId);
-        const seas = S.seasons.find(s => s.id === as.seasonId);
-        return `<div class="season-hist-card">
-          <div class="flex items-center justify-between flex-wrap gap-8">
-            <div>
-              <span class="fw-700">${esc(seas?.name||as.seasonId)}</span>
-              <span class="badge badge-blue" style="margin-left:8px">${esc(cat?.name||'—')}</span>
-            </div>
-            <div class="text-muted text-sm">
-              #${as.shirtNumber||'—'} · ${esc(as.role||'—')} · dal ${fmtDate(as.joinDate)}
-            </div>
-          </div>
-          ${as.notes ? `<div class="text-muted text-sm mt-8">${esc(as.notes)}</div>` : ''}
-        </div>`;
-      }).join('') : '<div class="text-muted text-sm">Nessuna iscrizione registrata</div>'}
-    </div>
-    <hr style="margin:14px 0">
-    <div style="font-weight:700;font-size:.9rem;margin-bottom:10px">➕ Nuova Iscrizione Stagione</div>
-    <div class="form-row">
-      <div class="form-field"><label>Stagione</label>
-        <select id="as-season">
-          ${(S.seasons||[]).slice().reverse().map(s => `<option value="${s.id}" ${s.id===activeSeasId?'selected':''}>${esc(s.name)}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-field"><label>Categoria</label>
-        <select id="as-cat">
-          ${S.categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-field"><label>Ruolo</label><input id="as-role" value="${esc(ath.role||'')}" placeholder="Attaccante"></div>
-      <div class="form-field"><label>Numero Maglia</label><input id="as-num" type="number" value="${ath.number||''}" placeholder="10"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-field"><label>Data Inizio</label><input id="as-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
-      <div class="form-field"><label>Note</label><input id="as-notes" placeholder="Note opzionali"></div>
-    </div>
-    <div class="form-actions" style="margin-top:12px">
-      <button class="btn btn-accent" onclick="saveAthleteSeasonEnroll('${athleteId}')">💾 Salva Iscrizione</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
-    </div>`, 'modal-lg');
+  renderAthleteSeasonModal(athleteId);
 }
+
+function renderAthleteSeasonModal(athleteId) {
+  const ath = S.athletes.find(a => a.id === athleteId);
+  if (!ath) return;
+
+  const history = (S.athleteSeasons||[])
+    .filter(as => as.athleteId === athleteId)
+    .sort((a,b) => {
+      const sa = S.seasons.find(s=>s.id===a.seasonId);
+      const sb = S.seasons.find(s=>s.id===b.seasonId);
+      return (sb?.startYear||0) - (sa?.startYear||0);
+    });
+
+  // Cascata: Società → Stagione → Categoria → Squadra
+  const isAdmin = currentUser?.role === 'admin';
+  // Società visibili: admin = tutte; altri = solo quelle dove ha UCS
+  const visibleSocIds = isAdmin
+    ? S.societies.map(s=>s.id)
+    : [...new Set((S.userCategorySeasons||[]).filter(u=>u.userId===currentUser.id).map(u=>u.societyId).filter(Boolean))];
+  const visibleSocs = S.societies.filter(s=>visibleSocIds.includes(s.id));
+
+  const defSoc = visibleSocs[0]?.id || '';
+  const defSeas = S.activeSeason || getActiveSeason()?.id || '';
+
+  const histHtml = history.length ? history.map(as => {
+    const cat  = S.categories.find(c=>c.id===as.categoryId);
+    const seas = S.seasons.find(s=>s.id===as.seasonId);
+    const team = S.teams.find(t=>t.id===as.teamId);
+    const soc  = S.societies.find(s=>s.id===cat?.societyId);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;
+                        background:var(--mist);border:1px solid var(--mist-2);border-radius:9px;padding:10px 14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="badge badge-blue" style="font-size:.78rem">${esc(seas?.name||'—')}</span>
+        ${soc?`<span style="font-size:.78rem;color:#64748B">${esc(soc.name)}</span>`:''}
+        <span class="fw-600" style="font-size:.85rem">${esc(cat?.name||'—')}</span>
+        ${team?`<span class="badge badge-gray" style="font-size:.75rem">👕 ${esc(team.name)}</span>`:''}
+        ${as.shirtNumber?`<span style="font-size:.78rem;color:#64748B">#${as.shirtNumber}</span>`:''}
+        ${as.role?`<span style="font-size:.78rem;color:#64748B">${esc(as.role)}</span>`:''}
+      </div>
+      <button class="btn btn-danger btn-sm" style="padding:4px 10px;font-size:.75rem"
+        onclick="deleteAthleteSeasonEntry('${as.id}','${athleteId}')">✕ Rimuovi</button>
+    </div>`;
+  }).join('') : '<div class="text-muted text-sm" style="padding:8px 0">Nessuna iscrizione registrata</div>';
+
+  const socOpts = visibleSocs.map(s=>`<option value="${s.id}" ${s.id===defSoc?'selected':''}>${esc(s.name)}</option>`).join('');
+  const seasOpts = (S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear)
+    .map(s=>`<option value="${s.id}" ${s.id===defSeas?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('');
+
+  // Categorie e squadre per la soc+stagione default
+  const defCatOpts = buildAsCatOpts(defSoc, defSeas);
+  const defTeamOpts = '<option value="">— nessuna squadra —</option>';
+
+  const html = `
+    <div class="modal-header">
+      <h3>🔗 Associazioni — ${esc(ath.lastName)} ${esc(ath.firstName)}</h3>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-weight:700;font-size:.88rem;margin-bottom:10px;color:#475569">
+        📋 Iscrizioni stagionali attive
+      </div>
+      <div id="as-history-list" style="display:flex;flex-direction:column;gap:8px">
+        ${histHtml}
+      </div>
+    </div>
+
+    <hr style="margin:14px 0">
+    <div style="font-weight:700;font-size:.88rem;margin-bottom:12px;color:#475569">➕ Nuova Associazione</div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <label>Società</label>
+        <select id="as-soc" onchange="onAsSocChange('${athleteId}')">
+          <option value="">— tutte —</option>
+          ${socOpts}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Stagione <span style="color:var(--red)">*</span></label>
+        <select id="as-season" onchange="onAsSeasonChange('${athleteId}')">
+          ${seasOpts}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Categoria <span style="color:var(--red)">*</span></label>
+        <select id="as-cat" onchange="onAsCatChange('${athleteId}')">
+          <option value="">— seleziona —</option>
+          ${defCatOpts}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Squadra</label>
+        <select id="as-team">
+          ${defTeamOpts}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Numero Maglia</label>
+        <input id="as-num" type="number" placeholder="10" min="1" max="99">
+      </div>
+      <div class="form-field">
+        <label>Ruolo</label>
+        <input id="as-role" placeholder="es. Attaccante">
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top:16px">
+      <button class="btn btn-accent" onclick="saveAthleteSeasonEnroll('${athleteId}')">💾 Aggiungi Iscrizione</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Chiudi</button>
+    </div>
+  `;
+
+  const existing = document.querySelector('.modal-overlay');
+  if (existing) {
+    existing.querySelector('.modal').innerHTML = html;
+  } else {
+    openModal(html, 'modal-lg');
+  }
+
+  // Inizializza le squadre per il default
+  onAsCatChange(athleteId);
+}
+
+/** Costruisce le <option> categoria filtrate per società+stagione */
+function buildAsCatOpts(socId, seasId) {
+  const isAdmin = currentUser?.role === 'admin';
+  // Categorie accessibili in base a UCS
+  const accessibleCatIds = isAdmin
+    ? S.categories.map(c=>c.id)
+    : [...new Set((S.userCategorySeasons||[])
+        .filter(u => u.userId===currentUser.id && (!seasId || u.seasonId===seasId))
+        .map(u=>u.categoryId))];
+  // Filtra per società se specificata
+  let cats = S.categories.filter(c => accessibleCatIds.includes(c.id));
+  if (socId) cats = cats.filter(c => c.societyId === socId);
+  return cats.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+}
+
+function onAsSocChange(athleteId) {
+  const socId  = document.getElementById('as-soc')?.value || '';
+  const seasId = document.getElementById('as-season')?.value || '';
+  const catSel = document.getElementById('as-cat');
+  if (catSel) {
+    catSel.innerHTML = '<option value="">— seleziona —</option>' + buildAsCatOpts(socId, seasId);
+  }
+  const teamSel = document.getElementById('as-team');
+  if (teamSel) teamSel.innerHTML = '<option value="">— nessuna squadra —</option>';
+}
+
+function onAsSeasonChange(athleteId) {
+  onAsSocChange(athleteId); // stessa logica
+}
+
+function onAsCatChange(athleteId) {
+  const catId   = document.getElementById('as-cat')?.value || '';
+  const teamSel = document.getElementById('as-team');
+  if (!teamSel) return;
+  const isAdmin = currentUser?.role === 'admin';
+  // Squadre: admin vede tutte quelle della categoria; altri solo quelle dove hanno UCS
+  let teams = getCategoryTeams(catId);
+  if (!isAdmin && teams.length) {
+    const ucsTeamIds = new Set(
+      (S.userCategorySeasons||[])
+        .filter(u => u.userId===currentUser.id && u.categoryId===catId)
+        .map(u => u.teamId).filter(Boolean)
+    );
+    // Se admin ha UCS senza teamId specifico → mostra tutte le squadre della categoria
+    if (ucsTeamIds.size > 0) {
+      teams = teams.filter(t => ucsTeamIds.has(t.id));
+    }
+  }
+  teamSel.innerHTML = '<option value="">— nessuna squadra —</option>'
+    + teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+}
+
+/** Elimina una singola riga athlete_seasons */
+function deleteAthleteSeasonEntry(asId, athleteId) {
+  if (!confirm('Rimuovere questa iscrizione stagionale?')) return;
+  const entry = (S.athleteSeasons||[]).find(x=>x.id===asId);
+  if (!entry) { toast('Iscrizione non trovata','error'); return; }
+  S.athleteSeasons = S.athleteSeasons.filter(x=>x.id!==asId);
+  sbSync('athlete_seasons', asId, true);
+  saveState();
+  toast('Iscrizione rimossa ✅','success');
+  renderAthleteSeasonModal(athleteId);
+}
+
 
 function saveAthleteSeasonEnroll(athleteId) {
-  const seasonId  = document.getElementById('as-season').value;
-  const categoryId= document.getElementById('as-cat').value;
-  const role      = document.getElementById('as-role').value.trim();
-  const num       = parseInt(document.getElementById('as-num').value)||null;
-  const joinDate  = document.getElementById('as-date').value;
-  const notes     = document.getElementById('as-notes').value.trim();
-  if (!seasonId || !categoryId) { toast('Stagione e categoria obbligatorie','error'); return; }
-  // Update or create
+  const seasonId   = document.getElementById('as-season')?.value;
+  const categoryId = document.getElementById('as-cat')?.value;
+  const teamId     = document.getElementById('as-team')?.value || null;
+  const num        = parseInt(document.getElementById('as-num')?.value)||null;
+  const role       = document.getElementById('as-role')?.value.trim() || '';
+
+  if (!seasonId) { toast('Seleziona una stagione','error'); return; }
+  if (!categoryId) { toast('Seleziona una categoria','error'); return; }
+
   if (!S.athleteSeasons) S.athleteSeasons = [];
-  const existing = S.athleteSeasons.find(as => as.athleteId===athleteId && as.seasonId===seasonId && as.categoryId===categoryId);
-  if (existing) {
-    Object.assign(existing, { role, shirtNumber: num, joinDate, notes });
-    toast('Iscrizione aggiornata','success');
-  } else {
-    S.athleteSeasons.push({ id: uid(), athleteId, categoryId, seasonId, role, shirtNumber: num, joinDate, notes });
-    toast('Iscrizione aggiunta','success');
+
+  // Controlla duplicato (stesso atleta + stagione + categoria)
+  const dup = S.athleteSeasons.find(as =>
+    as.athleteId===athleteId && as.seasonId===seasonId && as.categoryId===categoryId
+  );
+  if (dup) {
+    // Aggiorna l'esistente
+    Object.assign(dup, { teamId: teamId||dup.teamId, role: role||dup.role, shirtNumber: num||dup.shirtNumber });
+    sbSync('athlete_seasons', dup);
+    saveState();
+    toast('Iscrizione aggiornata ✅','success');
+    renderAthleteSeasonModal(athleteId);
+    return;
   }
-  const savedAs = existing || S.athleteSeasons[S.athleteSeasons.length-1];
-  saveState(); sbSync('athlete_seasons', savedAs); closeModal();
-  if (currentView === 'athlete-profile') showView('athlete-profile');
+
+  const entry = {
+    id: uid(), athleteId, seasonId, categoryId,
+    teamId: teamId || null,
+    shirtNumber: num,
+    role,
+    joinDate: new Date().toISOString().slice(0,10),
+    notes: ''
+  };
+  S.athleteSeasons.push(entry);
+  sbSync('athlete_seasons', entry);
+  saveState();
+  toast('Iscrizione aggiunta ✅','success');
+  renderAthleteSeasonModal(athleteId);
 }
 
-// ── STAFF SEASON HISTORY MODAL ───────────────────────────────
+
 function openStaffSeasonModal(userId) {
   const u = S.users.find(x => x.id === userId);
   if (!u) return;
