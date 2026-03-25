@@ -5129,7 +5129,8 @@ function refreshCatTeamSelect(socId) {
 // --- 2. APERTURA MODAL (DA SOSTITUIRE) ---
 function openCategoryModal(id) {
   const cat = id ? S.categories.find(x => x.id === id) : null;
-  const refSocId = cat?.society_id || cat?.societyId || currentUser?.societyId || null;
+  // Forza il recupero dell'ID società
+  const refSocId = cat?.society_id || cat?.societyId || currentUser?.societyId || "";
 
   openModal(`
     <div class="modal-header"><h3>${cat ? 'Modifica Categoria' : 'Nuova Categoria'}</h3></div>
@@ -5146,8 +5147,8 @@ function openCategoryModal(id) {
       </div>
       <div class="form-field">
         <label>Squadre associate</label>
-        <div id="cat-team-wrapper">
-          ${buildCatTeamSelect(refSocId, cat?.team_ids || cat?.teamIds || [])}
+        <div id="cat-team-wrapper" style="min-height: 120px; border: 1px solid #E2E8F0; border-radius: 8px;">
+          <p style="color:#94A3B8; font-size:0.8rem; padding:10px;">Caricamento squadre...</p>
         </div>
       </div>
     </div>
@@ -5155,6 +5156,11 @@ function openCategoryModal(id) {
       <button class="btn btn-accent" onclick="saveCategory('${id || ''}')">💾 Salva Categoria</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`, 'modal-lg');
+
+  // FORZA IL CARICAMENTO IMMEDIATO DOPO L'APERTURA
+  setTimeout(() => {
+    refreshCatTeamSelect(refSocId);
+  }, 100);
 }
 // --- 3. SALVATAGGIO ---
 async function saveCategory(id) {
