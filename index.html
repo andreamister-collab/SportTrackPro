@@ -5017,6 +5017,7 @@ function openTeamModal(id) {
       <button class="btn btn-accent" onclick="saveTeam('${id||''}')">💾 Salva</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`);
+}	
 function buildCategoryConfig() {
   const seasId = window._configSeasonId || '';
   const seas   = S.seasons.find(s=>s.id===seasId);
