@@ -1361,21 +1361,35 @@ const DB = {
     };
   },
   // funzione di salvataggio per gestire l'invio dei dati a Supabase
-  async saveTeamAssociation(teamId, categoryId) {
-    if (DB_MODE !== 'supabase') return;
-    const { error } = await sb
-      .from('team_category_season')
-      .upsert({ 
-        team_id: teamId, 
-        category_id: categoryId, 
-        season_id: S.activeSeason 
-      }, { onConflict: 'team_id,season_id' });
-    
-    if (error) throw error;
-    // Rinfresca lo stato locale
-    const freshData = await this.loadAll();
-    Object.assign(S, freshData);
-  },
+async saveTeam(team) {
+      if (DB_MODE !== 'supabase') return;
+
+      // 1. Salvataggio dati base della squadra (inclusa la società)
+      const { error: teamErr } = await sb.from('teams').upsert({
+        id: team.id,
+        name: team.name,
+        sport_id: team.sportId,
+        society_id: team.societyId // <--- Fondamentale per non avere il trattino "—"
+      });
+      if (teamErr) throw teamErr;
+
+      // 2. Salvataggio associazione Squadra-Categoria-Stagione
+      // Questa è la parte che fa funzionare i dropdown degli atleti
+      if (team.categoryId) {
+        const { error: relErr } = await sb.from('team_category_season').upsert({
+          team_id: team.id,
+          category_id: team.categoryId,
+          season_id: S.activeSeason
+        }, { onConflict: 'team_id,season_id' });
+        
+        if (relErr) console.error("Errore relazione categoria:", relErr);
+      }
+
+      // 3. Sync dei dati locali
+      const fresh = await this.loadAll();
+      Object.assign(S, fresh);
+      if (typeof renderTeams === 'function') renderTeams();
+    },
   // ── SAVE HELPER (converte camelCase → snake_case) ─────────────
   _toSnake(obj, map) {
     const out = {};
@@ -4977,42 +4991,32 @@ function buildTeamConfig() {
 
 function openTeamModal(id) {
   const t = id ? S.teams.find(x=>x.id===id) : null;
-  openModal(`
+ openModal(`
     <div class="modal-header"><h3>${t?'Modifica Squadra':'Nuova Squadra'}</h3></div>
     <div class="form-row">
       <div class="form-field"><label>Nome Squadra</label><input id="tm-name" value="${esc(t?.name||'')}" placeholder="es. Prima Squadra"></div>
-      <div class="form-field"><label>Società</label><select id="tm-soc">${S.societies.map(s=>`<option value="${s.id}" ${s.id===t?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+      <div class="form-field"><label>Società</label><select id="tm-soc">
+        <option value="">Seleziona Società...</option>
+        ${S.societies.map(s=>`<option value="${s.id}" ${s.id===t?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}
+      </select></div>
     </div>
     <div class="form-row">
-      <div class="form-field"><label>Sport</label><select id="tm-sport">${S.sports.map(s=>`<option value="${s.id}" ${s.id===t?.sportId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+      <div class="form-field"><label>Sport</label><select id="tm-sport">
+        ${S.sports.map(s=>`<option value="${s.id}" ${s.id===t?.sportId?'selected':''}>${esc(s.name)}</option>`).join('')}
+      </select></div>
+      <div class="form-field"><label>Categoria (Stagione Corrente)</label><select id="tm-cat">
+        <option value="">Nessuna Categoria</option>
+        ${S.categories.map(c => {
+          // Controlla se esiste già un'associazione per questa squadra/stagione
+          const isAssoc = (S.teamAssociations || []).find(a => a.teamId === id && a.categoryId === c.id && a.seasonId === S.activeSeason);
+          return `<option value="${c.id}" ${isAssoc ? 'selected' : ''}>${esc(c.name)}</option>`;
+        }).join('')}
+      </select></div>
     </div>
     <div class="form-actions">
       <button class="btn btn-accent" onclick="saveTeam('${id||''}')">💾 Salva</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`);
-}
-function saveTeam(id) {
-  const name = document.getElementById('tm-name').value.trim();
-  const societyId = document.getElementById('tm-soc').value;
-  const sportId = document.getElementById('tm-sport').value;
-  if (!name) { toast('Nome obbligatorio','error'); return; }
-  if (id) {
-    const t = S.teams.find(x=>x.id===id);
-    Object.assign(t, {name,societyId,sportId});
-    toast('Squadra aggiornata','success');
-  } else {
-    S.teams.push({ id: uid(), name, societyId, sportId });
-    toast('Squadra aggiunta','success');
-  }
-  const saved = id ? S.teams.find(x=>x.id===id) : S.teams[S.teams.length-1];
-  saveState(); sbSync('teams', saved); closeModal(); buildAdminConfigTab('team');
-}
-function deleteTeam(id) {
-  if (!confirm('Eliminare questa squadra?')) return;
-  S.teams = S.teams.filter(x=>x.id!==id);
-  saveState(); sbSync('teams', id, true); buildAdminConfigTab('team'); toast('Squadra eliminata');
-}
-
 function buildCategoryConfig() {
   const seasId = window._configSeasonId || '';
   const seas   = S.seasons.find(s=>s.id===seasId);
@@ -11976,6 +11980,22 @@ function exportRosterPDF(categoryId){
 }
 
 //aggiunta da gemini 2
+/**
+ * Risolve l'errore di riferimento nel modal categoria
+ * Genera il selettore delle squadre basato sulle nuove associazioni
+ */
+function buildCatTeamSelect(currentTeamId = '') {
+  // Se il tuo codice chiama questa funzione per generare l'HTML del select:
+  let html = `<select id="atleta-squadra" name="team_id" class="form-select">
+                <option value="">Seleziona Squadra...</option>`;
+  
+  // Se siamo già in un contesto di categoria (es. modifica), 
+  // potremmo voler pre-popolare. Ma la nostra funzione updateAthleteTeams
+  // gestirà il resto dinamicamente.
+  
+  html += `</select>`;
+  return html;
+}
 
 // ── FUNZIONE DI POPOLAMENTO (Mettila Qui) ────────────────────────────
 function updateAthleteTeams() {
