@@ -4990,40 +4990,35 @@ function buildTeamConfig() {
 }
 
 function openTeamModal(id) {
-  const t = id ? S.teams.find(x=>x.id===id) : null;
- openModal(`
-    <div class="modal-header"><h3>${t?'Modifica Squadra':'Nuova Squadra'}</h3></div>
+  const t = id ? S.teams.find(x => x.id === id) : null;
+  
+  openModal(`
+    <div class="modal-header"><h3>${t ? 'Modifica Squadra' : 'Nuova Squadra'}</h3></div>
     <div class="form-row">
-      <div class="form-field"><label>Nome Squadra</label><input id="tm-name" value="${esc(t?.name||'')}" placeholder="es. Prima Squadra"></div>
+      <div class="form-field"><label>Nome Squadra</label><input id="tm-name" value="${esc(t?.name || '')}" placeholder="es. Prima Squadra"></div>
       <div class="form-field"><label>Società</label><select id="tm-soc">
         <option value="">Seleziona Società...</option>
-        ${S.societies.map(s=>`<option value="${s.id}" ${s.id===t?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}
+        ${S.societies.map(s => `<option value="${s.id}" ${s.id === t?.societyId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
       </select></div>
     </div>
     <div class="form-row">
       <div class="form-field"><label>Sport</label><select id="tm-sport">
-        ${S.sports.map(s=>`<option value="${s.id}" ${s.id===t?.sportId?'selected':''}>${esc(s.name)}</option>`).join('')}
+        ${S.sports.map(s => `<option value="${s.id}" ${s.id === t?.sportId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
       </select></div>
       <div class="form-field"><label>Categoria (Stagione Corrente)</label><select id="tm-cat">
         <option value="">Nessuna Categoria</option>
         ${S.categories.map(c => {
-          // Controlla se esiste già un'associazione per questa squadra/stagione
           const isAssoc = (S.teamAssociations || []).find(a => a.teamId === id && a.categoryId === c.id && a.seasonId === S.activeSeason);
           return `<option value="${c.id}" ${isAssoc ? 'selected' : ''}>${esc(c.name)}</option>`;
         }).join('')}
       </select></div>
     </div>
     <div class="form-actions">
-      <button class="btn btn-accent" onclick="saveTeam('${id||''}')">💾 Salva</button>
+      <button class="btn btn-accent" onclick="saveTeam('${id || ''}')">💾 Salva</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`);
-<div class="form-actions">
-      <button class="btn btn-accent" onclick="saveTeam('${id||''}')">💾 Salva</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
-    </div>`);
-} // <--- Qui finisce correttamente openTeamModal
+} // <--- Questa chiude openTeamModal
 
-// --- FUNZIONE DI SALVATAGGIO ---
 async function saveTeam(id) {
   try {
     const name = document.getElementById('tm-name').value.trim();
@@ -5033,7 +5028,6 @@ async function saveTeam(id) {
 
     if (!name) { toast('Nome obbligatorio', 'error'); return; }
 
-    // Chiamata al database
     await DB.saveTeam({
       id: id || uid(),
       name: name,
@@ -5044,16 +5038,12 @@ async function saveTeam(id) {
 
     toast('Squadra salvata con successo', 'success');
     closeModal();
-    
-    // Aggiorna l'interfaccia se la funzione esiste
-    if (typeof buildAdminConfigTab === 'function') {
-      buildAdminConfigTab('team');
-    }
+    if (typeof buildAdminConfigTab === 'function') buildAdminConfigTab('team');
   } catch (err) {
-    console.error("Errore nel salvataggio squadra:", err);
-    toast('Errore durante il salvataggio', 'error');
+    console.error("Errore salvataggio:", err);
+    toast('Errore nel salvataggio', 'error');
   }
-}	
+}
 function buildCategoryConfig() {
   const seasId = window._configSeasonId || '';
   const seas   = S.seasons.find(s=>s.id===seasId);
