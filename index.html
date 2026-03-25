@@ -5021,9 +5021,9 @@ function openTeamModal(id) {
       <button class="btn btn-accent" onclick="saveTeam('${id||''}')">💾 Salva</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`);
-} // <--- Fine di openTeamModal
+} // <--- Qui finisce correttamente openTeamModal
 
-// --- ASSICURATI CHE QUESTA FUNZIONE SIA ESATTAMENTE COSÌ ---
+// --- FUNZIONE DI SALVATAGGIO ---
 async function saveTeam(id) {
   try {
     const name = document.getElementById('tm-name').value.trim();
