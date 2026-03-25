@@ -12010,13 +12010,27 @@ function updateAthleteTeams() {
   }
 }
 
-// ── GRILLETTO (LISTENER) ─────────────────────────────────────────────
+// --- GRILLETTO AGGIORNATO ---
 document.addEventListener('change', function(e) {
+    // Questo intercetta il cambio su QUALSIASI elemento che abbia 
+    // l'ID o il nome della categoria
     if (e.target && (e.target.id === 'atleta-categoria' || e.target.name === 'category_id')) {
+        console.log("Cambio categoria rilevato su:", e.target.value); // Debug in console
         updateAthleteTeams();
     }
 });
 
+// Questo intercetta l'apertura del modal e forza il primo caricamento
+document.addEventListener('mousedown', function(e) {
+    const btn = e.target.closest('button');
+    if (btn && (btn.onclick?.toString().includes('openAthlete') || btn.innerText.includes('✏️') || btn.innerText.includes('Assoc.'))) {
+        // Aspettiamo che il modal sia renderizzato nel DOM
+        setTimeout(() => {
+            console.log("Forzo aggiornamento squadre all'apertura modal");
+            updateAthleteTeams();
+        }, 600);
+    }
+});
 // =========================
 // INIT
 // =========================
