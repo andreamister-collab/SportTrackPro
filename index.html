@@ -5017,6 +5017,45 @@ function openTeamModal(id) {
       <button class="btn btn-accent" onclick="saveTeam('${id||''}')">💾 Salva</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`);
+<div class="form-actions">
+      <button class="btn btn-accent" onclick="saveTeam('${id||''}')">💾 Salva</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+    </div>`);
+} // <--- Fine di openTeamModal
+
+// --- ASSICURATI CHE QUESTA FUNZIONE SIA ESATTAMENTE COSÌ ---
+async function saveTeam(id) {
+  try {
+    const name = document.getElementById('tm-name').value.trim();
+    const societyId = document.getElementById('tm-soc').value;
+    const sportId = document.getElementById('tm-sport').value;
+    const categoryId = document.getElementById('tm-cat').value;
+
+    if (!name) { toast('Nome obbligatorio', 'error'); return; }
+
+    // Chiamata al database
+    await DB.saveTeam({
+      id: id || uid(),
+      name: name,
+      sportId: sportId,
+      societyId: societyId,
+      categoryId: categoryId
+    });
+
+    toast('Squadra salvata con successo', 'success');
+    closeModal();
+    
+    // Aggiorna l'interfaccia se la funzione esiste
+    if (typeof buildAdminConfigTab === 'function') {
+      buildAdminConfigTab('team');
+    }
+  } catch (err) {
+    console.error("Errore nel salvataggio squadra:", err);
+    toast('Errore durante il salvataggio', 'error');
+  }
+}
+
+
 }	
 function buildCategoryConfig() {
   const seasId = window._configSeasonId || '';
