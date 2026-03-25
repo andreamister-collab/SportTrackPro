@@ -5129,8 +5129,16 @@ function refreshCatTeamSelect(socId) {
 // --- 2. APERTURA MODAL (DA SOSTITUIRE) ---
 function openCategoryModal(id) {
   const cat = id ? S.categories.find(x => x.id === id) : null;
-  // Cerchiamo l'ID società con priorità al database
-  const refSocId = cat?.society_id || cat?.societyId || currentUser?.societyId || null;
+  
+  // 1. TENTATIVO DI RECUPERO ID SOCIETÀ (Più robusto)
+  let refSocId = cat?.society_id || cat?.societyId || "";
+  
+  // Se è ancora vuoto, proviamo dall'utente o dalla prima società disponibile
+  if (!refSocId && currentUser?.societyId) refSocId = currentUser.societyId;
+  if (!refSocId && currentUser?.society_id) refSocId = currentUser.society_id;
+  if (!refSocId && S.societies.length > 0) refSocId = S.societies[0].id;
+
+  console.log("DEBUG CATEGORIA - ID Società rilevato:", refSocId);
 
   openModal(`
     <div class="modal-header"><h3>${cat ? 'Modifica Categoria' : 'Nuova Categoria'}</h3></div>
@@ -5147,8 +5155,8 @@ function openCategoryModal(id) {
       </div>
       <div class="form-field">
         <label>Squadre associate</label>
-        <div id="cat-team-wrapper" style="min-height:100px; border:1px solid #E2E8F0; border-radius:8px; padding:5px; background:#F8FAFC">
-          <p style="font-size:0.75rem; color:#94A3B8">Inizializzazione squadre...</p>
+        <div id="cat-team-wrapper" style="min-height:110px; border:1.5px solid #E2E8F0; border-radius:8px; background:#fff;">
+           <p style="padding:10px; color:#94A3B8; font-size:0.8rem;">Caricamento in corso...</p>
         </div>
       </div>
     </div>
@@ -5157,11 +5165,14 @@ function openCategoryModal(id) {
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`, 'modal-lg');
 
-  // TRIGGER MANUALE DOPO UN BREVE DELAY (fondamentale!)
+  // FORZA IL REFRESH
   setTimeout(() => {
-    console.log("Forzo refresh squadre per società:", refSocId);
-    refreshCatTeamSelect(refSocId);
-  }, 200); 
+    if (refSocId) {
+      refreshCatTeamSelect(refSocId);
+    } else {
+      document.getElementById('cat-team-wrapper').innerHTML = '<p style="padding:10px; color:orange;">Seleziona una società per vedere le squadre</p>';
+    }
+  }, 300);
 }
 // --- 3. SALVATAGGIO ---
 async function saveCategory(id) {
