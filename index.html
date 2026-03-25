@@ -5094,127 +5094,103 @@ function buildCategoryConfig() {
 }
 //da qui PER MODIFICHE ANDREA
 // --- 1. LOGICA VISUALIZZAZIONE SQUADRE (DA SOSTITUIRE) ---
-function buildCatTeamSelect(societyId, selectedIds = []) {
-  // Filtriamo le squadre usando il campo society_id che abbiamo visto nel DB
+function buildTeamCheckboxes(societyId, selectedTeamIds = []) {
+  // Filtriamo le squadre in memoria che appartengono alla società scelta nel menu
   const teams = S.teams.filter(t => {
     const sId = t.society_id || t.societyId;
     return String(sId) === String(societyId);
   });
 
   if (!teams.length) {
-    return `<div style="color:#94A3B8; font-size:0.8rem; padding:10px; border:1px dashed #CBD5E1; border-radius:6px;">
-              Nessuna squadra trovata per questa società (ID: ${societyId})
-            </div>`;
+    return `<div style="color:#94A3B8; font-size:0.8rem; padding:10px;">Nessuna squadra trovata per questa società.</div>`;
   }
 
-  // Restituiamo il select senza annidarlo in altri select
   return `
-    <select id="cat-team-multi" class="form-select" multiple style="height:120px; width:100%">
+    <div id="cat-teams-list" style="display:grid; grid-template-columns: 1fr; gap:6px; max-height:150px; overflow-y:auto;">
       ${teams.map(t => {
-        const isSelected = (selectedIds || []).includes(t.id);
-        return `<option value="${t.id}" ${isSelected ? 'selected' : ''}>${esc(t.name)}</option>`;
+        const isChecked = (selectedTeamIds || []).includes(t.id);
+        return `
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; border:1px solid #E2E8F0; border-radius:6px; background:white;">
+            <input type="checkbox" value="${t.id}" ${isChecked ? 'checked' : ''} class="team-checkbox">
+            <span style="font-size:0.85rem;">${esc(t.name)}</span>
+          </label>`;
       }).join('')}
-    </select>
-    <div style="font-size:.65rem;color:#94A3B8;margin-top:4px">Usa Ctrl/Cmd per selezioni multiple</div>
-  `;
+    </div>`;
 }
 
-function refreshCatTeamSelect(socId) {
+function refreshCatTeamList(socId) {
   const container = document.getElementById('cat-team-wrapper');
-  if (container) {
-    container.innerHTML = buildCatTeamSelect(socId);
-  }
+  if (container) container.innerHTML = buildTeamCheckboxes(socId);
 }
-
 // --- 2. APERTURA MODAL (DA SOSTITUIRE) ---
 function openCategoryModal(id) {
   const cat = id ? S.categories.find(x => x.id === id) : null;
   
-  // 1. TENTATIVO DI RECUPERO ID SOCIETÀ (Più robusto)
-  let refSocId = cat?.society_id || cat?.societyId || "";
-  
-  // Se è ancora vuoto, proviamo dall'utente o dalla prima società disponibile
-  if (!refSocId && currentUser?.societyId) refSocId = currentUser.societyId;
-  if (!refSocId && currentUser?.society_id) refSocId = currentUser.society_id;
-  if (!refSocId && S.societies.length > 0) refSocId = S.societies[0].id;
-
-  console.log("DEBUG CATEGORIA - ID Società rilevato:", refSocId);
+  // Se stiamo modificando, cerchiamo di capire la società dalla prima squadra associata
+  let initialSocId = "";
+  if (cat?.team_ids?.length > 0) {
+    const firstTeam = S.teams.find(t => t.id === cat.team_ids[0]);
+    initialSocId = firstTeam?.society_id || firstTeam?.societyId || "";
+  }
 
   openModal(`
     <div class="modal-header"><h3>${cat ? 'Modifica Categoria' : 'Nuova Categoria'}</h3></div>
     <div class="form-row">
-      <div class="form-field"><label>Nome Categoria</label><input id="cat-name" value="${esc(cat?.name || '')}"></div>
-      <div class="form-field"><label>Sport</label><select id="cat-sport">${S.sports.map(s => `<option value="${s.id}" ${s.id === (cat?.sport_id || cat?.sportId) ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
-    </div>
-    <div class="form-row">
-      <div class="form-field"><label>Società</label>
-        <select id="cat-soc" onchange="refreshCatTeamSelect(this.value)">
-          <option value="">Seleziona Società...</option>
-          ${S.societies.map(s => `<option value="${s.id}" ${String(s.id) === String(refSocId) ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
-        </select>
+      <div class="form-field">
+        <label>Nome Categoria</label>
+        <input id="cat-name" value="${esc(cat?.name || '')}" placeholder="es. Under 10">
       </div>
       <div class="form-field">
-        <label>Squadre associate</label>
-        <div id="cat-team-wrapper" style="min-height:110px; border:1.5px solid #E2E8F0; border-radius:8px; background:#fff;">
-           <p style="padding:10px; color:#94A3B8; font-size:0.8rem;">Caricamento in corso...</p>
+        <label>Filtra per Società</label>
+        <select id="cat-soc-filter" onchange="refreshCatTeamList(this.value)">
+          <option value="">Seleziona Società...</option>
+          ${S.societies.map(s => `<option value="${s.id}" ${String(s.id) === String(initialSocId) ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:10px">
+      <div class="form-field" style="width:100%">
+        <label>Squadre da associare</label>
+        <div id="cat-team-wrapper" style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; min-height:80px; padding:8px;">
+          ${buildTeamCheckboxes(initialSocId, cat?.team_ids || cat?.teamIds || [])}
         </div>
       </div>
     </div>
-    <div class="form-actions" style="margin-top:16px">
+    <div class="form-actions" style="margin-top:20px">
       <button class="btn btn-accent" onclick="saveCategory('${id || ''}')">💾 Salva Categoria</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`, 'modal-lg');
-
-  // FORZA IL REFRESH
-  setTimeout(() => {
-    if (refSocId) {
-      refreshCatTeamSelect(refSocId);
-    } else {
-      document.getElementById('cat-team-wrapper').innerHTML = '<p style="padding:10px; color:orange;">Seleziona una società per vedere le squadre</p>';
-    }
-  }, 300);
 }
 // --- 3. SALVATAGGIO ---
 async function saveCategory(id) {
   const name = document.getElementById('cat-name').value.trim();
-  const societyId = document.getElementById('cat-soc').value;
-  const teamMultiEl = document.getElementById('cat-team-multi');
-  const teamIds = teamMultiEl ? Array.from(teamMultiEl.selectedOptions).map(o => o.value) : [];
+  const teamIds = Array.from(document.querySelectorAll('.team-checkbox:checked')).map(cb => cb.value);
 
-  if (!name || !societyId) { toast('Nome e Società sono obbligatori', 'error'); return; }
+  if (!name || teamIds.length === 0) { 
+    toast('Inserire Nome e selezionare almeno una Squadra', 'error'); 
+    return; 
+  }
 
   try {
-    const catId = id || uid();
-    
-    // MODIFICA QUI: Usiamo selettori più generici per i checkbox dello staff
-    const getChecked = (selector) => {
-      const container = document.getElementById(selector);
-      return container ? Array.from(container.querySelectorAll('input:checked')).map(i => i.value) : [];
-    };
-
     const payload = {
-      id: catId,
+      id: id || uid(),
       name: name,
-      sport_id: document.getElementById('cat-sport').value,
-      society_id: societyId,
-      // Usiamo gli ID che abbiamo definito nel modal
-      manager_ids: getChecked('cat-managers-wrap'), 
-      director_ids: getChecked('cat-dirs-wrap'),
-      team_ids: teamIds
+      // Usiamo le colonne reali del tuo DB
+      team_ids: teamIds, 
+      team_id: teamIds[0], // Salviamo la prima squadra anche nel campo singolo per compatibilità
+      updated_at: new Date()
     };
 
     const { error } = await sb.from('categories').upsert(payload);
     if (error) throw error;
 
-    toast('Categoria salvata', 'success');
+    toast('Categoria e associazioni salvate!', 'success');
     closeModal();
-    
     const fresh = await DB.loadAll();
     Object.assign(S, fresh);
     buildAdminConfigTab('category');
-    buildSidebarNav();
   } catch (err) {
-    console.error("Errore salvataggio:", err);
+    console.error(err);
     toast('Errore nel salvataggio', 'error');
   }
 }
