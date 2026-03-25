@@ -5092,47 +5092,61 @@ function buildCategoryConfig() {
   html += '</div>';
   return html;
 }
-
-function openCategoryModal(id) {
-  const cat = id ? S.categories.find(x=>x.id===id) : null;
-
-  // Determina la società di riferimento per filtrare squadre e utenti
-  // Priorità: società della categoria > società dell'utente corrente > tutte
-  const refSocId = cat?.societyId || currentUser?.societyId || null;
-
-  // Filtra squadre per società
-  const visibleTeams = refSocId
-    ? S.teams.filter(t => t.societyId === refSocId)
+// --- 1. FUNZIONE PER GENERARE IL SELECT DELLE SQUADRE ---
+function buildCatTeamSelect(societyId, selectedIds = []) {
+  const teams = societyId 
+    ? S.teams.filter(t => (t.societyId === societyId || t.society_id === societyId))
     : S.teams;
 
-  // Filtra utenti per società
-  // Mostra solo utenti della stessa società o senza società assegnata
+  if (!teams.length) return '<div style="font-size:.8rem;color:#94A3B8">Nessuna squadra trovata per questa società</div>';
+
+  return `
+    <select id="cat-team-multi" class="form-select" multiple style="height:100px; width:100%">
+      ${teams.map(t => {
+        const isSelected = selectedIds.includes(t.id);
+        return `<option value="${t.id}" ${isSelected ? 'selected' : ''}>${esc(t.name)}</option>`;
+      }).join('')}
+    </select>
+    <div style="font-size:.7rem;color:#94A3B8;margin-top:4px">Tenere premuto Ctrl (Win) o Cmd (Mac) per selezioni multiple</div>
+  `;
+}
+
+function refreshCatTeamSelect(socId) {
+  const container = document.getElementById('cat-team-wrapper');
+  if (container) container.innerHTML = buildCatTeamSelect(socId);
+}
+
+// --- 2. APERTURA MODAL CATEGORIA ---
+function openCategoryModal(id) {
+  const cat = id ? S.categories.find(x => x.id === id) : null;
+  const refSocId = cat?.societyId || cat?.society_id || currentUser?.societyId || null;
+
   const byRole = role => S.users.filter(u => {
     if (u.role !== role) return false;
-    if (!refSocId) return true; // admin globale vede tutti
-    if (!u.societyId) return false; // escludi utenti senza società
-    return u.societyId === refSocId;
+    if (!refSocId) return true;
+    return (u.societyId === refSocId || u.society_id === refSocId);
   });
 
   const multiSel = (elemId, users, selectedIds) => {
     const sel = selectedIds || [];
-    if (!users.length) return '<div style="font-size:.8rem;color:#64748B;padding:4px 0">Nessun utente disponibile per questo ruolo</div>';
-    return '<div id="'+elemId+'-wrap" style="display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;padding:4px 2px">'
-      + users.map(u => {
-          const checked = sel.includes(u.id);
-          return '<label style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:7px;cursor:pointer;border:1.5px solid '+(checked?'var(--accent)':'#E2E8F0')+';background:'+(checked?'var(--accent-l)':'var(--white)')+'" id="'+elemId+'-opt-'+u.id+'">'
-            + '<input type="checkbox" value="'+u.id+'" id="'+elemId+'-cb-'+u.id+'" '+(checked?'checked':'')+' onchange="toggleStaffCB(this,&quot;'+elemId+'&quot;)">'
-            + '<span style="font-size:.85rem;'+(checked?'color:var(--accent);font-weight:600':'')+'">' + esc(u.name)
-            + ' <span style="color:#94A3B8;font-size:.78rem">('+esc(u.username)+')</span></span>'
-            + '</label>';
-        }).join('')
-      + '</div>';
+    if (!users.length) return '<div style="font-size:.8rem;color:#64748B;padding:4px 0">Nessun utente disponibile</div>';
+    return `<div id="${elemId}-wrap" style="display:flex;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto;padding:4px 2px">
+      ${users.map(u => {
+        const checked = sel.includes(u.id);
+        return `
+          <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:7px;cursor:pointer;border:1.5px solid ${checked?'var(--accent)':'#E2E8F0'};background:${checked?'var(--accent-l)':'var(--white)'}" id="${elemId}-opt-${u.id}">
+            <input type="checkbox" value="${u.id}" ${checked?'checked':''} onchange="toggleStaffCB(this,'${elemId}')">
+            <span style="font-size:.85rem;${checked?'color:var(--accent);font-weight:600':''}">
+              ${esc(u.name)} <small style="color:#94A3B8">(${esc(u.username)})</small>
+            </span>
+          </label>`;
+      }).join('')}
+    </div>`;
   };
 
-  // Filtra società visibili
   const visibleSocs = currentUser?.role === 'admin' && !currentUser?.societyId
     ? S.societies
-    : S.societies.filter(s => s.id === refSocId || s.id === cat?.societyId);
+    : S.societies.filter(s => s.id === refSocId || s.id === cat?.societyId || s.id === cat?.society_id);
 
   openModal(`
     <div class="modal-header"><h3>${cat?'Modifica Categoria':'Nuova Categoria'}</h3></div>
@@ -5141,54 +5155,81 @@ function openCategoryModal(id) {
       <div class="form-field"><label>Sport</label><select id="cat-sport">${S.sports.map(s=>`<option value="${s.id}" ${s.id===cat?.sportId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
     </div>
     <div class="form-row">
-      <div class="form-field"><label>Società</label><select id="cat-soc" onchange="refreshCatTeamSelect(this.value)">${visibleSocs.map(s=>`<option value="${s.id}" ${s.id===cat?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+      <div class="form-field"><label>Società</label><select id="cat-soc" onchange="refreshCatTeamSelect(this.value)">
+        <option value="">Seleziona Società...</option>
+        ${visibleSocs.map(s=>`<option value="${s.id}" ${s.id===(cat?.societyId||cat?.society_id)?'selected':''}>${esc(s.name)}</option>`).join('')}
+      </select></div>
       <div class="form-field">
-        <label>Squadre (una o più — Ctrl/Cmd per selezionare più squadre)</label>
+        <label>Squadre associate</label>
         <div id="cat-team-wrapper">
-          ${buildCatTeamSelect(refSocId, cat?.teamIds||(cat?.teamId?[cat.teamId]:[]))}
+          ${buildCatTeamSelect(refSocId, cat?.teamIds || [])}
         </div>
       </div>
     </div>
     <hr style="margin:14px 0">
-    <div style="font-size:.8rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">👥 Assegnazione Staff</div>
     <div class="form-row">
-      <div class="form-field">
-        <label>⭐ Responsabili</label>
-        ${multiSel('cat-managers', byRole('responsabile'), cat?.managerIds)}
-      </div>
-      <div class="form-field">
-        <label>🏛️ Dirigenti</label>
-        ${multiSel('cat-dirs', byRole('dirigente'), cat?.directorIds)}
-      </div>
-    </div>
-    <div class="form-row" style="margin-top:10px">
-      <div class="form-field">
-        <label>⚽ Allenatori</label>
-        ${multiSel('cat-coaches', byRole('allenatore'), cat?.coachIds)}
-      </div>
-      <div class="form-field">
-        <label>🩺 Professionisti</label>
-        ${multiSel('cat-profs', byRole('professionista'), cat?.professionalIds)}
-      </div>
+      <div class="form-field"><label>⭐ Responsabili</label>${multiSel('cat-managers', byRole('responsabile'), cat?.managerIds)}</div>
+      <div class="form-field"><label>🏛️ Dirigenti</label>${multiSel('cat-dirs', byRole('dirigente'), cat?.directorIds)}</div>
     </div>
     <div class="form-actions" style="margin-top:16px">
-      <button class="btn btn-accent" onclick="saveCategory('${id||''}')">💾 Salva</button>
+      <button class="btn btn-accent" onclick="saveCategory('${id||''}')">💾 Salva Categoria</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`, 'modal-lg');
 }
-function toggleStaffCB(cb, elemId) {
-  const label = document.getElementById(elemId+'-opt-'+cb.value);
-  if (!label) return;
-  if (cb.checked) {
-    label.style.borderColor = 'var(--accent)';
-    label.style.background = 'var(--accent-l)';
-    const sp = label.querySelector('span');
-    if (sp) { sp.style.color='var(--accent)'; sp.style.fontWeight='600'; }
-  } else {
-    label.style.borderColor = '#E2E8F0';
-    label.style.background = 'var(--white)';
-    const sp = label.querySelector('span');
-    if (sp) { sp.style.color=''; sp.style.fontWeight=''; }
+
+// --- 3. SALVATAGGIO ---
+async function saveCategory(id) {
+  const name = document.getElementById('cat-name').value.trim();
+  const sportId = document.getElementById('cat-sport').value;
+  const societyId = document.getElementById('cat-soc').value;
+  const teamMultiEl = document.getElementById('cat-team-multi');
+  const teamIds = teamMultiEl ? Array.from(teamMultiEl.selectedOptions).map(o=>o.value) : [];
+
+  const pick = elId => {
+    const wrap = document.getElementById(elId+'-wrap');
+    return wrap ? Array.from(wrap.querySelectorAll('input[type=checkbox]:checked')).map(cb=>cb.value) : [];
+  };
+
+  if (!name || !societyId) { toast('Nome e Società sono obbligatori','error'); return; }
+
+  try {
+    const catId = id || uid();
+    
+    // A. Update Supabase Categories
+    const { error: catErr } = await sb.from('categories').upsert({
+      id: catId,
+      name: name,
+      sport_id: sportId,
+      society_id: societyId,
+      manager_ids: pick('cat-managers'),
+      director_ids: pick('cat-dirs'),
+      team_ids: teamIds // Mantieni per compatibilità locale
+    });
+    if (catErr) throw catErr;
+
+    // B. Sincronizza tabella ponte team_category_season
+    await sb.from('team_category_season').delete().eq('category_id', catId).eq('season_id', S.activeSeason);
+    
+    if (teamIds.length > 0) {
+      const assocs = teamIds.map(tId => ({
+        team_id: tId,
+        category_id: catId,
+        season_id: S.activeSeason
+      }));
+      await sb.from('team_category_season').insert(assocs);
+    }
+
+    toast('Categoria salvata','success');
+    closeModal();
+    
+    // Refresh dati
+    const fresh = await DB.loadAll();
+    Object.assign(S, fresh);
+    buildAdminConfigTab('category');
+    buildSidebarNav();
+  } catch (err) {
+    console.error(err);
+    toast('Errore salvataggio','error');
   }
 }
 
