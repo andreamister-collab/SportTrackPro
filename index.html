@@ -5092,14 +5092,15 @@ function buildCategoryConfig() {
   html += '</div>';
   return html;
 }
-// --- 1. GESTIONE SQUADRE NELLA CATEGORIA ---
+//da qui PER MODIFICHE ANDREA
+// --- 1. LOGICA SQUADRE NELLA CATEGORIA (RIPRISTINATA) ---
 function buildCatTeamSelect(societyId, selectedIds = []) {
   // Filtra le squadre che appartengono alla società selezionata
   const teams = societyId 
     ? S.teams.filter(t => (t.societyId === societyId || t.society_id === societyId))
     : S.teams;
 
-  if (!teams.length) return '<div style="font-size:.8rem;color:#94A3B8;padding:8px">Nessuna squadra trovata per questa società. Controlla la scheda "Squadre".</div>';
+  if (!teams.length) return '<select id="cat-team-multi" class="form-select" disabled><option>Nessuna squadra trovata per questa società</option></select>';
 
   return `
     <select id="cat-team-multi" class="form-select" multiple style="height:100px; width:100%">
@@ -5266,7 +5267,7 @@ function getUserCatIds(userId, role) {
   if (!key) return [];
   return S.categories.filter(c=>(c[key]||[]).includes(userId)).map(c=>c.id);
 }
-
+//fino a qui PER MODIFICHE ANDREA
 // Helper: update category arrays when user role/assignments change
 function syncUserCatAssignments(userId, role, newCatIds) {
   const key = {
