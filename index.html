@@ -1311,7 +1311,8 @@ const DB = {
         joinDate: r.join_date, societyId: r.society_id
       })),
       seasons:        (seasons.data||[]).map(r => ({
-        ...r, societyId: r.society_id, startYear: r.start_year, endYear: r.end_year
+        ...r, societyId: r.society_id, startYear: r.start_year, endYear: r.end_year,
+        startDate: r.start_date || null, endDate: r.end_date || null
       })),
       sessions:       (sessions.data||[]).map(r => ({
         ...r, categoryId: r.category_id, createdBy: r.created_by,
@@ -1475,7 +1476,9 @@ const DB = {
   async saveSeason(s) {
     return this.upsert('seasons', {
       id: s.id, name: s.name, start_year: s.startYear,
-      end_year: s.endYear, active: s.active||false
+      end_year: s.endYear, active: s.active||false,
+      start_date: s.startDate || `${s.startYear}-08-01`,
+      end_date:   s.endDate   || `${s.endYear}-07-31`,
     });
   },
 
@@ -2316,9 +2319,12 @@ function getAthletePresenceRate(athleteId, categoryId) {
 /** Ritorna {start, end} ISO per la stagione (es. 2025-07-01 / 2026-06-30) */
 function getSeasonDates(season) {
   if (!season) return { start: '1900-01-01', end: '2100-12-31' };
+  // Priorità ai campi espliciti start_date/end_date (dopo migrazione DB)
+  if (season.startDate) return { start: season.startDate, end: season.endDate || '2100-12-31' };
   const sy = season.startYear || season.start_year || 2000;
-  const ey = season.endYear   || season.end_year   || 2001;
-  return { start: sy + '-07-01', end: ey + '-06-30' };
+  const ey = season.endYear   || season.end_year   || (sy + 1);
+  // Standard calcistico: 1 agosto anno_inizio → 31 luglio anno_fine
+  return { start: `${sy}-08-01`, end: `${ey}-07-31` };
 }
 
 /** Filtra array di sessioni (hanno campo .date) per stagione */
@@ -3386,7 +3392,7 @@ const TABLE_REAL_COLUMNS = {
   sports:     ['id','name','icon'],
   societies:  ['id','name','sport_id','city','email'],
   teams:      ['id','name','sport_id'],
-  seasons:    ['id','name','start_year','end_year','active'],
+  seasons:    ['id','name','start_year','end_year','active','start_date','end_date'],
   users:      ['id','name','username','email','profession','phone'],
   categories: ['id','name','sport_id'],
   athletes:   ['id','first_name','last_name','dob','nickname','notes','parent_ids'],
@@ -4683,6 +4689,7 @@ viewBuilders['admin-config'] = (el) => {
 };
 
 function buildAdminConfigTab(tab) {
+  window._pendingConfigTab = tab; // mantieni tab corrente per il select stagione
   // activate tab — array completo di tutti i tab
   const allTabs = ['sport','society','team','category','users','activities','seasons','roles','settings'];
   document.querySelectorAll('#config-tabs .tab-btn').forEach((b,i) => {
@@ -4911,11 +4918,11 @@ function deleteSociety(id) {
 function buildTeamConfig() {
   const seasId = window._configSeasonId || '';
   const seas   = S.seasons.find(s=>s.id===seasId);
-  // Squadre visibili: quelle con almeno un atleta nella stagione, o tutte se no filtro
+  // Squadre globali — il filtro stagione mostra quelle con atleti iscritti nella stagione
   const activeTeamIds = seasId
-    ? [...new Set((S.athleteSeasons||[]).filter(as=>as.seasonId===seasId && as.teamId).map(as=>as.teamId))]
-    : S.teams.map(t=>t.id);
-  const visibleTeams = S.teams.filter(t=>!seasId||activeTeamIds.includes(t.id));
+    ? new Set((S.athleteSeasons||[]).filter(as=>as.seasonId===seasId && as.teamId).map(as=>as.teamId))
+    : null; // null = mostra tutte
+  const visibleTeams = activeTeamIds ? S.teams.filter(t=>activeTeamIds.has(t.id)) : S.teams;
 
   return '<div class="card">'
     + '<div class="card-title" style="justify-content:space-between">'
@@ -4986,15 +4993,14 @@ function deleteTeam(id) {
 function buildCategoryConfig() {
   const seasId = window._configSeasonId || '';
   const seas   = S.seasons.find(s=>s.id===seasId);
-  // Categorie visibili per stagione
+  // Categorie globali — il filtro stagione mostra solo quelle con atleti o staff nella stagione
   const activeCatIds = seasId
-    ? [...new Set([
+    ? new Set([
         ...(S.athleteSeasons||[]).filter(as=>as.seasonId===seasId).map(as=>as.categoryId),
         ...(S.userCategorySeasons||[]).filter(u=>u.seasonId===seasId).map(u=>u.categoryId),
-        ...S.categories.map(c=>c.id) // sempre tutte per retrocompatibilità
-      ])]
-    : S.categories.map(c=>c.id);
-  const visibleCats = S.categories.filter(c=>!seasId||activeCatIds.includes(c.id));
+      ])
+    : null; // null = mostra tutte
+  const visibleCats = activeCatIds ? S.categories.filter(c=>activeCatIds.has(c.id)) : S.categories;
 
   let html = '<div class="card">'
     + '<div class="card-title" style="justify-content:space-between">'
@@ -5081,9 +5087,6 @@ function openCategoryModal(id) {
       <div class="form-field"><label>Sport</label><select id="cat-sport">${S.sports.map(s=>`<option value="${s.id}" ${s.id===cat?.sportId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
     </div>
     <div class="form-row">
-      <div class="form-field"><label>⚽ Stagione</label><select id="cat-season">
-        ${(S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear).map(s=>`<option value="${s.id}" ${s.id===(cat?.seasonId||getActiveSeason()?.id)?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
-      </select></div>
       <div class="form-field"><label>Società</label><select id="cat-soc" onchange="refreshCatTeamSelect(this.value)">${visibleSocs.map(s=>`<option value="${s.id}" ${s.id===cat?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
       <div class="form-field">
         <label>Squadre (una o più — Ctrl/Cmd per selezionare più squadre)</label>
@@ -5153,7 +5156,7 @@ function saveCategory(id) {
   const coachIds        = pick('cat-coaches');
   const professionalIds = pick('cat-profs');
   if (!name) { toast('Nome obbligatorio','error'); return; }
-  const seasonId = document.getElementById('cat-season')?.value || getActiveSeason()?.id || '';
+  // seasonId rimosso: le categorie sono globali, la stagione non è più un campo della categoria
   const data = {name,sportId,societyId,teamId,teamIds,directorIds,managerIds,coachIds,professionalIds,seasonId};
   if (id) {
     Object.assign(S.categories.find(x=>x.id===id), data);
@@ -6262,63 +6265,156 @@ function resetPerfParams() {
 }
 
 function buildSeasonsConfig() {
-  const seasons = (S.seasons||[]).slice().reverse();
+  const seasons = (S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear);
   const rowsHtml = seasons.map(s => {
-    const enrolled = (S.athleteSeasons||[]).filter(as => as.seasonId===s.id).length;
-    const sessCnt = S.sessions.filter(sess => {
-      const start = s.startYear+'-07-01', end = s.endYear+'-06-30';
-      return sess.date >= start && sess.date <= end;
-    }).length;
+    const { start, end } = getSeasonDates(s);
+    const enrolled  = (S.athleteSeasons||[]).filter(as => as.seasonId===s.id).length;
+    const staffCnt  = (S.userCategorySeasons||[]).filter(u => u.seasonId===s.id).length;
+    const sessCnt   = (S.sessions||[]).filter(sess => sess.date >= start && sess.date <= end).length;
+    const matchCnt  = (S.matches||[]).filter(m => m.date >= start && m.date <= end).length;
     const statusBadge = s.active
       ? '<span class="season-badge season-active-badge">★ Attiva</span>'
       : '<span class="badge badge-gray">Archivio</span>';
-    const deleteBtn = s.active ? '' : `<button class="btn btn-danger btn-sm" onclick="deleteSeason('${s.id}')">🗑️</button>`;
+    const deleteBtn = s.active ? '' : `<button class="btn btn-danger btn-sm" onclick="deleteSeason('${s.id}')" title="Elimina stagione">🗑️</button>`;
     return `<tr>
       <td class="fw-700">${esc(s.name)}</td>
-      <td>${s.startYear}</td>
-      <td>${s.endYear}</td>
+      <td style="font-size:.82rem;color:#64748B">1 ago ${s.startYear}</td>
+      <td style="font-size:.82rem;color:#64748B">31 lug ${s.endYear}</td>
       <td>${statusBadge}</td>
       <td>${enrolled}</td>
+      <td>${staffCnt}</td>
       <td>${sessCnt}</td>
+      <td>${matchCnt}</td>
       <td style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="setSeasonActive('${s.id}')">Imposta Attiva</button>
+        <button class="btn btn-ghost btn-sm" onclick="setSeasonActive('${s.id}')" title="Rendi questa la stagione corrente">⭐ Attiva</button>
+        <button class="btn btn-ghost btn-sm" onclick="cloneSeason('${s.id}')" title="Clona assegnazioni staff in un'altra stagione">📋 Clona</button>
         ${deleteBtn}
       </td>
     </tr>`;
   }).join('');
 
+  const lastYear  = seasons.length ? Math.max(...seasons.map(s=>s.endYear)) : new Date().getFullYear();
+  const nextStart = lastYear;
+  const nextEnd   = lastYear + 1;
+
   return `
     <div class="card">
       <div class="card-title" style="justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:8px"><div class="icon" style="background:var(--accent-l);color:var(--accent)">⚽</div>Stagioni Calcistiche</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="icon" style="background:var(--accent-l);color:var(--accent)">⚽</div>
+          Stagioni Sportive
+        </div>
+      </div>
+      <div class="highlight-box" style="margin-bottom:14px;font-size:.83rem">
+        ℹ️ Ogni stagione va dal <strong>1 agosto</strong> al <strong>31 luglio</strong> dell'anno successivo.
+        Atleti, categorie, squadre e staff sono <strong>riutilizzabili tra stagioni</strong>:
+        le iscrizioni si gestiscono tramite le schede atleta e staff.
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Stagione</th><th>Inizio</th><th>Fine</th><th>Stato</th><th>Atleti iscritti</th><th>Sessioni</th><th>Azioni</th></tr></thead>
-          <tbody>${rowsHtml}</tbody>
+          <thead>
+            <tr>
+              <th>Stagione</th><th>Inizio</th><th>Fine</th><th>Stato</th>
+              <th title="Iscrizioni in athlete_seasons">Atleti</th>
+              <th title="Assegnazioni in user_category_seasons">Staff</th>
+              <th>Sessioni</th><th>Partite</th><th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml || '<tr><td colspan="9" style="text-align:center;color:#64748B;padding:20px">Nessuna stagione</td></tr>'}</tbody>
         </table>
       </div>
       <hr style="margin:16px 0">
       <div style="font-weight:700;margin-bottom:10px">➕ Nuova Stagione</div>
       <div class="form-row">
-        <div class="form-field"><label>Anno Inizio</label><input id="cfg-seas-start" type="number" placeholder="2026" min="2000" max="2100"></div>
-        <div class="form-field"><label>Anno Fine</label><input id="cfg-seas-end" type="number" placeholder="2027" min="2000" max="2100"></div>
+        <div class="form-field">
+          <label>Anno Inizio <span style="font-weight:400;color:#64748B">(la stagione inizia il 1° agosto)</span></label>
+          <input id="cfg-seas-start" type="number" value="${nextStart}" min="2000" max="2100"
+            oninput="const e=document.getElementById('cfg-seas-end');if(e)e.value=+this.value+1">
+        </div>
+        <div class="form-field">
+          <label>Anno Fine <span style="font-weight:400;color:#64748B">(la stagione finisce il 31 luglio)</span></label>
+          <input id="cfg-seas-end" type="number" value="${nextEnd}" min="2000" max="2100">
+        </div>
       </div>
-      <button class="btn btn-accent" style="margin-top:10px" onclick="addSeasonFromConfig()">+ Aggiungi Stagione</button>
+      <p style="font-size:.8rem;color:#64748B;margin:6px 0 12px">
+        La stagione sarà <strong>${nextStart}/${nextEnd}</strong> e coprirà il periodo
+        1 ago ${nextStart} → 31 lug ${nextEnd}.
+      </p>
+      <button class="btn btn-accent" onclick="addSeasonFromConfig()">+ Crea Stagione</button>
     </div>`;
 }
 
 function addSeasonFromConfig() {
   const start = parseInt(document.getElementById('cfg-seas-start').value);
   const end   = parseInt(document.getElementById('cfg-seas-end').value);
-  if (!start || !end || end <= start) { toast('Anno inizio e fine non validi','error'); return; }
-  const name = start+'/'+end;
+  if (!start || !end || end !== start + 1) {
+    toast('L\'anno fine deve essere esattamente anno inizio + 1 (es. 2026 → 2027)', 'error'); return;
+  }
+  const name = `${start}/${end}`;
   if ((S.seasons||[]).some(s => s.name===name)) { toast('Stagione già esistente','error'); return; }
   if (!S.seasons) S.seasons = [];
-  const newSeas = { id: uid(), name, startYear: start, endYear: end, active: false };
+  const newSeas = {
+    id: uid(), name, startYear: start, endYear: end, active: false,
+    startDate: `${start}-08-01`, endDate: `${end}-07-31`
+  };
   S.seasons.push(newSeas);
   saveState(); sbSync('seasons', newSeas); rebuildSeasonSelector(); buildAdminConfigTab('seasons');
-  toast('Stagione '+name+' aggiunta','success');
+  toast(`Stagione ${name} creata (1 ago ${start} → 31 lug ${end}) ✅`, 'success');
+}
+
+// ─────────────────────────────────────────────────────────────
+// FIX 7: cloneSeason — copia assegnazioni staff UCS in altra stagione
+// ─────────────────────────────────────────────────────────────
+function cloneSeason(sourceId) {
+  const src = S.seasons.find(s=>s.id===sourceId);
+  if (!src) return;
+  const targets = S.seasons.filter(s=>s.id!==sourceId).sort((a,b)=>b.startYear-a.startYear);
+  if (!targets.length) {
+    toast('Crea prima una stagione di destinazione','warning'); return;
+  }
+  const opts = targets.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  openModal(`
+    <div class="modal-header"><h3>📋 Clona struttura stagione</h3></div>
+    <p style="margin-bottom:14px;color:#64748B;font-size:.88rem">
+      Copia le assegnazioni staff dalla stagione <strong>${esc(src.name)}</strong>
+      in un'altra stagione.<br>
+      <em>Gli atleti non vengono copiati — le iscrizioni si gestiscono individualmente.</em>
+    </p>
+    <div class="form-field">
+      <label>Stagione di destinazione</label>
+      <select id="clone-target">${opts}</select>
+    </div>
+    <div style="margin-top:8px;font-size:.82rem;color:#64748B">
+      ⚠️ Le assegnazioni già presenti nella stagione di destinazione non saranno duplicate.
+    </div>
+    <div class="form-actions" style="margin-top:16px">
+      <button class="btn btn-accent" onclick="executeCloneSeason('${sourceId}')">📋 Clona Staff</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+    </div>`);
+}
+
+function executeCloneSeason(sourceId) {
+  const targetId = document.getElementById('clone-target')?.value;
+  if (!targetId) return;
+  const srcUCS = (S.userCategorySeasons||[]).filter(u=>u.seasonId===sourceId);
+  if (!srcUCS.length) { toast('Nessuna assegnazione staff da clonare','warning'); closeModal(); return; }
+  let added = 0;
+  srcUCS.forEach(u => {
+    const dup = (S.userCategorySeasons||[]).find(x =>
+      x.userId===u.userId && x.categoryId===u.categoryId && x.seasonId===targetId
+    );
+    if (!dup) {
+      const entry = { ...u, id: uid(), seasonId: targetId };
+      S.userCategorySeasons.push(entry);
+      sbSync('user_category_seasons', entry);
+      added++;
+    }
+  });
+  saveState();
+  closeModal();
+  const targetName = S.seasons.find(s=>s.id===targetId)?.name || targetId;
+  toast(`${added} assegnazioni staff clonate nella stagione ${targetName} ✅`, 'success');
+  buildAdminConfigTab('seasons');
 }
 
 // ── SESSION TYPE PERF SECTION in buildActivitiesConfig ──────────
@@ -10190,12 +10286,12 @@ function addNewSeason() {
 
 function setSeasonActive(id) {
   S.seasons.forEach(s => s.active = s.id === id);
-  S.activeSeason = id;
-  saveState(); sbSync('seasons', S.seasons); rebuildSeasonSelector();
-  const el = document.getElementById('seasons-list-area');
-  if (el) el.innerHTML = buildSeasonsListHtml(S.seasons.slice().reverse());
-  else buildAdminConfigTab('seasons');
-  toast('Stagione attiva aggiornata','success');
+  // Propaga a tutti i filtri UI (dashboard, sessioni, partite, configurazione)
+  setActiveSeason(id);
+  // Salva ogni stagione nel DB (il flag active cambia su tutte)
+  S.seasons.forEach(s => sbSync('seasons', s));
+  buildAdminConfigTab('seasons');
+  toast('Stagione attiva aggiornata ✅','success');
 }
 
 function deleteSeason(id) {
