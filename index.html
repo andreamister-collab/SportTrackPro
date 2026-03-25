@@ -3241,12 +3241,8 @@ function selectTeamView(catId, teamId) {
   // Presidente può vedere la cat-dashboard ma non le altre viste
   selectedCategoryId = catId;
   window._dashTeam = teamId;
-  // Sincronizza _dashSeas con stagione globale
-  if (S.activeSeason && window._dashSeas !== S.activeSeason) {
-    window._dashSeas = S.activeSeason;
-  } else {
-    window._dashSeas = window._dashSeas || getActiveSeason()?.id || '';
-  }
+  // Inizializza _dashSeas solo se non ancora impostato
+  if (!window._dashSeas) window._dashSeas = S.activeSeason || getActiveSeason()?.id || '';
   closeAllDropdowns();
   closeMobileMenu();
   buildSidebarNav();
@@ -3891,6 +3887,8 @@ viewBuilders['matches-overview'] = (el) => {
 
   const allSeasons = S.seasons || [];
   const activeSeas = getActiveSeason();
+  // Inizializza seasId solo al primo accesso
+  if (!mo.seasId) mo.seasId = activeSeas?.id || '';
 
   // Filtra le partite accessibili
   let matches = S.matches.filter(m => accCatIds.includes(m.categoryId));
@@ -7752,11 +7750,8 @@ function buildCategoryDashboardView(el, catId) {
   // Read filter state (season + team)
   const allSeasons  = (S.seasons||[]);
   const activeSeas  = getActiveSeason();
-  // Sincronizza sempre con la stagione globale (topnav)
-  if (S.activeSeason && window._dashSeas !== S.activeSeason) {
-    window._dashSeas = S.activeSeason;
-  }
-  if (S.activeSeason && window._dashSeas !== S.activeSeason) window._dashSeas = S.activeSeason;
+  // Inizializza solo al primo accesso — non sovrascrivere la scelta utente
+  if (!window._dashSeas) window._dashSeas = activeSeas?.id || '';
   const filterSeasId= window._dashSeas || activeSeas?.id;
   const filterTeamId= window._dashTeam || '';
   const filterSeas  = allSeasons.find(s=>s.id===filterSeasId) || activeSeas;
@@ -8057,8 +8052,12 @@ viewBuilders['athlete-profile'] = (el) => {
   const perf  = getAthleteAvgPerf(id);
 
   // Stagione correntemente visualizzata nel profilo (default: attiva)
+  // Resetta la stagione del profilo quando cambia atleta; altrimenti mantieni la scelta utente
+  if (window._athProfLastId !== id) {
+    window._athProfSeas   = S.activeSeason || getActiveSeason()?.id || '';
+    window._athProfLastId = id;
+  }
   if (!window._athProfSeas) window._athProfSeas = S.activeSeason || getActiveSeason()?.id || '';
-  if (S.activeSeason && window._athProfSeas !== S.activeSeason) window._athProfSeas = S.activeSeason;
   const profSeasId = window._athProfSeas;
   const profSeas   = S.seasons.find(s=>s.id===profSeasId) || getActiveSeason();
 
