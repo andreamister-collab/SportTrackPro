@@ -5092,13 +5092,14 @@ function buildCategoryConfig() {
   html += '</div>';
   return html;
 }
-// --- 1. FUNZIONE PER GENERARE IL SELECT DELLE SQUADRE ---
+// --- 1. GESTIONE SQUADRE NELLA CATEGORIA ---
 function buildCatTeamSelect(societyId, selectedIds = []) {
+  // Filtra le squadre che appartengono alla società selezionata
   const teams = societyId 
     ? S.teams.filter(t => (t.societyId === societyId || t.society_id === societyId))
     : S.teams;
 
-  if (!teams.length) return '<div style="font-size:.8rem;color:#94A3B8">Nessuna squadra trovata per questa società</div>';
+  if (!teams.length) return '<div style="font-size:.8rem;color:#94A3B8;padding:8px">Nessuna squadra trovata per questa società. Controlla la scheda "Squadre".</div>';
 
   return `
     <select id="cat-team-multi" class="form-select" multiple style="height:100px; width:100%">
@@ -5121,6 +5122,7 @@ function openCategoryModal(id) {
   const cat = id ? S.categories.find(x => x.id === id) : null;
   const refSocId = cat?.societyId || cat?.society_id || currentUser?.societyId || null;
 
+  // Filtro utenti per ruolo e società
   const byRole = role => S.users.filter(u => {
     if (u.role !== role) return false;
     if (!refSocId) return true;
@@ -5177,7 +5179,7 @@ function openCategoryModal(id) {
     </div>`, 'modal-lg');
 }
 
-// --- 3. SALVATAGGIO ---
+// --- 3. SALVATAGGIO CATEGORIA (Sincronizzato con Supabase) ---
 async function saveCategory(id) {
   const name = document.getElementById('cat-name').value.trim();
   const sportId = document.getElementById('cat-sport').value;
@@ -5195,7 +5197,7 @@ async function saveCategory(id) {
   try {
     const catId = id || uid();
     
-    // A. Update Supabase Categories
+    // A. Salva dati principali su Supabase
     const { error: catErr } = await sb.from('categories').upsert({
       id: catId,
       name: name,
@@ -5203,7 +5205,7 @@ async function saveCategory(id) {
       society_id: societyId,
       manager_ids: pick('cat-managers'),
       director_ids: pick('cat-dirs'),
-      team_ids: teamIds // Mantieni per compatibilità locale
+      team_ids: teamIds 
     });
     if (catErr) throw catErr;
 
@@ -5219,265 +5221,35 @@ async function saveCategory(id) {
       await sb.from('team_category_season').insert(assocs);
     }
 
-    toast('Categoria salvata','success');
+    toast('Categoria salvata con successo','success');
     closeModal();
     
-    // Refresh dati
+    // Ricarica i dati per aggiornare i "trattini" nella tabella
     const fresh = await DB.loadAll();
     Object.assign(S, fresh);
     buildAdminConfigTab('category');
     buildSidebarNav();
   } catch (err) {
-    console.error(err);
-    toast('Errore salvataggio','error');
+    console.error("Errore salvataggio:", err);
+    toast('Errore nel salvataggio','error');
   }
 }
 
-function saveCategory(id) {
-  const name     = document.getElementById('cat-name').value.trim();
-  const sportId  = document.getElementById('cat-sport').value;
-  const societyId= document.getElementById('cat-soc').value;
-  const teamMultiEl = document.getElementById('cat-team-multi');
-  const teamIds  = teamMultiEl ? Array.from(teamMultiEl.selectedOptions).map(o=>o.value) : [];
-  const teamId   = teamIds[0] || '';
-  const pick = elId => {
-    const wrap = document.getElementById(elId+'-wrap');
-    if (wrap) return Array.from(wrap.querySelectorAll('input[type=checkbox]:checked')).map(cb=>cb.value);
-    const el = document.getElementById(elId);
-    return el ? Array.from(el.selectedOptions||[]).map(o=>o.value) : [];
-  };
-  const directorIds     = pick('cat-dirs');
-  const managerIds      = pick('cat-managers');
-  const coachIds        = pick('cat-coaches');
-  const professionalIds = pick('cat-profs');
-  if (!name) { toast('Nome obbligatorio','error'); return; }
-  // seasonId rimosso: le categorie sono globali, la stagione non è più un campo della categoria
-  const data = {name,sportId,societyId,teamId,teamIds,directorIds,managerIds,coachIds,professionalIds,seasonId};
-  if (id) {
-    Object.assign(S.categories.find(x=>x.id===id), data);
-    toast('Categoria aggiornata','success');
-  } else {
-    S.categories.push({ id: uid(), ...data });
-    toast('Categoria aggiunta','success');
-  }
-  const savedCat = id ? S.categories.find(x=>x.id===id) : S.categories[S.categories.length-1];
-  saveState(); sbSync('categories', savedCat); closeModal(); buildAdminConfigTab('category'); buildSidebarNav();
-}
-function deleteCategory(id) {
+// --- 4. CANCELLAZIONE ---
+async function deleteCategory(id) {
   if (!confirm('Eliminare questa categoria e tutti i dati collegati?')) return;
-  S.categories = S.categories.filter(x=>x.id!==id);
-  S.athletes = S.athletes.filter(x=>x.categoryId!==id);
-  const delSessIds = S.sessions.filter(x=>x.categoryId===id).map(s=>s.id);
-  S.sessions = S.sessions.filter(x=>x.categoryId!==id);
-  S.attendances = S.attendances.filter(x=>!delSessIds.includes(x.sessionId));
-  if (selectedCategoryId === id) selectedCategoryId = null;
-  saveState();
-  sbSync('categories', id, true);
-  delSessIds.forEach(sid => sbSyncDeleteWhere('attendances','session_id',sid));
-  sbSyncDeleteWhere('athletes','category_id',id);
-  sbSyncDeleteWhere('sessions','category_id',id);
-  buildAdminConfigTab('category'); buildSidebarNav(); toast('Categoria eliminata');
+  try {
+    await sb.from('categories').delete().eq('id', id);
+    // Pulizia a cascata gestita solitamente dal DB o manualmente qui
+    toast('Categoria eliminata');
+    const fresh = await DB.loadAll();
+    Object.assign(S, fresh);
+    buildAdminConfigTab('category');
+    buildSidebarNav();
+  } catch (err) {
+    toast('Errore eliminazione','error');
+  }
 }
-
-// Quick staff assignment modal for a specific category
-function openCategoryStaffModal(catId) {
-  const cat = S.categories.find(c=>c.id===catId);
-  if (!cat) return;
-
-  const multiSel = (elemId, role, selectedIds) => {
-    const users = S.users.filter(u=>u.role===role);
-    const rd = ROLES[role]||{};
-    const cls = {responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal'}[role]||'badge-gray';
-    if (!users.length) return `<div class="text-muted text-sm" style="padding:8px">Nessun ${rd.label||role} registrato</div>`;
-    return `<select id="${elemId}" multiple style="width:100%;min-height:80px;max-height:120px;padding:4px;border:1.5px solid var(--mist-3);border-radius:8px;font-size:.85rem;background:#F8FAFC">
-      ${users.map(u=>`<option value="${u.id}" ${(selectedIds||[]).includes(u.id)?'selected':''}>${esc(u.name)} — ${esc(u.profession||'')}</option>`).join('')}
-    </select>`;
-  };
-
-  const team = S.teams.find(t=>t.id===cat.teamId);
-  const soc  = S.societies.find(s=>s.id===cat.societyId);
-
-  openModal(`
-    <div class="modal-header">
-      <h3>👥 Staff — ${esc(cat.name)}</h3>
-      
-    </div>
-    <div class="text-muted text-sm" style="margin-bottom:16px">${esc(soc?.name||'')} · ${esc(team?.name||'')}</div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="form-field">
-        <label style="color:var(--purple)">⭐ Responsabili</label>
-        ${multiSel('cs-managers', 'responsabile', cat.managerIds)}
-        <span class="text-muted text-sm">Ctrl/Cmd per più selezioni</span>
-      </div>
-      <div class="form-field">
-        <label style="color:var(--green)">🏛️ Dirigenti</label>
-        ${multiSel('cs-dirs', 'dirigente', cat.directorIds)}
-        <span class="text-muted text-sm">Ctrl/Cmd per più selezioni</span>
-      </div>
-      <div class="form-field">
-        <label style="color:var(--gold)">⚽ Allenatori</label>
-        ${multiSel('cs-coaches', 'allenatore', cat.coachIds)}
-        <span class="text-muted text-sm">Ctrl/Cmd per più selezioni</span>
-      </div>
-      <div class="form-field">
-        <label style="color:var(--teal)">🩺 Professionisti</label>
-        ${multiSel('cs-profs', 'professionista', cat.professionalIds)}
-        <span class="text-muted text-sm">Ctrl/Cmd per più selezioni</span>
-      </div>
-    </div>
-
-    <div class="highlight-box" style="margin-top:14px">
-      💡 <b>Suggerimento:</b> Puoi anche assegnare le categorie aprendo la scheda di ogni utente (👥 Staff & Utenti → ✏️ Modifica).
-    </div>
-
-    <div class="form-actions" style="margin-top:16px">
-      <button class="btn btn-accent btn-lg" onclick="saveCategoryStaff('${catId}')">💾 Salva Assegnazioni</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
-    </div>`, 'modal-lg');
-}
-
-function saveCategoryStaff(catId) {
-  const cat = S.categories.find(c=>c.id===catId);
-  if (!cat) return;
-  const pick = id => Array.from(document.getElementById(id)?.selectedOptions||[]).map(o=>o.value);
-  cat.managerIds      = pick('cs-managers');
-  cat.directorIds     = pick('cs-dirs');
-  cat.coachIds        = pick('cs-coaches');
-  cat.professionalIds = pick('cs-profs');
-  saveState(); sbSync('categories', cat); closeModal(); buildAdminConfigTab('category'); buildSidebarNav();
-  toast('Assegnazioni staff aggiornate','success');
-}
-
-function buildUsersConfig() {
-  const seasId = window._configSeasonId || '';
-  const seas   = S.seasons.find(s=>s.id===seasId);
-  // Utenti per stagione: se stagione selezionata mostra quelli con UCS in quella stagione
-  // più admin/presidente/genitore che non hanno UCS
-  const staffWithUCS = seasId
-    ? [...new Set((S.userCategorySeasons||[]).filter(u=>u.seasonId===seasId).map(u=>u.userId))]
-    : [];
-  const getRolesForSeason = (userId) => {
-    if (!seasId) return null; // mostra tutto
-    const ucsRoles = (S.userCategorySeasons||[])
-      .filter(u=>u.seasonId===seasId && u.userId===userId)
-      .map(u=>u.role);
-    return ucsRoles.length ? [...new Set(ucsRoles)] : null;
-  };
-  const roleGroups = ['admin','segretario','presidente','responsabile','dirigente','allenatore','professionista'];
-  const roleBadge = r => {
-    const rd = ROLES[r]||{label:r,icon:'👤'};
-    const cls = {admin:'badge-blue',responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal'}[r]||'badge-gray';
-    return `<span class="badge ${cls}">${rd.icon} ${rd.label}</span>`;
-  };
-  const nonAdmins = S.users.filter(u=>u.role!=='admin');
-  // Stato filtri tabella utenti
-  if (!window._usrFilterRole) window._usrFilterRole = '';
-  if (!window._usrFilterQ)    window._usrFilterQ    = '';
-  const ufRole = window._usrFilterRole;
-  const ufQ    = window._usrFilterQ.toLowerCase();
-  // Arricchisce ogni utente con ruolo/società dalla stagione filtrata
-  const enrichedUsers = nonAdmins.map(u => enrichUserForSeason(u, seasId));
-  let filteredUsers = enrichedUsers.filter(u => {
-    if (ufRole && u.role !== ufRole) return false;
-    if (ufQ && !(u.name+' '+u.username+' '+(u.profession||'')).toLowerCase().includes(ufQ)) return false;
-    // Filtro stagione: se seasId, mostra solo chi ha UCS per quella stagione o categorie legacy
-    if (seasId) {
-      // Ruoli non stagionali: sempre visibili indipendentemente dalla stagione
-      const noSeasonRoles = ['presidente','segretario','genitore','admin'];
-      if (noSeasonRoles.includes(u.role)) return true;
-      const hasUCS = (S.userCategorySeasons||[]).some(ue=>ue.userId===u.id && ue.seasonId===seasId);
-      const hasLegacy = ['responsabile','dirigente','allenatore','professionista'].includes(u.role);
-      if (!hasUCS && !hasLegacy) return false;
-    }
-    return true;
-  });
-  return `
-    <div class="card">
-      <div class="card-title" style="justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:8px"><div class="icon" style="background:var(--green-l);color:var(--green)">👥</div>Staff & Utenti del Sistema${seas ? ' <span class="badge badge-blue" style="font-size:.75rem">'+esc(seas.name)+'</span>' : ''}</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input placeholder="🔍 Cerca..." style="padding:7px 12px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.85rem;background:#F8FAFC;min-width:160px"
-            value="${window._usrFilterQ||''}" oninput="window._usrFilterQ=this.value;buildAdminConfigTab('users')">
-          <select style="padding:7px 10px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.85rem;background:#F8FAFC"
-            onchange="window._usrFilterRole=this.value;buildAdminConfigTab('users')">
-            <option value="">Tutti i ruoli</option>
-            ${['responsabile','dirigente','allenatore','professionista','genitore','presidente'].map(r=>'<option value="'+r+'"'+(r===(window._usrFilterRole||'')?'selected':'')+'>'+ROLES[r].icon+' '+ROLES[r].label+'</option>').join('')}
-          </select>
-          <button class="btn btn-accent btn-sm" onclick="openAddUserPage()">+ Aggiungi Utente</button>
-        </div>
-      </div>
-      <div class="highlight-box" style="margin-bottom:16px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <b>Ruoli e visibilità:</b>
-          <span class="badge badge-blue">🔑 Admin — vede tutto</span>
-          <span class="badge badge-purple">⭐ Responsabile — tutte le sue squadre</span>
-          <span class="badge badge-green">🏛️ Dirigente — le sue categorie</span>
-          <span class="badge badge-gold">⚽ Allenatore — solo le sue categorie (sessioni/presenze)</span>
-          <span class="badge badge-teal">🩺 Professionista — solo lettura delle sue categorie</span>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-  <th>Nome</th>
-  <th>Ruolo</th>
-  <th>Professione / Qualifica</th>
-  <th>Username</th>
-  <th>Email</th>
-  <th>Telefono</th>
-  <th>Stagione</th>
-  <th>Categorie Assegnate</th>
-  <th>Azioni</th>
-</tr></thead>
-<tbody>${filteredUsers.map(u=>{
-  const rd  = ROLES[u.role]||{};
-  const cls = {responsabile:'badge-purple',dirigente:'badge-green',allenatore:'badge-gold',professionista:'badge-teal',presidente:'badge-gold'}[u.role]||'badge-gray';
-  // Categorie legacy
-  const legacyCats = S.categories.filter(c=>{
-    if(u.role==='responsabile') return (c.managerIds||[]).includes(u.id);
-    if(u.role==='dirigente')    return (c.directorIds||[]).includes(u.id);
-    if(u.role==='allenatore')   return (c.coachIds||[]).includes(u.id);
-    if(u.role==='professionista') return (c.professionalIds||[]).includes(u.id);
-    return false;
-  });
-  // UCS per stagione filtrata
-  const ucsForFilter = (S.userCategorySeasons||[]).filter(ue=>
-    ue.userId===u.id && (!seasId || ue.seasonId===seasId)
-  );
-  const ucsCats = ucsForFilter.map(ue=>S.categories.find(c=>c.id===ue.categoryId)).filter(Boolean);
-  const allCats = [...new Map([...legacyCats,...ucsCats].map(c=>[c.id,c])).values()];
-  const seasForUser = seasId
-    ? (S.seasons.find(s=>s.id===seasId)?.name||'—')
-    : [...new Set((S.userCategorySeasons||[]).filter(ue=>ue.userId===u.id).map(ue=>{
-        return S.seasons.find(s=>s.id===ue.seasonId)?.name;
-      }).filter(Boolean))].join(', ') || '—';
-  return '<tr>'
-    + '<td class="fw-700" style="white-space:nowrap">'
-    +   '<div style="display:flex;align-items:center;gap:8px">'
-    +   '<div class="user-avatar" style="background:'+rd.gradient+';width:28px;height:28px;font-size:.65rem;flex-shrink:0">'+initials(u.name)+'</div>'
-    +   esc(u.name)+'</div></td>'
-    + '<td><span class="badge '+cls+'">'+( rd.icon||'👤')+' '+(rd.label||u.role)+'</span></td>'
-    + '<td class="text-sm text-muted">'+esc(u.profession||'—')+'</td>'
-    + '<td><span class="badge badge-gray" style="font-family:var(--font-mono)">'+esc(u.username)+'</span></td>'
-    + '<td class="text-sm">'+esc(u.email||'—')+'</td>'
-    + '<td class="text-sm">'+esc(u.phone||'—')+'</td>'
-    + '<td style="font-size:.8rem;color:var(--accent);font-weight:600">'+esc(seasForUser)+'</td>'
-    + '<td style="max-width:220px">'
-    +   (allCats.map(c=>'<span class="badge badge-blue" style="cursor:pointer;margin:1px" onclick="selectCategoryView(\''+c.id+'\')">'+esc(c.name)+'</span>').join(' ')||'<span class="text-muted text-sm">—</span>')
-    + '</td>'
-    + '<td style="display:flex;gap:4px;flex-wrap:nowrap">'
-    +   '<button class="btn btn-accent btn-sm" onclick="openUserDetail(\''+u.id+'\')" title="Scheda utente">📋 Scheda</button>'
-    +   '<button class="btn btn-ghost btn-sm" onclick="openUserModal(\''+u.id+'\')">✏️</button>'
-    +   '<button class="btn btn-danger btn-sm" onclick="deleteUser(\''+u.id+'\')">🗑️</button>'
-    + '</td>'
-    + '</tr>';
-}).join('')}
-</tbody>
-      </div>
-    </div>`;
-}
-
 // Helper: get current category IDs assigned to user u with given role
 function getUserCatIds(userId, role) {
   if (role === 'genitore') {
