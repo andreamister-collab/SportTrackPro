@@ -1246,12 +1246,14 @@ const DB = {
   },
 
   // ── LOAD ALL (rimpiazza loadState) ────────────────────────────
+  // ── LOAD ALL (rimpiazza loadState) ────────────────────────────
   async loadAll() {
     const [
       sports, societies, teams, categories, users,
       athletes, athleteSeasons, seasons,
       sessions, attendances, matches, convocati, performances, scorers,
-      userCategorySeasons
+      userCategorySeasons,
+      teamCategorySeason // <--- AGGIUNTO: Nuova tabella di relazione
     ] = await Promise.all([
       sb.from('sports').select('*'),
       sb.from('societies').select('*'),
@@ -1268,24 +1270,25 @@ const DB = {
       sb.from('performances').select('*'),
       sb.from('scorers').select('*'),
       sb.from('user_category_seasons').select('*'),
+      sb.from('team_category_season').select('*'), // <--- AGGIUNTO
     ]);
 
     // Converti snake_case → camelCase per compatibilità con il codice esistente
     return {
-      sports:         (sports.data||[]).map(r => ({ id:r.id, name:r.name, icon:r.icon||'⚽' })),
-      societies:      (societies.data||[]).map(r => ({ id:r.id, name:r.name, sportId:r.sport_id, city:r.city||'', email:r.email||'', seasonId:r.season_id||'' })),
-      teams:          (teams.data||[]).map(r => ({
+      sports:          (sports.data||[]).map(r => ({ id:r.id, name:r.name, icon:r.icon||'⚽' })),
+      societies:       (societies.data||[]).map(r => ({ id:r.id, name:r.name, sportId:r.sport_id, city:r.city||'', email:r.email||'', seasonId:r.season_id||'' })),
+      teams:           (teams.data||[]).map(r => ({
         id: r.id, name: r.name, sportId: r.sport_id,
         societyId: r.society_id || null, // mantenuto per retrocompatibilità
       })),
-      categories:     (categories.data||[]).map(r => ({
+      categories:      (categories.data||[]).map(r => ({
         ...r, societyId: r.society_id, sportId: r.sport_id,
         teamId: r.team_id, teamIds: r.team_ids||[r.team_id].filter(Boolean),
         managerIds: r.manager_ids||[], directorIds: r.director_ids||[],
         coachIds: r.coach_ids||[], professionalIds: r.prof_ids||[],
         seasonId: r.season_id||''
       })),
-      users:          (users.data||[]).map(r => ({
+      users:           (users.data||[]).map(r => ({
         id: r.id, name: r.name, username: r.username,
         email: r.email, profession: r.profession || '',
         phone: r.phone || '',
@@ -1293,7 +1296,7 @@ const DB = {
         role: r.role || 'allenatore',
         societyId: r.society_id || null,
       })),
-      athletes:       (athletes.data||[]).map(r => ({
+      athletes:        (athletes.data||[]).map(r => ({
         id: r.id,
         firstName: r.first_name, lastName: r.last_name,
         dob: r.dob, nickname: r.nickname || '',
@@ -1310,18 +1313,18 @@ const DB = {
         seasonId: r.season_id, teamId: r.team_id, shirtNumber: r.shirt_number,
         joinDate: r.join_date, societyId: r.society_id
       })),
-      seasons:        (seasons.data||[]).map(r => ({
+      seasons:         (seasons.data||[]).map(r => ({
         ...r, societyId: r.society_id, startYear: r.start_year, endYear: r.end_year,
         startDate: r.start_date || null, endDate: r.end_date || null
       })),
-      sessions:       (sessions.data||[]).map(r => ({
+      sessions:        (sessions.data||[]).map(r => ({
         ...r, categoryId: r.category_id, createdBy: r.created_by,
         matchId: r.match_id, societyId: r.society_id
       })),
-      attendances:    (attendances.data||[]).map(r => ({
+      attendances:     (attendances.data||[]).map(r => ({
         ...r, sessionId: r.session_id, athleteId: r.athlete_id, societyId: r.society_id
       })),
-      matches:        (matches.data||[]).map(r => ({
+      matches:         (matches.data||[]).map(r => ({
         ...r, categoryId: r.category_id, homeAway: r.home_away,
         scoredGoals: r.scored, concededGoals: r.conceded,
         bgColor: r.bg_color, createdBy: r.created_by,
@@ -1330,27 +1333,49 @@ const DB = {
         linkedSessionId: r.session_id || null,
         meetTime: r.meet_time, meetPlace: r.meet_place
       })),
-      convocati:      (convocati.data||[]).map(r => ({
+      convocati:       (convocati.data||[]).map(r => ({
         ...r, matchId: r.match_id, athleteId: r.athlete_id, societyId: r.society_id
       })),
-      scorers:        (scorers.data||[]).map(r => ({
+      scorers:         (scorers.data||[]).map(r => ({
         ...r, matchId: r.match_id, athleteId: r.athlete_id
       })),
-      performances:   (performances.data||[]).map(r => ({
+      performances:    (performances.data||[]).map(r => ({
         ...r, sessionId: r.session_id, athleteId: r.athlete_id, societyId: r.society_id
       })),
-      activeSeason:   null,
-      staffHistory:   [],
-      activityTypes:  null,
-      perfParams:     null,
+      activeSeason:    null,
+      staffHistory:    [],
+      activityTypes:   null,
+      perfParams:      null,
       sessionTypePerfParams: null,
       userCategorySeasons: (userCategorySeasons?.data||[]).map(r => ({
         ...r, userId: r.user_id, categoryId: r.category_id,
         seasonId: r.season_id, societyId: r.society_id
       })),
+      // --- NUOVA MAPPATURA AGGIUNTA ---
+      teamAssociations: (teamCategorySeason?.data || []).map(r => ({
+        id: r.id,
+        teamId: r.team_id,
+        categoryId: r.category_id,
+        seasonId: r.season_id
+      })),
     };
   },
-
+  // funzione di salvataggio per gestire l'invio dei dati a Supabase
+  async saveTeamAssociation(teamId, categoryId) {
+    if (DB_MODE !== 'supabase') return;
+    const { error } = await sb
+      .from('team_category_season')
+      .upsert({ 
+        team_id: teamId, 
+        category_id: categoryId, 
+        season_id: S.activeSeason 
+      }, { onConflict: 'team_id,season_id' });
+    
+    if (error) throw error;
+    // Rinfresca lo stato locale
+    const freshData = await this.loadAll();
+    Object.assign(S, freshData);
+  },
   // ── SAVE HELPER (converte camelCase → snake_case) ─────────────
   _toSnake(obj, map) {
     const out = {};
@@ -11950,6 +11975,47 @@ function exportRosterPDF(categoryId){
 
 }
 
+//aggiunta da gemini 2
+
+// ── FUNZIONE DI POPOLAMENTO (Mettila Qui) ────────────────────────────
+function updateAthleteTeams() {
+  const catSelect = document.getElementById('atleta-categoria');
+  const teamSelect = document.getElementById('atleta-squadra');
+
+  if (!catSelect || !teamSelect) return;
+
+  const selectedCatId = catSelect.value;
+  const currentSeasonId = S.activeSeason;
+
+  teamSelect.innerHTML = '<option value="">Seleziona Squadra...</option>';
+
+  if (!selectedCatId) return;
+
+  // Filtra le associazioni dalla nuova tabella team_category_season
+  const validTeamIds = (S.teamAssociations || [])
+    .filter(rel => rel.categoryId === selectedCatId && rel.seasonId === currentSeasonId)
+    .map(rel => rel.teamId);
+
+  const filteredTeams = S.teams.filter(t => validTeamIds.includes(t.id));
+
+  if (filteredTeams.length === 0) {
+    teamSelect.innerHTML = '<option value="">Nessuna squadra in questa categoria</option>';
+  } else {
+    filteredTeams.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.name;
+      teamSelect.appendChild(opt);
+    });
+  }
+}
+
+// ── GRILLETTO (LISTENER) ─────────────────────────────────────────────
+document.addEventListener('change', function(e) {
+    if (e.target && (e.target.id === 'atleta-categoria' || e.target.name === 'category_id')) {
+        updateAthleteTeams();
+    }
+});
 
 // =========================
 // INIT
