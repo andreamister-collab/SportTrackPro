@@ -51,6 +51,8 @@
 .page{display:none}
 .page.active{display:block}
 .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.form-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 </style>
 </head>
 <body>
@@ -114,12 +116,34 @@
       <!-- SOCIETA -->
       <section id="page-societa" class="page">
         <h1>Società</h1>
-        <div class="toolbar">
-          <input id="soc-name" placeholder="Nome società">
-          <select id="soc-sport"></select>
-          <button onclick="saveSociety()">Salva</button>
+
+        <!-- FORM NUOVA SOCIETÀ -->
+        <div class="form-box">
+          <h3 style="margin:0 0 12px">Aggiungi Società</h3>
+          <div class="form-grid">
+            <input id="soc-name" placeholder="Nome società">
+            <select id="soc-sport"><option value="">Sport</option></select>
+            <input id="soc-city" placeholder="Città">
+            <input id="soc-email" placeholder="Email" type="email">
+            <select id="soc-season"><option value="">Stagione</option></select>
+            <button onclick="saveSociety()">Salva</button>
+          </div>
         </div>
-        <table id="tbl-societa"><thead><tr><th>Nome</th><th>Sport</th><th>Azioni</th></tr></thead><tbody></tbody></table>
+
+        <!-- ELENCO SOCIETÀ ESISTENTI -->
+        <table id="tbl-societa">
+          <thead>
+            <tr>
+              <th>NOME</th>
+              <th>SPORT</th>
+              <th>CITTÀ</th>
+              <th>EMAIL</th>
+              <th>STAGIONE</th>
+              <th>AZIONI</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </section>
 
       <!-- CATEGORIA -->
@@ -245,7 +269,7 @@ async function initApp(){
   if(rolesData) roles = rolesData
   roles.forEach(r=> ROLE_IDS[r.name]=r.id)
 
-  // STAGIONE ATTIVA (se nessuna → ultima)
+  // STAGIONE ATTIVA
   let {data:seasons} = await client.from('seasons')
 .select('id,name,start_date,active')
 .eq('active', true)
@@ -253,14 +277,13 @@ async function initApp(){
 
   if(!seasons || seasons.length===0){
     const {data:allSeasons} = await client.from('seasons')
-  .select('id,name,start_date,active')
-  .order('start_date',{ascending:false})
+ .select('id,name,start_date,active')
+ .order('start_date',{ascending:false})
     seasons = allSeasons
   }
   STATE.seasonId = seasons?.[0]?.id || ''
   populate('f-season', seasons, 'id', 'name')
-  // <-- TUTTI GLI ID ESISTONO NEL DOM
-  ['team-season','role-season','ath-season','ses-season'].forEach(id=>populate(id,seasons,'id','name'))
+  ['team-season','role-season','ath-season','ses-season','soc-season'].forEach(id=>populate(id,seasons,'id','name'))
 
   const {data:socs} = await client.from('societies').select('id,name')
   populate('f-society', socs, 'id', 'name')
@@ -292,7 +315,7 @@ async function initApp(){
 }
 function populate(id,data,val,label){
   const sel=document.getElementById(id)
-  if(!sel) return // <-- PROTEZIONE
+  if(!sel) return
   sel.innerHTML='<option value="">Tutte</option>'+(data||[]).map(d=>`<option value="${d[val]}">${typeof label==='function'?label(d):d[label]}</option>`).join('')
 }
 
@@ -357,13 +380,13 @@ async function refresh(){
     const sportName = soc?.sports?.name || '—'
 
     const {count:sessCnt}=await client.from('sessions').select('id',{count:'exact',head:true})
-  .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+ .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const {count:athCnt}=await client.from('athlete_seasons').select('id',{count:'exact',head:true})
-  .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+ .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const {data:sidData}=await client.from('sessions').select('id')
-  .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+ .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
     const sessionIds = sidData?.map(x=>x.id) || []
     let presPct=0
     if(sessionIds.length){
@@ -372,12 +395,12 @@ async function refresh(){
     }
 
     const {data:staffData}=await client.from('role_category_team')
-  .select('users(name)')
-  .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+ .select('users(name)')
+ .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const staff = staffData || []
     const staffHtml = staff.length
-  ? staff.map(s=>`<span class="badge staff">${s.users.name}</span>`).join('')
+ ? staff.map(s=>`<span class="badge staff">${s.users.name}</span>`).join('')
       : '<span class="badge bad">Nessuno</span>'
 
     const presClass = presPct>=80?'ok':presPct>=50?'warn':'bad'
@@ -431,10 +454,18 @@ document.getElementById('f-team').onchange=e=>{STATE.teamId=e.target.value;refre
 async function loadPageData(page){
   const s=STATE.seasonId
   if(page==='societa'){
-    const {data}=await client.from('societies').select('id,name,sports(name)')
+    const {data}=await client.from('societies')
+  .select('id,name,city,email,sports(name),seasons(name)')
+  .order('name')
     document.querySelector('#tbl-societa tbody').innerHTML=(data||[]).map(r=>`
-      <tr><td>${r.name}</td><td>${r.sports?.name||'—'}</td>
-      <td class="actions"><button class="ghost" onclick="deleteRow('societies','${r.id}')">Elimina</button></td></tr>`).join('')
+      <tr>
+        <td>${r.name}</td>
+        <td>${r.sports?.name||'—'}</td>
+        <td>${r.city||'—'}</td>
+        <td>${r.email||'—'}</td>
+        <td>${r.seasons?.name||'—'}</td>
+        <td class="actions"><button class="ghost" onclick="deleteRow('societies','${r.id}')">Elimina</button></td>
+      </tr>`).join('')
   }
   if(page==='categoria'){
     const {data}=await client.from('categories').select('id,name,societies(name),sports(name)')
@@ -470,7 +501,20 @@ async function loadPageData(page){
 }
 
 /* ===== SAVE ===== */
-async function saveSociety(){await client.from('societies').insert({name:document.getElementById('soc-name').value,sport_id:document.getElementById('soc-sport').value});loadPageData('societa')}
+async function saveSociety(){
+  await client.from('societies').insert({
+    name: document.getElementById('soc-name').value,
+    sport_id: document.getElementById('soc-sport').value,
+    city: document.getElementById('soc-city').value,
+    email: document.getElementById('soc-email').value,
+    season_id: document.getElementById('soc-season').value
+  })
+  loadPageData('societa')
+  document.getElementById('soc-name').value=''
+  document.getElementById('soc-city').value=''
+  document.getElementById('soc-email').value=''
+  document.getElementById('soc-season').value=''
+}
 async function saveCategory(){await client.from('categories').insert({name:document.getElementById('cat-name').value,society_id:document.getElementById('cat-soc').value,sport_id:document.getElementById('cat-sport').value});loadPageData('categoria')}
 async function saveTeam(){const {data}=await client.from('teams').insert({name:document.getElementById('team-name').value,society_id:document.getElementById('team-soc').value}).select();await client.from('team_category_season').insert({team_id:data[0].id,category_id:document.getElementById('team-cat').value,season_id:document.getElementById('team-season').value});loadPageData('squadra')}
 async function saveAthlete(){const {data}=await client.from('athletes').insert({first_name:document.getElementById('ath-name').value,last_name:document.getElementById('ath-last').value,dob:document.getElementById('ath-dob').value,nickname:''}).select();await client.from('athlete_seasons').insert({athlete_id:data[0].id,category_id:document.getElementById('ath-cat').value,team_id:document.getElementById('ath-team').value,season_id:document.getElementById('ath-season').value,shirt_number:+document.getElementById('ath-number').value||null});loadPageData('atleta')}
@@ -484,11 +528,4 @@ async function deleteRow(table,id,id2,id3){
 }
 
 /* ===== DASHBOARD CATEGORIA ===== */
-async function openCategoryDashboard(catId,teamId){
-  STATE.categoryId = catId
-  STATE.teamId = teamId
-  showPage('sessioni')
-}
-</script>
-</body>
-</html>
+async function openCategoryDashboard(catId,team
