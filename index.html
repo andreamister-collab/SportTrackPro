@@ -11046,8 +11046,14 @@ function renderAthleteSeasonModal(athleteId) {
     openModal(html, 'modal-lg');
   }
 
-  // Inizializza le squadre per il default
-  onAsCatChange(athleteId);
+  // Inizializza le squadre: seleziona la prima categoria disponibile e aggiorna i team
+  setTimeout(() => {
+    const catSel = document.getElementById('as-cat');
+    if (catSel && catSel.options.length > 1 && !catSel.value) {
+      catSel.selectedIndex = 1; // seleziona prima categoria (0 è "— seleziona —")
+    }
+    onAsCatChange(athleteId);
+  }, 30);
 }
 
 /** Costruisce le <option> categoria filtrate per società+stagione */
@@ -11071,9 +11077,11 @@ function onAsSocChange(athleteId) {
   const catSel = document.getElementById('as-cat');
   if (catSel) {
     catSel.innerHTML = '<option value="">— seleziona —</option>' + buildAsCatOpts(socId, seasId);
+    // Auto-seleziona prima categoria disponibile
+    if (catSel.options.length > 1) catSel.selectedIndex = 1;
   }
-  const teamSel = document.getElementById('as-team');
-  if (teamSel) teamSel.innerHTML = '<option value="">— nessuna squadra —</option>';
+  // Aggiorna team in base alla nuova categoria selezionata
+  onAsCatChange(athleteId);
 }
 
 function onAsSeasonChange(athleteId) {
@@ -11084,22 +11092,53 @@ function onAsCatChange(athleteId) {
   const catId   = document.getElementById('as-cat')?.value || '';
   const teamSel = document.getElementById('as-team');
   if (!teamSel) return;
+
+  if (!catId) {
+    teamSel.innerHTML = '<option value="">— nessuna squadra —</option>';
+    return;
+  }
+
+  const cat     = S.categories.find(c => c.id === catId);
   const isAdmin = currentUser?.role === 'admin';
-  // Squadre: admin vede tutte quelle della categoria; altri solo quelle dove hanno UCS
-  let teams = getCategoryTeams(catId);
-  if (!isAdmin && teams.length) {
+
+  // Strategia: le squadre non hanno un link diretto alla categoria nel DB.
+  // 1. Prima: squadre già usate in athlete_seasons per questa categoria (priorità)
+  // 2. Poi:   tutte le squadre con lo stesso sport della categoria
+  // 3. Fallback: tutte le squadre se sport non impostato
+  const usedTeamIds = new Set(
+    (S.athleteSeasons||[])
+      .filter(as => as.categoryId === catId && as.teamId)
+      .map(as => as.teamId)
+  );
+
+  let teams;
+  if (isAdmin) {
+    // Admin: tutte le squadre con sportId corrispondente, poi le altre
+    const sameSport = S.teams.filter(t => cat?.sportId ? t.sportId === cat.sportId : true);
+    // Ordina: prima quelle già usate nella categoria, poi le altre
+    const used   = sameSport.filter(t => usedTeamIds.has(t.id));
+    const others = sameSport.filter(t => !usedTeamIds.has(t.id));
+    teams = [...used, ...others];
+    // Se nessuna per lo sport, mostra tutte
+    if (!teams.length) teams = S.teams;
+  } else {
+    // Non-admin: squadre dove ha UCS per questa categoria
     const ucsTeamIds = new Set(
       (S.userCategorySeasons||[])
-        .filter(u => u.userId===currentUser.id && u.categoryId===catId)
+        .filter(u => u.userId === currentUser.id && u.categoryId === catId)
         .map(u => u.teamId).filter(Boolean)
     );
-    // Se admin ha UCS senza teamId specifico → mostra tutte le squadre della categoria
-    if (ucsTeamIds.size > 0) {
-      teams = teams.filter(t => ucsTeamIds.has(t.id));
-    }
+    // Se ha UCS con teamId specifici usali; altrimenti mostra quelle usate in athlete_seasons
+    teams = ucsTeamIds.size > 0
+      ? S.teams.filter(t => ucsTeamIds.has(t.id))
+      : S.teams.filter(t => usedTeamIds.has(t.id));
   }
+
   teamSel.innerHTML = '<option value="">— nessuna squadra —</option>'
-    + teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+    + teams.map(t => {
+        const inUse = usedTeamIds.has(t.id) ? ' ✓' : '';
+        return `<option value="${t.id}">${esc(t.name)}${inUse}</option>`;
+      }).join('');
 }
 
 /** Elimina una singola riga athlete_seasons */
