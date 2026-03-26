@@ -528,4 +528,99 @@ async function deleteRow(table,id,id2,id3){
 }
 
 /* ===== DASHBOARD CATEGORIA ===== */
-async function openCategoryDashboard(catId,team
+async function openCategoryDashboard(catId,team}
+
+if((rows||[]).length===0){
+tbody.innerHTML='Nessuna squadra associata a una categoria nella stagione selezionata'
+}
+}
+
+/* ===== FILTRI A CASCATA ===== */
+document.getElementById('f-season').onchange=e=>{STATE.seasonId=e.target.value;refresh()}
+document.getElementById('f-society').onchange=async e=>{
+STATE.societyId=e.target.value
+STATE.categoryId=''; STATE.teamId=''
+const {data:cats}=await client.from('categories').select('id,name').eq('society_id',STATE.societyId)
+populate('f-category',cats,'id','name')
+const {data:teams}=await client.from('teams').select('id,name').eq('society_id',STATE.societyId)
+populate('f-team',teams,'id','name')
+refresh()
+}
+document.getElementById('f-category').onchange=async e=>{
+STATE.categoryId=e.target.value
+STATE.teamId=''
+const {data:tcs}=await client.from('team_category_season')
+.select('team_id,teams(id,name)')
+.eq('category_id',STATE.categoryId)
+.eq('season_id',STATE.seasonId)
+const teams = (tcs||[]).map(t=>t.teams).filter(Boolean)
+populate('f-team', teams, 'id', 'name')
+refresh()
+}
+document.getElementById('f-team').onchange=e=>{STATE.teamId=e.target.value;refresh()}
+
+/* ===== LOAD PAGE DATA ===== */
+async function loadPageData(page){
+const s=STATE.seasonId
+if(page==='societa'){
+const {data}=await client.from('societies')
+.select('id,name,city,email,sports(name),seasons(name)')
+.order('name')
+document.querySelector('#tbl-societa tbody').innerHTML=(data||[]).map(r=> <tr> <td>${r.name}</td> <td>${r.sports?.name||'—'}</td> <td>${r.city||'—'}</td> <td>${r.email||'—'}</td> <td>${r.seasons?.name||'—'}</td> <td class="actions"><button class="ghost" onclick="deleteRow('societies','${r.id}')">Elimina</button></td> </tr>).join('')
+}
+if(page==='categoria'){
+const {data}=await client.from('categories').select('id,name,societies(name),sports(name)')
+document.querySelector('#tbl-categoria tbody').innerHTML=(data||[]).map(r=> <tr><td>${r.name}</td><td>${r.societies?.name||'—'}</td><td>${r.sports?.name||'—'}</td> <td class="actions"><button class="ghost" onclick="deleteRow('categories','${r.id}')">Elimina</button></td></tr>).join('')
+}
+if(page==='squadra'){
+const {data}=await client.from('team_category_season')
+.select('team_id,category_id,season_id,teams(name,societies!teams_society_id_fkey(name)),categories(name),seasons(name)')
+document.querySelector('#tbl-squadra tbody').innerHTML=(data||[]).map(r=> <tr><td>${r.teams?.name}</td><td>${r.teams?.societies?.name||'—'}</td><td>${r.categories?.name}</td><td>${r.seasons?.name}</td> <td class="actions"><button class="ghost" onclick="deleteRow('team_category_season','${r.team_id}','${r.category_id}','${r.season_id}')">Elimina</button></td></tr>).join('')
+}
+if(page==='ruoli'){
+const {data}=await client.from('user_society_roles').select('id,user_id,role_id,society_id,category_id,team_id,season_id,users(name),roles(name),societies(name),categories(name),teams(name),seasons(name)')
+document.querySelector('#tbl-ruoli tbody').innerHTML=(data||[]).map(r=> <tr><td>${r.users?.name}</td><td>${r.roles?.name}</td><td>${r.societies?.name}</td><td>${r.categories?.name||'—'}</td><td>${r.teams?.name||'—'}</td><td>${r.seasons?.name}</td> <td class="actions"><button class="ghost" onclick="deleteRow('user_society_roles','${r.id}')">Elimina</button></td></tr>).join('')
+}
+if(page==='atleta'){
+const {data}=await client.from('athlete_seasons').select('athlete_id,category_id,team_id,season_id,shirt_number,athletes(first_name,last_name),categories(name),teams(name),seasons(name)')
+document.querySelector('#tbl-atleta tbody').innerHTML=(data||[]).map(r=> <tr><td>${r.athletes.first_name}</td><td>${r.athletes.last_name}</td><td>${r.categories?.name}</td><td>${r.teams?.name||'—'}</td><td>${r.seasons?.name}</td><td>${r.shirt_number||''}</td> <td class="actions"><button class="ghost" onclick="deleteRow('athlete_seasons','${r.athlete_id}','${r.category_id}','${r.season_id}')">Elimina</button></td></tr>).join('')
+}
+if(page==='sessioni'){
+const {data}=await client.from('sessions').select('id,type,date,category_id,team_id,season_id,categories(name),teams(name),matches(opponent)')
+document.querySelector('#tbl-sessioni tbody').innerHTML=(data||[]).map(r=> <tr><td>${r.date}</td><td>${r.type==='P'?'Partita':'Allenamento'}</td><td>${r.categories?.name}</td><td>${r.teams?.name||'—'}</td><td>${r.matches?.opponent||'—'}</td> <td class="actions"><button class="ghost" onclick="deleteRow('sessions','${r.id}')">Elimina</button></td></tr>).join('')
+}
+}
+
+/* ===== SAVE ===== */
+async function saveSociety(){
+await client.from('societies').insert({
+name: document.getElementById('soc-name').value,
+sport_id: document.getElementById('soc-sport').value,
+city: document.getElementById('soc-city').value,
+email: document.getElementById('soc-email').value,
+season_id: document.getElementById('soc-season').value
+})
+loadPageData('societa')
+document.getElementById('soc-name').value=''
+document.getElementById('soc-city').value=''
+document.getElementById('soc-email').value=''
+document.getElementById('soc-season').value=''
+}
+async function saveCategory(){await client.from('categories').insert({name:document.getElementById('cat-name').value,society_id:document.getElementById('cat-soc').value,sport_id:document.getElementById('cat-sport').value});loadPageData('categoria')}
+async function saveTeam(){const {data}=await client.from('teams').insert({name:document.getElementById('team-name').value,society_id:document.getElementById('team-soc').value}).select();await client.from('team_category_season').insert({team_id:data.id,category_id:document.getElementById('team-cat').value,season_id:document.getElementById('team-season').value});loadPageData('squadra')}
+async function saveAthlete(){const {data}=await client.from('athletes').insert({first_name:document.getElementById('ath-name').value,last_name:document.getElementById('ath-last').value,dob:document.getElementById('ath-dob').value,nickname:''}).select();await client.from('athlete_seasons').insert({athlete_id:data.id,category_id:document.getElementById('ath-cat').value,team_id:document.getElementById('ath-team').value,season_id:document.getElementById('ath-season').value,shirt_number:+document.getElementById('ath-number').value||null});loadPageData('atleta')}
+async function saveSession(){const type=document.getElementById('ses-type').value;const {data}=await client.from('sessions').insert({type,date:document.getElementById('ses-date').value,category_id:document.getElementById('ses-cat').value,team_id:document.getElementById('ses-team').value||null,season_id:document.getElementById('ses-season').value,created_by:USER.id}).select();if(type==='P'){await client.from('matches').insert({category_id:document.getElementById('ses-cat').value,date:document.getElementById('ses-date').value,opponent:document.getElementById('ses-opp').value||'Amichevole',season_id:document.getElementById('ses-season').value,created_by:USER.id,match_id:data.id})}loadPageData('sessioni')}
+async function saveRole(){await client.from('user_society_roles').insert({user_id:document.getElementById('role-user').value,role_id:document.getElementById('role-type').value,society_id:document.getElementById('role-soc').value,season_id:document.getElementById('role-season').value,category_id:document.getElementById('role-cat').value,team_id:document.getElementById('role-team').value||null});loadPageData('ruoli')}
+async function deleteRow(table,id,id2,id3){
+if(table==='team_category_season'){await client.from(table).delete().eq('team_id',id).eq('category_id',id2).eq('season_id',id3)}
+else if(table==='athlete_seasons'){await client.from(table).delete().eq('athlete_id',id).eq('category_id',id2).eq('season_id',id3)}
+else {await client.from(table).delete().eq('id',id)}
+loadPageData(document.querySelector('.page.active').id.replace('page-',''))
+}[0]
+
+/* ===== DASHBOARD CATEGORIA ===== */
+async function openCategoryDashboard(catId,teamId){
+STATE.categoryId = catId
+STATE.teamId = teamId
+showPage('sessioni')
+}
