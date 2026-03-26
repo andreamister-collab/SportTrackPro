@@ -40,11 +40,7 @@
   table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
   th,td{padding:12px 14px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
   th{background:#f9fafb;font-size:13px;color:var(--muted)}
-.badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;margin:2px 4px 2px 0}
-.badge.ok{background:#dcfce7;color:#166534}
-.badge.warn{background:#fef3c7;color:#92400e}
-.badge.bad{background:#fee2e2;color:#991b1b}
-.badge.staff{background:#dbeafe;color:#1e40af}
+.badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;margin:2px 4px 2px 0.badge.staff{background:#dbeafe;color:#1e40af}
 .actions button{margin-right:6px;background:#f3f4f6;color:#111;border:1px solid var(--border);padding:6px 10px;border-radius:8px;cursor:pointer}
 .actions button:hover{background:#e5e7eb}
 </style>
@@ -98,7 +94,7 @@
 
 <script>
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
-let USER=null, STATE={seasonId:'',societyId:'',categoryId:'',teamId:''}, ROLE_IDS={}
+let USER=null, STATE={seasonId:'',societyId:'',categoryId:'',teamId:''}
 
 /* ===== LOGIN ===== */
 async function login(e){
@@ -117,9 +113,6 @@ async function login(e){
 async function initApp(){
   document.getElementById('auth-section').style.display='none'
   document.getElementById('app').style.display='block'
-
-  const {data:rolesData} = await client.from('roles').select('id,name')
-  if(rolesData) rolesData.forEach(r=> ROLE_IDS[r.name.toLowerCase()]=r.id)
 
   let {data:seasons} = await client.from('seasons')
 .select('id,name,start_date,active')
@@ -165,13 +158,13 @@ async function refresh(){
   const {count:sessioni}=await client.from('sessions').select('id',{count:'exact',head:true}).eq('season_id',s)
   const {count:utenti}=await client.from('users').select('id',{count:'exact',head:true})
 
-  const respId=ROLE_IDS['responsabile']
-  const allId=ROLE_IDS['allenatore']
-  const profId=ROLE_IDS['professionista']
-
-  const {count:responsabili}= respId? await client.from('user_society_roles').select('id',{count:'exact',head:true}).eq('season_id',s).eq('role_id',respId) : {count:0}
-  const {count:allenatori}= allId? await client.from('user_society_roles').select('id',{count:'exact',head:true}).eq('season_id',s).eq('role_id',allId) : {count:0}
-  const {count:prof}= profId? await client.from('user_society_roles').select('id',{count:'exact',head:true}).eq('season_id',s).eq('role_id',profId) : {count:0}
+  // Ruoli sono TESTO nella tabella user_category_seasons
+  const {count:responsabili}=await client.from('user_category_seasons').select('id',{count:'exact',head:true})
+.eq('season_id',s).eq('role','responsabile')
+  const {count:allenatori}=await client.from('user_category_seasons').select('id',{count:'exact',head:true})
+.eq('season_id',s).eq('role','allenatore')
+  const {count:prof}=await client.from('user_category_seasons').select('id',{count:'exact',head:true})
+.eq('season_id',s).eq('role','professionista')
 
   const {data:att} = await client.from('attendances').select('status')
   const pres=att?.filter(a=>a.status==='P').length||0
