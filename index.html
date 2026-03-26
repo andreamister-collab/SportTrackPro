@@ -5464,6 +5464,7 @@ viewBuilders['admin-config'] = (el) => {
         const adminTabs = !isSegretario ? [
           '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;sport&quot;)">🏅 Sport</button>',
           '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;society&quot;)">🏛️ Società</button>',
+          '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;category&quot;)">🏷️ Categorie</button>',
           '<button class="tab-btn" onclick="buildAdminConfigTab(&quot;team&quot;)">👕 Squadre</button>',
         ] : [];
         const sharedTabs = [
@@ -5488,7 +5489,12 @@ viewBuilders['admin-config'] = (el) => {
 function buildAdminConfigTab(tab) {
   window._pendingConfigTab = tab; // mantieni tab corrente per il select stagione
   // activate tab — array completo di tutti i tab
-  const allTabs = ['sport','society','team','category','users','activities','seasons','roles','settings'];
+  // Tab visibili: per admin [sport, società, categorie, squadre, users, seasons, activities, roles, settings]
+  // Per segretario [users, seasons] + adminOnly
+  const isSegCfg = currentUser?.role === 'segretario';
+  const allTabs = isSegCfg
+    ? ['category','users','seasons']
+    : ['sport','society','category','team','users','seasons','activities','roles','settings'];
   document.querySelectorAll('#config-tabs .tab-btn').forEach((b,i) => {
     b.classList.toggle('active', allTabs[i] === tab);
   });
@@ -5713,13 +5719,9 @@ function deleteSociety(id) {
 }
 
 function buildTeamConfig() {
-  const seasId = window._configSeasonId || '';
+  const seasId = window._configSeasonId || S.activeSeason || '';
   const seas   = S.seasons.find(s=>s.id===seasId);
-  // Squadre globali — il filtro stagione mostra quelle con atleti iscritti nella stagione
-  const activeTeamIds = seasId
-    ? new Set((S.athleteSeasons||[]).filter(as=>as.seasonId===seasId && as.teamId).map(as=>as.teamId))
-    : null; // null = mostra tutte
-  const visibleTeams = activeTeamIds ? S.teams.filter(t=>activeTeamIds.has(t.id)) : S.teams;
+  const visibleTeams = S.teams;
 
   return '<div class="card">'
     + '<div class="card-title" style="justify-content:space-between">'
@@ -5728,10 +5730,13 @@ function buildTeamConfig() {
     + '<button class="btn btn-accent btn-sm" onclick="openTeamModal()">+ Aggiungi Squadra</button>'
     + '</div>'
     + '<div class="table-wrap"><table>'
-    + '<thead><tr><th>Nome</th><th>Società</th><th>Sport</th><th>Atleti</th><th>Azioni</th></tr></thead>'
+    + '<thead><tr><th>Nome</th><th>Società</th><th>Sport</th><th>Categoria</th><th>Atleti</th><th>Azioni</th></tr></thead>'
     + '<tbody>' + (visibleTeams.length ? visibleTeams.map(t => {
         const soc = S.societies.find(s=>s.id===t.societyId);
         const spt = S.sports.find(s=>s.id===t.sportId);
+        const tcs = (S.teamAssociations||[]).find(ta=>ta.teamId===t.id && ta.seasonId===seasId);
+        const linkedCat = tcs ? S.categories.find(c=>c.id===tcs.categoryId)
+          : S.categories.find(c=>(c.teamIds||[]).includes(t.id)||c.teamId===t.id);
         const nAthletes = seasId
           ? (S.athleteSeasons||[]).filter(as=>as.seasonId===seasId && as.teamId===t.id).length
           : S.athletes.filter(a=>a.teamId===t.id).length;
@@ -5739,82 +5744,140 @@ function buildTeamConfig() {
           + '<td class="fw-700">'+esc(t.name)+'</td>'
           + '<td>'+esc(soc?.name||'—')+'</td>'
           + '<td>'+esc(spt?.name||'—')+'</td>'
-          + '<td class="fw-600">'+nAthletes+'</td>'
+          + '<td>'+(linkedCat?'<span class="badge badge-gray">'+esc(linkedCat.name)+'</span>':'<span style="color:#94A3B8">—</span>')+'</td>'
+          + '<td class="fw-600" style="text-align:center">'+nAthletes+'</td>'
           + '<td style="display:flex;gap:6px">'
           + '<button class="btn btn-ghost btn-sm" onclick="openTeamModal(&quot;'+t.id+'&quot;)">✏️</button>'
           + '<button class="btn btn-danger btn-sm" onclick="deleteTeam(&quot;'+t.id+'&quot;)">🗑️</button>'
           + '</td></tr>';
       }).join('')
-      : '<tr><td colspan="5" style="text-align:center;color:#64748B;padding:20px">Nessuna squadra per questa stagione</td></tr>')
+      : '<tr><td colspan="6" style="text-align:center;color:#64748B;padding:20px">Nessuna squadra — clicca "+ Aggiungi Squadra"</td></tr>')
     + '</tbody></table></div></div>';
 }
 
 function openTeamModal(id) {
-  const t = id ? S.teams.find(x => x.id === id) : null;
-  
+  const team = id ? S.teams.find(t => t.id === id) : null;
+  const curSeasonId = window._configSeasonId || S.activeSeason || '';
+  const seasons = (S.seasons||[]).slice().sort((a,b)=>b.startYear-a.startYear);
+  const tcs = id ? (S.teamAssociations||[]).find(ta=>ta.teamId===id && ta.seasonId===curSeasonId) : null;
+  const linkedCatId = tcs?.categoryId
+    || (id ? (S.categories.find(c=>(c.teamIds||[]).includes(id)||c.teamId===id)?.id||'') : '');
+
+  const catOpts = (team?.societyId ? S.categories.filter(c=>c.societyId===team.societyId) : S.categories)
+    .map(c=>`<option value="${c.id}" ${c.id===linkedCatId?'selected':''}>${esc(c.name)}</option>`).join('');
+
   openModal(`
-    <div class="modal-header"><h3>${t ? 'Modifica Squadra' : 'Nuova Squadra'}</h3></div>
-    <div class="form-row">
-      <div class="form-field"><label>Nome Squadra</label><input id="tm-name" value="${esc(t?.name || '')}" placeholder="es. Prima Squadra"></div>
-      <div class="form-field"><label>Società</label><select id="tm-soc">
-        <option value="">Seleziona Società...</option>
-        ${S.societies.map(s => `<option value="${s.id}" ${s.id === t?.societyId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
-      </select></div>
+    <div class="modal-header">
+      <h3>${team ? 'Modifica Squadra' : 'Nuova Squadra'}</h3>
+      <p style="font-size:.8rem;color:#64748B">Lega la squadra a una società e a una categoria per la stagione.</p>
     </div>
-    <div class="form-row">
-      <div class="form-field"><label>Sport</label><select id="tm-sport">
-        ${S.sports.map(s => `<option value="${s.id}" ${s.id === t?.sportId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
-      </select></div>
-      <div class="form-field"><label>Categoria (Stagione Corrente)</label><select id="tm-cat">
-        <option value="">Nessuna Categoria</option>
-        ${S.categories.map(c => {
-          const isAssoc = (S.teamAssociations || []).find(a => a.teamId === id && a.categoryId === c.id && a.seasonId === S.activeSeason);
-          return `<option value="${c.id}" ${isAssoc ? 'selected' : ''}>${esc(c.name)}</option>`;
-        }).join('')}
-      </select></div>
+    <div class="form-field" style="margin-bottom:12px">
+      <label>Nome Squadra <span style="color:var(--red)">*</span></label>
+      <input id="tm-name" value="${esc(team?.name||'')}" placeholder="es. Prima Squadra">
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-field">
+        <label>Stagione <span style="color:var(--red)">*</span></label>
+        <select id="tm-season">
+          <option value="">— Seleziona —</option>
+          ${seasons.map(s=>`<option value="${s.id}" ${s.id===curSeasonId?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Società <span style="color:var(--red)">*</span></label>
+        <select id="tm-soc" onchange="refreshTeamModalCats(this.value,'${id||''}')">
+          <option value="">— Seleziona —</option>
+          ${S.societies.map(s=>`<option value="${s.id}" ${s.id===team?.societyId?'selected':''}>${esc(s.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-field">
+        <label>Sport</label>
+        <select id="tm-sport">
+          <option value="">— Seleziona —</option>
+          ${S.sports.map(s=>`<option value="${s.id}" ${s.id===team?.sportId?'selected':''}>${esc(s.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Categoria</label>
+        <select id="tm-cat">
+          <option value="">— Nessuna —</option>
+          ${catOpts}
+        </select>
+      </div>
     </div>
     <div class="form-actions">
-      <button class="btn btn-accent" onclick="saveTeam('${id || ''}')">💾 Salva</button>
+      <button class="btn btn-accent" onclick="saveTeamFromModal('${id||''}')">💾 Salva e Associa</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
-    </div>`);
-} // <--- Questa chiude openTeamModal
-
-async function saveTeam(id) {
-  try {
-    const name = document.getElementById('tm-name').value.trim();
-    const societyId = document.getElementById('tm-soc').value;
-    const sportId = document.getElementById('tm-sport').value;
-    const categoryId = document.getElementById('tm-cat').value;
-
-    if (!name) { toast('Nome obbligatorio', 'error'); return; }
-
-    await DB.saveTeam({
-      id: id || uid(),
-      name: name,
-      sportId: sportId,
-      societyId: societyId,
-      categoryId: categoryId
-    });
-
-    toast('Squadra salvata con successo', 'success');
-    closeModal();
-    if (typeof buildAdminConfigTab === 'function') buildAdminConfigTab('team');
-  } catch (err) {
-    console.error("Errore salvataggio:", err);
-    toast('Errore nel salvataggio', 'error');
-  }
+    </div>`, 'modal-lg');
 }
+
+function refreshTeamModalCats(socId, teamId) {
+  const sel = document.getElementById('tm-cat');
+  if (!sel) return;
+  const cats = socId ? S.categories.filter(c=>c.societyId===socId) : S.categories;
+  const preselId = teamId ? ((S.teamAssociations||[]).find(ta=>ta.teamId===teamId)?.categoryId || '') : '';
+  sel.innerHTML = '<option value="">— Nessuna —</option>'
+    + cats.map(c=>`<option value="${c.id}" ${c.id===preselId?'selected':''}>${esc(c.name)}</option>`).join('');
+}
+
+async function saveTeamFromModal(id) {
+  const name     = document.getElementById('tm-name')?.value.trim();
+  const socId    = document.getElementById('tm-soc')?.value;
+  const sportId  = document.getElementById('tm-sport')?.value;
+  const catId    = document.getElementById('tm-cat')?.value;
+  const seasonId = document.getElementById('tm-season')?.value;
+
+  if (!name)     { toast('Nome obbligatorio', 'error'); return; }
+  if (!socId)    { toast('Seleziona una società', 'error'); return; }
+  if (!seasonId) { toast('Seleziona una stagione', 'error'); return; }
+
+  const teamId  = id || uid();
+  const teamObj = { id: teamId, name, societyId: socId, sportId: sportId||null };
+
+  if (id) {
+    const ex = S.teams.find(t=>t.id===id);
+    if (ex) Object.assign(ex, teamObj);
+  } else {
+    if (!S.teams) S.teams = [];
+    S.teams.push(teamObj);
+  }
+
+  if (catId && seasonId) {
+    const cat = S.categories.find(c=>c.id===catId);
+    if (cat) {
+      if (!cat.teamIds) cat.teamIds = [];
+      if (!cat.teamIds.includes(teamId)) cat.teamIds.push(teamId);
+      if (!cat.teamId) cat.teamId = teamId;
+      cat.societyId = cat.societyId || socId;
+      sbSync('categories', cat);
+    }
+    if (!S.teamAssociations) S.teamAssociations = [];
+    S.teamAssociations = S.teamAssociations.filter(ta=>!(ta.teamId===teamId && ta.seasonId===seasonId));
+    S.teamAssociations.push({ id: uid(), teamId, categoryId: catId, seasonId });
+    try {
+      if (typeof sb !== 'undefined' && sb) {
+        await sb.from('team_category_season').upsert({
+          team_id: teamId, category_id: catId, season_id: seasonId
+        }, { onConflict: 'team_id,season_id' });
+      }
+    } catch(e) { console.warn('team_category_season upsert:', e); }
+  }
+
+  sbSync('teams', teamObj);
+  saveState();
+  toast('Squadra salvata e associata ✅', 'success');
+  closeModal();
+  buildAdminConfigTab('team');
+  buildSidebarNav();
+}
+
 function buildCategoryConfig() {
   const seasId = window._configSeasonId || '';
   const seas   = S.seasons.find(s=>s.id===seasId);
-  // Categorie globali — il filtro stagione mostra solo quelle con atleti o staff nella stagione
-  const activeCatIds = seasId
-    ? new Set([
-        ...(S.athleteSeasons||[]).filter(as=>as.seasonId===seasId).map(as=>as.categoryId),
-        ...(S.userCategorySeasons||[]).filter(u=>u.seasonId===seasId).map(u=>u.categoryId),
-      ])
-    : null; // null = mostra tutte
-  const visibleCats = activeCatIds ? S.categories.filter(c=>activeCatIds.has(c.id)) : S.categories;
+  // Mostra TUTTE le categorie — il filtro stagione serve solo per contare atleti/staff
+  const visibleCats = S.categories;
 
   let html = '<div class="card">'
     + '<div class="card-title" style="justify-content:space-between">'
@@ -5852,207 +5915,95 @@ function buildCategoryConfig() {
   html += '</div>';
   return html;
 }
-//da qui PER MODIFICHE ANDREA
-// --- 1. LOGICA VISUALIZZAZIONE E UTILITY ---
-// Funzione di utilità per ricaricare i dati e aggiornare l'interfaccia
-async function refreshAll() {
-  const fresh = await DB.loadAll(); 
-  Object.assign(S, fresh);
-  // Log di debug per verificare che la Terza Categoria sia caricata
-  console.log("Categorie caricate:", S.categories.map(c => c.name));
-}
-function buildTeamCheckboxes(societyId, selectedTeamIds = []) {
-  // Cerchiamo le squadre appartenenti alla società selezionata
-  const teams = S.teams.filter(t => String(t.society_id) === String(societyId));
-  
-  if (!teams.length) {
-    return `<div style="color:#94A3B8; font-size:0.8rem; padding:10px;">Nessuna squadra trovata per questa società.</div>`;
-  }
-
-  return `
-    <div id="cat-teams-list" style="display:grid; grid-template-columns: 1fr; gap:6px; max-height:150px; overflow-y:auto;">
-      ${teams.map(t => {
-        const isChecked = (selectedTeamIds || []).includes(t.id);
-        return `
-          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; border:1px solid #E2E8F0; border-radius:6px; background:white;">
-            <input type="checkbox" value="${t.id}" ${isChecked ? 'checked' : ''} class="team-checkbox">
-            <span style="font-size:0.85rem;">${esc(t.name)}</span>
-          </label>`;
-      }).join('')}
-    </div>`;
-}
-
-function refreshCatTeamList(socId) {
-  const container = document.getElementById('cat-team-wrapper');
-  if (container) container.innerHTML = buildTeamCheckboxes(socId);
-}
-// STEP 2: CREA/MODIFICA CATEGORIA
-function openTeamModal(id) {
-  const team = id ? S.teams.find(t => t.id === id) : null;
-  // Cerchiamo l'elemento stagione nel DOM o usiamo quello in memoria
-  const currentSeasonId = document.getElementById('current-season-select')?.value || S.currentSeasonId;
-
-  openModal(`
-    <div class="modal-header">
-      <h3>${team ? 'Modifica Squadra' : 'Nuova Squadra'}</h3>
-      <p style="font-size:0.8rem; color:#64748B;">Lega la squadra a una società e a una categoria per la stagione attiva.</p>
-    </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label>Nome Squadra</label>
-        <input id="team-name" value="${team ? esc(team.name) : ''}" placeholder="es. Prima Squadra">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label>1. Seleziona Società</label>
-        <select id="team-soc-id">
-          <option value="">-- Scegli Società --</option>
-          ${S.societies.map(s => `<option value="${s.id}" ${team?.society_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-field">
-        <label>2. Seleziona Categoria</label>
-        <select id="team-cat-id">
-          <option value="">-- Scegli Categoria --</option>
-          ${S.categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-    <div class="form-actions" style="margin-top:20px;">
-      <button class="btn btn-accent" onclick="saveTeamAndAssign('${id || ''}')">💾 Salva e Associa</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
-    </div>
-  `, 'modal-lg');
-}
+//da qui PER MODIFICHE ANDREA — BLOCCO RIMOSSO (duplicati di openTeamModal, saveCategory, deleteCategory)
 
 function openCategoryModal(id) {
   const cat = id ? S.categories.find(x => x.id === id) : null;
-  const seasonId = document.getElementById('current-season-select')?.value || S.currentSeasonId;
+  const socOpts = S.societies.map(s =>
+    `<option value="${s.id}" ${s.id===cat?.societyId?'selected':''}>${esc(s.name)}</option>`
+  ).join('');
+  const sportOpts = S.sports.map(s =>
+    `<option value="${s.id}" ${s.id===cat?.sportId?'selected':''}>${esc(s.name)}</option>`
+  ).join('');
 
   openModal(`
     <div class="modal-header"><h3>${id ? 'Modifica' : 'Nuova'} Categoria</h3></div>
     <div class="form-row">
       <div class="form-field">
-        <label>Nome Categoria</label>
-        <input id="cat-name" value="${esc(cat?.name || '')}" placeholder="es. Terza Categoria">
+        <label>Nome Categoria <span style="color:var(--red)">*</span></label>
+        <input id="cat-name" value="${esc(cat?.name||'')}" placeholder="es. Terza Categoria">
       </div>
       <div class="form-field">
-        <label>Sport</label>
-        <select id="cat-sport-id">
-          <option value="">Seleziona Sport...</option>
-          ${S.sports.map(s => `<option value="${s.id}" ${cat?.sport_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
+        <label>Società <span style="color:var(--red)">*</span></label>
+        <select id="cat-soc-id">
+          <option value="">— Seleziona —</option>
+          ${socOpts}
         </select>
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label>Filtra squadre per Società</label>
-        <select id="cat-soc-filter" onchange="refreshCatTeamList(this.value)">
-          <option value="">Seleziona Società...</option>
-          ${S.societies.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}
-        </select>
-      </div>
+    <div class="form-field" style="margin-bottom:12px">
+      <label>Sport</label>
+      <select id="cat-sport-id">
+        <option value="">— Seleziona —</option>
+        ${sportOpts}
+      </select>
     </div>
-    <div id="cat-team-wrapper" style="margin-top:10px; border:1px solid #ddd; padding:10px; border-radius:8px; background:#fff;">
-      ${buildTeamCheckboxes("")}
-    </div>
-    <div class="form-actions" style="margin-top:15px">
-      <button class="btn btn-accent" onclick="saveCategory('${id || ''}')">💾 Salva Categoria</button>
+    <div class="form-actions">
+      <button class="btn btn-accent" onclick="saveCategoryModal('${id||''}')">💾 Salva Categoria</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`, 'modal-lg');
 }
-// --- 3. SALVATAGGIO (LOGICA DATABASE) ---
-async function saveTeamAndAssign(id) {
-  const name = document.getElementById('team-name').value.trim();
-  const socId = document.getElementById('team-soc-id').value;
-  const catId = document.getElementById('team-cat-id').value;
-  // Lettura robusta della stagione
-  const seasonSelect = document.getElementById('current-season-select');
-  const seasonId = seasonSelect ? seasonSelect.value : S.currentSeasonId;
 
-  if (!name || !socId || !catId || !seasonId) {
-    toast('Compila tutti i campi: Nome, Società, Categoria e Stagione', 'error');
-    return;
+function saveCategoryModal(id) {
+  const name    = document.getElementById('cat-name')?.value.trim();
+  const socId   = document.getElementById('cat-soc-id')?.value;
+  const sportId = document.getElementById('cat-sport-id')?.value;
+
+  if (!name) { toast('Nome categoria obbligatorio', 'error'); return; }
+  if (!socId) { toast('Seleziona una società', 'error'); return; }
+
+  if (id) {
+    const cat = S.categories.find(c=>c.id===id);
+    if (!cat) { toast('Categoria non trovata','error'); return; }
+    Object.assign(cat, { name, societyId: socId, sportId: sportId||cat.sportId||null });
+    sbSync('categories', cat);
+    toast('Categoria aggiornata ✅', 'success');
+  } else {
+    const newCat = {
+      id: uid(), name, societyId: socId, sportId: sportId||null,
+      teamId: null, teamIds: [],
+      managerIds: [], directorIds: [], coachIds: [], professionalIds: []
+    };
+    if (!S.categories) S.categories = [];
+    S.categories.push(newCat);
+    sbSync('categories', newCat);
+    toast('Categoria creata ✅', 'success');
   }
-
-  try {
-    const teamId = id || uid();
-
-    // 1. Salvataggio Squadra (Tabella teams)
-    await sbSync('teams', { id: teamId, name: name, society_id: socId });
-
-    // 2. Salvataggio Legame (Tabella team_category_season)
-    const { error } = await sb.from('team_category_season').upsert({
-      id: uid(),
-      team_id: teamId,
-      category_id: catId,
-      season_id: seasonId
-    });
-
-    if (error) throw error;
-
-    toast('Squadra creata e associata correttamente!', 'success');
-    closeModal();
-    await refreshAll();
-    buildAdminConfigTab('team'); 
-  } catch (err) {
-    console.error(err);
-    toast('Errore durante il salvataggio', 'error');
-  }
+  saveState();
+  closeModal();
+  buildAdminConfigTab('category');
+  buildSidebarNav();
 }
 
-async function saveCategory(id) {
-  const name = document.getElementById('cat-name').value.trim();
-  const sportId = document.getElementById('cat-sport-id').value;
-  const seasonId = document.getElementById('current-season-select')?.value || S.currentSeasonId;
-  const teamIds = Array.from(document.querySelectorAll('.team-checkbox:checked')).map(cb => cb.value);
+// Alias per compatibilità con chiamate esistenti nel codice
+function saveCategory(id) { return saveCategoryModal(id); }
 
-  if (!name || !sportId) return toast('Nome e Sport sono obbligatori', 'error');
-
-  try {
-    const catId = id || uid();
-    // Salviamo nome e sport_id nella tabella categories
-    await sb.from('categories').upsert({ 
-      id: catId, 
-      name: name, 
-      sport_id: sportId 
-    });
-
-    // Salvataggio associazioni se presenti
-    if (teamIds.length > 0) {
-      const assocs = teamIds.map(tId => ({ 
-        id: uid(), 
-        team_id: tId, 
-        category_id: catId, 
-        season_id: seasonId 
-      }));
-      await sb.from('team_category_season').upsert(assocs);
-    }
-
-    toast('Categoria salvata correttamente');
-    closeModal();
-    await refreshAll();
-    buildAdminConfigTab('category'); // Ricarica la tab per mostrare la Terza Categoria
-  } catch (err) {
-    toast('Errore durante il salvataggio', 'error');
-  }
+function deleteCategory(id) {
+  const cat = S.categories.find(c=>c.id===id);
+  if (!cat) return;
+  if (!confirm(`Eliminare la categoria "${cat.name}" e tutti i dati collegati?`)) return;
+  S.categories    = S.categories.filter(c=>c.id!==id);
+  S.athleteSeasons = (S.athleteSeasons||[]).filter(as=>as.categoryId!==id);
+  S.userCategorySeasons = (S.userCategorySeasons||[]).filter(u=>u.categoryId!==id);
+  sbSync('categories', id, true);
+  sbSyncDeleteWhere('athlete_seasons', 'category_id', id);
+  sbSyncDeleteWhere('user_category_seasons', 'category_id', id);
+  saveState();
+  toast('Categoria eliminata', 'success');
+  buildAdminConfigTab('category');
+  buildSidebarNav();
 }
-// --- 4. CANCELLAZIONE ---
-async function deleteCategory(id) {
-  if (!confirm('Eliminare questa categoria e tutti i dati collegati?')) return;
-  try {
-    await sb.from('categories').delete().eq('id', id);
-    // Pulizia a cascata gestita solitamente dal DB o manualmente qui
-    toast('Categoria eliminata');
-    const fresh = await DB.loadAll();
-    Object.assign(S, fresh);
-    buildAdminConfigTab('category');
-    buildSidebarNav();
-  } catch (err) {
-    toast('Errore eliminazione','error');
-  }
-}
+
 // Helper: get current category IDs assigned to user u with given role
 function getUserCatIds(userId, role) {
   if (role === 'genitore') {
