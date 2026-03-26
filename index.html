@@ -128,8 +128,8 @@ async function initApp(){
 
   if(!seasons || seasons.length===0){
     const {data:allSeasons} = await client.from('seasons')
- .select('id,name,start_date,active')
- .order('start_date',{ascending:false})
+.select('id,name,start_date,active')
+.order('start_date',{ascending:false})
     seasons = allSeasons
   }
   STATE.seasonId = seasons?.[0]?.id || ''
@@ -190,14 +190,14 @@ async function refresh(){
   document.getElementById('c-allenatori').textContent=allenatori||0
   document.getElementById('c-prof').textContent=prof||0
 
-  /* ---- TABELLA (HINT CORRETTO) ---- */
+  /* ---- TABELLA (HINT SU ENTRAMBE LE FK) ---- */
   let q = client.from('team_category_season')
 .select(`
     team_id,
     category_id,
     season_id,
     teams!tcs_team_id_fkey(id,name,society_id,societies(id,name,sports(name))),
-    categories(id,name)
+    categories!tcs_category_id_fkey(id,name)
   `)
 .eq('season_id', s)
 
@@ -222,13 +222,13 @@ async function refresh(){
     const sportName = soc?.sports?.name || '—'
 
     const {count:sessCnt}=await client.from('sessions').select('id',{count:'exact',head:true})
- .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+.eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const {count:athCnt}=await client.from('athlete_seasons').select('id',{count:'exact',head:true})
- .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+.eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const {data:sidData}=await client.from('sessions').select('id')
- .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+.eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
     const sessionIds = sidData?.map(x=>x.id) || []
     let presPct=0
     if(sessionIds.length){
@@ -238,14 +238,14 @@ async function refresh(){
 
     // STAFF ASSEGNATO → da user_category_seasons
     const {data:staffData}=await client.from('user_category_seasons')
- .select('users(name),role')
- .eq('category_id',c.id)
- .eq('season_id',s)
- .eq('team_id',t.id)
+.select('users(name),role')
+.eq('category_id',c.id)
+.eq('season_id',s)
+.eq('team_id',t.id)
 
     const staff = staffData || []
     const staffHtml = staff.length
- ? staff.map(s=>`<span class="badge staff">${s.users.name} (${s.role})</span>`).join('')
+? staff.map(s=>`<span class="badge staff">${s.users.name} (${s.role})</span>`).join('')
       : '<span class="badge bad">Nessuno</span>'
 
     const presClass = presPct>=80?'ok':presPct>=50?'warn':'bad'
