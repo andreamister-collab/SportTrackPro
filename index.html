@@ -68,6 +68,7 @@
 
 <div class="main">
   <div class="container">
+    <!-- LOGIN -->
     <div id="auth-section">
       <h2>Accedi</h2>
       <form onsubmit="login(event)">
@@ -78,7 +79,10 @@
       </form>
     </div>
 
+    <!-- APP -->
     <div id="app" style="display:none">
+
+      <!-- DASHBOARD -->
       <section id="page-dashboard" class="page active">
         <h1>Dashboard Amministratore</h1>
 
@@ -107,6 +111,7 @@
         </table>
       </section>
 
+      <!-- SOCIETA -->
       <section id="page-societa" class="page">
         <h1>Società</h1>
         <div class="toolbar">
@@ -117,6 +122,7 @@
         <table id="tbl-societa"><thead><tr><th>Nome</th><th>Sport</th><th>Azioni</th></tr></thead><tbody></tbody></table>
       </section>
 
+      <!-- CATEGORIA -->
       <section id="page-categoria" class="page">
         <h1>Categoria</h1>
         <div class="toolbar">
@@ -128,6 +134,7 @@
         <table id="tbl-categoria"><thead><tr><th>Nome</th><th>Società</th><th>Sport</th><th>Azioni</th></tr></thead><tbody></tbody></table>
       </section>
 
+      <!-- SQUADRA -->
       <section id="page-squadra" class="page">
         <h1>Squadra</h1>
         <div class="toolbar">
@@ -140,6 +147,7 @@
         <table id="tbl-squadra"><thead><tr><th>Nome</th><th>Società</th><th>Categoria</th><th>Stagione</th><th>Azioni</th></tr></thead><tbody></tbody></table>
       </section>
 
+      <!-- RUOLI -->
       <section id="page-ruoli" class="page">
         <h1>Gestione Ruoli</h1>
         <div class="toolbar">
@@ -154,6 +162,7 @@
         <table id="tbl-ruoli"><thead><tr><th>Utente</th><th>Ruolo</th><th>Società</th><th>Categoria</th><th>Squadra</th><th>Stagione</th><th>Azioni</th></tr></thead><tbody></tbody></table>
       </section>
 
+      <!-- ATLETA -->
       <section id="page-atleta" class="page">
         <h1>Atleta</h1>
         <div class="toolbar">
@@ -169,6 +178,7 @@
         <table id="tbl-atleta"><thead><tr><th>Nome</th><th>Cognome</th><th>Categoria</th><th>Squadra</th><th>Stagione</th><th>N°</th><th>Azioni</th></tr></thead><tbody></tbody></table>
       </section>
 
+      <!-- SESSIONI -->
       <section id="page-sessioni" class="page">
         <h1>Sessioni / Partite</h1>
         <div class="toolbar">
@@ -182,6 +192,7 @@
         </div>
         <table id="tbl-sessioni"><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Squadra</th><th>Avversario</th><th>Azioni</th></tr></thead><tbody></tbody></table>
       </section>
+
     </div>
   </div>
 </div>
@@ -228,13 +239,13 @@ async function initApp(){
   document.getElementById('auth-section').style.display='none'
   document.getElementById('app').style.display='block'
 
-  // ruoli
+  // RUOLI
   let roles = []
   const {data:rolesData} = await client.from('roles').select('id,name')
   if(rolesData) roles = rolesData
   roles.forEach(r=> ROLE_IDS[r.name]=r.id)
 
-  // STAGIONE ATTIVA
+  // STAGIONE ATTIVA (se nessuna → ultima)
   let {data:seasons} = await client.from('seasons')
 .select('id,name,start_date,active')
 .eq('active', true)
@@ -248,6 +259,7 @@ async function initApp(){
   }
   STATE.seasonId = seasons?.[0]?.id || ''
   populate('f-season', seasons, 'id', 'name')
+  // <-- TUTTI GLI ID ESISTONO NEL DOM
   ['team-season','role-season','ath-season','ses-season'].forEach(id=>populate(id,seasons,'id','name'))
 
   const {data:socs} = await client.from('societies').select('id,name')
@@ -255,6 +267,7 @@ async function initApp(){
   populate('cat-soc', socs, 'id', 'name')
   populate('team-soc', socs, 'id', 'name')
   populate('role-soc', socs, 'id', 'name')
+  populate('soc-sport', socs, 'id', 'name')
 
   const {data:cats} = await client.from('categories').select('id,name')
   populate('f-category', cats, 'id', 'name')
@@ -279,7 +292,7 @@ async function initApp(){
 }
 function populate(id,data,val,label){
   const sel=document.getElementById(id)
-  if(!sel) return
+  if(!sel) return // <-- PROTEZIONE
   sel.innerHTML='<option value="">Tutte</option>'+(data||[]).map(d=>`<option value="${d[val]}">${typeof label==='function'?label(d):d[label]}</option>`).join('')
 }
 
@@ -431,7 +444,7 @@ async function loadPageData(page){
   }
   if(page==='squadra'){
     const {data}=await client.from('team_category_season')
-   .select('team_id,category_id,season_id,teams(name,societies!teams_society_id_fkey(name)),categories(name),seasons(name)')
+  .select('team_id,category_id,season_id,teams(name,societies!teams_society_id_fkey(name)),categories(name),seasons(name)')
     document.querySelector('#tbl-squadra tbody').innerHTML=(data||[]).map(r=>`
       <tr><td>${r.teams?.name}</td><td>${r.teams?.societies?.name||'—'}</td><td>${r.categories?.name}</td><td>${r.seasons?.name}</td>
       <td class="actions"><button class="ghost" onclick="deleteRow('team_category_season','${r.team_id}','${r.category_id}','${r.season_id}')">Elimina</button></td></tr>`).join('')
