@@ -5098,9 +5098,9 @@ function buildCategoryConfig() {
 async function refreshAll() {
   const fresh = await DB.loadAll(); 
   Object.assign(S, fresh);
-  console.log("Dati sincronizzati con Supabase");
+  // Log di debug per verificare che la Terza Categoria sia caricata
+  console.log("Categorie caricate:", S.categories.map(c => c.name));
 }
-
 function buildTeamCheckboxes(societyId, selectedTeamIds = []) {
   // Cerchiamo le squadre appartenenti alla società selezionata
   const teams = S.teams.filter(t => String(t.society_id) === String(societyId));
@@ -5175,8 +5175,17 @@ function openCategoryModal(id) {
     <div class="form-row">
       <div class="form-field">
         <label>Nome Categoria</label>
-        <input id="cat-name" value="${esc(cat?.name || '')}" placeholder="es. Under_10">
+        <input id="cat-name" value="${esc(cat?.name || '')}" placeholder="es. Terza Categoria">
       </div>
+      <div class="form-field">
+        <label>Sport</label>
+        <select id="cat-sport-id">
+          <option value="">Seleziona Sport...</option>
+          ${S.sports.map(s => `<option value="${s.id}" ${cat?.sport_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-field">
         <label>Filtra squadre per Società</label>
         <select id="cat-soc-filter" onchange="refreshCatTeamList(this.value)">
@@ -5185,11 +5194,8 @@ function openCategoryModal(id) {
         </select>
       </div>
     </div>
-    <div class="form-field" style="margin-top:10px">
-      <label>Squadre da associare in questa stagione</label>
-      <div id="cat-team-wrapper" style="border:1px solid #ddd; padding:10px; border-radius:8px; background:#fff; min-height:80px">
-        ${buildTeamCheckboxes("")}
-      </div>
+    <div id="cat-team-wrapper" style="margin-top:10px; border:1px solid #ddd; padding:10px; border-radius:8px; background:#fff;">
+      ${buildTeamCheckboxes("")}
     </div>
     <div class="form-actions" style="margin-top:15px">
       <button class="btn btn-accent" onclick="saveCategory('${id || ''}')">💾 Salva Categoria</button>
@@ -5238,17 +5244,22 @@ async function saveTeamAndAssign(id) {
 
 async function saveCategory(id) {
   const name = document.getElementById('cat-name').value.trim();
-  if (!name) return toast('Nome categoria obbligatorio', 'error');
+  const sportId = document.getElementById('cat-sport-id').value;
+  const seasonId = document.getElementById('current-season-select')?.value || S.currentSeasonId;
+  const teamIds = Array.from(document.querySelectorAll('.team-checkbox:checked')).map(cb => cb.value);
+
+  if (!name || !sportId) return toast('Nome e Sport sono obbligatori', 'error');
 
   try {
     const catId = id || uid();
-    // Salviamo solo l'anagrafica nella tabella categories
-    await sb.from('categories').upsert({ id: catId, name: name });
+    // Salviamo nome e sport_id nella tabella categories
+    await sb.from('categories').upsert({ 
+      id: catId, 
+      name: name, 
+      sport_id: sportId 
+    });
 
-    // Gestione associazioni checkbox
-    const teamIds = Array.from(document.querySelectorAll('.team-checkbox:checked')).map(cb => cb.value);
-    const seasonId = document.getElementById('current-season-select')?.value || S.currentSeasonId;
-
+    // Salvataggio associazioni se presenti
     if (teamIds.length > 0) {
       const assocs = teamIds.map(tId => ({ 
         id: uid(), 
@@ -5259,12 +5270,12 @@ async function saveCategory(id) {
       await sb.from('team_category_season').upsert(assocs);
     }
 
-    toast('Categoria salvata', 'success');
+    toast('Categoria salvata correttamente');
     closeModal();
     await refreshAll();
-    buildAdminConfigTab('category');
+    buildAdminConfigTab('category'); // Ricarica la tab per mostrare la Terza Categoria
   } catch (err) {
-    toast('Errore salvataggio categoria', 'error');
+    toast('Errore durante il salvataggio', 'error');
   }
 }
 // --- 4. CANCELLAZIONE ---
