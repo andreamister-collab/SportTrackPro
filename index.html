@@ -378,4 +378,41 @@ async function renderCards(sessions, athletes){
 async function openCards(matchId){
   const {data:athletes} = await client.from('athlete_seasons').select('*,athletes(*)').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
   const {data:cards} = await client.from('match_cards').select('athlete_id,type,minute').eq('match_id',matchId)
-  document.get
+  document.getElementById('panel-card').innerHTML = `
+    <h4>Cartellini</h4>
+    ${athletes.map(a=>`
+      <div class="athlete-row">
+        <span>${a.athletes.first_name} ${a.athletes.last_name}</span>
+        <select id="card-type-${a.athlete_id}">
+          <option value="">Nessuno</option>
+          <option value="yellow" ${cards.find(c=>c.athlete_id===a.athlete_id&&c.type==='yellow')?'selected':''}>Giallo</option>
+          <option value="red" ${cards.find(c=>c.athlete_id===a.athlete_id&&c.type==='red')?'selected':''}>Rosso</option>
+        </select>
+        <input id="card-min-${a.athlete_id}" type="number" min="1" max="120" placeholder="Minuto" value="${cards.find(c=>c.athlete_id===a.athlete_id)?.minute||''}" style="width:80px">
+      </div>`).join('')}
+    <button class="success" onclick="saveCards('${matchId}')">Salva Cartellini</button>`
+  showTab('card')
+}
+async function saveCards(matchId){
+  const {data:athletes} = await client.from('athlete_seasons').select('athlete_id').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
+  await client.from('match_cards').delete().eq('match_id',matchId)
+  const rows = []
+  athletes.forEach(a=>{
+    const type=document.getElementById('card-type-'+a.athlete_id).value
+    const minute=document.getElementById('card-min-'+a.athlete_id).value
+    if(type && minute) rows.push({match_id:matchId,athlete_id:a.athlete_id,type,minute:+minute})
+  })
+  if(rows.length) await client.from('match_cards').insert(rows)
+  alert('Cartellini salvati')
+  refresh()
+}
+function renderFriendly(sessions){
+  const friendly = sessions.filter(s=>s.type==='P' && s.matches && s.matches.opponent.toLowerCase().includes('amichevole'))
+  document.getElementById('panel-amic').innerHTML = friendly.map(m=>`
+    <div class="athlete-row">
+      <span>${m.date} vs ${m.matches.opponent} (${m.matches.scored}-${m.matches.conceded})</span>
+    </div>`).join('') || '<p>Nessuna amichevole</p>'
+}
+</script>
+</body>
+</html>
