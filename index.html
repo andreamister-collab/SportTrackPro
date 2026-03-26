@@ -106,25 +106,53 @@
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
 let USER=null, STATE={seasonId:'',societyId:'',categoryId:'',teamId:''}, ROLE_IDS={}
 
-/* ===== AUTH ===== */
+/* ===== AUTH (USERNAME → EMAIL REALE) ===== */
 async function login(e){
   e.preventDefault()
   const username = document.getElementById('username').value.trim()
   const password = document.getElementById('password').value
-  const { data: userRow, error: userErr } = await client.from('users').select('email,id').eq('username', username).single()
-  if(userErr ||!userRow) return alert('Username non trovato')
-  const { data, error } = await client.auth.signInWithPassword({email: userRow.email, password})
+
+  // 1) Trova l'email reale associata a questo username
+  const { data: userRow, error: userErr } = await client
+  .from('users')
+  .select('email,id')
+  .eq('username', username)
+  .single()
+
+  if(userErr ||!userRow ||!userRow.email){
+    return alert('Username non trovato o email mancante in public.users')
+  }
+
+  // 2) Usa l'email reale per l'autenticazione Supabase
+  const { data, error } = await client.auth.signInWithPassword({
+    email: userRow.email,
+    password
+  })
+
   if(error) return alert(error.message)
+
   USER = data.user
   initApp()
 }
+
 async function signup(){
   const username = document.getElementById('username').value.trim()
   const password = document.getElementById('password').value
-  const { data, error } = await client.auth.signUp({email: username + '@local', password})
+  const email = prompt('Inserisci la tua email (sarà quella di login):')
+
+  if(!email) return alert('Email obbligatoria')
+
+  const { data, error } = await client.auth.signUp({ email, password })
   if(error) return alert(error.message)
-  await client.from('users').insert({id:data.user.id, username, name:username, email:username+'@local'})
-  alert('Registrato, ora accedi')
+
+  await client.from('users').insert({
+    id: data.user.id,
+    username,
+    name: username,
+    email
+  })
+
+  alert('Registrato! Ora accedi')
 }
 
 /* ===== INIT ===== */
@@ -159,11 +187,11 @@ async function refresh(){
   const {count:utenti}=await client.from('users').select('id',{count:'exact',head:true})
 
   const {count:responsabili}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
- .eq('season_id',s).eq('role_id',ROLE_IDS['responsabile']||'')
+.eq('season_id',s).eq('role_id',ROLE_IDS['responsabile']||'')
   const {count:allenatori}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
- .eq('season_id',s).eq('role_id',ROLE_IDS['allenatore']||'')
+.eq('season_id',s).eq('role_id',ROLE_IDS['allenatore']||'')
   const {count:prof}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
- .eq('season_id',s).eq('role_id',ROLE_IDS['professionista']||'')
+.eq('season_id',s).eq('role_id',ROLE_IDS['professionista']||'')
 
   const {data:att} = await client.from('attendances').select('status')
   const pres=att?.filter(a=>a.status==='P').length||0
@@ -200,22 +228,21 @@ async function refresh(){
   }
 
   for(const c of cats){
-    /* SOLO LE SQUADRE DELLA CATEGORIA+STAGIONE */
     const {data:tcs}=await client.from('team_category_season')
-     .select('team_id,teams(id,name)')
-     .eq('category_id',c.id).eq('season_id',s)
+    .select('team_id,teams(id,name)')
+    .eq('category_id',c.id).eq('season_id',s)
 
     const teamsList = (tcs||[]).map(t=>t.teams).filter(Boolean)
 
     for(const t of (teamsList.length?teamsList:[{id:null,name:'—'}])){
       const {count:sessCnt}=await client.from('sessions').select('id',{count:'exact',head:true})
-     .eq('category_id',c.id).eq('season_id',s)
+    .eq('category_id',c.id).eq('season_id',s)
 
       const {count:athCnt}=await client.from('athlete_seasons').select('id',{count:'exact',head:true})
-     .eq('category_id',c.id).eq('season_id',s).eq('team_id',t.id||null)
+    .eq('category_id',c.id).eq('season_id',s).eq('team_id',t.id||null)
 
       const {data:sidData}=await client.from('sessions').select('id')
-     .eq('category_id',c.id).eq('season_id',s)
+    .eq('category_id',c.id).eq('season_id',s)
       const sessionIds = sidData?.map(x=>x.id) || []
       let presPct=0
       if(sessionIds.length){
@@ -224,13 +251,13 @@ async function refresh(){
       }
 
       const {data:staffData}=await client.from('role_category_team')
-     .select('users(name)')
-     .eq('category_id',c.id).eq('season_id',s)
-     .eq(t.id?'team_id':'team_id',t.id||null)
+    .select('users(name)')
+    .eq('category_id',c.id).eq('season_id',s)
+    .eq(t.id?'team_id':'team_id',t.id||null)
 
       const staff = staffData || []
       const staffHtml = staff.length
-     ? staff.map(s=>`<span class="badge staff">${s.users.name}</span>`).join('')
+    ? staff.map(s=>`<span class="badge staff">${s.users.name}</span>`).join('')
         : '<span class="badge bad">Nessuno</span>'
 
       const presClass = presPct>=80?'ok':presPct>=50?'warn':'bad'
@@ -267,11 +294,10 @@ document.getElementById('f-category').onchange=async e=>{
   STATE.categoryId=e.target.value
   STATE.teamId=''
 
-  /* QUI LA CHIAVE: prendo solo le squadre associate a questa categoria nella stagione */
   const {data:tcs}=await client.from('team_category_season')
-   .select('team_id,teams(id,name)')
-   .eq('category_id',STATE.categoryId)
-   .eq('season_id',STATE.seasonId)
+  .select('team_id,teams(id,name)')
+  .eq('category_id',STATE.categoryId)
+  .eq('season_id',STATE.seasonId)
 
   const teams = (tcs||[]).map(t=>t.teams).filter(Boolean)
   populate('f-team', teams, 'id', 'name')
@@ -413,41 +439,26 @@ async function openScorers(matchId){
     <h4>Marcatori</h4>
     ${(athletes||[]).map(a=>`
       <div class="athlete-row">
-        <span>${a.athletes.first_name} ${a.athletes.last_name}</span>
-        <input id="gol-${a.athlete_id}" type="number" min="0" value="${map[a.athlete_id]||0}" style="width:80px">
-      </div>`).join('')||'<p>Nessun atleta</p>'}
-    <button class="success" onclick="saveScorers('${matchId}')">Salva Marcatori</button>`
-  showTab('gol')
-}
-async function saveScorers(matchId){
+        <span>${a.athletes.first_name} ${a.athleteasync function saveCards(matchId){
   const {data:athletes} = await client.from('athlete_seasons').select('athlete_id').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId).eq('team_id',STATE.teamId||null)
-  await client.from('scorers').delete().eq('match_id',matchId)
-  const rows = (athletes||[]).filter(a=>+document.getElementById('gol-'+a.athlete_id).value>0)
-               .map(a=>({match_id:matchId,athlete_id:a.athlete_id,goals:+document.getElementById('gol-'+a.athlete_id).value}))
-  if(rows.length) await client.from('scorers').insert(rows)
-  alert('Marcatori salvati')
+  await client.from('match_cards').delete().eq('match_id',matchId)
+  const rows = []
+  (athletes||[]).forEach(a=>{
+    const type=document.getElementById('card-type-'+a.athlete_id).value
+    const minute=document.getElementById('card-min-'+a.athlete_id).value
+    if(type && minute) rows.push({match_id:matchId,athlete_id:a.athlete_id,type,minute:+minute})
+  })
+  if(rows.length) await client.from('match_cards').insert(rows)
+  alert('Cartellini salvati')
   refresh()
 }
-async function renderCards(sessions, athletes){
-  const matches = (sessions||[]).filter(s=>s.type==='P' && s.matches)
-  document.getElementById('panel-card').innerHTML = matches.map(m=>`
+function renderFriendly(sessions){
+  const friendly = (sessions||[]).filter(s=>s.type==='P' && s.matches && s.matches.opponent.toLowerCase().includes('amichevole'))
+  document.getElementById('panel-amic').innerHTML = friendly.map(m=>`
     <div class="athlete-row">
-      <span>${m.date} vs ${m.matches.opponent}</span>
-      <button class="ghost" onclick="openCards('${m.matches.id}')">Gestisci Cartellini</button>
-    </div>`).join('') || '<p>Nessuna partita</p>'
+      <span>${m.date} vs ${m.matches.opponent} (${m.matches.scored}-${m.matches.conceded})</span>
+    </div>`).join('') || '<p>Nessuna amichevole</p>'
 }
-async function openCards(matchId){
-  const {data:athletes} = await client.from('athlete_seasons').select('*,athletes(*)').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId).eq('team_id',STATE.teamId||null)
-  const {data:cards} = await client.from('match_cards').select('athlete_id,type,minute').eq('match_id',matchId)
-  document.getElementById('panel-card').innerHTML = `
-    <h4>Cartellini</h4>
-    ${(athletes||[]).map(a=>`
-      <div class="athlete-row">
-        <span>${a.athletes.first_name} ${a.athletes.last_name}</span>
-        <select id="card-type-${a.athlete_id}">
-          <option value="">Nessuno</option>
-          <option value="yellow" ${cards?.find(c=>c.athlete_id===a.athlete_id&&c.type==='yellow')?'selected':''}>Giallo</option>
-          <option value="red" ${cards?.find(c=>c.athlete_id===a.athlete_id&&c.type==='red')?'selected':''}>Rosso</option>
-        </select>
-        <input id="card-min-${a.athlete_id}" type="number" min="1" max="120" placeholder="Minuto" value="${cards?.find(c=>c.athlete_id===a.athlete_id)?.minute||''}" style="width:80px">
-      </div>`).join('')||'<p
+</script>
+</body>
+</html>
