@@ -1257,8 +1257,8 @@ const DB = {
     ] = await Promise.all([
       sb.from('sports').select('*'),
       sb.from('societies').select('*'),
+	  sb.from('categories').select('*'),
       sb.from('teams').select('*'),
-      sb.from('categories').select('*'),
       sb.from('users').select('*'),
       sb.from('athletes').select('*'),
       sb.from('athlete_seasons').select('*'),
@@ -5100,7 +5100,12 @@ function buildTeamCheckboxes(societyId, selectedTeamIds = []) {
     const sId = t.society_id || t.societyId;
     return String(sId) === String(societyId);
   });
-
+// Funzione di utilità per ricaricare i dati e aggiornare l'interfaccia
+async function refreshAll() {
+  const fresh = await DB.loadAll(); 
+  Object.assign(S, fresh);
+  console.log("Dati sincronizzati con il database");
+}
   if (!teams.length) {
     return `<div style="color:#94A3B8; font-size:0.8rem; padding:10px;">Nessuna squadra trovata per questa società.</div>`;
   }
@@ -5122,77 +5127,189 @@ function refreshCatTeamList(socId) {
   const container = document.getElementById('cat-team-wrapper');
   if (container) container.innerHTML = buildTeamCheckboxes(socId);
 }
+// La Squadra + Legame (Step 3)
+async function saveTeamAndAssign(id) {
+  const name = document.getElementById('team-name').value.trim();
+  const socId = document.getElementById('team-soc-id').value; // ID della società creata nello step 1
+  const catId = document.getElementById('team-cat-id').value; // ID della categoria creata nello step 2
+  const seasonId = document.getElementById('current-season-select').value; // Stagione attiva
+
+  if (!name || !socId || !catId) {
+    toast('Compila tutti i campi: Nome, Società e Categoria', 'error');
+    return;
+  }
+
+  // 1. Creiamo l'oggetto squadra
+  const newTeam = { id: id || uid(), name, society_id: socId };
+  
+  // 2. Salviamo la squadra nella tabella 'teams'
+  await sbSync('teams', newTeam);
+
+  // 3. Creiamo il legame nella tabella ponte (team_category_season)
+  const association = {
+    id: uid(),
+    team_id: newTeam.id,
+    category_id: catId,
+    season_id: seasonId
+  };
+  
+  // Sincronizziamo il legame con Supabase
+  const { error } = await sb.from('team_category_season').upsert(association);
+  
+  if (error) {
+    toast('Errore nel creare il legame', 'error');
+  } else {
+    toast('Squadra creata e associata alla categoria!', 'success');
+    closeModal();
+    // Se hai una funzione per ricaricare i dati, chiamala qui
+    if (window.refreshAll) await refreshAll();
+  }
+}
 // --- 2. APERTURA MODAL (DA SOSTITUIRE) ---
+function openTeamModal(id) {
+  const team = id ? S.teams.find(t => t.id === id) : null;
+  // Recupera la stagione selezionata nel menu in alto
+  const currentSeasonId = document.getElementById('current-season-select')?.value || '';
+
+  openModal(`
+    <div class="modal-header">
+      <h3>${team ? 'Modifica Squadra' : 'Nuova Squadra'}</h3>
+      <p style="font-size:0.8rem; color:#64748B;">Lega la squadra a una società e a una categoria per la stagione attiva.</p>
+    </div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <label>Nome Squadra</label>
+        <input id="team-name" value="${team ? esc(team.name) : ''}" placeholder="es. Pulcini Misti 2015">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <label>1. Seleziona Società</label>
+        <select id="team-soc-id">
+          <option value="">-- Scegli Società --</option>
+          ${S.societies.map(s => `<option value="${s.id}" ${team?.society_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
+        </select>
+      </div>
+      
+      <div class="form-field">
+        <label>2. Seleziona Categoria</label>
+        <select id="team-cat-id">
+          <option value="">-- Scegli Categoria --</option>
+          ${S.categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top:20px;">
+      <button class="btn btn-accent" onclick="saveTeamAndAssign('${id || ''}')">
+        💾 Salva e Crea Legame
+      </button>
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+    </div>
+  `, 'modal-lg');
+}
 function openCategoryModal(id) {
   const cat = id ? S.categories.find(x => x.id === id) : null;
-  
-  // Se stiamo modificando, cerchiamo di capire la società dalla prima squadra associata
+  const seasonId = document.getElementById('current-season-select')?.value || S.currentSeasonId;
+
+  // Troviamo quali squadre sono già associate a questa categoria IN QUESTA STAGIONE
+  // Cerchiamo nella variabile globale S.team_category_season (assicurati di caricarla in DB.loadAll)
+  const existingAssocs = S.team_category_season || [];
+  const selectedTeamIds = existingAssocs
+    .filter(a => a.category_id === id && a.season_id === seasonId)
+    .map(a => a.team_id);
+
+  // Per il filtro società iniziale, prendiamo la società della prima squadra trovata
   let initialSocId = "";
-  if (cat?.team_ids?.length > 0) {
-    const firstTeam = S.teams.find(t => t.id === cat.team_ids[0]);
-    initialSocId = firstTeam?.society_id || firstTeam?.societyId || "";
+  if (selectedTeamIds.length > 0) {
+    const firstTeam = S.teams.find(t => t.id === selectedTeamIds[0]);
+    initialSocId = firstTeam?.society_id || "";
   }
 
   openModal(`
-    <div class="modal-header"><h3>${cat ? 'Modifica Categoria' : 'Nuova Categoria'}</h3></div>
+    <div class="modal-header"><h3>Modifica Categoria</h3></div>
     <div class="form-row">
-      <div class="form-field">
-        <label>Nome Categoria</label>
-        <input id="cat-name" value="${esc(cat?.name || '')}" placeholder="es. Under 10">
-      </div>
+      <div class="form-field"><label>Nome Categoria</label><input id="cat-name" value="${esc(cat?.name || '')}"></div>
       <div class="form-field">
         <label>Filtra per Società</label>
         <select id="cat-soc-filter" onchange="refreshCatTeamList(this.value)">
           <option value="">Seleziona Società...</option>
-          ${S.societies.map(s => `<option value="${s.id}" ${String(s.id) === String(initialSocId) ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
+          ${S.societies.map(s => `<option value="${s.id}" ${s.id === initialSocId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
         </select>
       </div>
     </div>
-    <div class="form-row" style="margin-top:10px">
-      <div class="form-field" style="width:100%">
-        <label>Squadre da associare</label>
-        <div id="cat-team-wrapper" style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; min-height:80px; padding:8px;">
-          ${buildTeamCheckboxes(initialSocId, cat?.team_ids || cat?.teamIds || [])}
-        </div>
+    <div class="form-field">
+      <label>Squadre da associare (Stagione: ${seasonId})</label>
+      <div id="cat-team-wrapper" style="border:1px solid #ddd; padding:10px; border-radius:8px; background:#fff">
+        ${buildTeamCheckboxes(initialSocId, selectedTeamIds)}
       </div>
     </div>
-    <div class="form-actions" style="margin-top:20px">
-      <button class="btn btn-accent" onclick="saveCategory('${id || ''}')">💾 Salva Categoria</button>
+    <div class="form-actions" style="margin-top:15px">
+      <button class="btn btn-accent" onclick="saveCategory('${id || ''}')">💾 Salva</button>
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
     </div>`, 'modal-lg');
 }
 // --- 3. SALVATAGGIO ---
-async function saveCategory(id) {
-  const name = document.getElementById('cat-name').value.trim();
-  const teamIds = Array.from(document.querySelectorAll('.team-checkbox:checked')).map(cb => cb.value);
+async function saveTeamAndAssign(id) {
+  const name = document.getElementById('team-name').value.trim();
+  const socId = document.getElementById('team-soc-id').value;
+  const catId = document.getElementById('team-cat-id').value;
+  const seasonId = document.getElementById('current-season-select')?.value;
 
-  if (!name || teamIds.length === 0) { 
-    toast('Inserire Nome e selezionare almeno una Squadra', 'error'); 
-    return; 
+  if (!name || !socId || !catId || !seasonId) {
+    toast('Errore: Nome, Società, Categoria e Stagione sono obbligatori!', 'error');
+    return;
   }
 
   try {
-    const payload = {
-      id: id || uid(),
-      name: name,
-      // Usiamo le colonne reali del tuo DB
-      team_ids: teamIds, 
-      team_id: teamIds[0], // Salviamo la prima squadra anche nel campo singolo per compatibilità
-      updated_at: new Date()
+    const teamId = id || uid();
+
+    // A. Salva la squadra nella tabella 'teams' (nome e società)
+    const teamObj = { id: teamId, name: name, society_id: socId };
+    await sbSync('teams', teamObj);
+
+    // B. Crea il legame nella tabella ponte 'team_category_season'
+    const association = {
+      id: uid(),
+      team_id: teamId,
+      category_id: catId,
+      season_id: seasonId
     };
 
-    const { error } = await sb.from('categories').upsert(payload);
+    const { error } = await sb.from('team_category_season').upsert(association);
     if (error) throw error;
 
-    toast('Categoria e associazioni salvate!', 'success');
+    toast('Squadra creata e collegata con successo!', 'success');
     closeModal();
-    const fresh = await DB.loadAll();
-    Object.assign(S, fresh);
-    buildAdminConfigTab('category');
+    
+    // Ricarica tutto per aggiornare la visualizzazione
+    await refreshAll();
+    buildAdminConfigTab('team'); 
+
   } catch (err) {
     console.error(err);
-    toast('Errore nel salvataggio', 'error');
+    toast('Errore durante il salvataggio dell\'associazione', 'error');
   }
+}
+function saveCategory(id) {
+  const name = document.getElementById('cat-name').value.trim();
+  if (!name) { toast('Nome categoria obbligatorio', 'error'); return; }
+
+  let cat;
+  if (id) {
+    cat = S.categories.find(x => x.id === id);
+    cat.name = name;
+  } else {
+    cat = { id: uid(), name: name };
+    S.categories.push(cat);
+  }
+
+  saveState(); 
+  sbSync('categories', cat); // Sincronizza solo ID e Nome
+  closeModal(); 
+  buildAdminConfigTab('category');
 }
 // --- 4. CANCELLAZIONE ---
 async function deleteCategory(id) {
