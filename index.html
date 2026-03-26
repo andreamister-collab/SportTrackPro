@@ -5120,7 +5120,7 @@ function openAddUCSForUser(userId, role) {
     + '</div>'
     + '<div class="form-field"><label>Categoria</label><select id="ucs-add-cat"><option value="">— Seleziona —</option>'+catOpts+'</select></div>'
     + '<div class="form-actions">'
-    + '<button class="btn btn-accent" onclick="saveUCSFromModal(&quot;"+userId+"&quot;)">💾 Salva</button>'
+    + '<button class="btn btn-accent" onclick="saveUCSFromModal(\'' + userId + '\')">💾 Salva</button>'
     + '<button class="btn btn-ghost" onclick="closeModal()">Annulla</button>'
     + '</div>');
 }
@@ -5142,7 +5142,7 @@ function openEditUCS(ucsId, userId, role) {
     + '</div>'
     + '<div class="form-field"><label>Categoria</label><select id="ucs-edit-cat">'+catOpts+'</select></div>'
     + '<div class="form-actions">'
-    + '<button class="btn btn-accent" onclick="updateUCSFromModal(&quot;"+ucsId+"&quot;,&quot;"+userId+"&quot;)">💾 Aggiorna</button>'
+    + '<button class="btn btn-accent" onclick="updateUCSFromModal('" + ucsId + "','" + userId + "')">💾 Aggiorna</button>'
     + '<button class="btn btn-ghost" onclick="closeModal()">Annulla</button>'
     + '</div>');
 }
@@ -7855,27 +7855,46 @@ function deleteAthlete(id) {
   const asSeas = asAll.find(as=>as.seasonId===seasId);
   const totalSeas = asAll.length;
 
-  openModal(
-    '<div class="modal-header"><h3 style="color:var(--red)">🗑️ Elimina Atleta</h3></div>'
-    + '<div style="margin-bottom:16px">'
-    + '<div class="fw-700" style="font-size:1rem;margin-bottom:4px">'+esc(ath.lastName+' '+ath.firstName)+'</div>'
-    + '<div style="font-size:.88rem;color:#64748B">Scegli cosa eliminare:</div>'
-    + '</div>'
-    + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">'
+  // Usa data-attribute invece di onclick inline con parametri per evitare problemi di escaping
+  const seasonBtn = asSeas ? `
+    <div class="del-opt" data-action="season" data-id="${id}" data-seas="${seasId}"
+         style="border:2px solid var(--gold);border-radius:10px;padding:14px;cursor:pointer;background:#FFFBEB">
+      <div class="fw-700" style="color:var(--gold);margin-bottom:4px">⚽ Solo la stagione ${esc(seas?.name||'corrente')}</div>
+      <div style="font-size:.82rem;color:#475569">Rimuove l'iscrizione di questa stagione (presenze, performance). L'atleta rimane con le ${totalSeas} stagioni totali.</div>
+    </div>` : '';
 
-    + (asSeas ? '<div style="border:2px solid var(--gold);border-radius:10px;padding:14px;cursor:pointer;background:#FFFBEB" onclick="confirmDeleteAthleteSeason(&quot;"+id+"&quot;,&quot;"+seasId+"&quot;)">'
-    + '<div class="fw-700" style="color:var(--gold);margin-bottom:4px">⚽ Solo la stagione '+esc(seas?.name||'corrente')+'</div>'
-    + '<div style="font-size:.82rem;color:#475569">Rimuove l\'iscrizione di questa stagione (presenze, performance). L\'atleta rimane con le '+totalSeas+' stagioni totali.</div>'
-    + '</div>' : '')
+  const allBtn = `
+    <div class="del-opt" data-action="all" data-id="${id}"
+         style="border:2px solid var(--red);border-radius:10px;padding:14px;cursor:pointer;background:#FFF5F5">
+      <div class="fw-700" style="color:var(--red);margin-bottom:4px">🗑️ Elimina tutto (${totalSeas} stagioni)</div>
+      <div style="font-size:.82rem;color:#475569">Elimina l'atleta completamente: anagrafica, tutte le stagioni, presenze e performance. Non reversibile.</div>
+    </div>`;
 
-    + '<div style="border:2px solid var(--red);border-radius:10px;padding:14px;cursor:pointer;background:#FFF5F5" onclick="confirmDeleteAthleteAll(&quot;"+id+"&quot;)">'
-    + '<div class="fw-700" style="color:var(--red);margin-bottom:4px">🗑️ Elimina tutto ('+totalSeas+' stagioni)</div>'
-    + '<div style="font-size:.82rem;color:#475569">Elimina l\'atleta completamente: anagrafica, tutte le stagioni, presenze e performance. Non reversibile.</div>'
-    + '</div>'
-
-    + '</div>'
-    + '<button class="btn btn-ghost w-full" onclick="closeModal()">Annulla</button>'
+  const overlay = openModal(
+    `<div class="modal-header"><h3 style="color:var(--red)">🗑️ Elimina Atleta</h3></div>
+     <div style="margin-bottom:16px">
+       <div class="fw-700" style="font-size:1rem;margin-bottom:4px">${esc(ath.lastName + ' ' + ath.firstName)}</div>
+       <div style="font-size:.88rem;color:#64748B">Scegli cosa eliminare:</div>
+     </div>
+     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+       ${seasonBtn}
+       ${allBtn}
+     </div>
+     <button class="btn btn-ghost w-full" onclick="closeModal()">Annulla</button>`
   );
+
+  // Delega eventi tramite data-attributes — nessun onclick inline con parametri
+  setTimeout(() => {
+    document.querySelectorAll('.del-opt').forEach(el => {
+      el.addEventListener('click', () => {
+        const action = el.dataset.action;
+        const athId  = el.dataset.id;
+        const sId    = el.dataset.seas;
+        if (action === 'season') confirmDeleteAthleteSeason(athId, sId);
+        else if (action === 'all') confirmDeleteAthleteAll(athId);
+      });
+    });
+  }, 50);
 }
 
 function confirmDeleteAthleteSeason(id, seasId) {
@@ -12656,60 +12675,6 @@ function buildCatTeamSelect(currentTeamId = '') {
   return html;
 }
 
-// ── FUNZIONE DI POPOLAMENTO (Mettila Qui) ────────────────────────────
-function updateAthleteTeams() {
-  const catSelect = document.getElementById('atleta-categoria');
-  const teamSelect = document.getElementById('atleta-squadra');
-
-  if (!catSelect || !teamSelect) return;
-
-  const selectedCatId = catSelect.value;
-  const currentSeasonId = S.activeSeason;
-
-  teamSelect.innerHTML = '<option value="">Seleziona Squadra...</option>';
-
-  if (!selectedCatId) return;
-
-  // Filtra le associazioni dalla nuova tabella team_category_season
-  const validTeamIds = (S.teamAssociations || [])
-    .filter(rel => rel.categoryId === selectedCatId && rel.seasonId === currentSeasonId)
-    .map(rel => rel.teamId);
-
-  const filteredTeams = S.teams.filter(t => validTeamIds.includes(t.id));
-
-  if (filteredTeams.length === 0) {
-    teamSelect.innerHTML = '<option value="">Nessuna squadra in questa categoria</option>';
-  } else {
-    filteredTeams.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t.id;
-      opt.textContent = t.name;
-      teamSelect.appendChild(opt);
-    });
-  }
-}
-
-// --- GRILLETTO AGGIORNATO ---
-document.addEventListener('change', function(e) {
-    // Questo intercetta il cambio su QUALSIASI elemento che abbia 
-    // l'ID o il nome della categoria
-    if (e.target && (e.target.id === 'atleta-categoria' || e.target.name === 'category_id')) {
-        console.log("Cambio categoria rilevato su:", e.target.value); // Debug in console
-        updateAthleteTeams();
-    }
-});
-
-// Questo intercetta l'apertura del modal e forza il primo caricamento
-document.addEventListener('mousedown', function(e) {
-    const btn = e.target.closest('button');
-    if (btn && (btn.onclick?.toString().includes('openAthlete') || btn.innerText.includes('✏️') || btn.innerText.includes('Assoc.'))) {
-        // Aspettiamo che il modal sia renderizzato nel DOM
-        setTimeout(() => {
-            console.log("Forzo aggiornamento squadre all'apertura modal");
-            updateAthleteTeams();
-        }, 600);
-    }
-});
 // =========================
 // INIT
 // =========================
