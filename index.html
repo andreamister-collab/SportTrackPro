@@ -3,41 +3,56 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Società Sportiva</title>
+<title>SportTrack Pro</title>
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
 <style>
-  body{font-family:system-ui,Arial;margin:0;background:#f6f8fa;color:#111}
-.container{max-width:1200px;margin:20px auto;padding:0 16px}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
-.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px}
-.card h3{margin:0;font-size:14px;color:#64748b}
-.card p{margin:8px 0 0;font-size:28px;font-weight:700}
-.filters{display:flex;gap:12px;margin:16px 0;flex-wrap:wrap}
+  :root{--bg:#f6f8fa;--card:#fff;--border:#e2e8f0;--accent:#2563eb;--muted:#64748b;--green:#16a34a;--red:#dc2626;--gold:#d97706}
+  body{font-family:system-ui,Arial;margin:0;background:var(--bg);color:#111}
+ .container{max-width:1300px;margin:20px auto;padding:0 16px}
+ .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+ .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+ .card h3{margin:0;font-size:13px;color:var(--muted);letter-spacing:.5px}
+ .card p{margin:8px 0 0;font-size:28px;font-weight:700}
+ .filters{display:flex;gap:12px;margin:16px 0;flex-wrap:wrap}
   select,button,input{padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px}
-  button{background:#2563eb;color:#fff;border:none;cursor:pointer}
+  button{background:var(--accent);color:#fff;border:none;cursor:pointer}
   button.ghost{background:#e2e8f0;color:#111}
-  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
-  th,td{padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:left}
+  button.danger{background:var(--red)}
+  button.success{background:var(--green)}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
   th{background:#f1f5f9;font-size:13px}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center}
-.modal.box{background:#fff;padding:20px;border-radius:12px;width:90%;max-width:500px}
+ .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000}
+ .modal.box{background:#fff;padding:20px;border-radius:12px;width:95%;max-width:800px;max-height:90vh;overflow:auto}
+ .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+ .athlete-row{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+ .badge{padding:4px 8px;border-radius:6px;font-size:12px;color:#fff}
+ .badge.green{background:var(--green)}
+ .badge.red{background:var(--red)}
+ .badge.gold{background:var(--gold)}
+ .tabs{display:flex;gap:8px;margin-bottom:12px}
+ .tabs button{background:#e2e8f0;color:#111}
+ .tabs button.active{background:var(--accent);color:#fff}
 </style>
 </head>
 <body>
 <div class="container">
+  <!-- LOGIN -->
   <div id="auth-section">
     <h2>Accedi</h2>
     <form onsubmit="login(event)">
-      <input id="username" type="text" placeholder="Username" required>
-      <input id="password" type="password" placeholder="Password" required>
+      <input id="username" type="text" placeholder="Username" autocomplete="username" required>
+      <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
       <button type="submit">Entra</button>
       <button type="button" class="ghost" onclick="signup()">Registrati</button>
     </form>
   </div>
 
+  <!-- APP -->
   <div id="app" style="display:none">
     <h1>Dashboard Amministratore</h1>
 
@@ -78,86 +93,57 @@
 <div class="modal" id="modal"><div class="box" id="modal-body"></div></div>
 
 <script>
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
-let USER=null, STATE={seasonId:'',societyId:'',teamId:''}
+/* ===== CLIENT ===== */
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
+let USER=null, STATE={seasonId:'',societyId:'',teamId:'', categoryId:''}
 
-/* LOGIN CON USERNAME */
+/* ===== AUTH ===== */
 async function login(e){
   e.preventDefault()
   const username = document.getElementById('username').value.trim()
   const password = document.getElementById('password').value
-
-  // 1. Trova l'email associata allo username nella tua tabella users
-  const { data: userRow, error: userErr } = await supabase
-   .from('users')
-   .select('email,id')
-   .eq('username', username)
-   .single()
-
+  const { data: userRow, error: userErr } = await client.from('users').select('email,id').eq('username', username).single()
   if(userErr ||!userRow) return alert('Username non trovato')
-
-  // 2. Login con l'email reale
-  const { data, error } = await supabase.auth.signInWithPassword({email: userRow.email, password})
+  const { data, error } = await client.auth.signInWithPassword({email: userRow.email, password})
   if(error) return alert(error.message)
-
   USER = data.user
   initApp()
 }
-
-/* REGISTRAZIONE: crea account in auth.users + riga in public.users */
 async function signup(){
   const username = document.getElementById('username').value.trim()
   const password = document.getElementById('password').value
-
-  // 1. Crea utente in auth
-  const { data, error } = await supabase.auth.signUp({
-    email: username + '@local', // campo obbligatorio per Supabase
-    password
-  })
+  const { data, error } = await client.auth.signUp({email: username + '@local', password})
   if(error) return alert(error.message)
-
-  // 2. Crea riga in public.users collegata allo stesso id
-  await supabase.from('users').insert({
-    id: data.user.id,
-    username,
-    name: username,
-    email: username + '@local'
-  })
-
+  await client.from('users').insert({id:data.user.id, username, name:username, email:username+'@local'})
   alert('Registrato, ora accedi')
 }
 
-/* INIZIALIZZAZIONE E DATI */
+/* ===== INIT ===== */
 async function initApp(){
   document.getElementById('auth-section').style.display='none'
   document.getElementById('app').style.display='block'
-
-  const {data:seasons}=await supabase.from('seasons').select('*').order('start_date',{ascending:false})
-  STATE.seasonId=seasons[0]?.id
-  populate('f-season',seasons,'id','name')
-
-  const {data:socs}=await supabase.from('societies').select('id,name')
-  populate('f-society',socs,'id','name')
-
+  const {data:seasons} = await client.from('seasons').select('*').order('start_date',{ascending:false})
+  STATE.seasonId = seasons[0]?.id
+  populate('f-season', seasons, 'id', 'name')
+  const {data:socs} = await client.from('societies').select('id,name')
+  populate('f-society', socs, 'id', 'name')
   await refresh()
 }
-
 function populate(id,data,val,label){
   const sel=document.getElementById(id)
   sel.innerHTML='<option value="">Tutte</option>'+data.map(d=>`<option value="${d[val]}">${typeof label==='function'?label(d):d[label]}</option>`).join('')
 }
-
 async function refresh(){
   const s=STATE.seasonId
-  const {count:atleti}=await supabase.from('athlete_seasons').select('id',{count:'exact',head:true}).eq('season_id',s)
-  const {count:societa}=await supabase.from('societies').select('id',{count:'exact',head:true})
-  const {count:categorie}=await supabase.from('categories').select('id',{count:'exact',head:true})
-  const {count:sessioni}=await supabase.from('sessions').select('id',{count:'exact',head:true}).eq('season_id',s)
-  const {count:allenamenti}=await supabase.from('sessions').select('id',{count:'exact',head:true}).eq('season_id',s).eq('type','A')
-  const {data:partite}=await supabase.from('matches').select('result').eq('season_id',s)
-  const {count:utenti}=await supabase.from('users').select('id',{count:'exact',head:true})
-  const {count:responsabili}=await supabase.from('user_society_roles').select('id',{count:'exact',head:true}).eq('season_id',s).eq('role_id','responsabile')
-  const {count:dirigenti}=await supabase.from('user_society_roles').select('id',{count:'exact',head:true}).eq('season_id',s).eq('role_id','dirigente')
+  const {count:atleti}=await client.from('athlete_seasons').select('id',{count:'exact',head:true}).eq('season_id',s)
+  const {count:societa}=await client.from('societies').select('id',{count:'exact',head:true})
+  const {count:categorie}=await client.from('categories').select('id',{count:'exact',head:true})
+  const {count:sessioni}=await client.from('sessions').select('id',{count:'exact',head:true}).eq('season_id',s)
+  const {count:allenamenti}=await client.from('sessions').select('id',{count:'exact',head:true}).eq('season_id',s).eq('type','A')
+  const {data:partite}=await client.from('matches').select('result').eq('season_id',s)
+  const {count:utenti}=await client.from('users').select('id',{count:'exact',head:true})
+  const {count:responsabili}=await client.from('user_society_roles').select('id',{count:'exact',head:true}).eq('season_id',s).eq('role_id','responsabile')
+  const {count:dirigenti}=await client.from('user_society_roles').select('id',{count:'exact',head:true}).eq('season_id',s).eq('role_id','dirigente')
 
   document.getElementById('c-atleti').textContent=atleti
   document.getElementById('c-societa').textContent=societa
@@ -169,20 +155,18 @@ async function refresh(){
   document.getElementById('c-responsabili').textContent=responsabili
   document.getElementById('c-dirigenti').textContent=dirigenti
 
-  let q=supabase.from('v_category_overview').select('*')
+  let q=client.from('v_category_overview').select('*')
   if(STATE.seasonId) q=q.eq('season_id',STATE.seasonId)
   if(STATE.societyId) q=q.eq('society_id',STATE.societyId)
   if(STATE.teamId) q=q.eq('team_id',STATE.teamId)
   const {data}=await q
-
   const tbody=document.querySelector('#tbl tbody')
   tbody.innerHTML=data.map(r=>`
     <tr>
       <td>${r.categoria}</td><td>${r.squadra||'—'}</td><td>${r.societa}</td>
       <td>${r.atleti}</td><td>${r.sessioni}</td><td>${r.resp}</td><td>${r.allenatori}</td><td>${r.dirigenti}</td><td>${r.prof}</td>
-      <td><button onclick="openAtleti('${r.category_id}','${r.team_id}')">Gestisci</button></td>
+      <td><button onclick="openCategoryDashboard('${r.category_id}','${r.team_id}')">Gestisci</button></td>
     </tr>`).join('')
-
   document.getElementById('tot-row').textContent=data.length
   document.getElementById('tot-atleti').textContent=data.reduce((a,b)=>a+b.atleti,0)
   document.getElementById('tot-sessioni').textContent=data.reduce((a,b)=>a+b.sessioni,0)
@@ -191,126 +175,221 @@ async function refresh(){
   document.getElementById('tot-dirigenti').textContent=data.reduce((a,b)=>a+b.dirigenti,0)
   document.getElementById('tot-prof').textContent=data.reduce((a,b)=>a+b.prof,0)
 }
-
 document.getElementById('f-season').onchange=e=>{STATE.seasonId=e.target.value;refresh()}
 document.getElementById('f-society').onchange=async e=>{
   STATE.societyId=e.target.value
   STATE.teamId=''
-  const {data:teams}=await supabase.from('teams').select('id,name').eq('society_id',STATE.societyId)
+  const {data:teams}=await client.from('teams').select('id,name').eq('society_id',STATE.societyId)
   populate('f-team',teams,'id','name')
   refresh()
 }
 document.getElementById('f-team').onchange=e=>{STATE.teamId=e.target.value;refresh()}
 
-/* MODAL E SAVE (identici a prima, solo il client è quello di config.js) */
+/* ===== MODAL CREAZIONE ===== */
 function openModal(type){
   const mb=document.getElementById('modal-body')
   if(type==='societa'){
-    mb.innerHTML=`<h3>Nuova Società</h3>
-      <input id="soc-name" placeholder="Nome società">
-      <select id="soc-sport"></select>
-      <button onclick="saveSociety()">Salva</button>
-      <button class="ghost" onclick="closeModal()">Annulla</button>`
-    supabase.from('sports').select('id,name').then(r=>populate('soc-sport',r.data,'id','name'))
+    mb.innerHTML=`<h3>Nuova Società</h3><div class="row"><input id="soc-name" placeholder="Nome società"><select id="soc-sport"></select></div><div class="row"><button onclick="saveSociety()">Salva</button><button class="ghost" onclick="closeModal()">Annulla</button></div>`
+    client.from('sports').select('id,name').then(r=>populate('soc-sport',r.data,'id','name'))
   }
   if(type==='categoria'){
-    mb.innerHTML=`<h3>Nuova Categoria</h3>
-      <input id="cat-name" placeholder="Nome categoria">
-      <select id="cat-soc"></select>
-      <select id="cat-sport"></select>
-      <button onclick="saveCategory()">Salva</button>
-      <button class="ghost" onclick="closeModal()">Annulla</button>`
-    supabase.from('societies').select('id,name').then(r=>populate('cat-soc',r.data,'id','name'))
-    supabase.from('sports').select('id,name').then(r=>populate('cat-sport',r.data,'id','name'))
+    mb.innerHTML=`<h3>Nuova Categoria</h3><div class="row"><input id="cat-name" placeholder="Nome categoria"><select id="cat-soc"></select><select id="cat-sport"></select></div><div class="row"><button onclick="saveCategory()">Salva</button><button class="ghost" onclick="closeModal()">Annulla</button></div>`
+    client.from('societies').select('id,name').then(r=>populate('cat-soc',r.data,'id','name'))
+    client.from('sports').select('id,name').then(r=>populate('cat-sport',r.data,'id','name'))
   }
   if(type==='squadra'){
-    mb.innerHTML=`<h3>Nuova Squadra</h3>
-      <input id="team-name" placeholder="Nome squadra">
-      <select id="team-soc"></select>
-      <select id="team-cat"></select>
-      <button onclick="saveTeam()">Salva</button>
-      <button class="ghost" onclick="closeModal()">Annulla</button>`
-    supabase.from('societies').select('id,name').then(r=>populate('team-soc',r.data,'id','name'))
-    supabase.from('categories').select('id,name').then(r=>populate('team-cat',r.data,'id','name'))
+    mb.innerHTML=`<h3>Nuova Squadra</h3><div class="row"><input id="team-name" placeholder="Nome squadra"><select id="team-soc"></select><select id="team-cat"></select></div><div class="row"><button onclick="saveTeam()">Salva</button><button class="ghost" onclick="closeModal()">Annulla</button></div>`
+    client.from('societies').select('id,name').then(r=>populate('team-soc',r.data,'id','name'))
+    client.from('categories').select('id,name').then(r=>populate('team-cat',r.data,'id','name'))
   }
   if(type==='atleta'){
-    mb.innerHTML=`<h3>Nuovo Atleta</h3>
-      <input id="ath-name" placeholder="Nome">
-      <input id="ath-last" placeholder="Cognome">
-      <input id="ath-dob" type="date">
-      <input id="ath-number" type="number" placeholder="Numero maglia">
-      <select id="ath-cat"></select>
-      <select id="ath-team"></select>
-      <button onclick="saveAthlete()">Salva</button>
-      <button class="ghost" onclick="closeModal()">Annulla</button>`
-    supabase.from('categories').select('id,name').then(r=>populate('ath-cat',r.data,'id','name'))
-    supabase.from('teams').select('id,name').then(r=>populate('ath-team',r.data,'id','name'))
+    mb.innerHTML=`<h3>Nuovo Atleta</h3><div class="row"><input id="ath-name" placeholder="Nome"><input id="ath-last" placeholder="Cognome"><input id="ath-dob" type="date"><input id="ath-number" type="number" placeholder="Numero maglia"><select id="ath-cat"></select><select id="ath-team"></select></div><div class="row"><button onclick="saveAthlete()">Salva</button><button class="ghost" onclick="closeModal()">Annulla</button></div>`
+    client.from('categories').select('id,name').then(r=>populate('ath-cat',r.data,'id','name'))
+    client.from('teams').select('id,name').then(r=>populate('ath-team',r.data,'id','name'))
   }
   if(type==='sessione'){
-    mb.innerHTML=`<h3>Nuova Sessione / Partita</h3>
-      <select id="ses-type"><option value="A">Allenamento</option><option value="P">Partita</option></select>
-      <input id="ses-date" type="date">
-      <select id="ses-cat"></select>
-      <input id="ses-opp" placeholder="Avversario (solo partita)">
-      <button onclick="saveSession()">Salva</button>
-      <button class="ghost" onclick="closeModal()">Annulla</button>`
-    supabase.from('categories').select('id,name').then(r=>populate('ses-cat',r.data,'id','name'))
+    mb.innerHTML=`<h3>Nuova Sessione / Partita</h3><div class="row"><select id="ses-type"><option value="A">Allenamento</option><option value="P">Partita</option></select><input id="ses-date" type="date"><select id="ses-cat"></select><input id="ses-opp" placeholder="Avversario (solo partita)"></div><div class="row"><button onclick="saveSession()">Salva</button><button class="ghost" onclick="closeModal()">Annulla</button></div>`
+    client.from('categories').select('id,name').then(r=>populate('ses-cat',r.data,'id','name'))
   }
   if(type==='ruolo'){
-    mb.innerHTML=`<h3>Assegna Ruolo</h3>
-      <select id="role-user"></select>
-      <select id="role-type"></select>
-      <select id="role-soc"></select>
-      <select id="role-cat"></select>
-      <select id="role-team"><option value="">Tutta la categoria</option></select>
-      <button onclick="saveRole()">Salva</button>
-      <button class="ghost" onclick="closeModal()">Annulla</button>`
-    supabase.from('users').select('id,name,username').then(r=>populate('role-user',r.data,'id',r=>r.name+' ('+r.username+')'))
-    supabase.from('roles').select('id,name').then(r=>populate('role-type',r.data,'id','name'))
-    supabase.from('societies').select('id,name').then(r=>populate('role-soc',r.data,'id','name'))
-    supabase.from('categories').select('id,name').then(r=>populate('role-cat',r.data,'id','name'))
-    supabase.from('teams').select('id,name').then(r=>populate('role-team',r.data,'id','name'))
+    mb.innerHTML=`<h3>Assegna Ruolo</h3><div class="row"><select id="role-user"></select><select id="role-type"></select><select id="role-soc"></select><select id="role-cat"></select><select id="role-team"><option value="">Tutta la categoria</option></select></div><div class="row"><button onclick="saveRole()">Salva</button><button class="ghost" onclick="closeModal()">Annulla</button></div>`
+    client.from('users').select('id,name,username').then(r=>populate('role-user',r.data,'id',r=>r.name+' ('+r.username+')'))
+    client.from('roles').select('id,name').then(r=>populate('role-type',r.data,'id','name'))
+    client.from('societies').select('id,name').then(r=>populate('role-soc',r.data,'id','name'))
+    client.from('categories').select('id,name').then(r=>populate('role-cat',r.data,'id','name'))
+    client.from('teams').select('id,name').then(r=>populate('role-team',r.data,'id','name'))
   }
   document.getElementById('modal').style.display='flex'
 }
 function closeModal(){document.getElementById('modal').style.display='none'}
+async function saveSociety(){await client.from('societies').insert({name:document.getElementById('soc-name').value,sport_id:document.getElementById('soc-sport').value});closeModal();refresh()}
+async function saveCategory(){await client.from('categories').insert({name:document.getElementById('cat-name').value,society_id:document.getElementById('cat-soc').value,sport_id:document.getElementById('cat-sport').value});closeModal();refresh()}
+async function saveTeam(){const {data}=await client.from('teams').insert({name:document.getElementById('team-name').value,society_id:document.getElementById('team-soc').value}).select();await client.from('team_category_season').insert({team_id:data[0].id,category_id:document.getElementById('team-cat').value,season_id:STATE.seasonId});closeModal();refresh()}
+async function saveAthlete(){const {data}=await client.from('athletes').insert({first_name:document.getElementById('ath-name').value,last_name:document.getElementById('ath-last').value,dob:document.getElementById('ath-dob').value,nickname:''}).select();await client.from('athlete_seasons').insert({athlete_id:data[0].id,category_id:document.getElementById('ath-cat').value,team_id:document.getElementById('ath-team').value,season_id:STATE.seasonId,shirt_number:+document.getElementById('ath-number').value||null});closeModal();refresh()}
+async function saveSession(){const type=document.getElementById('ses-type').value;const {data}=await client.from('sessions').insert({type,date:document.getElementById('ses-date').value,category_id:document.getElementById('ses-cat').value,season_id:STATE.seasonId,created_by:USER.id}).select();if(type==='P'){await client.from('matches').insert({category_id:document.getElementById('ses-cat').value,date:document.getElementById('ses-date').value,opponent:document.getElementById('ses-opp').value||'Amichevole',season_id:STATE.seasonId,created_by:USER.id,match_id:data[0].id})}closeModal();refresh()}
+async function saveRole(){await client.from('user_society_roles').insert({user_id:document.getElementById('role-user').value,role_id:document.getElementById('role-type').value,society_id:document.getElementById('role-soc').value,season_id:STATE.seasonId});if(document.getElementById('role-team').value){await client.from('role_category_team').insert({user_id:document.getElementById('role-user').value,role_id:document.getElementById('role-type').value,society_id:document.getElementById('role-soc').value,season_id:STATE.seasonId,category_id:document.getElementById('role-cat').value,team_id:document.getElementById('role-team').value})}closeModal();refresh()}
 
-async function saveSociety(){
-  await supabase.from('societies').insert({name:document.getElementById('soc-name').value,sport_id:document.getElementById('soc-sport').value})
-  closeModal();refresh()
+/* ===== DASHBOARD CATEGORIA (PRESENZE / MARCATORI / CARTELLINI) ===== */
+async function openCategoryDashboard(catId,teamId){
+  STATE.categoryId = catId
+  STATE.teamId = teamId
+  const {data:cat} = await client.from('categories').select('name').eq('id',catId).single()
+  const {data:team} = await client.from('teams').select('name').eq('id',teamId).single()
+  const {data:sessions} = await client.from('sessions').select('*,matches(*)').eq('category_id',catId).eq('season_id',STATE.seasonId).order('date',{ascending:false})
+  const {data:athletes} = await client.from('athlete_seasons').select('*,athletes(*)').eq('category_id',catId).eq('season_id',STATE.seasonId)
+
+  document.getElementById('modal-body').innerHTML = `
+    <h3>${cat.name} ${team? ' - '+team.name : ''}</h3>
+    <div class="tabs">
+      <button id="tab-sess" class="active" onclick="showTab('sess')">Sessioni</button>
+      <button id="tab-pres" onclick="showTab('pres')">Presenze</button>
+      <button id="tab-gol" onclick="showTab('gol')">Marcatori</button>
+      <button id="tab-card" onclick="showTab('card')">Cartellini</button>
+      <button id="tab-amic" onclick="showTab('amic')">Amichevoli</button>
+      <button class="ghost" onclick="closeModal()">Chiudi</button>
+    </div>
+    <div id="panel-sess"></div>
+    <div id="panel-pres" style="display:none"></div>
+    <div id="panel-gol" style="display:none"></div>
+    <div id="panel-card" style="display:none"></div>
+    <div id="panel-amic" style="display:none"></div>
+  `
+  document.getElementById('modal').style.display='flex'
+
+  renderSessions(sessions, athletes)
+  renderPresences(sessions, athletes)
+  renderScorers(sessions, athletes)
+  renderCards(sessions, athletes)
+  renderFriendly(sessions)
 }
-async function saveCategory(){
-  await supabase.from('categories').insert({name:document.getElementById('cat-name').value,society_id:document.getElementById('cat-soc').value,sport_id:document.getElementById('cat-sport').value})
-  closeModal();refresh()
+function showTab(name){
+  ['sess','pres','gol','card','amic'].forEach(t=>{
+    document.getElementById('panel-'+t).style.display = t===name?'block':'none'
+    document.getElementById('tab-'+t).classList.toggle('active', t===name)
+  })
 }
-async function saveTeam(){
-  const {data}=await supabase.from('teams').insert({name:document.getElementById('team-name').value,society_id:document.getElementById('team-soc').value}).select()
-  await supabase.from('team_category_season').insert({team_id:data[0].id,category_id:document.getElementById('team-cat').value,season_id:STATE.seasonId})
-  closeModal();refresh()
+
+/* SESSIONI */
+function renderSessions(sessions, athletes){
+  const el=document.getElementById('panel-sess')
+  el.innerHTML = sessions.map(s=>`
+    <div class="athlete-row">
+      <span class="badge ${s.type==='P'?'gold':'green'}">${s.type==='P'?'Partita':'Allenamento'}</span>
+      <span>${s.date}</span>
+      ${s.matches?.opponent?`<span>vs ${s.matches.opponent} (${s.matches.result})</span>`:''}
+      <button class="ghost" onclick="openPresence('${s.id}')">Presenze</button>
+    </div>`).join('') || '<p>Nessuna sessione</p>'
 }
-async function saveAthlete(){
-  const {data}=await supabase.from('athletes').insert({first_name:document.getElementById('ath-name').value,last_name:document.getElementById('ath-last').value,dob:document.getElementById('ath-dob').value,nickname:''}).select()
-  await supabase.from('athlete_seasons').insert({athlete_id:data[0].id,category_id:document.getElementById('ath-cat').value,team_id:document.getElementById('ath-team').value,season_id:STATE.seasonId,shirt_number:+document.getElementById('ath-number').value||null})
-  closeModal();refresh()
+
+/* PRESENZE */
+async function openPresence(sessionId){
+  const {data:athletes} = await client.from('athlete_seasons').select('*,athletes(*)').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
+  const {data:pres} = await client.from('attendances').select('athlete_id,status').eq('session_id',sessionId)
+  const map = Object.fromEntries(pres.map(p=>[p.athlete_id,p.status]))
+  document.getElementById('panel-pres').innerHTML = `
+    <h4>Presenze</h4>
+    ${athletes.map(a=>`
+      <div class="athlete-row">
+        <span>${a.athletes.first_name} ${a.athletes.last_name}</span>
+        <select id="pres-${a.athlete_id}">
+          <option value="P" ${map[a.athlete_id]==='P'?'selected':''}>Presente</option>
+          <option value="A" ${map[a.athlete_id]==='A'?'selected':''}>Assente</option>
+        </select>
+      </div>`).join('')}
+    <button class="success" onclick="savePresences('${sessionId}')">Salva Presenze</button>`
+  showTab('pres')
 }
-async function saveSession(){
-  const type=document.getElementById('ses-type').value
-  const {data}=await supabase.from('sessions').insert({type, date:document.getElementById('ses-date').value, category_id:document.getElementById('ses-cat').value, season_id:STATE.seasonId, created_by:USER.id}).select()
-  if(type==='P'){
-    await supabase.from('matches').insert({category_id:document.getElementById('ses-cat').value, date:document.getElementById('ses-date').value, opponent:document.getElementById('ses-opp').value||'Amichevole', season_id:STATE.seasonId, created_by:USER.id, match_id:data[0].id})
-  }
-  closeModal();refresh()
+async function savePresences(sessionId){
+  const {data:athletes} = await client.from('athlete_seasons').select('athlete_id').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
+  await client.from('attendances').delete().eq('session_id',sessionId)
+  const rows = athletes.map(a=>({session_id:sessionId,athlete_id:a.athlete_id,status:document.getElementById('pres-'+a.athlete_id).value}))
+  await client.from('attendances').insert(rows)
+  alert('Presenze salvate')
+  refresh()
 }
-async function saveRole(){
-  await supabase.from('user_society_roles').insert({user_id:document.getElementById('role-user').value,role_id:document.getElementById('role-type').value,society_id:document.getElementById('role-soc').value,season_id:STATE.seasonId})
-  if(document.getElementById('role-team').value){
-    await supabase.from('role_category_team').insert({user_id:document.getElementById('role-user').value,role_id:document.getElementById('role-type').value,society_id:document.getElementById('role-soc').value,season_id:STATE.seasonId,category_id:document.getElementById('role-cat').value,team_id:document.getElementById('role-team').value})
-  }
-  closeModal();refresh()
+function renderPresences(sessions, athletes){}
+
+/* MARCATORI */
+async function renderScorers(sessions, athletes){
+  const matches = sessions.filter(s=>s.type==='P' && s.matches)
+  document.getElementById('panel-gol').innerHTML = matches.map(m=>`
+    <div class="athlete-row">
+      <span>${m.date} vs ${m.matches.opponent}</span>
+      <button class="ghost" onclick="openScorers('${m.matches.id}')">Gestisci Marcatori</button>
+    </div>`).join('') || '<p>Nessuna partita</p>'
 }
-async function openAtleti(catId,teamId){
-  const {data}=await supabase.from('athlete_seasons').select('*,athletes(*)').eq('category_id',catId).eq('season_id',STATE.seasonId)
-  alert('Atleti: '+data.map(a=>a.athletes.first_name+' '+a.athletes.last_name).join(', '))
+async function openScorers(matchId){
+  const {data:athletes} = await client.from('athlete_seasons').select('*,athletes(*)').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
+  const {data:scorers} = await client.from('scorers').select('athlete_id,goals').eq('match_id',matchId)
+  const map = Object.fromEntries(scorers.map(s=>[s.athlete_id,s.goals]))
+  document.getElementById('panel-gol').innerHTML = `
+    <h4>Marcatori</h4>
+    ${athletes.map(a=>`
+      <div class="athlete-row">
+        <span>${a.athletes.first_name} ${a.athletes.last_name}</span>
+        <input id="gol-${a.athlete_id}" type="number" min="0" value="${map[a.athlete_id]||0}" style="width:80px">
+      </div>`).join('')}
+    <button class="success" onclick="saveScorers('${matchId}')">Salva Marcatori</button>`
+  showTab('gol')
+}
+async function saveScorers(matchId){
+  const {data:athletes} = await client.from('athlete_seasons').select('athlete_id').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
+  await client.from('scorers').delete().eq('match_id',matchId)
+  const rows = athletes.filter(a=>+document.getElementById('gol-'+a.athlete_id).value>0)
+                     .map(a=>({match_id:matchId,athlete_id:a.athlete_id,goals:+document.getElementById('gol-'+a.athlete_id).value}))
+  if(rows.length) await client.from('scorers').insert(rows)
+  alert('Marcatori salvati')
+  refresh()
+}
+
+/* CARTELLINI */
+async function renderCards(sessions, athletes){
+  const matches = sessions.filter(s=>s.type==='P' && s.matches)
+  document.getElementById('panel-card').innerHTML = matches.map(m=>`
+    <div class="athlete-row">
+      <span>${m.date} vs ${m.matches.opponent}</span>
+      <button class="ghost" onclick="openCards('${m.matches.id}')">Gestisci Cartellini</button>
+    </div>`).join('') || '<p>Nessuna partita</p>'
+}
+async function openCards(matchId){
+  const {data:athletes} = await client.from('athlete_seasons').select('*,athletes(*)').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
+  const {data:cards} = await client.from('match_cards').select('athlete_id,type,minute').eq('match_id',matchId)
+  document.getElementById('panel-card').innerHTML = `
+    <h4>Cartellini</h4>
+    ${athletes.map(a=>`
+      <div class="athlete-row">
+        <span>${a.athletes.first_name} ${a.athletes.last_name}</span>
+        <select id="card-type-${a.athlete_id}">
+          <option value="">Nessuno</option>
+          <option value="yellow" ${cards.find(c=>c.athlete_id===a.athlete_id&&c.type==='yellow')?'selected':''}>Giallo</option>
+          <option value="red" ${cards.find(c=>c.athlete_id===a.athlete_id&&c.type==='red')?'selected':''}>Rosso</option>
+        </select>
+        <input id="card-min-${a.athlete_id}" type="number" min="1" max="120" placeholder="Minuto" value="${cards.find(c=>c.athlete_id===a.athlete_id)?.minute||''}" style="width:80px">
+      </div>`).join('')}
+    <button class="success" onclick="saveCards('${matchId}')">Salva Cartellini</button>`
+  showTab('card')
+}
+async function saveCards(matchId){
+  const {data:athletes} = await client.from('athlete_seasons').select('athlete_id').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
+  await client.from('match_cards').delete().eq('match_id',matchId)
+  const rows = []
+  athletes.forEach(a=>{
+    const type=document.getElementById('card-type-'+a.athlete_id).value
+    const minute=document.getElementById('card-min-'+a.athlete_id).value
+    if(type && minute) rows.push({match_id:matchId,athlete_id:a.athlete_id,type,minute:+minute})
+  })
+  if(rows.length) await client.from('match_cards').insert(rows)
+  alert('Cartellini salvati')
+  refresh()
+}
+
+/* AMICHEVOLI */
+function renderFriendly(sessions){
+  const friendly = sessions.filter(s=>s.type==='P' && s.matches && s.matches.opponent.toLowerCase().includes('amichevole'))
+  document.getElementById('panel-amic').innerHTML = friendly.map(m=>`
+    <div class="athlete-row">
+      <span>${m.date} vs ${m.matches.opponent} (${m.matches.scored}-${m.matches.conceded})</span>
+    </div>`).join('') || '<p>Nessuna amichevole</p>'
 }
 </script>
 </body>
