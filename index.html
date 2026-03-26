@@ -1904,6 +1904,8 @@ async function loadStateFromDB() {
       <div class="view" id="view-athlete-profile"><!-- dynamic --></div>
       <!-- Admin: società dashboard -->
       <div class="view" id="view-admin-society"><!-- dynamic --></div>
+      <!-- Season Dashboard: gestione stagionale società > categorie > squadre -->
+      <div class="view" id="view-season-dashboard"><!-- dynamic --></div>
       <!-- Partite & Convocati -->
       <div class="view" id="view-matches"><!-- dynamic --></div>
       <div class="view" id="view-match-detail"><!-- dynamic --></div>
@@ -3074,6 +3076,7 @@ function buildTopNav() {
     desktopHTML =
       dGroup('📊 Panoramica',
         dItem('📊','Dashboard Globale',`showView('admin-overview')`) +
+        dItem('🗓️','Gestione per Stagione',`showView('season-dashboard')`) +
         dItem('⚽','Tutte le Partite',`showView('matches-overview')`) +
         dItem('🏛️','Dashboard Società',`showView('admin-society')`) +
         dItem('📈','Report Avanzati',`showView('admin-reports')`)
@@ -3101,6 +3104,7 @@ function buildTopNav() {
     mobileHTML =
       mSection('Panoramica',
         mItem('📊','Dashboard Globale',`showView('admin-overview')`) +
+        mItem('🗓️','Gestione per Stagione',`showView('season-dashboard')`) +
         mItem('🏛️','Dashboard Società',`showView('admin-society')`) +
         mItem('📈','Report Avanzati',`showView('admin-reports')`)
       ) +
@@ -3128,6 +3132,7 @@ function buildTopNav() {
       desktopHTML =
         dGroup('📊 Panoramica',
           dItem('🏆','Dashboard',`showView('president-view')`) +
+          dItem('🗓️','Gestione per Stagione',`showView('season-dashboard')`) +
           dItem('⚽','Partite',`showView('matches-overview')`)
         ) +
         dGroup('👕 Squadre', buildTeamDropdownItems(segAccIds) || '<div class="dropdown-section-title">Nessuna squadra</div>') +
@@ -3140,6 +3145,7 @@ function buildTopNav() {
       mobileHTML =
         mSection('Panoramica',
           mItem('🏆','Dashboard',`showView('president-view')`) +
+          mItem('🗓️','Gestione Stagione',`showView('season-dashboard')`) +
           mItem('⚽','Partite',`showView('matches-overview')`)
         ) +
         mSection('Squadre', buildMobileTeamItems(segAccIds)) +
@@ -3155,12 +3161,14 @@ function buildTopNav() {
       desktopHTML =
         dGroup('📊 Panoramica',
           dItem('🏆','Dashboard',`showView('president-view')`) +
+          dItem('🗓️','Gestione per Stagione',`showView('season-dashboard')`) +
           dItem('⚽','Partite',`showView('matches-overview')`)
         ) +
         dGroup('👕 Squadre', buildTeamDropdownItems(presAccIds) || '<div class="dropdown-section-title">Nessuna squadra</div>');
       mobileHTML =
         mSection('Panoramica',
           mItem('🏆','Dashboard',`showView('president-view')`) +
+          mItem('🗓️','Gestione Stagione',`showView('season-dashboard')`) +
           mItem('⚽','Partite',`showView('matches-overview')`)
         ) +
         mSection('Squadre', buildMobileTeamItems(presAccIds));
@@ -3490,7 +3498,7 @@ function toSnakeCase(table, obj) {
 }
 
 const DB_REFRESH_VIEWS = new Set([
-  'admin-overview','admin-society','admin-reports',
+  'admin-overview','admin-society','admin-reports','season-dashboard',
   'cat-dashboard','athletes','sessions','matches',
   'attendances','category-home'
 ]);
@@ -3503,14 +3511,14 @@ function showView(viewId, pushHistory=true) {
   // Presidente può vedere solo alcune viste
   const presidentAllowed = [
     'president-view','admin-config','cat-dashboard',
-    'admin-society','admin-reports',
+    'admin-society','admin-reports','season-dashboard',
     'athletes','matches','matches-overview','sessions','attendances',
     'convocati','cat-reports','user-detail','add-user'
   ];
   // Segretario: stessi permessi del presidente + gestione atleti e sessioni
   const segretarioAllowed = [
     'president-view','admin-config','cat-dashboard','category-home',
-    'admin-society','admin-reports',
+    'admin-society','admin-reports','season-dashboard',
     'athletes','admin-athletes','matches','matches-overview','sessions','attendances',
     'convocati','cat-reports','user-detail','add-user','athlete-profile','session-entry'
   ];
@@ -3916,9 +3924,761 @@ function renderAdminTable() {
     + '</tr></tfoot>'
     + '</table></div>';
 }
+// ══════════════════════════════════════════════════════════════════
+//  SEASON DASHBOARD — Gestione per Stagione: Società > Categorie > Squadre
+//  Ruoli: admin, presidente, segretario
+// ══════════════════════════════════════════════════════════════════
+
+// Helper: chi può modificare nella season-dashboard
+function canEditSeasonDash() {
+  return ['admin','presidente','segretario'].includes(currentUser?.role);
+}
+
+// ── VIEW BUILDER ─────────────────────────────────────────────────
+viewBuilders['season-dashboard'] = (el) => {
+  const allowedRoles = ['admin','presidente','segretario'];
+  if (!allowedRoles.includes(currentUser?.role)) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Accesso non autorizzato</h3></div>';
+    return;
+  }
+
+  const seasons = (S.seasons||[]).slice().sort((a,b) => b.startYear - a.startYear);
+  if (!window._sdState) window._sdState = { seasId: S.activeSeason || seasons[0]?.id || '', tab: 'societa' };
+  const sd = window._sdState;
+  if (!sd.seasId && seasons.length) sd.seasId = seasons[0].id;
+
+  const selSeason = seasons.find(s => s.id === sd.seasId) || seasons[0];
+  const canEdit = canEditSeasonDash();
+
+  // Filtra società visibili per questa stagione:
+  // una società "partecipa" a una stagione se ha almeno una categoria con UCS in quella stagione
+  // oppure se è admin vede tutte
+  let societies = (S.societies||[]);
+  if (currentUser.role !== 'admin' && currentUser.societyId) {
+    societies = societies.filter(s => s.id === currentUser.societyId);
+  }
+
+  setTopbar('Gestione Stagione', selSeason ? selSeason.name : '');
+
+  el.innerHTML = `
+    <!-- HEADER -->
+    <div class="page-header" style="margin-bottom:16px">
+      <div class="header-row">
+        <div>
+          <h2>🗓️ Gestione per Stagione</h2>
+          <p style="color:#64748B;font-size:.88rem">Struttura gerarchica: Stagione → Società → Categorie → Squadre</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1.5px solid #CBD5E0;border-radius:10px;padding:6px 14px">
+            <span style="font-size:.82rem;font-weight:700;color:#64748B">⚽ Stagione</span>
+            <select style="border:none;background:transparent;font-size:.9rem;font-weight:700;color:var(--accent);cursor:pointer;outline:none;padding:0 4px"
+              onchange="window._sdState.seasId=this.value;viewBuilders['season-dashboard'](document.getElementById('view-season-dashboard'))">
+              ${seasons.map(s => `<option value="${s.id}" ${s.id===sd.seasId?'selected':''}>${esc(s.name)}${s.active?' ★':''}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS: Società / Categorie / Squadre -->
+    <div class="tabs" style="margin-bottom:20px">
+      <button class="tab-btn ${sd.tab==='societa'?'active':''}" onclick="window._sdState.tab='societa';viewBuilders['season-dashboard'](document.getElementById('view-season-dashboard'))">🏛️ Società</button>
+      <button class="tab-btn ${sd.tab==='categorie'?'active':''}" onclick="window._sdState.tab='categorie';viewBuilders['season-dashboard'](document.getElementById('view-season-dashboard'))">🏷️ Categorie</button>
+      <button class="tab-btn ${sd.tab==='squadre'?'active':''}" onclick="window._sdState.tab='squadre';viewBuilders['season-dashboard'](document.getElementById('view-season-dashboard'))">👕 Squadre</button>
+    </div>
+
+    <div id="sd-tab-content"></div>
+  `;
+
+  // Render the active tab
+  renderSDTab(sd.tab, sd.seasId, societies, canEdit);
+};
+
+function renderSDTab(tab, seasId, societies, canEdit) {
+  const el = document.getElementById('sd-tab-content');
+  if (!el) return;
+  if (tab === 'societa')   el.innerHTML = buildSDSocietaTab(seasId, societies, canEdit);
+  if (tab === 'categorie') el.innerHTML = buildSDCategorieTab(seasId, societies, canEdit);
+  if (tab === 'squadre')   el.innerHTML = buildSDSquadreTab(seasId, societies, canEdit);
+}
+
+// ── TAB 1: SOCIETÀ ───────────────────────────────────────────────
+function buildSDSocietaTab(seasId, societies, canEdit) {
+  const sports = S.sports || [];
+
+  let rows = societies.map(soc => {
+    const sport = sports.find(sp => sp.id === soc.sportId);
+    // Categorie di questa società
+    const cats = (S.categories||[]).filter(c => c.societyId === soc.id);
+    // Squadre di questa società
+    const teams = (S.teams||[]).filter(t => t.societyId === soc.id);
+    // UCS in questa stagione (staff assegnato)
+    const ucsCount = (S.userCategorySeasons||[]).filter(u => u.seasonId === seasId && cats.some(c => c.id === u.categoryId)).length;
+    return { soc, sport, cats, teams, ucsCount };
+  });
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:.82rem;color:#64748B">${rows.length} società registrate</div>
+      ${canEdit ? `<button class="btn btn-accent" onclick="openSDSocietaModal()">+ Nuova Società</button>` : ''}
+    </div>
+
+    ${rows.length === 0 ? `
+      <div class="empty-state">
+        <div class="icon">🏛️</div>
+        <h3>Nessuna società</h3>
+        <p>Crea la prima società per iniziare</p>
+        ${canEdit ? `<button class="btn btn-accent" onclick="openSDSocietaModal()">+ Crea Società</button>` : ''}
+      </div>` : `
+    <div class="entity-grid">
+      ${rows.map(({soc, sport, cats, teams, ucsCount}) => `
+      <div class="entity-card">
+        <div class="ec-icon" style="background:var(--accent-l);color:var(--accent)">${sport?.icon||'🏛️'}</div>
+        <div class="ec-name">${esc(soc.name)}</div>
+        <div class="ec-meta">
+          ${sport ? `<span class="badge badge-blue" style="margin-bottom:4px">${sport.icon} ${esc(sport.name)}</span><br>` : ''}
+          ${soc.city ? `📍 ${esc(soc.city)}<br>` : ''}
+          ${soc.email ? `📧 ${esc(soc.email)}<br>` : ''}
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+            <span class="badge badge-gray">🏷️ ${cats.length} categorie</span>
+            <span class="badge badge-gray">👕 ${teams.length} squadre</span>
+            <span class="badge badge-gray">👥 ${ucsCount} staff</span>
+          </div>
+        </div>
+        <div class="ec-actions">
+          ${canEdit ? `
+          <button class="btn btn-ghost btn-sm" onclick="openSDSocietaModal('${soc.id}')">✏️ Modifica</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSDSocieta('${soc.id}')">🗑️</button>
+          ` : ''}
+        </div>
+      </div>`).join('')}
+    </div>`}
+  `;
+}
+
+// ── TAB 2: CATEGORIE ─────────────────────────────────────────────
+function buildSDCategorieTab(seasId, societies, canEdit) {
+  const sports = S.sports || [];
+  const season = (S.seasons||[]).find(s => s.id === seasId);
+
+  // Filtra per filtro-società se presente
+  const filterSocId = window._sdCatFilter || '';
+
+  let cats = (S.categories||[]).filter(c => {
+    if (societies.length && !societies.some(s => s.id === c.societyId)) return false;
+    if (filterSocId && c.societyId !== filterSocId) return false;
+    return true;
+  });
+
+  const socOpts = societies.map(s => `<option value="${s.id}" ${s.id===filterSocId?'selected':''}>${esc(s.name)}</option>`).join('');
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:.82rem;color:#64748B">${cats.length} categorie</span>
+        ${societies.length > 1 ? `
+        <select style="padding:5px 10px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.82rem;background:#F8FAFC"
+          onchange="window._sdCatFilter=this.value;renderSDTab('categorie','${seasId}',${JSON.stringify(societies.map(s=>s.id))},${canEdit})">
+          <option value="">Tutte le società</option>
+          ${socOpts}
+        </select>` : ''}
+      </div>
+      ${canEdit ? `<button class="btn btn-accent" onclick="openSDCategoriaModal('','${seasId}')">+ Nuova Categoria</button>` : ''}
+    </div>
+
+    ${cats.length === 0 ? `
+      <div class="empty-state">
+        <div class="icon">🏷️</div>
+        <h3>Nessuna categoria</h3>
+        <p>Crea prima una società, poi aggiungi le categorie</p>
+        ${canEdit ? `<button class="btn btn-accent" onclick="openSDCategoriaModal('','${seasId}')">+ Crea Categoria</button>` : ''}
+      </div>` : `
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Categoria</th>
+            <th>Società</th>
+            <th>Sport</th>
+            <th>Squadre</th>
+            <th>Atleti (stagione)</th>
+            <th>Staff (stagione)</th>
+            ${canEdit ? '<th>Azioni</th>' : ''}
+          </tr></thead>
+          <tbody>
+            ${cats.map(cat => {
+              const soc = (S.societies||[]).find(s => s.id === cat.societyId);
+              const sport = sports.find(sp => sp.id === cat.sportId);
+              const catTeams = (S.teams||[]).filter(t =>
+                (cat.teamIds||[]).includes(t.id) || t.id === cat.teamId
+              );
+              const nAthletes = (S.athleteSeasons||[]).filter(as => as.categoryId === cat.id && as.seasonId === seasId).length;
+              const nStaff = (S.userCategorySeasons||[]).filter(u => u.categoryId === cat.id && u.seasonId === seasId).length;
+              return `<tr>
+                <td class="fw-700">${esc(cat.name)}</td>
+                <td>${soc ? esc(soc.name) : '<span style="color:#94A3B8">—</span>'}</td>
+                <td>${sport ? `${sport.icon} ${esc(sport.name)}` : '—'}</td>
+                <td>
+                  ${catTeams.length ? catTeams.map(t => `<span class="badge badge-gray" style="margin:1px">${esc(t.name)}</span>`).join('') : '<span style="color:#94A3B8">Nessuna</span>'}
+                </td>
+                <td style="text-align:center"><span class="fw-600">${nAthletes}</span></td>
+                <td style="text-align:center"><span class="fw-600">${nStaff}</span></td>
+                ${canEdit ? `<td style="display:flex;gap:6px">
+                  <button class="btn btn-ghost btn-sm" onclick="openSDCategoriaModal('${cat.id}','${seasId}')">✏️</button>
+                  <button class="btn btn-ghost btn-sm" onclick="selectCategoryView('${cat.id}')">Gestisci →</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteSDCategoria('${cat.id}')">🗑️</button>
+                </td>` : ''}
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`}
+  `;
+}
+
+// ── TAB 3: SQUADRE ───────────────────────────────────────────────
+function buildSDSquadreTab(seasId, societies, canEdit) {
+  const sports = S.sports || [];
+  const filterSocId = window._sdTeamFilter || '';
+
+  let teams = (S.teams||[]).filter(t => {
+    if (societies.length && !societies.some(s => s.id === t.societyId)) return false;
+    if (filterSocId && t.societyId !== filterSocId) return false;
+    return true;
+  });
+
+  const socOpts = societies.map(s => `<option value="${s.id}" ${s.id===filterSocId?'selected':''}>${esc(s.name)}</option>`).join('');
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:.82rem;color:#64748B">${teams.length} squadre</span>
+        ${societies.length > 1 ? `
+        <select style="padding:5px 10px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.82rem;background:#F8FAFC"
+          onchange="window._sdTeamFilter=this.value;renderSDTab('squadre','${seasId}',${JSON.stringify(societies.map(s=>s.id))},${canEdit})">
+          <option value="">Tutte le società</option>
+          ${socOpts}
+        </select>` : ''}
+      </div>
+      ${canEdit ? `<button class="btn btn-accent" onclick="openSDSquadraModal('','${seasId}')">+ Nuova Squadra</button>` : ''}
+    </div>
+
+    ${teams.length === 0 ? `
+      <div class="empty-state">
+        <div class="icon">👕</div>
+        <h3>Nessuna squadra</h3>
+        <p>Crea prima una società e una categoria, poi aggiungi le squadre</p>
+        ${canEdit ? `<button class="btn btn-accent" onclick="openSDSquadraModal('','${seasId}')">+ Crea Squadra</button>` : ''}
+      </div>` : `
+    <div class="entity-grid">
+      ${teams.map(team => {
+        const soc = (S.societies||[]).find(s => s.id === team.societyId);
+        const sport = sports.find(sp => sp.id === team.sportId);
+        // Categorie a cui questa squadra è associata
+        const linkedCats = (S.categories||[]).filter(c =>
+          (c.teamIds||[]).includes(team.id) || c.teamId === team.id
+        );
+        // team_category_season per questa stagione
+        const tcs = (S.teamAssociations||[]).filter(ta => ta.teamId === team.id && ta.seasonId === seasId);
+        const tcsCategories = tcs.map(ta => (S.categories||[]).find(c => c.id === ta.categoryId)).filter(Boolean);
+        const allLinked = [...new Set([...linkedCats, ...tcsCategories])];
+        const nAthletes = (S.athleteSeasons||[]).filter(as => as.teamId === team.id && as.seasonId === seasId).length;
+        return `
+        <div class="entity-card">
+          <div class="ec-icon" style="background:var(--gold-l);color:var(--gold)">${sport?.icon||'👕'}</div>
+          <div class="ec-name">${esc(team.name)}</div>
+          <div class="ec-meta">
+            ${soc ? `<span class="badge badge-blue" style="margin-bottom:6px">${esc(soc.name)}</span><br>` : ''}
+            ${sport ? `${sport.icon} ${esc(sport.name)}<br>` : ''}
+            <div style="margin-top:6px">
+              <span style="font-size:.75rem;font-weight:700;color:#64748B">Categorie collegate:</span><br>
+              ${allLinked.length
+                ? allLinked.map(c => `<span class="badge badge-gray" style="margin:1px">${esc(c.name)}</span>`).join('')
+                : '<span style="color:#94A3B8;font-size:.8rem">Nessuna categoria</span>'
+              }
+            </div>
+            <div style="margin-top:8px">
+              <span class="badge badge-gray">👤 ${nAthletes} atleti iscritti</span>
+            </div>
+          </div>
+          <div class="ec-actions">
+            ${canEdit ? `
+            <button class="btn btn-ghost btn-sm" onclick="openSDSquadraModal('${team.id}','${seasId}')">✏️ Modifica</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteSDSquadra('${team.id}')">🗑️</button>
+            ` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`}
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODAL: SOCIETÀ
+// ═══════════════════════════════════════════════════════════════
+function openSDSocietaModal(id) {
+  const soc = id ? (S.societies||[]).find(s => s.id === id) : null;
+  const sports = S.sports || [];
+  const sportOpts = sports.map(sp =>
+    `<option value="${sp.id}" ${sp.id === soc?.sportId ? 'selected' : ''}>${sp.icon} ${esc(sp.name)}</option>`
+  ).join('');
+
+  openModal(`
+    <div class="modal-header">
+      <h3>${soc ? '✏️ Modifica Società' : '🏛️ Nuova Società'}</h3>
+    </div>
+    <div class="highlight-box" style="margin-bottom:16px;font-size:.83rem">
+      💡 La società è il contenitore principale. Poi potrai creare categorie e squadre ad essa associate.
+    </div>
+    <div class="form-field" style="margin-bottom:12px">
+      <label>Nome Società <span style="color:var(--red)">*</span></label>
+      <input id="sd-soc-name" type="text" value="${esc(soc?.name||'')}" placeholder="es. ASD Olimpia">
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Sport principale</label>
+        <select id="sd-soc-sport">
+          <option value="">— Seleziona —</option>
+          ${sportOpts}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Città</label>
+        <input id="sd-soc-city" type="text" value="${esc(soc?.city||'')}" placeholder="es. Milano">
+      </div>
+    </div>
+    <div class="form-field" style="margin-bottom:16px">
+      <label>Email</label>
+      <input id="sd-soc-email" type="email" value="${esc(soc?.email||'')}" placeholder="info@societa.it">
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-accent btn-lg" onclick="saveSDSocieta('${id||''}')">💾 Salva Società</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+    </div>
+  `);
+}
+
+function saveSDSocieta(id) {
+  const name  = document.getElementById('sd-soc-name')?.value.trim();
+  const sportId = document.getElementById('sd-soc-sport')?.value;
+  const city  = document.getElementById('sd-soc-city')?.value.trim();
+  const email = document.getElementById('sd-soc-email')?.value.trim();
+
+  if (!name) { toast('Nome società obbligatorio', 'error'); return; }
+
+  if (id) {
+    const soc = (S.societies||[]).find(s => s.id === id);
+    if (!soc) { toast('Società non trovata', 'error'); return; }
+    Object.assign(soc, { name, sportId: sportId||null, city: city||'', email: email||'' });
+    sbSync('societies', soc);
+    toast('Società aggiornata ✅', 'success');
+  } else {
+    const newSoc = { id: uid(), name, sportId: sportId||null, city: city||'', email: email||'' };
+    if (!S.societies) S.societies = [];
+    S.societies.push(newSoc);
+    sbSync('societies', newSoc);
+    toast('Società creata ✅', 'success');
+  }
+  saveState();
+  closeModal();
+  viewBuilders['season-dashboard'](document.getElementById('view-season-dashboard'));
+}
+
+function deleteSDSocieta(id) {
+  const soc = (S.societies||[]).find(s => s.id === id);
+  if (!soc) return;
+  const cats = (S.categories||[]).filter(c => c.societyId === id);
+  const teams = (S.teams||[]).filter(t => t.societyId === id);
+  if (cats.length || teams.length) {
+    if (!confirm(`Eliminare "${soc.name}"?\nContiene ${cats.length} categorie e ${teams.length} squadre che verranno scollegati dalla società.`)) return;
+  } else {
+    if (!confirm(`Eliminare la società "${soc.name}"?`)) return;
+  }
+  S.societies = S.societies.filter(s => s.id !== id);
+  // Scollega categorie e squadre (non le elimina, le "orfanizza")
+  cats.forEach(c => { delete c.societyId; sbSync('categories', c); });
+  teams.forEach(t => { delete t.societyId; sbSync('teams', t); });
+  sbSync('societies', id, true);
+  saveState();
+  toast('Società eliminata', 'success');
+  viewBuilders['season-dashboard'](document.getElementById('view-season-dashboard'));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODAL: CATEGORIA
+// ═══════════════════════════════════════════════════════════════
+function openSDCategoriaModal(id, seasId) {
+  const cat = id ? (S.categories||[]).find(c => c.id === id) : null;
+  const sports = S.sports || [];
+  const societies = S.societies || [];
+
+  // Staff correnti della categoria (da UCS della stagione)
+  const ucsEntries = id
+    ? (S.userCategorySeasons||[]).filter(u => u.categoryId === id && u.seasonId === seasId)
+    : [];
+
+  const socOpts = societies.map(s =>
+    `<option value="${s.id}" ${s.id === cat?.societyId ? 'selected' : ''}>${esc(s.name)}</option>`
+  ).join('');
+  const sportOpts = sports.map(sp =>
+    `<option value="${sp.id}" ${sp.id === cat?.sportId ? 'selected' : ''}>${sp.icon} ${esc(sp.name)}</option>`
+  ).join('');
+
+  // Staff roles per UCS in questa categoria/stagione
+  const staffRoleLabels = { responsabile:'⭐ Responsabile', dirigente:'🏛️ Dirigente', allenatore:'⚽ Allenatore', professionista:'🩺 Professionista' };
+  const staffList = ucsEntries.map(u => {
+    const usr = (S.users||[]).find(x => x.id === u.userId);
+    return usr ? `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--mist);border-radius:8px;margin-bottom:4px">
+      <span class="badge badge-gray">${staffRoleLabels[u.role]||u.role}</span>
+      <span class="fw-600" style="font-size:.88rem">${esc(usr.name)}</span>
+      ${canEditSeasonDash() ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--red);font-size:.72rem" onclick="removeSDStaff('${u.id}','${id}','${seasId}')">✕</button>` : ''}
+    </div>` : '';
+  }).join('');
+
+  // Utenti disponibili per aggiungere come staff
+  const availUsers = (S.users||[]).filter(u =>
+    ['responsabile','dirigente','allenatore','professionista'].includes(u.role) &&
+    !ucsEntries.some(ue => ue.userId === u.id)
+  );
+  const userOpts = availUsers.map(u => `<option value="${u.id}">${esc(u.name)} (${u.role})</option>`).join('');
+
+  openModal(`
+    <div class="modal-header">
+      <h3>${cat ? '✏️ Modifica Categoria' : '🏷️ Nuova Categoria'}</h3>
+    </div>
+    <div class="highlight-box" style="margin-bottom:16px;font-size:.83rem">
+      💡 La categoria deve essere associata a una società. Potrai poi collegare squadre e staff.
+    </div>
+    <div class="form-field" style="margin-bottom:12px">
+      <label>Nome Categoria <span style="color:var(--red)">*</span></label>
+      <input id="sd-cat-name" type="text" value="${esc(cat?.name||'')}" placeholder="es. Under 14">
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-field">
+        <label>Società <span style="color:var(--red)">*</span></label>
+        <select id="sd-cat-soc">
+          <option value="">— Seleziona —</option>
+          ${socOpts}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Sport</label>
+        <select id="sd-cat-sport">
+          <option value="">— Seleziona —</option>
+          ${sportOpts}
+        </select>
+      </div>
+    </div>
+
+    <!-- STAFF SEZIONE -->
+    <div style="border-top:1px solid var(--mist-2);padding-top:14px;margin-top:4px">
+      <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">👥 Staff per questa stagione</div>
+      <div id="sd-cat-staff-list" style="margin-bottom:10px">
+        ${staffList || '<div style="color:#94A3B8;font-size:.82rem">Nessuno staff assegnato</div>'}
+      </div>
+      ${canEditSeasonDash() && id ? `
+      <div style="background:var(--accent-l);border-radius:8px;padding:10px;border:1px dashed var(--accent)">
+        <div style="font-size:.73rem;font-weight:700;color:var(--accent);margin-bottom:6px">+ Aggiungi staff</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="sd-staff-user" style="flex:2;min-width:130px;padding:6px 10px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.85rem;background:#fff">
+            <option value="">— Utente —</option>
+            ${userOpts}
+          </select>
+          <select id="sd-staff-role" style="flex:1;min-width:100px;padding:6px 10px;border:1.5px solid #CBD5E0;border-radius:8px;font-size:.85rem;background:#fff">
+            <option value="allenatore">⚽ Allenatore</option>
+            <option value="responsabile">⭐ Responsabile</option>
+            <option value="dirigente">🏛️ Dirigente</option>
+            <option value="professionista">🩺 Professionista</option>
+          </select>
+          <button class="btn btn-accent btn-sm" onclick="addSDStaff('${id}','${seasId}')">Aggiungi</button>
+        </div>
+      </div>` : (id ? '' : '<div style="font-size:.8rem;color:#94A3B8">Salva prima la categoria per aggiungere staff</div>')}
+    </div>
+
+    <div class="form-actions" style="margin-top:16px">
+      <button class="btn btn-accent btn-lg" onclick="saveSDCategoria('${id||''}','${seasId}')">💾 Salva Categoria</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+    </div>
+  `, 'modal-lg');
+}
+
+function saveSDCategoria(id, seasId) {
+  const name    = document.getElementById('sd-cat-name')?.value.trim();
+  const socId   = document.getElementById('sd-cat-soc')?.value;
+  const sportId = document.getElementById('sd-cat-sport')?.value;
+
+  if (!name) { toast('Nome categoria obbligatorio', 'error'); return; }
+  if (!socId) { toast('Seleziona una società', 'error'); return; }
+
+  if (id) {
+    const cat = (S.categories||[]).find(c => c.id === id);
+    if (!cat) { toast('Categoria non trovata', 'error'); return; }
+    Object.assign(cat, { name, societyId: socId, sportId: sportId||cat.sportId||null });
+    sbSync('categories', cat);
+    toast('Categoria aggiornata ✅', 'success');
+  } else {
+    const newCat = {
+      id: uid(), name, societyId: socId, sportId: sportId||null,
+      teamId: null, teamIds: [],
+      managerIds: [], directorIds: [], coachIds: [], professionalIds: []
+    };
+    if (!S.categories) S.categories = [];
+    S.categories.push(newCat);
+    sbSync('categories', newCat);
+    toast('Categoria creata ✅ — ora puoi aggiungere staff e squadre', 'success');
+  }
+  saveState();
+  closeModal();
+  window._sdState = window._sdState || {};
+  window._sdState.tab = 'categorie';
+  viewBuilders['season-dashboard'](document.getElementById('view-season-dashboard'));
+}
+
+function deleteSDCategoria(id) {
+  const cat = (S.categories||[]).find(c => c.id === id);
+  if (!cat) return;
+  const nAthletes = (S.athleteSeasons||[]).filter(as => as.categoryId === id).length;
+  if (!confirm(`Eliminare la categoria "${cat.name}"?\n${nAthletes > 0 ? nAthletes + ' iscrizioni atleti verranno eliminate.' : ''}`)) return;
+  S.categories = S.categories.filter(c => c.id !== id);
+  S.athleteSeasons = (S.athleteSeasons||[]).filter(as => as.categoryId !== id);
+  S.userCategorySeasons = (S.userCategorySeasons||[]).filter(u => u.categoryId !== id);
+  sbSync('categories', id, true);
+  sbSyncDeleteWhere('athlete_seasons', 'category_id', id);
+  sbSyncDeleteWhere('user_category_seasons', 'category_id', id);
+  saveState();
+  toast('Categoria eliminata', 'success');
+  viewBuilders['season-dashboard'](document.getElementById('view-season-dashboard'));
+}
+
+function addSDStaff(catId, seasId) {
+  const userId = document.getElementById('sd-staff-user')?.value;
+  const role   = document.getElementById('sd-staff-role')?.value || 'allenatore';
+  if (!userId) { toast('Seleziona un utente', 'error'); return; }
+  const dup = (S.userCategorySeasons||[]).find(u => u.userId === userId && u.categoryId === catId && u.seasonId === seasId);
+  if (dup) { toast('Utente già assegnato', 'warning'); return; }
+  const cat = (S.categories||[]).find(c => c.id === catId);
+  const entry = { id: uid(), userId, categoryId: catId, seasonId: seasId, role, societyId: cat?.societyId||null };
+  if (!S.userCategorySeasons) S.userCategorySeasons = [];
+  S.userCategorySeasons.push(entry);
+  sbSync('user_category_seasons', entry);
+  // Aggiorna anche i campi legacy sulla categoria
+  const keyMap = { responsabile:'managerIds', dirigente:'directorIds', allenatore:'coachIds', professionista:'professionalIds' };
+  const key = keyMap[role];
+  if (key && cat) {
+    if (!cat[key]) cat[key] = [];
+    if (!cat[key].includes(userId)) { cat[key].push(userId); sbSync('categories', cat); }
+  }
+  saveState();
+  toast('Staff aggiunto ✅', 'success');
+  openSDCategoriaModal(catId, seasId); // riapri modal aggiornato
+}
+
+function removeSDStaff(ucsId, catId, seasId) {
+  const ucs = (S.userCategorySeasons||[]).find(u => u.id === ucsId);
+  if (!ucs) return;
+  S.userCategorySeasons = S.userCategorySeasons.filter(u => u.id !== ucsId);
+  sbSync('user_category_seasons', ucsId, true);
+  // Aggiorna campo legacy
+  const cat = (S.categories||[]).find(c => c.id === catId);
+  const keyMap = { responsabile:'managerIds', dirigente:'directorIds', allenatore:'coachIds', professionista:'professionalIds' };
+  const key = keyMap[ucs.role];
+  if (key && cat) { cat[key] = (cat[key]||[]).filter(uid => uid !== ucs.userId); sbSync('categories', cat); }
+  saveState();
+  toast('Staff rimosso', 'success');
+  openSDCategoriaModal(catId, seasId);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODAL: SQUADRA
+// ═══════════════════════════════════════════════════════════════
+function openSDSquadraModal(id, seasId) {
+  const team = id ? (S.teams||[]).find(t => t.id === id) : null;
+  const sports = S.sports || [];
+  const societies = S.societies || [];
+
+  const socOpts = societies.map(s =>
+    `<option value="${s.id}" ${s.id === team?.societyId ? 'selected' : ''}>${esc(s.name)}</option>`
+  ).join('');
+  const sportOpts = sports.map(sp =>
+    `<option value="${sp.id}" ${sp.id === team?.sportId ? 'selected' : ''}>${sp.icon} ${esc(sp.name)}</option>`
+  ).join('');
+
+  // Categorie della stessa società (per associazione)
+  const selSocId = team?.societyId || '';
+  const availCats = selSocId
+    ? (S.categories||[]).filter(c => c.societyId === selSocId)
+    : (S.categories||[]);
+
+  // Categorie già collegate
+  const linkedCatIds = id
+    ? (S.categories||[]).filter(c => (c.teamIds||[]).includes(id) || c.teamId === id).map(c => c.id)
+    : [];
+  // Anche da team_category_season
+  const tcsCatIds = id
+    ? (S.teamAssociations||[]).filter(ta => ta.teamId === id && ta.seasonId === seasId).map(ta => ta.categoryId)
+    : [];
+  const allLinkedIds = [...new Set([...linkedCatIds, ...tcsCatIds])];
+
+  const catCheckboxes = availCats.map(c =>
+    `<label style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;cursor:pointer;background:${allLinkedIds.includes(c.id)?'var(--accent-l)':'var(--mist)'}">
+      <input type="checkbox" id="sd-team-cat-${c.id}" ${allLinkedIds.includes(c.id)?'checked':''} style="width:16px;height:16px;accent-color:var(--accent)">
+      <span style="font-size:.88rem;font-weight:600">${esc(c.name)}</span>
+    </label>`
+  ).join('');
+
+  openModal(`
+    <div class="modal-header">
+      <h3>${team ? '✏️ Modifica Squadra' : '👕 Nuova Squadra'}</h3>
+    </div>
+    <div class="highlight-box" style="margin-bottom:16px;font-size:.83rem">
+      💡 La squadra deve appartenere a una società ed essere collegata ad almeno una categoria.
+    </div>
+    <div class="form-field" style="margin-bottom:12px">
+      <label>Nome Squadra <span style="color:var(--red)">*</span></label>
+      <input id="sd-team-name" type="text" value="${esc(team?.name||'')}" placeholder="es. Under 14 A">
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-field">
+        <label>Società <span style="color:var(--red)">*</span></label>
+        <select id="sd-team-soc" onchange="refreshSDTeamCats(this.value,'${id||''}','${seasId}')">
+          <option value="">— Seleziona —</option>
+          ${socOpts}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Sport</label>
+        <select id="sd-team-sport">
+          <option value="">— Seleziona —</option>
+          ${sportOpts}
+        </select>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--mist-2);padding-top:14px;margin-top:4px">
+      <div style="font-size:.78rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">🏷️ Associa a Categorie della stessa società</div>
+      <div id="sd-team-cats" style="display:flex;flex-direction:column;gap:6px">
+        ${catCheckboxes || '<div style="color:#94A3B8;font-size:.82rem">Seleziona prima una società per vedere le categorie disponibili</div>'}
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top:16px">
+      <button class="btn btn-accent btn-lg" onclick="saveSDSquadra('${id||''}','${seasId}')">💾 Salva Squadra</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+    </div>
+  `, 'modal-lg');
+}
+
+function refreshSDTeamCats(socId, teamId, seasId) {
+  const el = document.getElementById('sd-team-cats');
+  if (!el) return;
+  const cats = (S.categories||[]).filter(c => c.societyId === socId);
+  const linkedIds = teamId
+    ? (S.categories||[]).filter(c => (c.teamIds||[]).includes(teamId) || c.teamId === teamId).map(c => c.id)
+    : [];
+  if (!cats.length) {
+    el.innerHTML = '<div style="color:#94A3B8;font-size:.82rem">Nessuna categoria per questa società</div>';
+    return;
+  }
+  el.innerHTML = cats.map(c =>
+    `<label style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;cursor:pointer;background:${linkedIds.includes(c.id)?'var(--accent-l)':'var(--mist)'}">
+      <input type="checkbox" id="sd-team-cat-${c.id}" ${linkedIds.includes(c.id)?'checked':''} style="width:16px;height:16px;accent-color:var(--accent)">
+      <span style="font-size:.88rem;font-weight:600">${esc(c.name)}</span>
+    </label>`
+  ).join('');
+}
+
+function saveSDSquadra(id, seasId) {
+  const name    = document.getElementById('sd-team-name')?.value.trim();
+  const socId   = document.getElementById('sd-team-soc')?.value;
+  const sportId = document.getElementById('sd-team-sport')?.value;
+
+  if (!name) { toast('Nome squadra obbligatorio', 'error'); return; }
+  if (!socId) { toast('Seleziona una società', 'error'); return; }
+
+  // Raccoglie le categorie selezionate
+  const availCats = (S.categories||[]).filter(c => c.societyId === socId);
+  const selCatIds = availCats.filter(c => document.getElementById('sd-team-cat-' + c.id)?.checked).map(c => c.id);
+
+  let teamId = id;
+  if (id) {
+    const team = (S.teams||[]).find(t => t.id === id);
+    if (!team) { toast('Squadra non trovata', 'error'); return; }
+    Object.assign(team, { name, societyId: socId, sportId: sportId||team.sportId||null });
+    sbSync('teams', team);
+    toast('Squadra aggiornata ✅', 'success');
+  } else {
+    const newTeam = { id: uid(), name, societyId: socId, sportId: sportId||null };
+    if (!S.teams) S.teams = [];
+    S.teams.push(newTeam);
+    teamId = newTeam.id;
+    sbSync('teams', newTeam);
+    toast('Squadra creata ✅', 'success');
+  }
+
+  // Aggiorna le associazioni categoria ↔ squadra
+  // Prima: rimuovi questa squadra da tutte le categorie della stessa società
+  const sameSocCats = (S.categories||[]).filter(c => c.societyId === socId);
+  sameSocCats.forEach(cat => {
+    const hadTeam = (cat.teamIds||[]).includes(teamId) || cat.teamId === teamId;
+    const shouldHave = selCatIds.includes(cat.id);
+    if (hadTeam !== shouldHave) {
+      if (shouldHave) {
+        // Aggiungi
+        if (!cat.teamIds) cat.teamIds = [];
+        if (!cat.teamIds.includes(teamId)) cat.teamIds.push(teamId);
+        if (!cat.teamId) cat.teamId = teamId;
+      } else {
+        // Rimuovi
+        cat.teamIds = (cat.teamIds||[]).filter(tid => tid !== teamId);
+        if (cat.teamId === teamId) cat.teamId = cat.teamIds[0] || null;
+      }
+      sbSync('categories', cat);
+    }
+  });
+
+  // Aggiorna anche team_category_season per la stagione corrente
+  if (seasId && S.teamAssociations) {
+    // Rimuovi le associazioni esistenti per questa squadra e stagione
+    S.teamAssociations = S.teamAssociations.filter(ta => !(ta.teamId === teamId && ta.seasonId === seasId));
+    // Aggiungi le nuove
+    selCatIds.forEach(catId => {
+      const ta = { id: uid(), teamId, categoryId: catId, seasonId: seasId };
+      S.teamAssociations.push(ta);
+      // Sync su Supabase
+      if (typeof sb !== 'undefined' && sb) {
+        sb.from('team_category_season').upsert({ team_id: teamId, category_id: catId, season_id: seasId }, { onConflict: 'team_id,season_id' }).then(() => {});
+      }
+    });
+  }
+
+  saveState();
+  closeModal();
+  window._sdState = window._sdState || {};
+  window._sdState.tab = 'squadre';
+  viewBuilders['season-dashboard'](document.getElementById('view-season-dashboard'));
+}
+
+function deleteSDSquadra(id) {
+  const team = (S.teams||[]).find(t => t.id === id);
+  if (!team) return;
+  if (!confirm(`Eliminare la squadra "${team.name}"?`)) return;
+  S.teams = S.teams.filter(t => t.id !== id);
+  // Scollega da categorie
+  (S.categories||[]).forEach(cat => {
+    cat.teamIds = (cat.teamIds||[]).filter(tid => tid !== id);
+    if (cat.teamId === id) cat.teamId = cat.teamIds[0] || null;
+    sbSync('categories', cat);
+  });
+  // Rimuovi da team_category_season
+  if (S.teamAssociations) S.teamAssociations = S.teamAssociations.filter(ta => ta.teamId !== id);
+  sbSync('teams', id, true);
+  saveState();
+  toast('Squadra eliminata', 'success');
+  viewBuilders['season-dashboard'](document.getElementById('view-season-dashboard'));
+}
+
 viewBuilders['matches-overview'] = (el) => {
-  const role = currentUser.role;
-  const accCatIds = getAccessibleCategoryIds();
 
   // Stato filtri
   if (!window._moState) window._moState = { socId:'', teamId:'', catId:'', seasId:'', dateFrom:'', dateTo:'' };
