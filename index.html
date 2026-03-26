@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SportTrack Pro</title>
+<title>SportTrack Pro – Admin</title>
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,57 +15,43 @@
     --sidebar:#1f2937; --sidebar-active:#2563eb;
   }
   body{font-family:system-ui,Arial;margin:0;background:var(--bg);color:var(--text);display:flex;height:100vh}
-.sidebar{width:240px;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;padding:16px 0}
-.sidebar h2{font-size:18px;padding:0 16px 16px;border-bottom:1px solid #374151;margin:0}
-.sidebar button{background:none;border:none;color:#d1d5db;text-align:left;padding:12px 16px;font-size:14px;cursor:pointer;width:100%}
-.sidebar button.active,.sidebar button:hover{background:var(--sidebar-active);color:#fff}
-.main{flex:1;overflow:auto;padding:20px}
-.container{max-width:1400px;margin:0 auto}
+ .sidebar{width:240px;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;padding:16px 0}
+ .sidebar h2{font-size:18px;padding:0 16px 16px;border-bottom:1px solid #374151;margin:0}
+ .sidebar button{background:none;border:none;color:#d1d5db;text-align:left;padding:12px 16px;font-size:14px;cursor:pointer;width:100%}
+ .sidebar button.active,.sidebar button:hover{background:var(--sidebar-active);color:#fff}
+ .main{flex:1;overflow:auto;padding:20px}
+ .container{max-width:1400px;margin:0 auto}
   h1{font-size:24px;margin:0 0 16px}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;position:relative;overflow:hidden}
-.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--c1)}
-.card.c2::before{background:var(--c2)}
-.card.c3::before{background:var(--c3)}
-.card.c4::before{background:var(--c4)}
-.card.c5::before{background:var(--c5)}
-.card.c6::before{background:var(--c6)}
-.card.c7::before{background:var(--c7)}
-.card.c8::before{background:var(--c8)}
-.card h3{margin:0;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.card.val{margin:6px 0 0;font-size:32px;font-weight:800}
-.card.sub{margin:2px 0 0;font-size:13px;color:var(--muted)}
-.filters{display:flex;gap:12px;margin:16px 0;flex-wrap:wrap}
-  select,button,input{padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px}
-  button{background:var(--accent,#2563eb);color:#fff;border:none;cursor:pointer;border-radius:8px}
-  button.ghost{background:#e2e8f0;color:#111}
+ .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+ .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;position:relative;overflow:hidden}
+ .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--c1)}
+ .card.c2::before{background:var(--c2)}
+ .card.c3::before{background:var(--c3)}
+ .card.c4::before{background:var(--c4)}
+ .card.c5::before{background:var(--c5)}
+ .card.c6::before{background:var(--c6)}
+ .card.c7::before{background:var(--c7)}
+ .card.c8::before{background:var(--c8)}
+ .card h3{margin:0;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+ .card.val{margin:6px 0 0;font-size:32px;font-weight:800}
+ .card.sub{margin:2px 0 0;font-size:13px;color:var(--muted)}
+ .filters{display:flex;gap:12px;margin:16px 0;flex-wrap:wrap}
+  select{padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px}
   table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
   th,td{padding:12px 14px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
   th{background:#f9fafb;font-size:13px;color:var(--muted)}
-.badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;margin:2px 4px 2px 0}
-.badge.ok{background:#dcfce7;color:#166534}
-.badge.warn{background:#fef3c7;color:#92400e}
-.badge.bad{background:#fee2e2;color:#991b1b}
-.badge.staff{background:#dbeafe;color:#1e40af}
-.actions button{margin-right:6px;background:#f3f4f6;color:#111;border:1px solid var(--border)}
-.page{display:none}
-.page.active{display:block}
-.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.form-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px}
-.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+ .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;margin:2px 4px 2px 0}
+ .badge.ok{background:#dcfce7;color:#166534}
+ .badge.warn{background:#fef3c7;color:#92400e}
+ .badge.bad{background:#fee2e2;color:#991b1b}
+ .badge.staff{background:#dbeafe;color:#1e40af}
+ .actions button{margin-right:6px;background:#f3f4f6;color:#111;border:1px solid var(--border);padding:6px 10px;border-radius:8px;cursor:pointer}
 </style>
 </head>
 <body>
 <div class="sidebar">
   <h2>SportTrack</h2>
-  <button data-page="dashboard" class="active" onclick="showPage('dashboard')">Dashboard</button>
-  <button data-page="societa" onclick="showPage('societa')">Società</button>
-  <button data-page="categoria" onclick="showPage('categoria')">Categoria</button>
-  <button data-page="squadra" onclick="showPage('squadra')">Squadra</button>
-  <button data-page="ruoli" onclick="showPage('ruoli')">Gestione Ruoli</button>
-  <button data-page="atleta" onclick="showPage('atleta')">Atleta</button>
-  <button data-page="sessioni" onclick="showPage('sessioni')">Sessioni</button>
-  <button onclick="logout()" style="margin-top:auto;color:#fca5a5">Esci</button>
+  <button class="active">Dashboard</button>
 </div>
 
 <div class="main">
@@ -77,146 +63,36 @@
         <input id="username" type="text" placeholder="Username" autocomplete="username" required>
         <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
         <button type="submit">Entra</button>
-        <button type="button" class="ghost" onclick="signup()">Registrati</button>
       </form>
     </div>
 
-    <!-- APP -->
+    <!-- DASHBOARD -->
     <div id="app" style="display:none">
+      <h1>Dashboard Amministratore</h1>
 
-      <!-- DASHBOARD -->
-      <section id="page-dashboard" class="page active">
-        <h1>Dashboard Amministratore</h1>
-
-        <section class="cards">
-          <div class="card c1"><h3>ATLETI TOTALI</h3><div class="val" id="c-atleti">0</div><div class="sub" id="c-atleti-sub">in 0 categorie</div></div>
-          <div class="card c2"><h3>SESSIONI REGI...</h3><div class="val" id="c-sessioni">0</div><div class="sub">tutte le categorie</div></div>
-          <div class="card c3"><h3>% PRESENZE G...</h3><div class="val" id="c-pres">0%</div><div class="sub" id="c-pres-sub">0/0 totali</div></div>
-          <div class="card c4"><h3>SOCIETÀ</h3><div class="val" id="c-societa">0</div><div class="sub" id="c-societa-sub">0 sport</div></div>
-          <div class="card c5"><h3>CATEGORIE</h3><div class="val" id="c-categorie">0</div><div class="sub">attive</div></div>
-          <div class="card c6"><h3>STAFF TOTALE</h3><div class="val" id="c-staff">0</div><div class="sub">utenti registrati</div></div>
-          <div class="card c7"><h3>RESPONSABILI</h3><div class="val" id="c-responsabili">0</div><div class="sub">registrati</div></div>
-          <div class="card c8"><h3>ALLENATORI</h3><div class="val" id="c-allenatori">0</div><div class="sub">registrati</div></div>
-          <div class="card c4"><h3>PROFESSIONIS...</h3><div class="val" id="c-prof">0</div><div class="sub">registrati</div></div>
-        </section>
-
-        <div class="filters">
-          <select id="f-society"><option value="">Tutte le società</option></select>
-          <select id="f-category"><option value="">Tutte le categorie</option></select>
-          <select id="f-team"><option value="">Tutte le squadre</option></select>
-          <select id="f-season"><option value="">Tutte le stagioni</option></select>
-        </div>
-
-        <table id="tbl">
-          <thead><tr><th>SOCIETÀ</th><th>CATEGORIA</th><th>SQUADRA</th><th>SPORT</th><th>STAFF ASSEGNATO</th><th>ATLETI</th><th>SESSIONI</th><th>% PRESENZE</th><th>AZIONI</th></tr></thead>
-          <tbody></tbody>
-        </table>
+      <section class="cards">
+        <div class="card c1"><h3>ATLETI TOTALI</h3><div class="val" id="c-atleti">0</div><div class="sub" id="c-atleti-sub">in 0 categorie</div></div>
+        <div class="card c2"><h3>SESSIONI REGI...</h3><div class="val" id="c-sessioni">0</div><div class="sub">tutte le categorie</div></div>
+        <div class="card c3"><h3>% PRESENZE G...</h3><div class="val" id="c-pres">0%</div><div class="sub" id="c-pres-sub">0/0 totali</div></div>
+        <div class="card c4"><h3>SOCIETÀ</h3><div class="val" id="c-societa">0</div><div class="sub" id="c-societa-sub">0 sport</div></div>
+        <div class="card c5"><h3>CATEGORIE</h3><div class="val" id="c-categorie">0</div><div class="sub">attive</div></div>
+        <div class="card c6"><h3>STAFF TOTALE</h3><div class="val" id="c-staff">0</div><div class="sub">utenti registrati</div></div>
+        <div class="card c7"><h3>RESPONSABILI</h3><div class="val" id="c-responsabili">0</div><div class="sub">registrati</div></div>
+        <div class="card c8"><h3>ALLENATORI</h3><div class="val" id="c-allenatori">0</div><div class="sub">registrati</div></div>
+        <div class="card c4"><h3>PROFESSIONIS...</h3><div class="val" id="c-prof">0</div><div class="sub">registrati</div></div>
       </section>
 
-      <!-- SOCIETA -->
-      <section id="page-societa" class="page">
-        <h1>Società</h1>
+      <div class="filters">
+        <select id="f-society"><option value="">Tutte le società</option></select>
+        <select id="f-category"><option value="">Tutte le categorie</option></select>
+        <select id="f-team"><option value="">Tutte le squadre</option></select>
+        <select id="f-season"><option value="">Tutte le stagioni</option></select>
+      </div>
 
-        <!-- FORM NUOVA SOCIETÀ -->
-        <div class="form-box">
-          <h3 style="margin:0 0 12px">Aggiungi Società</h3>
-          <div class="form-grid">
-            <input id="soc-name" placeholder="Nome società">
-            <select id="soc-sport"><option value="">Sport</option></select>
-            <input id="soc-city" placeholder="Città">
-            <input id="soc-email" placeholder="Email" type="email">
-            <select id="soc-season"><option value="">Stagione</option></select>
-            <button onclick="saveSociety()">Salva</button>
-          </div>
-        </div>
-
-        <!-- ELENCO SOCIETÀ ESISTENTI -->
-        <table id="tbl-societa">
-          <thead>
-            <tr>
-              <th>NOME</th>
-              <th>SPORT</th>
-              <th>CITTÀ</th>
-              <th>EMAIL</th>
-              <th>STAGIONE</th>
-              <th>AZIONI</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </section>
-
-      <!-- CATEGORIA -->
-      <section id="page-categoria" class="page">
-        <h1>Categoria</h1>
-        <div class="toolbar">
-          <input id="cat-name" placeholder="Nome categoria">
-          <select id="cat-soc"></select>
-          <select id="cat-sport"></select>
-          <button onclick="saveCategory()">Salva</button>
-        </div>
-        <table id="tbl-categoria"><thead><tr><th>Nome</th><th>Società</th><th>Sport</th><th>Azioni</th></tr></thead><tbody></tbody></table>
-      </section>
-
-      <!-- SQUADRA -->
-      <section id="page-squadra" class="page">
-        <h1>Squadra</h1>
-        <div class="toolbar">
-          <input id="team-name" placeholder="Nome squadra">
-          <select id="team-soc"></select>
-          <select id="team-cat"></select>
-          <select id="team-season"></select>
-          <button onclick="saveTeam()">Salva</button>
-        </div>
-        <table id="tbl-squadra"><thead><tr><th>Nome</th><th>Società</th><th>Categoria</th><th>Stagione</th><th>Azioni</th></tr></thead><tbody></tbody></table>
-      </section>
-
-      <!-- RUOLI -->
-      <section id="page-ruoli" class="page">
-        <h1>Gestione Ruoli</h1>
-        <div class="toolbar">
-          <select id="role-user"></select>
-          <select id="role-type"></select>
-          <select id="role-soc"></select>
-          <select id="role-cat"></select>
-          <select id="role-team"><option value="">Tutta la categoria</option></select>
-          <select id="role-season"></select>
-          <button onclick="saveRole()">Assegna</button>
-        </div>
-        <table id="tbl-ruoli"><thead><tr><th>Utente</th><th>Ruolo</th><th>Società</th><th>Categoria</th><th>Squadra</th><th>Stagione</th><th>Azioni</th></tr></thead><tbody></tbody></table>
-      </section>
-
-      <!-- ATLETA -->
-      <section id="page-atleta" class="page">
-        <h1>Atleta</h1>
-        <div class="toolbar">
-          <input id="ath-name" placeholder="Nome">
-          <input id="ath-last" placeholder="Cognome">
-          <input id="ath-dob" type="date">
-          <input id="ath-number" type="number" placeholder="Numero maglia">
-          <select id="ath-cat"></select>
-          <select id="ath-team"></select>
-          <select id="ath-season"></select>
-          <button onclick="saveAthlete()">Salva</button>
-        </div>
-        <table id="tbl-atleta"><thead><tr><th>Nome</th><th>Cognome</th><th>Categoria</th><th>Squadra</th><th>Stagione</th><th>N°</th><th>Azioni</th></tr></thead><tbody></tbody></table>
-      </section>
-
-      <!-- SESSIONI -->
-      <section id="page-sessioni" class="page">
-        <h1>Sessioni / Partite</h1>
-        <div class="toolbar">
-          <select id="ses-type"><option value="A">Allenamento</option><option value="P">Partita</option></select>
-          <input id="ses-date" type="date">
-          <select id="ses-cat"></select>
-          <select id="ses-team"><option value="">Tutta la categoria</option></select>
-          <select id="ses-season"></select>
-          <input id="ses-opp" placeholder="Avversario (solo partita)">
-          <button onclick="saveSession()">Salva</button>
-        </div>
-        <table id="tbl-sessioni"><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Squadra</th><th>Avversario</th><th>Azioni</th></tr></thead><tbody></tbody></table>
-      </section>
-
+      <table id="tbl">
+        <thead><tr><th>SOCIETÀ</th><th>CATEGORIA</th><th>SQUADRA</th><th>SPORT</th><th>STAFF ASSEGNATO</th><th>ATLETI</th><th>SESSIONI</th><th>% PRESENZE</th><th>AZIONI</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -237,79 +113,39 @@ async function login(e){
   USER = data.user
   initApp()
 }
-async function signup(){
-  const username = document.getElementById('username').value.trim()
-  const password = document.getElementById('password').value
-  const email = prompt('Inserisci la tua email (sarà quella di login):')
-  if(!email) return alert('Email obbligatoria')
-  const { data, error } = await client.auth.signUp({ email, password })
-  if(error) return alert(error.message)
-  await client.from('users').insert({id:data.user.id, username, name:username, email})
-  alert('Registrato! Ora accedi')
-}
-function logout(){client.auth.signOut();location.reload()}
-
-/* ===== NAV ===== */
-function showPage(page){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
-  document.querySelectorAll('.sidebar button').forEach(b=>b.classList.remove('active'))
-  document.getElementById('page-'+page).classList.add('active')
-  document.querySelector(`.sidebar button[data-page="${page}"]`).classList.add('active')
-  if(page!=='dashboard') loadPageData(page)
-}
 
 /* ===== INIT ===== */
 async function initApp(){
   document.getElementById('auth-section').style.display='none'
   document.getElementById('app').style.display='block'
 
-  // RUOLI
-  let roles = []
+  // Mappa ruoli → id
   const {data:rolesData} = await client.from('roles').select('id,name')
-  if(rolesData) roles = rolesData
-  roles.forEach(r=> ROLE_IDS[r.name]=r.id)
+  if(rolesData) rolesData.forEach(r=> ROLE_IDS[r.name]=r.id)
 
-  // STAGIONE ATTIVA
+  // Stagione attiva (se nessuna → ultima)
   let {data:seasons} = await client.from('seasons')
-.select('id,name,start_date,active')
-.eq('active', true)
-.order('start_date',{ascending:false})
+   .select('id,name,start_date,active')
+   .eq('active', true)
+   .order('start_date',{ascending:false})
 
   if(!seasons || seasons.length===0){
     const {data:allSeasons} = await client.from('seasons')
- .select('id,name,start_date,active')
- .order('start_date',{ascending:false})
+     .select('id,name,start_date,active')
+     .order('start_date',{ascending:false})
     seasons = allSeasons
   }
   STATE.seasonId = seasons?.[0]?.id || ''
   populate('f-season', seasons, 'id', 'name')
-  ['team-season','role-season','ath-season','ses-season','soc-season'].forEach(id=>populate(id,seasons,'id','name'))
 
   const {data:socs} = await client.from('societies').select('id,name')
   populate('f-society', socs, 'id', 'name')
-  populate('cat-soc', socs, 'id', 'name')
-  populate('team-soc', socs, 'id', 'name')
-  populate('role-soc', socs, 'id', 'name')
-  populate('soc-sport', socs, 'id', 'name')
 
   const {data:cats} = await client.from('categories').select('id,name')
   populate('f-category', cats, 'id', 'name')
-  populate('team-cat', cats, 'id', 'name')
-  populate('role-cat', cats, 'id', 'name')
-  populate('ath-cat', cats, 'id', 'name')
-  populate('ses-cat', cats, 'id', 'name')
 
   const {data:teams} = await client.from('teams').select('id,name')
   populate('f-team', teams, 'id', 'name')
-  populate('role-team', teams, 'id', 'name')
-  populate('ath-team', teams, 'id', 'name')
-  populate('ses-team', teams, 'id', 'name')
-
-  const {data:users} = await client.from('users').select('id,name,username')
-  populate('role-user', users, 'id', r=>r.name+' ('+r.username+')')
-
-  const {data:roleList} = await client.from('roles').select('id,name')
-  populate('role-type', roleList, 'id', 'name')
 
   await refresh()
 }
@@ -323,6 +159,7 @@ function populate(id,data,val,label){
 async function refresh(){
   const s=STATE.seasonId
 
+  // CARD STATISTICHE
   const {count:atleti}=await client.from('athlete_seasons').select('id',{count:'exact',head:true}).eq('season_id',s)
   const {count:societa}=await client.from('societies').select('id',{count:'exact',head:true})
   const {count:categorie}=await client.from('categories').select('id',{count:'exact',head:true})
@@ -330,11 +167,11 @@ async function refresh(){
   const {count:utenti}=await client.from('users').select('id',{count:'exact',head:true})
 
   const {count:responsabili}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
-.eq('season_id',s).eq('role_id',ROLE_IDS['responsabile']||'')
+   .eq('season_id',s).eq('role_id',ROLE_IDS['responsabile']||'')
   const {count:allenatori}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
-.eq('season_id',s).eq('role_id',ROLE_IDS['allenatore']||'')
+   .eq('season_id',s).eq('role_id',ROLE_IDS['allenatore']||'')
   const {count:prof}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
-.eq('season_id',s).eq('role_id',ROLE_IDS['professionista']||'')
+   .eq('season_id',s).eq('role_id',ROLE_IDS['professionista']||'')
 
   const {data:att} = await client.from('attendances').select('status')
   const pres=att?.filter(a=>a.status==='P').length||0
@@ -354,10 +191,10 @@ async function refresh(){
   document.getElementById('c-allenatori').textContent=allenatori||0
   document.getElementById('c-prof').textContent=prof||0
 
-  /* ---- TABELLA: PARTIAMO DA team_category_season ---- */
+  /* ---- TABELLA ---- */
   let q = client.from('team_category_season')
-.select('team_id,category_id,season_id,teams(id,name,societies!teams_society_id_fkey(id,name,sports(name))),categories(id,name)')
-.eq('season_id', s)
+   .select('team_id,category_id,season_id,teams(id,name,societies!teams_society_id_fkey(id,name,sports(name))),categories(id,name)')
+   .eq('season_id', s)
 
   if(STATE.societyId) q = q.eq('teams.society_id', STATE.societyId)
   if(STATE.categoryId) q = q.eq('category_id', STATE.categoryId)
@@ -380,13 +217,13 @@ async function refresh(){
     const sportName = soc?.sports?.name || '—'
 
     const {count:sessCnt}=await client.from('sessions').select('id',{count:'exact',head:true})
- .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+     .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const {count:athCnt}=await client.from('athlete_seasons').select('id',{count:'exact',head:true})
- .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+     .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const {data:sidData}=await client.from('sessions').select('id')
- .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+     .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
     const sessionIds = sidData?.map(x=>x.id) || []
     let presPct=0
     if(sessionIds.length){
@@ -395,12 +232,12 @@ async function refresh(){
     }
 
     const {data:staffData}=await client.from('role_category_team')
- .select('users(name)')
- .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+     .select('users(name)')
+     .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const staff = staffData || []
     const staffHtml = staff.length
- ? staff.map(s=>`<span class="badge staff">${s.users.name}</span>`).join('')
+     ? staff.map(s=>`<span class="badge staff">${s.users.name}</span>`).join('')
       : '<span class="badge bad">Nessuno</span>'
 
     const presClass = presPct>=80?'ok':presPct>=50?'warn':'bad'
@@ -415,9 +252,7 @@ async function refresh(){
         <td>${athCnt||0}</td>
         <td>${sessCnt||0}</td>
         <td><span class="badge ${presClass}">${presPct}%</span></td>
-        <td class="actions">
-          <button onclick="openCategoryDashboard('${c.id}','${t.id}')">Gestisci</button>
-        </td>
+        <td class="actions"><button onclick="alert('Dettaglio ${c.name} - ${t.name}')">Gestisci</button></td>
       </tr>`
   }
 
@@ -441,186 +276,14 @@ document.getElementById('f-category').onchange=async e=>{
   STATE.categoryId=e.target.value
   STATE.teamId=''
   const {data:tcs}=await client.from('team_category_season')
-.select('team_id,teams(id,name)')
-.eq('category_id',STATE.categoryId)
-.eq('season_id',STATE.seasonId)
+   .select('team_id,teams(id,name)')
+   .eq('category_id',STATE.categoryId)
+   .eq('season_id',STATE.seasonId)
   const teams = (tcs||[]).map(t=>t.teams).filter(Boolean)
   populate('f-team', teams, 'id', 'name')
   refresh()
 }
 document.getElementById('f-team').onchange=e=>{STATE.teamId=e.target.value;refresh()}
-
-/* ===== LOAD PAGE DATA ===== */
-async function loadPageData(page){
-  const s=STATE.seasonId
-  if(page==='societa'){
-    const {data}=await client.from('societies')
-  .select('id,name,city,email,sports(name),seasons(name)')
-  .order('name')
-    document.querySelector('#tbl-societa tbody').innerHTML=(data||[]).map(r=>`
-      <tr>
-        <td>${r.name}</td>
-        <td>${r.sports?.name||'—'}</td>
-        <td>${r.city||'—'}</td>
-        <td>${r.email||'—'}</td>
-        <td>${r.seasons?.name||'—'}</td>
-        <td class="actions"><button class="ghost" onclick="deleteRow('societies','${r.id}')">Elimina</button></td>
-      </tr>`).join('')
-  }
-  if(page==='categoria'){
-    const {data}=await client.from('categories').select('id,name,societies(name),sports(name)')
-    document.querySelector('#tbl-categoria tbody').innerHTML=(data||[]).map(r=>`
-      <tr><td>${r.name}</td><td>${r.societies?.name||'—'}</td><td>${r.sports?.name||'—'}</td>
-      <td class="actions"><button class="ghost" onclick="deleteRow('categories','${r.id}')">Elimina</button></td></tr>`).join('')
-  }
-  if(page==='squadra'){
-    const {data}=await client.from('team_category_season')
-  .select('team_id,category_id,season_id,teams(name,societies!teams_society_id_fkey(name)),categories(name),seasons(name)')
-    document.querySelector('#tbl-squadra tbody').innerHTML=(data||[]).map(r=>`
-      <tr><td>${r.teams?.name}</td><td>${r.teams?.societies?.name||'—'}</td><td>${r.categories?.name}</td><td>${r.seasons?.name}</td>
-      <td class="actions"><button class="ghost" onclick="deleteRow('team_category_season','${r.team_id}','${r.category_id}','${r.season_id}')">Elimina</button></td></tr>`).join('')
-  }
-  if(page==='ruoli'){
-    const {data}=await client.from('user_society_roles').select('id,user_id,role_id,society_id,category_id,team_id,season_id,users(name),roles(name),societies(name),categories(name),teams(name),seasons(name)')
-    document.querySelector('#tbl-ruoli tbody').innerHTML=(data||[]).map(r=>`
-      <tr><td>${r.users?.name}</td><td>${r.roles?.name}</td><td>${r.societies?.name}</td><td>${r.categories?.name||'—'}</td><td>${r.teams?.name||'—'}</td><td>${r.seasons?.name}</td>
-      <td class="actions"><button class="ghost" onclick="deleteRow('user_society_roles','${r.id}')">Elimina</button></td></tr>`).join('')
-  }
-  if(page==='atleta'){
-    const {data}=await client.from('athlete_seasons').select('athlete_id,category_id,team_id,season_id,shirt_number,athletes(first_name,last_name),categories(name),teams(name),seasons(name)')
-    document.querySelector('#tbl-atleta tbody').innerHTML=(data||[]).map(r=>`
-      <tr><td>${r.athletes.first_name}</td><td>${r.athletes.last_name}</td><td>${r.categories?.name}</td><td>${r.teams?.name||'—'}</td><td>${r.seasons?.name}</td><td>${r.shirt_number||''}</td>
-      <td class="actions"><button class="ghost" onclick="deleteRow('athlete_seasons','${r.athlete_id}','${r.category_id}','${r.season_id}')">Elimina</button></td></tr>`).join('')
-  }
-  if(page==='sessioni'){
-    const {data}=await client.from('sessions').select('id,type,date,category_id,team_id,season_id,categories(name),teams(name),matches(opponent)')
-    document.querySelector('#tbl-sessioni tbody').innerHTML=(data||[]).map(r=>`
-      <tr><td>${r.date}</td><td>${r.type==='P'?'Partita':'Allenamento'}</td><td>${r.categories?.name}</td><td>${r.teams?.name||'—'}</td><td>${r.matches?.opponent||'—'}</td>
-      <td class="actions"><button class="ghost" onclick="deleteRow('sessions','${r.id}')">Elimina</button></td></tr>`).join('')
-  }
-}
-
-/* ===== SAVE ===== */
-async function saveSociety(){
-  await client.from('societies').insert({
-    name: document.getElementById('soc-name').value,
-    sport_id: document.getElementById('soc-sport').value,
-    city: document.getElementById('soc-city').value,
-    email: document.getElementById('soc-email').value,
-    season_id: document.getElementById('soc-season').value
-  })
-  loadPageData('societa')
-  document.getElementById('soc-name').value=''
-  document.getElementById('soc-city').value=''
-  document.getElementById('soc-email').value=''
-  document.getElementById('soc-season').value=''
-}
-async function saveCategory(){await client.from('categories').insert({name:document.getElementById('cat-name').value,society_id:document.getElementById('cat-soc').value,sport_id:document.getElementById('cat-sport').value});loadPageData('categoria')}
-async function saveTeam(){const {data}=await client.from('teams').insert({name:document.getElementById('team-name').value,society_id:document.getElementById('team-soc').value}).select();await client.from('team_category_season').insert({team_id:data[0].id,category_id:document.getElementById('team-cat').value,season_id:document.getElementById('team-season').value});loadPageData('squadra')}
-async function saveAthlete(){const {data}=await client.from('athletes').insert({first_name:document.getElementById('ath-name').value,last_name:document.getElementById('ath-last').value,dob:document.getElementById('ath-dob').value,nickname:''}).select();await client.from('athlete_seasons').insert({athlete_id:data[0].id,category_id:document.getElementById('ath-cat').value,team_id:document.getElementById('ath-team').value,season_id:document.getElementById('ath-season').value,shirt_number:+document.getElementById('ath-number').value||null});loadPageData('atleta')}
-async function saveSession(){const type=document.getElementById('ses-type').value;const {data}=await client.from('sessions').insert({type,date:document.getElementById('ses-date').value,category_id:document.getElementById('ses-cat').value,team_id:document.getElementById('ses-team').value||null,season_id:document.getElementById('ses-season').value,created_by:USER.id}).select();if(type==='P'){await client.from('matches').insert({category_id:document.getElementById('ses-cat').value,date:document.getElementById('ses-date').value,opponent:document.getElementById('ses-opp').value||'Amichevole',season_id:document.getElementById('ses-season').value,created_by:USER.id,match_id:data[0].id})}loadPageData('sessioni')}
-async function saveRole(){await client.from('user_society_roles').insert({user_id:document.getElementById('role-user').value,role_id:document.getElementById('role-type').value,society_id:document.getElementById('role-soc').value,season_id:document.getElementById('role-season').value,category_id:document.getElementById('role-cat').value,team_id:document.getElementById('role-team').value||null});loadPageData('ruoli')}
-async function deleteRow(table,id,id2,id3){
-  if(table==='team_category_season'){await client.from(table).delete().eq('team_id',id).eq('category_id',id2).eq('season_id',id3)}
-  else if(table==='athlete_seasons'){await client.from(table).delete().eq('athlete_id',id).eq('category_id',id2).eq('season_id',id3)}
-  else {await client.from(table).delete().eq('id',id)}
-  loadPageData(document.querySelector('.page.active').id.replace('page-',''))
-}
-
-/* ===== DASHBOARD CATEGORIA ===== */
-async function openCategoryDashboard(catId,team}
-
-if((rows||[]).length===0){
-tbody.innerHTML='Nessuna squadra associata a una categoria nella stagione selezionata'
-}
-}
-
-/* ===== FILTRI A CASCATA ===== */
-document.getElementById('f-season').onchange=e=>{STATE.seasonId=e.target.value;refresh()}
-document.getElementById('f-society').onchange=async e=>{
-STATE.societyId=e.target.value
-STATE.categoryId=''; STATE.teamId=''
-const {data:cats}=await client.from('categories').select('id,name').eq('society_id',STATE.societyId)
-populate('f-category',cats,'id','name')
-const {data:teams}=await client.from('teams').select('id,name').eq('society_id',STATE.societyId)
-populate('f-team',teams,'id','name')
-refresh()
-}
-document.getElementById('f-category').onchange=async e=>{
-STATE.categoryId=e.target.value
-STATE.teamId=''
-const {data:tcs}=await client.from('team_category_season')
-.select('team_id,teams(id,name)')
-.eq('category_id',STATE.categoryId)
-.eq('season_id',STATE.seasonId)
-const teams = (tcs||[]).map(t=>t.teams).filter(Boolean)
-populate('f-team', teams, 'id', 'name')
-refresh()
-}
-document.getElementById('f-team').onchange=e=>{STATE.teamId=e.target.value;refresh()}
-
-/* ===== LOAD PAGE DATA ===== */
-async function loadPageData(page){
-const s=STATE.seasonId
-if(page==='societa'){
-const {data}=await client.from('societies')
-.select('id,name,city,email,sports(name),seasons(name)')
-.order('name')
-document.querySelector('#tbl-societa tbody').innerHTML=(data||[]).map(r=> <tr> <td>${r.name}</td> <td>${r.sports?.name||'—'}</td> <td>${r.city||'—'}</td> <td>${r.email||'—'}</td> <td>${r.seasons?.name||'—'}</td> <td class="actions"><button class="ghost" onclick="deleteRow('societies','${r.id}')">Elimina</button></td> </tr>).join('')
-}
-if(page==='categoria'){
-const {data}=await client.from('categories').select('id,name,societies(name),sports(name)')
-document.querySelector('#tbl-categoria tbody').innerHTML=(data||[]).map(r=> <tr><td>${r.name}</td><td>${r.societies?.name||'—'}</td><td>${r.sports?.name||'—'}</td> <td class="actions"><button class="ghost" onclick="deleteRow('categories','${r.id}')">Elimina</button></td></tr>).join('')
-}
-if(page==='squadra'){
-const {data}=await client.from('team_category_season')
-.select('team_id,category_id,season_id,teams(name,societies!teams_society_id_fkey(name)),categories(name),seasons(name)')
-document.querySelector('#tbl-squadra tbody').innerHTML=(data||[]).map(r=> <tr><td>${r.teams?.name}</td><td>${r.teams?.societies?.name||'—'}</td><td>${r.categories?.name}</td><td>${r.seasons?.name}</td> <td class="actions"><button class="ghost" onclick="deleteRow('team_category_season','${r.team_id}','${r.category_id}','${r.season_id}')">Elimina</button></td></tr>).join('')
-}
-if(page==='ruoli'){
-const {data}=await client.from('user_society_roles').select('id,user_id,role_id,society_id,category_id,team_id,season_id,users(name),roles(name),societies(name),categories(name),teams(name),seasons(name)')
-document.querySelector('#tbl-ruoli tbody').innerHTML=(data||[]).map(r=> <tr><td>${r.users?.name}</td><td>${r.roles?.name}</td><td>${r.societies?.name}</td><td>${r.categories?.name||'—'}</td><td>${r.teams?.name||'—'}</td><td>${r.seasons?.name}</td> <td class="actions"><button class="ghost" onclick="deleteRow('user_society_roles','${r.id}')">Elimina</button></td></tr>).join('')
-}
-if(page==='atleta'){
-const {data}=await client.from('athlete_seasons').select('athlete_id,category_id,team_id,season_id,shirt_number,athletes(first_name,last_name),categories(name),teams(name),seasons(name)')
-document.querySelector('#tbl-atleta tbody').innerHTML=(data||[]).map(r=> <tr><td>${r.athletes.first_name}</td><td>${r.athletes.last_name}</td><td>${r.categories?.name}</td><td>${r.teams?.name||'—'}</td><td>${r.seasons?.name}</td><td>${r.shirt_number||''}</td> <td class="actions"><button class="ghost" onclick="deleteRow('athlete_seasons','${r.athlete_id}','${r.category_id}','${r.season_id}')">Elimina</button></td></tr>).join('')
-}
-if(page==='sessioni'){
-const {data}=await client.from('sessions').select('id,type,date,category_id,team_id,season_id,categories(name),teams(name),matches(opponent)')
-document.querySelector('#tbl-sessioni tbody').innerHTML=(data||[]).map(r=> <tr><td>${r.date}</td><td>${r.type==='P'?'Partita':'Allenamento'}</td><td>${r.categories?.name}</td><td>${r.teams?.name||'—'}</td><td>${r.matches?.opponent||'—'}</td> <td class="actions"><button class="ghost" onclick="deleteRow('sessions','${r.id}')">Elimina</button></td></tr>).join('')
-}
-}
-
-/* ===== SAVE ===== */
-async function saveSociety(){
-await client.from('societies').insert({
-name: document.getElementById('soc-name').value,
-sport_id: document.getElementById('soc-sport').value,
-city: document.getElementById('soc-city').value,
-email: document.getElementById('soc-email').value,
-season_id: document.getElementById('soc-season').value
-})
-loadPageData('societa')
-document.getElementById('soc-name').value=''
-document.getElementById('soc-city').value=''
-document.getElementById('soc-email').value=''
-document.getElementById('soc-season').value=''
-}
-async function saveCategory(){await client.from('categories').insert({name:document.getElementById('cat-name').value,society_id:document.getElementById('cat-soc').value,sport_id:document.getElementById('cat-sport').value});loadPageData('categoria')}
-async function saveTeam(){const {data}=await client.from('teams').insert({name:document.getElementById('team-name').value,society_id:document.getElementById('team-soc').value}).select();await client.from('team_category_season').insert({team_id:data.id,category_id:document.getElementById('team-cat').value,season_id:document.getElementById('team-season').value});loadPageData('squadra')}
-async function saveAthlete(){const {data}=await client.from('athletes').insert({first_name:document.getElementById('ath-name').value,last_name:document.getElementById('ath-last').value,dob:document.getElementById('ath-dob').value,nickname:''}).select();await client.from('athlete_seasons').insert({athlete_id:data.id,category_id:document.getElementById('ath-cat').value,team_id:document.getElementById('ath-team').value,season_id:document.getElementById('ath-season').value,shirt_number:+document.getElementById('ath-number').value||null});loadPageData('atleta')}
-async function saveSession(){const type=document.getElementById('ses-type').value;const {data}=await client.from('sessions').insert({type,date:document.getElementById('ses-date').value,category_id:document.getElementById('ses-cat').value,team_id:document.getElementById('ses-team').value||null,season_id:document.getElementById('ses-season').value,created_by:USER.id}).select();if(type==='P'){await client.from('matches').insert({category_id:document.getElementById('ses-cat').value,date:document.getElementById('ses-date').value,opponent:document.getElementById('ses-opp').value||'Amichevole',season_id:document.getElementById('ses-season').value,created_by:USER.id,match_id:data.id})}loadPageData('sessioni')}
-async function saveRole(){await client.from('user_society_roles').insert({user_id:document.getElementById('role-user').value,role_id:document.getElementById('role-type').value,society_id:document.getElementById('role-soc').value,season_id:document.getElementById('role-season').value,category_id:document.getElementById('role-cat').value,team_id:document.getElementById('role-team').value||null});loadPageData('ruoli')}
-async function deleteRow(table,id,id2,id3){
-if(table==='team_category_season'){await client.from(table).delete().eq('team_id',id).eq('category_id',id2).eq('season_id',id3)}
-else if(table==='athlete_seasons'){await client.from(table).delete().eq('athlete_id',id).eq('category_id',id2).eq('season_id',id3)}
-else {await client.from(table).delete().eq('id',id)}
-loadPageData(document.querySelector('.page.active').id.replace('page-',''))
-}[0]
-
-/* ===== DASHBOARD CATEGORIA ===== */
-async function openCategoryDashboard(catId,teamId){
-STATE.categoryId = catId
-STATE.teamId = teamId
-showPage('sessioni')
-}
+</script>
+</body>
+</html>
