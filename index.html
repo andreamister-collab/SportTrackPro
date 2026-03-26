@@ -51,7 +51,6 @@
 .page{display:none}
 .page.active{display:block}
 .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -112,13 +111,87 @@
         </table>
       </section>
 
-      <!-- ALTRE PAGINE (identiche a prima) -->
-      <section id="page-societa" class="page"><h1>Società</h1><div class="toolbar"><input id="soc-name" placeholder="Nome società"><select id="soc-sport"></select><button onclick="saveSociety()">Salva</button></div><table id="tbl-societa"><thead><tr><th>Nome</th><th>Sport</th><th>Azioni</th></tr></thead><tbody></tbody></table></section>
-      <section id="page-categoria" class="page"><h1>Categoria</h1><div class="toolbar"><input id="cat-name" placeholder="Nome categoria"><select id="cat-soc"></select><select id="cat-sport"></select><button onclick="saveCategory()">Salva</button></div><table id="tbl-categoria"><thead><tr><th>Nome</th><th>Società</th><th>Sport</th><th>Azioni</th></tr></thead><tbody></tbody></table></section>
-      <section id="page-squadra" class="page"><h1>Squadra</h1><div class="toolbar"><input id="team-name" placeholder="Nome squadra"><select id="team-soc"></select><select id="team-cat"></select><select id="team-season"></select><button onclick="saveTeam()">Salva</button></div><table id="tbl-squadra"><thead><tr><th>Nome</th><th>Società</th><th>Categoria</th><th>Stagione</th><th>Azioni</th></tr></thead><tbody></tbody></table></section>
-      <section id="page-ruoli" class="page"><h1>Gestione Ruoli</h1><div class="toolbar"><select id="role-user"></select><select id="role-type"></select><select id="role-soc"></select><select id="role-cat"></select><select id="role-team"><option value="">Tutta la categoria</option></select><select id="role-season"></select><button onclick="saveRole()">Assegna</button></div><table id="tbl-ruoli"><thead><tr><th>Utente</th><th>Ruolo</th><th>Società</th><th>Categoria</th><th>Squadra</th><th>Stagione</th><th>Azioni</th></tr></thead><tbody></tbody></table></section>
-      <section id="page-atleta" class="page"><h1>Atleta</h1><div class="toolbar"><input id="ath-name" placeholder="Nome"><input id="ath-last" placeholder="Cognome"><input id="ath-dob" type="date"><input id="ath-number" type="number" placeholder="Numero maglia"><select id="ath-cat"></select><select id="ath-team"></select><select id="ath-season"></select><button onclick="saveAthlete()">Salva</button></div><table id="tbl-atleta"><thead><tr><th>Nome</th><th>Cognome</th><th>Categoria</th><th>Squadra</th><th>Stagione</th><th>N°</th><th>Azioni</th></tr></thead><tbody></tbody></table></section>
-      <section id="page-sessioni" class="page"><h1>Sessioni / Partite</h1><div class="toolbar"><select id="ses-type"><option value="A">Allenamento</option><option value="P">Partita</option></select><input id="ses-date" type="date"><select id="ses-cat"></select><select id="ses-team"><option value="">Tutta la categoria</option></select><select id="ses-season"></select><input id="ses-opp" placeholder="Avversario (solo partita)"><button onclick="saveSession()">Salva</button></div><table id="tbl-sessioni"><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Squadra</th><th>Avversario</th><th>Azioni</th></tr></thead><tbody></tbody></table></section>
+      <!-- SOCIETA -->
+      <section id="page-societa" class="page">
+        <h1>Società</h1>
+        <div class="toolbar">
+          <input id="soc-name" placeholder="Nome società">
+          <select id="soc-sport"></select>
+          <button onclick="saveSociety()">Salva</button>
+        </div>
+        <table id="tbl-societa"><thead><tr><th>Nome</th><th>Sport</th><th>Azioni</th></tr></thead><tbody></tbody></table>
+      </section>
+
+      <!-- CATEGORIA -->
+      <section id="page-categoria" class="page">
+        <h1>Categoria</h1>
+        <div class="toolbar">
+          <input id="cat-name" placeholder="Nome categoria">
+          <select id="cat-soc"></select>
+          <select id="cat-sport"></select>
+          <button onclick="saveCategory()">Salva</button>
+        </div>
+        <table id="tbl-categoria"><thead><tr><th>Nome</th><th>Società</th><th>Sport</th><th>Azioni</th></tr></thead><tbody></tbody></table>
+      </section>
+
+      <!-- SQUADRA -->
+      <section id="page-squadra" class="page">
+        <h1>Squadra</h1>
+        <div class="toolbar">
+          <input id="team-name" placeholder="Nome squadra">
+          <select id="team-soc"></select>
+          <select id="team-cat"></select>
+          <select id="team-season"></select>
+          <button onclick="saveTeam()">Salva</button>
+        </div>
+        <table id="tbl-squadra"><thead><tr><th>Nome</th><th>Società</th><th>Categoria</th><th>Stagione</th><th>Azioni</th></tr></thead><tbody></tbody></table>
+      </section>
+
+      <!-- RUOLI -->
+      <section id="page-ruoli" class="page">
+        <h1>Gestione Ruoli</h1>
+        <div class="toolbar">
+          <select id="role-user"></select>
+          <select id="role-type"></select>
+          <select id="role-soc"></select>
+          <select id="role-cat"></select>
+          <select id="role-team"><option value="">Tutta la categoria</option></select>
+          <select id="role-season"></select>
+          <button onclick="saveRole()">Assegna</button>
+        </div>
+        <table id="tbl-ruoli"><thead><tr><th>Utente</th><th>Ruolo</th><th>Società</th><th>Categoria</th><th>Squadra</th><th>Stagione</th><th>Azioni</th></tr></thead><tbody></tbody></table>
+      </section>
+
+      <!-- ATLETA -->
+      <section id="page-atleta" class="page">
+        <h1>Atleta</h1>
+        <div class="toolbar">
+          <input id="ath-name" placeholder="Nome">
+          <input id="ath-last" placeholder="Cognome">
+          <input id="ath-dob" type="date">
+          <input id="ath-number" type="number" placeholder="Numero maglia">
+          <select id="ath-cat"></select>
+          <select id="ath-team"></select>
+          <select id="ath-season"></select>
+          <button onclick="saveAthlete()">Salva</button>
+        </div>
+        <table id="tbl-atleta"><thead><tr><th>Nome</th><th>Cognome</th><th>Categoria</th><th>Squadra</th><th>Stagione</th><th>N°</th><th>Azioni</th></tr></thead><tbody></tbody></table>
+      </section>
+
+      <!-- SESSIONI -->
+      <section id="page-sessioni" class="page">
+        <h1>Sessioni / Partite</h1>
+        <div class="toolbar">
+          <select id="ses-type"><option value="A">Allenamento</option><option value="P">Partita</option></select>
+          <input id="ses-date" type="date">
+          <select id="ses-cat"></select>
+          <select id="ses-team"><option value="">Tutta la categoria</option></select>
+          <select id="ses-season"></select>
+          <input id="ses-opp" placeholder="Avversario (solo partita)">
+          <button onclick="saveSession()">Salva</button>
+        </div>
+        <table id="tbl-sessioni"><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Squadra</th><th>Avversario</th><th>Azioni</th></tr></thead><tbody></tbody></table>
+      </section>
 
     </div>
   </div>
@@ -169,7 +242,18 @@ async function initApp(){
   const {data:roles} = await client.from('roles').select('id,name')
   (roles||[]).forEach(r=> ROLE_IDS[r.name]=r.id)
 
-  const {data:seasons} = await client.from('seasons').select('*').order('start_date',{ascending:false})
+  // 1) STAGIONE ATTIVA → altrimenti ultima
+  let {data:seasons} = await client.from('seasons')
+   .select('id,name,start_date,active')
+   .eq('active', true)
+   .order('start_date',{ascending:false})
+
+  if(!seasons || seasons.length===0){
+    const {data:allSeasons} = await client.from('seasons')
+     .select('id,name,start_date,active')
+     .order('start_date',{ascending:false})
+    seasons = allSeasons
+  }
   STATE.seasonId = seasons?.[0]?.id || ''
   populate('f-season', seasons, 'id', 'name')
   ['team-season','role-season','ath-season','ses-season'].forEach(id=>populate(id,seasons,'id','name'))
@@ -218,11 +302,11 @@ async function refresh(){
   const {count:utenti}=await client.from('users').select('id',{count:'exact',head:true})
 
   const {count:responsabili}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
- .eq('season_id',s).eq('role_id',ROLE_IDS['responsabile']||'')
+.eq('season_id',s).eq('role_id',ROLE_IDS['responsabile']||'')
   const {count:allenatori}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
- .eq('season_id',s).eq('role_id',ROLE_IDS['allenatore']||'')
+.eq('season_id',s).eq('role_id',ROLE_IDS['allenatore']||'')
   const {count:prof}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
- .eq('season_id',s).eq('role_id',ROLE_IDS['professionista']||'')
+.eq('season_id',s).eq('role_id',ROLE_IDS['professionista']||'')
 
   const {data:att} = await client.from('attendances').select('status')
   const pres=att?.filter(a=>a.status==='P').length||0
@@ -244,15 +328,14 @@ async function refresh(){
 
   /* ---- TABELLA: PARTIAMO DA team_category_season ---- */
   let q = client.from('team_category_season')
-   .select('team_id,category_id,season_id,teams(id,name,societies(id,name,sports(name))),categories(id,name)')
-   .eq('season_id', s)
+  .select('team_id,category_id,season_id,teams(id,name,societies(id,name,sports(name))),categories(id,name)')
+  .eq('season_id', s)
 
   if(STATE.societyId) q = q.eq('teams.society_id', STATE.societyId)
   if(STATE.categoryId) q = q.eq('category_id', STATE.categoryId)
   if(STATE.teamId) q = q.eq('team_id', STATE.teamId)
 
-  const {data,error} = await q
-  const rows = data || []
+  const {data:rows,error} = await q
   const tbody=document.querySelector('#tbl tbody')
   tbody.innerHTML=''
 
@@ -262,20 +345,20 @@ async function refresh(){
     return
   }
 
-  for(const r of rows){
+  for(const r of rows||[]){
     const c = r.categories
     const t = r.teams
     const soc = t?.societies
     const sportName = soc?.sports?.name || '—'
 
     const {count:sessCnt}=await client.from('sessions').select('id',{count:'exact',head:true})
-     .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+    .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const {count:athCnt}=await client.from('athlete_seasons').select('id',{count:'exact',head:true})
-     .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+    .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const {data:sidData}=await client.from('sessions').select('id')
-     .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+    .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
     const sessionIds = sidData?.map(x=>x.id) || []
     let presPct=0
     if(sessionIds.length){
@@ -284,12 +367,12 @@ async function refresh(){
     }
 
     const {data:staffData}=await client.from('role_category_team')
-     .select('users(name)')
-     .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+    .select('users(name)')
+    .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const staff = staffData || []
     const staffHtml = staff.length
-     ? staff.map(s=>`<span class="badge staff">${s.users.name}</span>`).join('')
+    ? staff.map(s=>`<span class="badge staff">${s.users.name}</span>`).join('')
       : '<span class="badge bad">Nessuno</span>'
 
     const presClass = presPct>=80?'ok':presPct>=50?'warn':'bad'
@@ -310,7 +393,7 @@ async function refresh(){
       </tr>`
   }
 
-  if(rows.length===0){
+  if((rows||[]).length===0){
     tbody.innerHTML='<tr><td colspan="9">Nessuna squadra associata a una categoria nella stagione selezionata</td></tr>'
   }
 }
@@ -330,9 +413,9 @@ document.getElementById('f-category').onchange=async e=>{
   STATE.categoryId=e.target.value
   STATE.teamId=''
   const {data:tcs}=await client.from('team_category_season')
-   .select('team_id,teams(id,name)')
-   .eq('category_id',STATE.categoryId)
-   .eq('season_id',STATE.seasonId)
+  .select('team_id,teams(id,name)')
+  .eq('category_id',STATE.categoryId)
+  .eq('season_id',STATE.seasonId)
   const teams = (tcs||[]).map(t=>t.teams).filter(Boolean)
   populate('f-team', teams, 'id', 'name')
   refresh()
