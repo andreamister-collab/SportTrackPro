@@ -36,7 +36,7 @@
  .card.val{margin:6px 0 0;font-size:32px;font-weight:800}
  .card.sub{margin:2px 0 0;font-size:13px;color:var(--muted)}
  .filters{display:flex;gap:12px;margin:16px 0;flex-wrap:wrap}
-  select{padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px}
+  select{padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}
   table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
   th,td{padding:12px 14px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
   th{background:#f9fafb;font-size:13px;color:var(--muted)}
@@ -46,6 +46,7 @@
  .badge.bad{background:#fee2e2;color:#991b1b}
  .badge.staff{background:#dbeafe;color:#1e40af}
  .actions button{margin-right:6px;background:#f3f4f6;color:#111;border:1px solid var(--border);padding:6px 10px;border-radius:8px;cursor:pointer}
+ .actions button:hover{background:#e5e7eb}
 </style>
 </head>
 <body>
@@ -56,6 +57,7 @@
 
 <div class="main">
   <div class="container">
+    <!-- LOGIN -->
     <div id="auth-section">
       <h2>Accedi</h2>
       <form onsubmit="login(event)">
@@ -65,6 +67,7 @@
       </form>
     </div>
 
+    <!-- DASHBOARD -->
     <div id="app" style="display:none">
       <h1>Dashboard Amministratore</h1>
 
@@ -99,6 +102,7 @@
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
 let USER=null, STATE={seasonId:'',societyId:'',categoryId:'',teamId:''}, ROLE_IDS={}
 
+/* ===== LOGIN ===== */
 async function login(e){
   e.preventDefault()
   const username = document.getElementById('username').value.trim()
@@ -111,13 +115,16 @@ async function login(e){
   initApp()
 }
 
+/* ===== INIT ===== */
 async function initApp(){
   document.getElementById('auth-section').style.display='none'
   document.getElementById('app').style.display='block'
 
+  // Mappa ruoli → id
   const {data:rolesData} = await client.from('roles').select('id,name')
   if(rolesData) rolesData.forEach(r=> ROLE_IDS[r.name]=r.id)
 
+  // Stagione attiva (se nessuna → ultima)
   let {data:seasons} = await client.from('seasons')
   .select('id,name,start_date,active')
   .eq('active', true)
@@ -143,16 +150,18 @@ async function initApp(){
 
   await refresh()
 }
-
 function populate(id,data,val,label){
   const sel=document.getElementById(id)
   if(!sel) return
   sel.innerHTML='<option value="">Tutte</option>'+(data||[]).map(d=>`<option value="${d[val]}">${typeof label==='function'?label(d):d[label]}</option>`).join('')
 }
 
+/* ===== REFRESH DASHBOARD ===== */
 async function refresh(){
   const s=STATE.seasonId
+  if(!s) return
 
+  // CARD STATISTICHE
   const {count:atleti}=await client.from('athlete_seasons').select('id',{count:'exact',head:true}).eq('season_id',s)
   const {count:societa}=await client.from('societies').select('id',{count:'exact',head:true})
   const {count:categorie}=await client.from('categories').select('id',{count:'exact',head:true})
@@ -184,7 +193,7 @@ async function refresh(){
   document.getElementById('c-allenatori').textContent=allenatori||0
   document.getElementById('c-prof').textContent=prof||0
 
-  /* ---- QUERY CORRETTA ---- */
+  /* ---- TABELLA (teams.society_id esiste) ---- */
   let q = client.from('team_category_season')
   .select('team_id,category_id,season_id,teams(id,name,societies(id,name,sports(name))),categories(id,name)')
   .eq('season_id', s)
@@ -254,6 +263,7 @@ async function refresh(){
   }
 }
 
+/* ===== FILTRI A CASCATA ===== */
 document.getElementById('f-season').onchange=e=>{STATE.seasonId=e.target.value;refresh()}
 document.getElementById('f-society').onchange=async e=>{
   STATE.societyId=e.target.value
