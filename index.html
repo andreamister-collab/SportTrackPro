@@ -12,12 +12,12 @@
 <style>
   :root{--bg:#f6f8fa;--card:#fff;--border:#e2e8f0;--accent:#2563eb;--muted:#64748b;--green:#16a34a;--red:#dc2626;--gold:#d97706}
   body{font-family:system-ui,Arial;margin:0;background:var(--bg);color:#111}
- .container{max-width:1300px;margin:20px auto;padding:0 16px}
- .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
- .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
- .card h3{margin:0;font-size:13px;color:var(--muted);letter-spacing:.5px}
- .card p{margin:8px 0 0;font-size:28px;font-weight:700}
- .filters{display:flex;gap:12px;margin:16px 0;flex-wrap:wrap}
+.container{max-width:1300px;margin:20px auto;padding:0 16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card h3{margin:0;font-size:13px;color:var(--muted);letter-spacing:.5px}
+.card p{margin:8px 0 0;font-size:28px;font-weight:700}
+.filters{display:flex;gap:12px;margin:16px 0;flex-wrap:wrap}
   select,button,input{padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px}
   button{background:var(--accent);color:#fff;border:none;cursor:pointer}
   button.ghost{background:#e2e8f0;color:#111}
@@ -26,17 +26,17 @@
   table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
   th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
   th{background:#f1f5f9;font-size:13px}
- .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000}
- .modal.box{background:#fff;padding:20px;border-radius:12px;width:95%;max-width:800px;max-height:90vh;overflow:auto}
- .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
- .athlete-row{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
- .badge{padding:4px 8px;border-radius:6px;font-size:12px;color:#fff}
- .badge.green{background:var(--green)}
- .badge.red{background:var(--red)}
- .badge.gold{background:var(--gold)}
- .tabs{display:flex;gap:8px;margin-bottom:12px}
- .tabs button{background:#e2e8f0;color:#111}
- .tabs button.active{background:var(--accent);color:#fff}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal.box{background:#fff;padding:20px;border-radius:12px;width:95%;max-width:800px;max-height:90vh;overflow:auto}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.athlete-row{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+.badge{padding:4px 8px;border-radius:6px;font-size:12px;color:#fff}
+.badge.green{background:var(--green)}
+.badge.red{background:var(--red)}
+.badge.gold{background:var(--gold)}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tabs button{background:#e2e8f0;color:#111}
+.tabs button.active{background:var(--accent);color:#fff}
 </style>
 </head>
 <body>
@@ -68,8 +68,10 @@
       <div class="card"><h3>DIRIGENTI</h3><p id="c-dirigenti">0</p></div>
     </section>
 
+    <!-- FILTRI (ORA SONO 4, NELL'ORDINE DELL'IMMAGINE) -->
     <div class="filters">
       <select id="f-society"><option value="">Tutte le società</option></select>
+      <select id="f-category"><option value="">Tutte le categorie</option></select>
       <select id="f-team"><option value="">Tutte le squadre</option></select>
       <select id="f-season"></select>
       <button onclick="openModal('societa')">+ Società</button>
@@ -95,7 +97,7 @@
 <script>
 /* ===== CLIENT ===== */
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
-let USER=null, STATE={seasonId:'',societyId:'',teamId:'', categoryId:''}
+let USER=null, STATE={seasonId:'',societyId:'',categoryId:'',teamId:''}
 
 /* ===== AUTH ===== */
 async function login(e){
@@ -133,8 +135,11 @@ function populate(id,data,val,label){
   const sel=document.getElementById(id)
   sel.innerHTML='<option value="">Tutte</option>'+data.map(d=>`<option value="${d[val]}">${typeof label==='function'?label(d):d[label]}</option>`).join('')
 }
+
+/* ===== REFRESH CARD + TABELLA ===== */
 async function refresh(){
   const s=STATE.seasonId
+
   const {count:atleti}=await client.from('athlete_seasons').select('id',{count:'exact',head:true}).eq('season_id',s)
   const {count:societa}=await client.from('societies').select('id',{count:'exact',head:true})
   const {count:categorie}=await client.from('categories').select('id',{count:'exact',head:true})
@@ -158,8 +163,10 @@ async function refresh(){
   let q=client.from('v_category_overview').select('*')
   if(STATE.seasonId) q=q.eq('season_id',STATE.seasonId)
   if(STATE.societyId) q=q.eq('society_id',STATE.societyId)
+  if(STATE.categoryId) q=q.eq('category_id',STATE.categoryId)
   if(STATE.teamId) q=q.eq('team_id',STATE.teamId)
   const {data}=await q
+
   const tbody=document.querySelector('#tbl tbody')
   tbody.innerHTML=data.map(r=>`
     <tr>
@@ -167,6 +174,7 @@ async function refresh(){
       <td>${r.atleti}</td><td>${r.sessioni}</td><td>${r.resp}</td><td>${r.allenatori}</td><td>${r.dirigenti}</td><td>${r.prof}</td>
       <td><button onclick="openCategoryDashboard('${r.category_id}','${r.team_id}')">Gestisci</button></td>
     </tr>`).join('')
+
   document.getElementById('tot-row').textContent=data.length
   document.getElementById('tot-atleti').textContent=data.reduce((a,b)=>a+b.atleti,0)
   document.getElementById('tot-sessioni').textContent=data.reduce((a,b)=>a+b.sessioni,0)
@@ -175,14 +183,39 @@ async function refresh(){
   document.getElementById('tot-dirigenti').textContent=data.reduce((a,b)=>a+b.dirigenti,0)
   document.getElementById('tot-prof').textContent=data.reduce((a,b)=>a+b.prof,0)
 }
+
+/* ===== FILTRI A CASCATA ===== */
 document.getElementById('f-season').onchange=e=>{STATE.seasonId=e.target.value;refresh()}
+
 document.getElementById('f-society').onchange=async e=>{
   STATE.societyId=e.target.value
+  STATE.categoryId=''
   STATE.teamId=''
-  const {data:teams}=await client.from('teams').select('id,name').eq('society_id',STATE.societyId)
-  populate('f-team',teams,'id','name')
+  // carica categorie della società scelta
+  const {data:cats}=await client.from('categories').select('id,name').eq('society_id',STATE.societyId)
+  populate('f-category',cats,'id','name')
+  // reset squadre
+  document.getElementById('f-team').innerHTML='<option value="">Tutte le squadre</option>'
   refresh()
 }
+
+document.getElementById('f-category').onchange=async e=>{
+  STATE.categoryId=e.target.value
+  STATE.teamId=''
+  // carica squadre della categoria scelta
+  const {data:teams}=await client.from('teams')
+   .select('id,name')
+   .eq('society_id',STATE.societyId)
+  // filtra squadre legate alla categoria nella stagione
+  const {data:tcs}=await client.from('team_category_season')
+   .select('team_id')
+   .eq('category_id',STATE.categoryId)
+   .eq('season_id',STATE.seasonId)
+  const teamIds=tcs.map(t=>t.team_id)
+  populate('f-team', teams.filter(t=>teamIds.includes(t.id)), 'id', 'name')
+  refresh()
+}
+
 document.getElementById('f-team').onchange=e=>{STATE.teamId=e.target.value;refresh()}
 
 /* ===== MODAL CREAZIONE ===== */
@@ -229,7 +262,7 @@ async function saveAthlete(){const {data}=await client.from('athletes').insert({
 async function saveSession(){const type=document.getElementById('ses-type').value;const {data}=await client.from('sessions').insert({type,date:document.getElementById('ses-date').value,category_id:document.getElementById('ses-cat').value,season_id:STATE.seasonId,created_by:USER.id}).select();if(type==='P'){await client.from('matches').insert({category_id:document.getElementById('ses-cat').value,date:document.getElementById('ses-date').value,opponent:document.getElementById('ses-opp').value||'Amichevole',season_id:STATE.seasonId,created_by:USER.id,match_id:data[0].id})}closeModal();refresh()}
 async function saveRole(){await client.from('user_society_roles').insert({user_id:document.getElementById('role-user').value,role_id:document.getElementById('role-type').value,society_id:document.getElementById('role-soc').value,season_id:STATE.seasonId});if(document.getElementById('role-team').value){await client.from('role_category_team').insert({user_id:document.getElementById('role-user').value,role_id:document.getElementById('role-type').value,society_id:document.getElementById('role-soc').value,season_id:STATE.seasonId,category_id:document.getElementById('role-cat').value,team_id:document.getElementById('role-team').value})}closeModal();refresh()}
 
-/* ===== DASHBOARD CATEGORIA (PRESENZE / MARCATORI / CARTELLINI) ===== */
+/* ===== DASHBOARD CATEGORIA ===== */
 async function openCategoryDashboard(catId,teamId){
   STATE.categoryId = catId
   STATE.teamId = teamId
@@ -255,7 +288,6 @@ async function openCategoryDashboard(catId,teamId){
     <div id="panel-amic" style="display:none"></div>
   `
   document.getElementById('modal').style.display='flex'
-
   renderSessions(sessions, athletes)
   renderPresences(sessions, athletes)
   renderScorers(sessions, athletes)
@@ -268,8 +300,6 @@ function showTab(name){
     document.getElementById('tab-'+t).classList.toggle('active', t===name)
   })
 }
-
-/* SESSIONI */
 function renderSessions(sessions, athletes){
   const el=document.getElementById('panel-sess')
   el.innerHTML = sessions.map(s=>`
@@ -280,8 +310,6 @@ function renderSessions(sessions, athletes){
       <button class="ghost" onclick="openPresence('${s.id}')">Presenze</button>
     </div>`).join('') || '<p>Nessuna sessione</p>'
 }
-
-/* PRESENZE */
 async function openPresence(sessionId){
   const {data:athletes} = await client.from('athlete_seasons').select('*,athletes(*)').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
   const {data:pres} = await client.from('attendances').select('athlete_id,status').eq('session_id',sessionId)
@@ -308,8 +336,6 @@ async function savePresences(sessionId){
   refresh()
 }
 function renderPresences(sessions, athletes){}
-
-/* MARCATORI */
 async function renderScorers(sessions, athletes){
   const matches = sessions.filter(s=>s.type==='P' && s.matches)
   document.getElementById('panel-gol').innerHTML = matches.map(m=>`
@@ -320,7 +346,7 @@ async function renderScorers(sessions, athletes){
 }
 async function openScorers(matchId){
   const {data:athletes} = await client.from('athlete_seasons').select('*,athletes(*)').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
-  const {data:scorers} = await client.from('scorers').select('athlete_id,goals').eq('match_id',matchId)
+  const {data:scorers} = await client.from('scorers').select('athlete_id,goals').eq('matchId',matchId)
   const map = Object.fromEntries(scorers.map(s=>[s.athlete_id,s.goals]))
   document.getElementById('panel-gol').innerHTML = `
     <h4>Marcatori</h4>
@@ -336,13 +362,11 @@ async function saveScorers(matchId){
   const {data:athletes} = await client.from('athlete_seasons').select('athlete_id').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
   await client.from('scorers').delete().eq('match_id',matchId)
   const rows = athletes.filter(a=>+document.getElementById('gol-'+a.athlete_id).value>0)
-                     .map(a=>({match_id:matchId,athlete_id:a.athlete_id,goals:+document.getElementById('gol-'+a.athlete_id).value}))
+                    .map(a=>({match_id:matchId,athlete_id:a.athlete_id,goals:+document.getElementById('gol-'+a.athlete_id).value}))
   if(rows.length) await client.from('scorers').insert(rows)
   alert('Marcatori salvati')
   refresh()
 }
-
-/* CARTELLINI */
 async function renderCards(sessions, athletes){
   const matches = sessions.filter(s=>s.type==='P' && s.matches)
   document.getElementById('panel-card').innerHTML = matches.map(m=>`
@@ -354,43 +378,4 @@ async function renderCards(sessions, athletes){
 async function openCards(matchId){
   const {data:athletes} = await client.from('athlete_seasons').select('*,athletes(*)').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
   const {data:cards} = await client.from('match_cards').select('athlete_id,type,minute').eq('match_id',matchId)
-  document.getElementById('panel-card').innerHTML = `
-    <h4>Cartellini</h4>
-    ${athletes.map(a=>`
-      <div class="athlete-row">
-        <span>${a.athletes.first_name} ${a.athletes.last_name}</span>
-        <select id="card-type-${a.athlete_id}">
-          <option value="">Nessuno</option>
-          <option value="yellow" ${cards.find(c=>c.athlete_id===a.athlete_id&&c.type==='yellow')?'selected':''}>Giallo</option>
-          <option value="red" ${cards.find(c=>c.athlete_id===a.athlete_id&&c.type==='red')?'selected':''}>Rosso</option>
-        </select>
-        <input id="card-min-${a.athlete_id}" type="number" min="1" max="120" placeholder="Minuto" value="${cards.find(c=>c.athlete_id===a.athlete_id)?.minute||''}" style="width:80px">
-      </div>`).join('')}
-    <button class="success" onclick="saveCards('${matchId}')">Salva Cartellini</button>`
-  showTab('card')
-}
-async function saveCards(matchId){
-  const {data:athletes} = await client.from('athlete_seasons').select('athlete_id').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
-  await client.from('match_cards').delete().eq('match_id',matchId)
-  const rows = []
-  athletes.forEach(a=>{
-    const type=document.getElementById('card-type-'+a.athlete_id).value
-    const minute=document.getElementById('card-min-'+a.athlete_id).value
-    if(type && minute) rows.push({match_id:matchId,athlete_id:a.athlete_id,type,minute:+minute})
-  })
-  if(rows.length) await client.from('match_cards').insert(rows)
-  alert('Cartellini salvati')
-  refresh()
-}
-
-/* AMICHEVOLI */
-function renderFriendly(sessions){
-  const friendly = sessions.filter(s=>s.type==='P' && s.matches && s.matches.opponent.toLowerCase().includes('amichevole'))
-  document.getElementById('panel-amic').innerHTML = friendly.map(m=>`
-    <div class="athlete-row">
-      <span>${m.date} vs ${m.matches.opponent} (${m.matches.scored}-${m.matches.conceded})</span>
-    </div>`).join('') || '<p>Nessuna amichevole</p>'
-}
-</script>
-</body>
-</html>
+  document.get
