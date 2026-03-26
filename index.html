@@ -57,7 +57,6 @@
 
 <div class="main">
   <div class="container">
-    <!-- LOGIN -->
     <div id="auth-section">
       <h2>Accedi</h2>
       <form onsubmit="login(event)">
@@ -67,7 +66,6 @@
       </form>
     </div>
 
-    <!-- DASHBOARD -->
     <div id="app" style="display:none">
       <h1>Dashboard Amministratore</h1>
 
@@ -124,14 +122,14 @@ async function initApp(){
   if(rolesData) rolesData.forEach(r=> ROLE_IDS[r.name]=r.id)
 
   let {data:seasons} = await client.from('seasons')
-  .select('id,name,start_date,active')
-  .eq('active', true)
-  .order('start_date',{ascending:false})
+ .select('id,name,start_date,active')
+ .eq('active', true)
+ .order('start_date',{ascending:false})
 
   if(!seasons || seasons.length===0){
     const {data:allSeasons} = await client.from('seasons')
-    .select('id,name,start_date,active')
-    .order('start_date',{ascending:false})
+   .select('id,name,start_date,active')
+   .order('start_date',{ascending:false})
     seasons = allSeasons
   }
   STATE.seasonId = seasons?.[0]?.id || ''
@@ -160,6 +158,7 @@ async function refresh(){
   const s=STATE.seasonId
   if(!s) return
 
+  // CARD STATISTICHE
   const {count:atleti}=await client.from('athlete_seasons').select('id',{count:'exact',head:true}).eq('season_id',s)
   const {count:societa}=await client.from('societies').select('id',{count:'exact',head:true})
   const {count:categorie}=await client.from('categories').select('id',{count:'exact',head:true})
@@ -167,11 +166,11 @@ async function refresh(){
   const {count:utenti}=await client.from('users').select('id',{count:'exact',head:true})
 
   const {count:responsabili}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
-  .eq('season_id',s).eq('role_id',ROLE_IDS['responsabile']||'')
+ .eq('season_id',s).eq('role_id',ROLE_IDS['responsabile']||'')
   const {count:allenatori}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
-  .eq('season_id',s).eq('role_id',ROLE_IDS['allenatore']||'')
+ .eq('season_id',s).eq('role_id',ROLE_IDS['allenatore']||'')
   const {count:prof}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
-  .eq('season_id',s).eq('role_id',ROLE_IDS['professionista']||'')
+ .eq('season_id',s).eq('role_id',ROLE_IDS['professionista']||'')
 
   const {data:att} = await client.from('attendances').select('status')
   const pres=att?.filter(a=>a.status==='P').length||0
@@ -191,16 +190,10 @@ async function refresh(){
   document.getElementById('c-allenatori').textContent=allenatori||0
   document.getElementById('c-prof').textContent=prof||0
 
-  /* ---- TABELLA ---- */
+  /* ---- TABELLA (senza join a 3 livelli) ---- */
   let q = client.from('team_category_season')
-  .select(`
-      team_id,
-      category_id,
-      season_id,
-      teams(id,name,societies(id,name,sports(name))),
-      categories(id,name)
-    `)
-  .eq('season_id', s)
+ .select('team_id,category_id,season_id,teams(id,name),categories(id,name)')
+ .eq('season_id', s)
 
   if(STATE.societyId) q = q.eq('teams.society_id', STATE.societyId)
   if(STATE.categoryId) q = q.eq('category_id', STATE.categoryId)
@@ -219,17 +212,26 @@ async function refresh(){
   for(const r of rows||[]){
     const c = r.categories
     const t = r.teams
-    const soc = t?.societies
-    const sportName = soc?.sports?.name || '—'
+
+    // 1) Recupero società + sport della squadra
+    let soc = null, sportName='—'
+    if(t?.id){
+      const {data:socData} = await client.from('teams')
+       .select('societies(id,name,sports(name))')
+       .eq('id', t.id)
+       .single()
+      soc = socData?.societies
+      sportName = soc?.sports?.name || '—'
+    }
 
     const {count:sessCnt}=await client.from('sessions').select('id',{count:'exact',head:true})
-    .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+   .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const {count:athCnt}=await client.from('athlete_seasons').select('id',{count:'exact',head:true})
-    .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+   .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
 
     const {data:sidData}=await client.from('sessions').select('id')
-    .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
+   .eq('category_id',c.id).eq('team_id',t.id).eq('season_id',s)
     const sessionIds = sidData?.map(x=>x.id) || []
     let presPct=0
     if(sessionIds.length){
@@ -237,15 +239,16 @@ async function refresh(){
       presPct=attRows?.length?Math.round(attRows.filter(a=>a.status==='P').length/attRows.length*100):0
     }
 
+    // 2) STAFF ASSEGNATO → da user_category_seasons
     const {data:staffData}=await client.from('user_category_seasons')
-    .select('users(name),role')
-    .eq('category_id',c.id)
-    .eq('season_id',s)
-    .eq('team_id',t.id)
+   .select('users(name),role')
+   .eq('category_id',c.id)
+   .eq('season_id',s)
+   .eq('team_id',t.id)
 
     const staff = staffData || []
     const staffHtml = staff.length
-    ? staff.map(s=>`<span class="badge staff">${s.users.name} (${s.role})</span>`).join('')
+   ? staff.map(s=>`<span class="badge staff">${s.users.name} (${s.role})</span>`).join('')
       : '<span class="badge bad">Nessuno</span>'
 
     const presClass = presPct>=80?'ok':presPct>=50?'warn':'bad'
@@ -270,7 +273,6 @@ async function refresh(){
 }
 
 /* ===== FILTRI A CASCATA ===== */
-document.getElementById('f-season').onchange=e=>{STATE.seasonId=e.target.value;refresh()}
 document.getElementById('f-society').onchange=async e=>{
   STATE.societyId=e.target.value
   STATE.categoryId=''; STATE.teamId=''
@@ -284,14 +286,15 @@ document.getElementById('f-category').onchange=async e=>{
   STATE.categoryId=e.target.value
   STATE.teamId=''
   const {data:tcs}=await client.from('team_category_season')
-  .select('team_id,teams(id,name)')
-  .eq('category_id',STATE.categoryId)
-  .eq('season_id',STATE.seasonId)
+ .select('team_id,teams(id,name)')
+ .eq('category_id',STATE.categoryId)
+ .eq('season_id',STATE.seasonId)
   const teams = (tcs||[]).map(t=>t.teams).filter(Boolean)
   populate('f-team', teams, 'id', 'name')
   refresh()
 }
 document.getElementById('f-team').onchange=e=>{STATE.teamId=e.target.value;refresh()}
+document.getElementById('f-season').onchange=e=>{STATE.seasonId=e.target.value;refresh()}
 </script>
 </body>
 </html>
