@@ -159,11 +159,11 @@ async function refresh(){
   const {count:utenti}=await client.from('users').select('id',{count:'exact',head:true})
 
   const {count:responsabili}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
-  .eq('season_id',s).eq('role_id',ROLE_IDS['responsabile']||'')
+ .eq('season_id',s).eq('role_id',ROLE_IDS['responsabile']||'')
   const {count:allenatori}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
-  .eq('season_id',s).eq('role_id',ROLE_IDS['allenatore']||'')
+ .eq('season_id',s).eq('role_id',ROLE_IDS['allenatore']||'')
   const {count:prof}=await client.from('user_society_roles').select('id',{count:'exact',head:true})
-  .eq('season_id',s).eq('role_id',ROLE_IDS['professionista']||'')
+ .eq('season_id',s).eq('role_id',ROLE_IDS['professionista']||'')
 
   const {data:att} = await client.from('attendances').select('status')
   const pres=att?.filter(a=>a.status==='P').length||0
@@ -183,13 +183,13 @@ async function refresh(){
   document.getElementById('c-allenatori').textContent=allenatori||0
   document.getElementById('c-prof').textContent=prof||0
 
-  /* ---- TABELLA (NO VIEW) ---- */
+  /* ---- TABELLA ---- */
   let q = client.from('categories').select('id,name,society_id,sports(name)')
   if(STATE.societyId) q=q.eq('society_id',STATE.societyId)
   if(STATE.categoryId) q=q.eq('id',STATE.categoryId)
 
   const {data,error} = await q
-  const cats = data || [] // <-- PROTEZIONE
+  const cats = data || []
   const tbody=document.querySelector('#tbl tbody')
   tbody.innerHTML=''
 
@@ -200,20 +200,22 @@ async function refresh(){
   }
 
   for(const c of cats){
-    let teamsQuery = client.from('teams').select('id,name').eq('society_id',c.society_id)
-    if(STATE.teamId) teamsQuery=teamsQuery.eq('id',STATE.teamId)
-    const {data:teamData}=await teamsQuery
-    const teamsList = teamData || []
+    /* SOLO LE SQUADRE DELLA CATEGORIA+STAGIONE */
+    const {data:tcs}=await client.from('team_category_season')
+     .select('team_id,teams(id,name)')
+     .eq('category_id',c.id).eq('season_id',s)
+
+    const teamsList = (tcs||[]).map(t=>t.teams).filter(Boolean)
 
     for(const t of (teamsList.length?teamsList:[{id:null,name:'—'}])){
       const {count:sessCnt}=await client.from('sessions').select('id',{count:'exact',head:true})
-      .eq('category_id',c.id).eq('season_id',s)
+     .eq('category_id',c.id).eq('season_id',s)
 
       const {count:athCnt}=await client.from('athlete_seasons').select('id',{count:'exact',head:true})
-      .eq('category_id',c.id).eq('season_id',s).eq('team_id',t.id||null)
+     .eq('category_id',c.id).eq('season_id',s).eq('team_id',t.id||null)
 
       const {data:sidData}=await client.from('sessions').select('id')
-      .eq('category_id',c.id).eq('season_id',s)
+     .eq('category_id',c.id).eq('season_id',s)
       const sessionIds = sidData?.map(x=>x.id) || []
       let presPct=0
       if(sessionIds.length){
@@ -222,13 +224,13 @@ async function refresh(){
       }
 
       const {data:staffData}=await client.from('role_category_team')
-      .select('users(name)')
-      .eq('category_id',c.id).eq('season_id',s)
-      .eq(t.id?'team_id':'team_id',t.id||null)
+     .select('users(name)')
+     .eq('category_id',c.id).eq('season_id',s)
+     .eq(t.id?'team_id':'team_id',t.id||null)
 
       const staff = staffData || []
       const staffHtml = staff.length
-      ? staff.map(s=>`<span class="badge staff">${s.users.name}</span>`).join('')
+     ? staff.map(s=>`<span class="badge staff">${s.users.name}</span>`).join('')
         : '<span class="badge bad">Nessuno</span>'
 
       const presClass = presPct>=80?'ok':presPct>=50?'warn':'bad'
@@ -264,10 +266,15 @@ document.getElementById('f-society').onchange=async e=>{
 document.getElementById('f-category').onchange=async e=>{
   STATE.categoryId=e.target.value
   STATE.teamId=''
-  const {data:teams}=await client.from('teams').select('id,name').eq('society_id',STATE.societyId)
-  const {data:tcs}=await client.from('team_category_season').select('team_id').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId)
-  const teamIds=(tcs||[]).map(t=>t.team_id)
-  populate('f-team', (teams||[]).filter(t=>teamIds.includes(t.id)), 'id', 'name')
+
+  /* QUI LA CHIAVE: prendo solo le squadre associate a questa categoria nella stagione */
+  const {data:tcs}=await client.from('team_category_season')
+   .select('team_id,teams(id,name)')
+   .eq('category_id',STATE.categoryId)
+   .eq('season_id',STATE.seasonId)
+
+  const teams = (tcs||[]).map(t=>t.teams).filter(Boolean)
+  populate('f-team', teams, 'id', 'name')
   refresh()
 }
 document.getElementById('f-team').onchange=e=>{STATE.teamId=e.target.value;refresh()}
@@ -416,7 +423,7 @@ async function saveScorers(matchId){
   const {data:athletes} = await client.from('athlete_seasons').select('athlete_id').eq('category_id',STATE.categoryId).eq('season_id',STATE.seasonId).eq('team_id',STATE.teamId||null)
   await client.from('scorers').delete().eq('match_id',matchId)
   const rows = (athletes||[]).filter(a=>+document.getElementById('gol-'+a.athlete_id).value>0)
-                .map(a=>({match_id:matchId,athlete_id:a.athlete_id,goals:+document.getElementById('gol-'+a.athlete_id).value}))
+               .map(a=>({match_id:matchId,athlete_id:a.athlete_id,goals:+document.getElementById('gol-'+a.athlete_id).value}))
   if(rows.length) await client.from('scorers').insert(rows)
   alert('Marcatori salvati')
   refresh()
@@ -442,4 +449,5 @@ async function openCards(matchId){
           <option value="yellow" ${cards?.find(c=>c.athlete_id===a.athlete_id&&c.type==='yellow')?'selected':''}>Giallo</option>
           <option value="red" ${cards?.find(c=>c.athlete_id===a.athlete_id&&c.type==='red')?'selected':''}>Rosso</option>
         </select>
-        <input id="card-min-${a.athlete_id}" type="number" min="1" max="120" placeholder="Minuto" value="${cards?.find(c=>c.athlete_id===a.athlete_id)?.minute||''}" style="
+        <input id="card-min-${a.athlete_id}" type="number" min="1" max="120" placeholder="Minuto" value="${cards?.find(c=>c.athlete_id===a.athlete_id)?.minute||''}" style="width:80px">
+      </div>`).join('')||'<p
