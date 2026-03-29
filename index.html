@@ -10,6 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="SportTrack Pro">
 <title>SportTrack Pro — Gestione Società Sportiva</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1616,21 +1617,17 @@ function isReadOnly(catId) {
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
-function doLogin() {
-  const u = document.getElementById('login-user').value.trim();
-  const p = document.getElementById('login-pass').value.trim();
-  const user = S.users.find(x => x.username === u && x.password === p);
-  if (!user) { toast('Credenziali non valide', 'error'); return; }
-  currentUser = user;
+
+// ── Avvia app dopo login riuscito ────────────────────────────
+function _afterLoginSuccess(userRow) {
+  currentUser = userRow;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   updateSidebarUser();
   buildSidebarNav();
-  // Initialize season selector
   rebuildSeasonSelector();
-
   document.getElementById('bottom-nav').style.display = '';
-  if (user.role === 'admin') {
+  if (currentUser.role === 'admin') {
     showView('admin-overview');
   } else {
     const accIds = getAccessibleCategoryIds();
@@ -1638,10 +1635,77 @@ function doLogin() {
     showView('category-home');
   }
 }
+
+// ── Login principale via Supabase Auth ───────────────────────
+async function doLogin() {
+  const u    = document.getElementById('login-user').value.trim();
+  const p    = document.getElementById('login-pass').value;
+  const hint = document.getElementById('login-hint-area');
+  const btn  = document.querySelector('#login-screen .btn-primary');
+
+  if (!u || !p) { toast('Inserisci username e password', 'error'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Accesso in corso…'; }
+  if (hint) hint.style.display = 'none';
+
+  try {
+    if (DB_MODE === 'supabase') {
+      // Step 1 — recupera email reale da public.users tramite username
+      const { data: userRow, error: userErr } = await sb
+        .from('users')
+        .select('id, username, email, name, role')
+        .eq('username', u)
+        .maybeSingle();
+
+      if (userErr) throw new Error('Errore database: ' + userErr.message);
+      if (!userRow) throw new Error('Username non trovato.');
+      if (!userRow.email) throw new Error('Email non configurata per questo account.');
+
+      // Step 2 — autentica con Supabase Auth
+      const { data: authData, error: authErr } = await sb.auth.signInWithPassword({
+        email:    userRow.email,
+        password: p,
+      });
+
+      if (authErr) {
+        let msg = authErr.message;
+        if (msg.toLowerCase().includes('invalid login'))         msg = 'Password errata.';
+        if (msg.toLowerCase().includes('email not confirmed'))   msg = 'Email non confermata.';
+        if (msg.toLowerCase().includes('too many requests'))     msg = 'Troppi tentativi — riprova tra qualche minuto.';
+        throw new Error(msg);
+      }
+
+      // Step 3 — carica tutti i dati dal DB e avvia
+      await loadFromSupabase();
+
+      // Rileggi il profilo aggiornato dallo state
+      const dbUser = S.users.find(u => u.id === authData.user.id) || userRow;
+      _afterLoginSuccess(dbUser);
+
+    } else {
+      // Fallback locale (dati demo)
+      const user = S.users.find(x => x.username === u && x.password === p);
+      if (!user) throw new Error('Credenziali non valide.');
+      _afterLoginSuccess(user);
+    }
+
+  } catch (err) {
+    toast(err.message || 'Errore di accesso', 'error');
+    if (hint) { hint.style.display = 'block'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Accedi →'; }
+  }
+}
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') doLogin();
 });
-function doLogout() {
+
+// ── Logout ───────────────────────────────────────────────────
+async function doLogout() {
+  try {
+    if (DB_MODE === 'supabase') await sb.auth.signOut();
+  } catch(_) {}
   currentUser = null;
   document.getElementById('app').classList.remove('visible');
   document.getElementById('login-screen').style.display = 'flex';
@@ -7759,33 +7823,53 @@ function exportRosterPDF(categoryId){
 // INIT
 // =========================
 
-// ── INIT: carica dati e avvia l'app ──────────────────────────
+// ── INIT: auto-restore sessione + avvio app ───────────────────
 async function initApp() {
-  loadState(); // carica dati locali intanto
+  loadState(); // carica cache locale intanto
+
   if (DB_MODE === 'supabase') {
-    const session = await sbGetSession();
-    if (session) {
-      // Utente già loggato — carica dati dal DB
-      await loadFromSupabase();
-      const dbUser = S.users.find(u => u.id===session.user.id || u.email===session.user.email);
-      if (dbUser) {
-        currentUser = dbUser;
-        showView('admin-overview');
+    try {
+      const { data: { session }, error: sessErr } = await sb.auth.getSession();
+
+      if (sessErr || !session) {
+        // Token scaduto/invalido — pulisci localStorage Supabase senza chiamate di rete
+        if (sessErr) {
+          try { await sb.auth.signOut({ scope: 'local' }); } catch(_) {}
+        }
+        // Rimane sul login — carica solo i dati demo per il fallback
         rebuildSeasonSelector();
-        renderDashboard();
         return;
       }
+
+      // Sessione valida → carica dati freschi dal DB
+      await loadFromSupabase();
+
+      // Ritrova il profilo utente nello state
+      const dbUser = S.users.find(u => u.id === session.user.id || u.email === session.user.email);
+      if (dbUser) {
+        _afterLoginSuccess(dbUser);
+        return;
+      }
+
+      // Profilo non trovato in public.users → logout pulito
+      console.warn('[initApp] Sessione valida ma profilo non trovato in public.users');
+      try { await sb.auth.signOut({ scope: 'local' }); } catch(_) {}
+
+    } catch (e) {
+      // Refresh token scaduto o altri errori — logout locale
+      console.warn('[initApp] Errore sessione:', e.message);
+      try { await sb.auth.signOut({ scope: 'local' }); } catch(_) {}
     }
   }
-  // Mostra login o dashboard
+
+  // Fallback: mostra login con dati demo pronti
   try {
-    loadState();
     rebuildSeasonSelector();
     renderDashboard();
-  } catch(e) { console.error(e); }
+  } catch(e) { /* non critico */ }
 }
 
-setTimeout(initApp, 300);
+setTimeout(initApp, 100);
 
 </script>
 </body>
