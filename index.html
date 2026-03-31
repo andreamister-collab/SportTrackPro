@@ -7,230 +7,75 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 	<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 	<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        :root {
-            --primary: #f97316;
-            --primary-dark: #ea580c;
-            --accent: #3b82f6;
-            --accent2: #10b981;
-            --bg: #f0f4f8;
-            --card: #ffffff;
-            --navbar: #0c1220;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --text: #0f172a;
-            --muted: #64748b;
-            --nav-height: 64px;
-        }
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg);
-            margin: 0;
-            min-height: 100vh;
-            color: var(--text);
-        }
+        :root { --primary:#2563eb; --bg:#f1f5f9; --card:#ffffff; --sidebar:#0f172a; --sidebar-active:#1e293b; --danger:#ef4444; }
+        * { box-sizing:border-box; }
+        body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); margin:0; min-height:100vh; color:#0f172a; }
+        
+        /* LOGIN */
+        #login-wrap { background:var(--card); padding:2rem; border-radius:12px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); width:100%; max-width:380px; margin:10vh auto; }
+        
+        /* APP LAYOUT */
+        #app { display:none; flex-direction:row; min-height:100vh; }
+        #sidebar { 
+    width: 260px; 
+    background: var(--sidebar); 
+    color: #cbd5e1; 
+    padding: 1rem; 
+    display: flex; 
+    flex-direction: column; 
+    position: fixed; 
+    height: 100vh; 
+    overflow-y: auto; /* <--- AGGIUNGI QUESTA */
+}
+        #sidebar h3 { margin:0 0 1.5rem; font-size:1.1rem; color:#fff; }
+        #sidebar a { display:block; padding:0.75rem 0.9rem; color:#cbd5e1; text-decoration:none; border-radius:6px; cursor:pointer; margin-bottom:0.25rem; font-weight:500; }
+        #sidebar a.active, #sidebar a:hover { background:var(--sidebar-active); color:#fff; }
+        #content { flex:1; margin-left:260px; padding:2rem; overflow-x:auto; }
 
-        /* ── LOGIN ── */
-        #login-wrap {
-            background: var(--card);
-            padding: 2.5rem 2rem;
-            border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
-            width: 100%;
-            max-width: 400px;
-            margin: 12vh auto;
-            border-top: 5px solid var(--primary);
-        }
-        #login-wrap h2 {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 2rem;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-align: center;
-            margin-bottom: 1.5rem;
-            text-transform: uppercase;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+        /* COMPONENTS */
+        .card { background:var(--card); padding:1.4rem; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.05); }
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; border-bottom:1px solid #eee; padding-bottom:10px; }
+        .btn { padding:0.6rem 1rem; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+        .btn-logout { background:var(--danger); margin-top:auto; padding:0.7rem; border-radius:6px; border:none; color:white; cursor:pointer; }
+        
+        /* TABLE & MODAL */
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:0.8rem; border-bottom:1px solid #e2e8f0; text-align:left; }
+        th { background:#f8fafc; font-size:0.85rem; color:#64748b; }
+        .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:1000; }
+        .modal-content { background:white; padding:2rem; border-radius:12px; width:90%; max-width:450px; }
+        .modal-active { display:flex; }
+        input, select { width:100%; padding:0.65rem; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:1rem; margin-top:0.3rem; }
+        .badge { padding:0.25rem 0.6rem; border-radius:999px; font-size:0.75rem; font-weight:700; }
+        .badge-active { background:#dcfce7; color:#166534; }
+        .badge-inactive { background:#f1f5f9; color:#475569; }
+		.btn-sm { padding: 0.4rem 0.6rem; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 0.8rem; margin-left: 4px; }
+        .btn-warning { background: #f59e0b; }
+        .btn-danger { background: #ef4444; }
+		.star-rating { display: flex; gap: 5px; cursor: pointer; }
+        /* =====blocco aggiunto con sessioi =====*/
+        /* --- BUILD 1.2: SESSIONI & RATING --- */
+/* --- BUILD 1.2: SESSIONI & RATING --- */
+.badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.badge-default { background: #e2e8f0; color: #475569; }
+.star-rating { display: flex; gap: 3px; user-select: none; }
+.star { font-size: 1.5rem; color: #cbd5e1; transition: all 0.2s ease; cursor: pointer; }
+.star.active { color: #f59e0b !important; }
+.star:hover { transform: scale(1.2); }
+.att-row-data:hover { background: #f8fafc; }
 
-        /* ── APP LAYOUT ── */
-        #app { display: none; flex-direction: column; min-height: 100vh; }
-
-        /* ── TOP NAVBAR ── */
-        #sidebar {
-            width: 100%;
-            height: var(--nav-height);
-            background: var(--navbar);
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            position: fixed;
-            top: 0; left: 0;
-            z-index: 100;
-            padding: 0 1.5rem;
-            gap: 0.25rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            overflow-x: auto;
-        }
-        #sidebar::-webkit-scrollbar { height: 3px; }
-        #sidebar::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 2px; }
-
-        #sidebar h3 {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 1.3rem;
-            font-weight: 800;
-            letter-spacing: 2px;
-            color: #fff;
-            margin: 0 1.5rem 0 0;
-            white-space: nowrap;
-            text-transform: uppercase;
-            flex-shrink: 0;
-        }
-        #sidebar h3 span { color: var(--primary); }
-
-        #sidebar a {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.45rem 0.85rem;
-            color: #94a3b8;
-            text-decoration: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.72rem;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            white-space: nowrap;
-            transition: background 0.18s, color 0.18s;
-            flex-shrink: 0;
-            border: 1px solid transparent;
-        }
-        #sidebar a:hover {
-            background: rgba(255,255,255,0.07);
-            color: #fff;
-        }
-        #sidebar a.active {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary-dark);
-        }
-
-        .nav-spacer { flex: 1; }
-
-        #sidebar .btn-logout {
-            background: transparent;
-            border: 1.5px solid #ef4444;
-            color: #ef4444;
-            padding: 0.45rem 1rem;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.72rem;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            cursor: pointer;
-            white-space: nowrap;
-            flex-shrink: 0;
-            transition: background 0.18s, color 0.18s;
-            margin-left: 0.5rem;
-        }
-        #sidebar .btn-logout:hover { background: #ef4444; color: #fff; }
-
-        /* ── CONTENT ── */
-        #content {
-            margin-top: var(--nav-height);
-            padding: 2rem;
-            flex: 1;
-            overflow-x: auto;
-        }
-
-        /* ── COMPONENTS ── */
-        .card {
-            background: var(--card);
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-            border-top: 3px solid var(--primary);
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 12px;
-        }
-        .header h2 {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin: 0;
-        }
-        .btn {
-            padding: 0.55rem 1.1rem;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 0.85rem;
-            letter-spacing: 0.3px;
-            transition: background 0.18s, transform 0.1s;
-        }
-        .btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
-        .btn-logout { background: var(--danger); margin-top: auto; padding: 0.7rem; border-radius: 6px; border: none; color: white; cursor: pointer; }
-
-        /* ── TABLE & MODAL ── */
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 0.8rem 1rem; border-bottom: 1px solid #e2e8f0; text-align: left; }
-        th {
-            background: #f8fafc;
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        tr:hover td { background: #fafbff; }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(2px); }
-        .modal-content { background: white; padding: 2rem; border-radius: 14px; width: 90%; max-width: 460px; border-top: 4px solid var(--primary); box-shadow: 0 25px 50px rgba(0,0,0,0.2); }
-        .modal-active { display: flex; }
-        input, select { width: 100%; padding: 0.65rem 0.8rem; border: 1.5px solid #cbd5e1; border-radius: 8px; margin-bottom: 1rem; margin-top: 0.3rem; font-family: inherit; transition: border-color 0.15s; }
-        input:focus, select:focus { outline: none; border-color: var(--primary); }
-
-        .badge { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.3px; }
-        .badge-active { background: #dcfce7; color: #166534; }
-        .badge-inactive { background: #f1f5f9; color: #475569; }
-        .badge-default { background: #e2e8f0; color: #475569; }
-
-        .btn-sm { padding: 0.35rem 0.6rem; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.75rem; font-weight: 600; margin-left: 4px; transition: opacity 0.15s; }
-        .btn-sm:hover { opacity: 0.85; }
-        .btn-warning { background: var(--warning); }
-        .btn-danger { background: var(--danger); }
-
-        /* ── STAR RATING ── */
-        .star-rating { display: flex; gap: 3px; user-select: none; }
-        .star { font-size: 1.5rem; color: #cbd5e1; transition: all 0.2s ease; cursor: pointer; }
-        .star.active { color: #f59e0b !important; }
-        .star:hover { transform: scale(1.2); }
-        .att-row-data:hover { background: #f8fafc; }
-
-        #filter-society-sess {
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 2px solid var(--primary);
-            font-weight: 600;
-            color: var(--primary);
-            background: white;
-            outline: none;
-            font-family: inherit;
-        }
+#filter-society-sess {
+    padding: 8px;
+    border-radius: 8px;
+    border: 2px solid #2563eb;
+    font-weight: 600;
+    color: #2563eb;
+    background: white;
+    outline: none;
+	}
+		 /* ===== fine blocco aggiunto con sessioi =====*/
     </style>
 </head>
 <body>
@@ -249,20 +94,20 @@
 
 <div id="app">
     <nav id="sidebar">
-        <h3>Sport<span>Track</span>Pro</h3>
-        <a data-section="dashboard">🏠 Dashboard</a>
-        <a data-section="stagioni">📆 Stagioni</a>
-        <a data-section="sport">🏅 Sport</a>
-        <a data-section="societa">🏢 Società</a>
-        <a data-section="categoria">🗂️ Categoria</a>
-        <a data-section="squadra">⚽ Squadra</a>
-        <a data-section="staff">👥 Staff</a>
-        <a data-section="anagrafica-pura">👤 Atleti</a>
-        <a data-section="assegnazioni">📋 Assegnazioni</a>
+        <h3>SportTrackPro</h3>
+        <a data-section="dashboard">DASHBOARD</a>
+        <a data-section="stagioni">STAGIONI</a>
+        <a data-section="sport">SPORT</a>
+        <a data-section="societa">SOCIETÀ</a>
+        <a data-section="categoria">CATEGORIA</a>
+        <a data-section="squadra">SQUADRA</a>
+        <a data-section="staff">👥 ANAGRAFICA STAFF</a>
+		<a data-section="anagrafica-pura">👤 Anagrafica Atleti</a>
+        <a data-section="assegnazioni">📋 ASSEGNAZIONI TECNICHE</a>
         <a data-section="atleti">🔗 Anagrafica Squadra</a>
-        <a data-section="sessioni">📅 Sessioni</a>
-        <div class="nav-spacer"></div>
-        <button id="btn-logout" class="btn-logout">⏻ Esci</button>
+        <a data-section="sessioni">📅 GESTIONE SESSIONI</a>
+		<a data-section="partite">📅 GESTIONE PARTITE</a>
+        <button id="btn-logout" class="btn-logout">Esci</button>
     </nav>
 
     <main id="content">
@@ -440,6 +285,10 @@ document.getElementById('login-form').onsubmit = async (e) => {
        case 'sessioni':
            content.innerHTML = templateSessioni();
            initSessioni();
+           break;
+	 case 'partite':
+           content.innerHTML = templatePartite();
+           initPartite();
            break;
 /* [INSERIRE QUI I CASE PER SPORT, SOCIETÀ, ECC. IN SEGUITO] */
 
@@ -2219,54 +2068,68 @@ window.importAtleti = async function(event) {
     window.deleteAtletaAssignment = async (id) => { if(confirm("Rimuovere dalla stagione?")) { await client.from('athlete_team_seasons').delete().eq('id', id); _fetchAtletiData(); } };
 })();
 /* ============================================================
-   MODULO: SESSIONI E PRESENZE - BUILD 1.5 (FINALE UNIFORMATA)
+   MODULO: SESSIONI E PRESENZE - BUILD 1.9.2 (MATCH INTEGRATED)
+   ============================================================ */
+/* ============================================================
+   MODULO: SESSIONI E PRESENZE - BUILD 1.9.2 (PROGRESSIVE FILTERS)
    ============================================================ */
 
 /**
- * 1. TEMPLATE (TABELLA PRINCIPALE)
+ * 0. GESTORE MODALE (Auto-detect o Emergency Fallback)
+ */
+function getModal() {
+    let m = window.modal || window.appModal || window.uiModal || window.ui;
+    if (!m) {
+        m = {
+            open: (title, html) => {
+                const overlay = document.createElement('div');
+                overlay.id = 'emergency-modal';
+                overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px;";
+                overlay.innerHTML = `
+                    <div style="background:white; width:100%; max-width:600px; border-radius:12px; padding:20px; position:relative; color:#333; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+                        <h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">${title}</h3>
+                        <div style="margin-bottom:20px; max-height:75vh; overflow-y:auto;">${html}</div>
+                        <button onclick="document.getElementById('emergency-modal').remove()" style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
+                    </div>`;
+                document.body.appendChild(overlay);
+            },
+            close: () => { document.getElementById('emergency-modal')?.remove(); }
+        };
+    }
+    return m;
+}
+
+/**
+ * 1. TEMPLATE TABELLA
  */
 function templateSessioni() {
     return `
     <div class="card">
         <div class="header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h2 style="margin:0;">SESSIONI E PARTITE</h2>
+            <h2 style="margin:0;">GESTIONE SESSIONI</h2>
             <button class="btn" onclick="openSessionModal()" style="background:#2563eb; color:white;">+ Nuova Sessione</button>
         </div>
-        
         <div id="sess-filters-container" style="display:none; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:15px;">
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px;">
-                <div id="wrapper-soc-filter" style="display:none;">
-                    <label style="display:block; font-size:11px; font-weight:bold; color:#64748b; margin-bottom:4px;">SOCIETÀ</label>
-                    <select id="filter-society-sess" onchange="reloadSubFilters()" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1;"></select>
-                </div>
-                <div>
-                    <label style="display:block; font-size:11px; font-weight:bold; color:#64748b; margin-bottom:4px;">CATEGORIA</label>
-                    <select id="filter-category-sess" onchange="initSessioni()" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1;"><option value="">Tutte</option></select>
-                </div>
-                <div>
-                    <label style="display:block; font-size:11px; font-weight:bold; color:#64748b; margin-bottom:4px;">SQUADRA</label>
-                    <select id="filter-team-sess" onchange="initSessioni()" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1;"><option value="">Tutte</option></select>
-                </div>
-                <div>
-                    <label style="display:block; font-size:11px; font-weight:bold; color:#64748b; margin-bottom:4px;">TIPO</label>
-                    <select id="filter-type-sess" onchange="initSessioni()" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1;"><option value="">Tutti</option></select>
-                </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px;">
+                <div id="wrapper-soc-filter" style="display:none;"><select id="filter-society-sess" onchange="reloadSubFilters()"></select></div>
+                <select id="filter-category-sess" onchange="reloadTeamsOnly()"><option value="">Tutte Categorie</option></select>
+                <select id="filter-team-sess" onchange="initSessioni()"><option value="">Tutte Squadre</option></select>
+                <select id="filter-type-sess" onchange="initSessioni()"><option value="">Tutti i Tipi</option></select>
             </div>
         </div>
-
         <div class="table-container">
-            <table style="width:100%; border-collapse:collapse;">
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
                 <thead>
-                    <tr style="text-align:left; background:#f1f5f9; font-size:12px; color:#64748b;">
-                        <th style="padding:12px; border-bottom:2px solid #e2e8f0;">Data / Titolo / Squadra</th>
-                        <th style="padding:12px; border-bottom:2px solid #e2e8f0;">Tipo</th>
-                        <th style="padding:12px; border-bottom:2px solid #e2e8f0; text-align:center;">Note</th>
-                        <th style="padding:12px; border-bottom:2px solid #e2e8f0; text-align:center; color:#10b981;">PRES</th>
-                        <th style="padding:12px; border-bottom:2px solid #e2e8f0; text-align:center; color:#ef4444;">ASS</th>
-                        <th style="padding:12px; border-bottom:2px solid #e2e8f0; text-align:center; color:#f59e0b;">GIUST</th>
-                        <th style="padding:12px; border-bottom:2px solid #e2e8f0; text-align:center; color:#8b5cf6;">INFORT</th>
-                        <th style="padding:12px; border-bottom:2px solid #e2e8f0; text-align:center;">% PRES</th>
-                        <th style="padding:12px; border-bottom:2px solid #e2e8f0; text-align:right;">Azioni</th>
+                    <tr style="text-align:left; background:#f1f5f9; color:#475569;">
+                        <th style="padding:12px;">Data / Titolo</th>
+                        <th style="padding:12px;">Squadra</th>
+                        <th style="padding:12px; text-align:center;">Note</th>
+                        <th style="padding:12px; text-align:center; color:#10b981;">P</th>
+                        <th style="padding:12px; text-align:center; color:#ef4444;">A</th>
+                        <th style="padding:12px; text-align:center; color:#f59e0b;">G</th>
+                        <th style="padding:12px; text-align:center; color:#8b5cf6;">I</th>
+                        <th style="padding:12px; text-align:center;">% Pres.</th>
+                        <th style="padding:12px; text-align:right;">Azioni</th>
                     </tr>
                 </thead>
                 <tbody id="list-sessioni-body"></tbody>
@@ -2276,19 +2139,18 @@ function templateSessioni() {
 }
 
 /**
- * 2. INIZIALIZZAZIONE (Logica Tabella con Statistiche)
+ * 2. INIZIALIZZAZIONE E LOGICA TABELLA
  */
 async function initSessioni() {
     const tbody = document.getElementById('list-sessioni-body');
-    const filterContainer = document.getElementById('sess-filters-container');
     if (!tbody) return;
 
     const myRole = (window._userRole || '').toLowerCase();
     const isAdmin = ['admin', 'manager', 'presidente', 'segretario'].includes(myRole);
     let targetSociety = window._currentSocietyId;
 
-    if (isAdmin && filterContainer) {
-        filterContainer.style.display = 'block';
+    if (isAdmin && document.getElementById('sess-filters-container')) {
+        document.getElementById('sess-filters-container').style.display = 'block';
         const selSoc = document.getElementById('filter-society-sess');
         if (selSoc && selSoc.options.length === 0) {
             const { data: socs } = await client.from('societies').select('id, name').order('name');
@@ -2302,202 +2164,119 @@ async function initSessioni() {
         targetSociety = selSoc?.value || targetSociety;
     }
 
-    // Query estesa per le statistiche (RPC o JSONB Aggregation preferibile per performance, ma usiamo logica JS per chiarezza Build)
-    let query = client.from('sessions').select(`
-        *, 
-        session_types(name), 
-        teams(id, name, categories(name)),
-        attendances(id, status)
-    `).eq('society_id', targetSociety);
+    let query = client.from('sessions').select(`*, session_types(name), teams(id, name, categories(name)), attendances(status)`).eq('society_id', targetSociety);
+    
+    // Applica filtri se selezionati
+    const fCat = document.getElementById('filter-category-sess')?.value;
+    const fTeam = document.getElementById('filter-team-sess')?.value;
+    const fType = document.getElementById('filter-type-sess')?.value;
 
-    if (document.getElementById('filter-category-sess')?.value) query = query.eq('category_id', document.getElementById('filter-category-sess').value);
-    if (document.getElementById('filter-team-sess')?.value) query = query.eq('team_id', document.getElementById('filter-team-sess').value);
-    if (document.getElementById('filter-type-sess')?.value) query = query.eq('type_id', document.getElementById('filter-type-sess').value);
+    if (fCat) query = query.eq('category_id', fCat);
+    if (fTeam) query = query.eq('team_id', fTeam);
+    if (fType) query = query.eq('type_id', fType);
 
     const { data } = await query.order('session_date', { ascending: false });
 
     tbody.innerHTML = (data || []).map(s => {
-        // Calcolo statistiche in JS
         const att = s.attendances || [];
-        const total = att.length;
         const stats = att.reduce((acc, a) => {
-            acc[a.status] = (acc[a.status] || 0) + 1;
+            if(a.status === 'presente') acc.p++;
+            else if(a.status === 'assente') acc.a++;
+            else if(a.status === 'giustificato') acc.g++;
+            else if(a.status === 'infortunato') acc.i++;
             return acc;
-        }, { presente: 0, assente: 0, giustificato: 0, infortunato: 0 });
+        }, {p:0, a:0, g:0, i:0});
 
-        const percPres = total > 0 ? ((stats.presente / total) * 100).toFixed(0) + '%' : '-';
+        const total = att.length;
+        const perc = total > 0 ? Math.round((stats.p / total) * 100) : 0;
+        const hasNotes = s.notes && s.notes.trim().length > 0;
 
         return `
         <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:12px; line-height:1.4;">
-                <strong>${s.title}</strong><br>
-                <small style="color:#64748b;">${new Date(s.session_date).toLocaleDateString()}</small><br>
-                <small style="font-weight:bold;">${s.teams?.categories?.name || ''} - ${s.teams?.name || ''}</small>
+            <td style="padding:10px;"><strong>${s.title}</strong><br><small>${new Date(s.session_date).toLocaleDateString()}</small></td>
+            <td style="padding:10px;"><small>${s.session_types?.name}</small><br><strong>${s.teams?.name}</strong></td>
+            <td style="padding:10px; text-align:center;">
+                <button onclick="openSessionNotesModal('${s.id}', '${s.title.replace(/'/g, "\\'")}')" style="background:none; border:none; cursor:pointer; font-size:16px; opacity:${hasNotes ? '1' : '0.3'}">📝</button>
             </td>
-            <td style="padding:12px;"><span class="badge" style="background:#f1f5f9; padding:4px 8px; border-radius:4px;">${s.session_types?.name || 'Evento'}</span></td>
-            <td style="padding:12px; text-align:center;">
-                <button class="btn-sm-icon" onclick="openSessionNotesModal('${s.id}', '${s.title.replace(/'/g, "\\'")}')" title="Leggi/Modifica Note" style="background:none; border:none; color:#64748b; cursor:pointer;">📝</button>
-            </td>
-            <td style="padding:12px; text-align:center; font-weight:bold; color:#10b981;">${stats.presente}</td>
-            <td style="padding:12px; text-align:center; font-weight:bold; color:#ef4444;">${stats.assente}</td>
-            <td style="padding:12px; text-align:center; font-weight:bold; color:#f59e0b;">${stats.giustificato}</td>
-            <td style="padding:12px; text-align:center; font-weight:bold; color:#8b5cf6;">${stats.infortunato}</td>
-            <td style="padding:12px; text-align:center; font-weight:bold;">${percPres}</td>
-            <td style="padding:12px; text-align:right;">
-                <button class="btn-sm" style="background:#8b5cf6; color:white; border:none; cursor:pointer;" onclick="openAttendanceModal('${s.id}')">👥 Presenze</button>
-                <button class="btn-sm" style="cursor:pointer;" onclick="openSessionModal('${s.id}')">✏️</button>
-                <button class="btn-sm" style="background:#ef4444; color:white; border:none; cursor:pointer;" onclick="deleteSession('${s.id}', '${s.title.replace(/'/g, "\\'")}')">🗑️</button>
+            <td style="padding:10px; text-align:center; font-weight:bold; color:#10b981;">${stats.p}</td>
+            <td style="padding:10px; text-align:center; font-weight:bold; color:#ef4444;">${stats.a}</td>
+            <td style="padding:10px; text-align:center; font-weight:bold; color:#f59e0b;">${stats.g}</td>
+            <td style="padding:10px; text-align:center; font-weight:bold; color:#8b5cf6;">${stats.i}</td>
+            <td style="padding:10px; text-align:center;"><strong>${perc}%</strong></td>
+            <td style="padding:10px; text-align:right;">
+                <button class="btn-sm" style="background:#8b5cf6; color:white; border:none;" onclick="openAttendanceModal('${s.id}')">👥 Presenze</button>
+                <button class="btn-sm" onclick="openSessionModal('${s.id}')">✏️</button>
+                <button class="btn-sm" style="background:#ef4444; color:white; border:none;" onclick="deleteSession('${s.id}', '${s.title.replace(/'/g, "\\'")}')">🗑️</button>
             </td>
         </tr>`;
     }).join('') || '<tr><td colspan="9" style="text-align:center; padding:20px;">Nessuna sessione trovata.</td></tr>';
 }
 
 /**
- * 3. LOGICA FILTRI E MODALI (Risoluzione UI e Errori)
+ * 3. LOGICA FILTRI PROGRESSIVI
  */
-
-// Correzione ReferenceError: modal is not defined
-if (typeof window.modal === 'undefined') {
-    window.modal = {
-        open: function(title, html, btn1, btn2) { console.error("Oggetto modal globale non trovato! Impossibile aprire:", title); },
-        close: function() { console.error("Oggetto modal globale non trovato! Impossibile chiudere."); }
-    };
-    alert("ATTENZIONE: L'oggetto globale 'window.modal' non è definito nel tuo file index.html. La modale non si aprirà finché non dichiari window.modal con un metodo open().");
-}
-
-window.setRating = function(el, value) {
-    const container = el.parentElement;
-    const stars = container.querySelectorAll('span');
-    stars.forEach((s, idx) => {
-        s.style.color = (idx < value) ? '#f59e0b' : '#cbd5e1';
-    });
-    container.setAttribute('data-value', value);
-};
-
-// --- MODALE PRESENZE: UI Pulita (Punto 1 immagine) ---
-async function openAttendanceModal(sessionId) {
-    const { data: session } = await client.from('sessions').select('*, session_types(name), teams(name, categories(name))').eq('id', sessionId).single();
-    if (!session) return;
-
-    const isGara = session.session_types?.name.toLowerCase().includes('gara');
-
-    const { data: relations } = await client
-        .from('athlete_team_seasons')
-        .select(`jersey_number, athletes ( id, name, surname )`)
-        .eq('team_id', session.team_id)
-        .eq('season_id', session.season_id);
-
-    const athletesList = (relations || []).map(r => ({
-        id: r.athletes.id,
-        name: `${r.athletes.surname} ${r.athletes.name}`,
-        jersey: r.jersey_number ? `#${r.jersey_number}` : ''
-    })).sort((a, b) => a.name.localeCompare(b.name));
-
-    const { data: existing } = await client.from('attendances').select('*').eq('session_id', sessionId);
-    const attMap = {};
-    existing?.forEach(a => attMap[a.athlete_id] = a);
-
-    const modalBody = `
-        <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:15px;">
-            <div style="font-size:11px; font-weight:bold; color:#64748b;">${session.teams?.categories?.name || ''} - ${session.teams?.name || ''}</div>
-            <div style="font-size:14px; font-weight:bold;">${session.title} (${new Date(session.session_date).toLocaleDateString()})</div>
-        </div>
-
-        <div style="max-height:450px; overflow-y:auto; padding-right:5px;">
-            ${athletesList.map(ath => {
-                const r = attMap[ath.id] || {};
-                const p = r.performance_data || { vel:0, tec:0, fis:0, res:0, com:0 };
-                
-                return `
-                <div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px; background:white;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <div><strong>${ath.name}</strong> <small style="color:#64748b;">${ath.jersey}</small></div>
-                        <select class="att-status" data-ath="${ath.id}" style="padding:6px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px;">
-                            <option value="presente" ${r.status === 'presente' ? 'selected' : ''}>Presente</option>
-                            <option value="assente" ${r.status === 'assente' ? 'selected' : ''}>Assente</option>
-                            <option value="giustificato" ${r.status === 'giustificato' ? 'selected' : ''}>Giustificato</option>
-                            <option value="infortunato" ${r.status === 'infortunato' ? 'selected' : ''}>Infortunato</option>
-                        </select>
-                    </div>
-
-                    ${!isGara ? `
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; padding-top:10px; border-top:1px solid #f1f5f9;">
-                        ${Object.entries({Velocità:'vel', Tecnica:'tec', Fisico:'fis', Resistenza:'res', Comportamento:'com'}).map(([label, key]) => `
-                            <div style="display:flex; align-items:center; justify-content:space-between;">
-                                <span style="font-size:10px; font-weight:bold; color:#64748b; text-transform:uppercase;">${label.substring(0,3)}</span>
-                                <div class="star-rating" data-ath="${ath.id}" data-key="${key}" data-value="${p[key] || 0}">
-                                    ${[1,2,3,4,5].map(s => `
-                                        <span onclick="setRating(this, ${s})" style="cursor:pointer; color:${s <= (p[key] || 0) ? '#f59e0b' : '#cbd5e1'}; font-size:18px; margin-left:2px;">★</span>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>` : ''}
-                </div>`;
-            }).join('') || '<p style="text-align:center;">Nessun atleta in rosa.</p>'}
-        </div>
-
-        <div style="margin-top:20px; display:grid; gap:10px;">
-            <button class="btn" onclick="saveAttendances('${sessionId}', ${isGara})" style="width:100%; background:#10b981; color:white; padding:14px; font-weight:bold; border:none; border-radius:8px; cursor:pointer;">SALVA REGISTRO</button>
-            <button class="btn-link" onclick="window.modal.close()" style="background:none; border:none; color:#64748b; cursor:pointer; padding:5px; text-align:center;">Chiudi Annulla</button>
-        </div>
-    `;
-
-    // Risoluzione Troppi Bottoni: Passiamo "" come parametri finali
-    window.modal.open(isGara ? "Convocazioni" : "Registro Presenze", modalBody, "", "");
-}
-
-async function saveAttendances(sessionId, isGara) {
-    const records = [];
-    document.querySelectorAll('.att-status').forEach(sel => {
-        const athId = sel.getAttribute('data-ath');
-        const perfData = {};
-        
-        if (!isGara) {
-            document.querySelectorAll(`.star-rating[data-ath="${athId}"]`).forEach(group => {
-                const key = group.getAttribute('data-key');
-                const val = parseInt(group.getAttribute('data-value')) || 0;
-                perfData[key] = val;
-            });
-        }
-
-        records.push({
-            session_id: sessionId,
-            athlete_id: athId,
-            status: sel.value,
-            performance_data: perfData,
-            is_called_up: isGara && sel.value === 'presente'
-        });
-    });
-
-    const { error } = await client.from('attendances').upsert(records, { onConflict: 'session_id, athlete_id' });
-    if (!error) { 
-        window.modal.close(); 
-        initSessioni(); 
-        alert("Registro salvato!"); 
-    } else {
-        alert("Errore: " + error.message);
-    }
-}
-
 async function reloadSubFilters() {
     const socId = document.getElementById('filter-society-sess').value;
-    const [cats, teams, types] = await Promise.all([
-        client.from('categories').select('id, name').order('name'),
-        client.from('teams').select('id, name').eq('society_id', socId).order('name'),
-        client.from('session_types').select('id, name').order('name')
-    ]);
-    const fill = (id, d) => {
-        const el = document.getElementById(id);
-        if(el) el.innerHTML = '<option value="">Tutte</option>' + d.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
-    };
-    fill('filter-category-sess', cats.data || []);
-    fill('filter-team-sess', teams.data || []);
-    fill('filter-type-sess', types.data || []);
+    if (!socId) return;
+
+    // Recupera squadre e categorie collegate per la società
+    const { data: teamsInSoc } = await client
+        .from('teams')
+        .select('id, name, category_id, categories(id, name)')
+        .eq('society_id', socId)
+        .order('name');
+
+    window._currentSocTeams = teamsInSoc || [];
+
+    // Filtra categorie uniche
+    const uniqueCats = [];
+    const catMap = new Map();
+    teamsInSoc?.forEach(t => {
+        if (t.categories && !catMap.has(t.categories.id)) {
+            catMap.set(t.categories.id, true);
+            uniqueCats.push(t.categories);
+        }
+    });
+
+    const { data: types } = await client.from('session_types').select('id, name').order('name');
+
+    // Popola select categorie
+    const selCat = document.getElementById('filter-category-sess');
+    if (selCat) {
+        selCat.innerHTML = '<option value="">Tutte Categorie</option>' + 
+            uniqueCats.sort((a,b) => a.name.localeCompare(b.name))
+                      .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    }
+
+    // Popola tipi sessione
+    const selType = document.getElementById('filter-type-sess');
+    if (selType) {
+        selType.innerHTML = '<option value="">Tutti i Tipi</option>' + 
+            (types || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    }
+
+    await reloadTeamsOnly();
+}
+
+async function reloadTeamsOnly() {
+    const catId = document.getElementById('filter-category-sess').value;
+    const selTeam = document.getElementById('filter-team-sess');
+    if (!selTeam) return;
+
+    let filtered = window._currentSocTeams || [];
+    if (catId) filtered = filtered.filter(t => t.category_id === catId);
+
+    selTeam.innerHTML = '<option value="">Tutte Squadre</option>' + 
+        filtered.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
     initSessioni();
 }
 
+/**
+ * 4. LOGICA MODALI E SALVATAGGIO (Note: openSessionModal NON toccata)
+ */
 async function openSessionModal(id = null) {
+    const m = getModal();
     const isEdit = !!id;
     let editData = null;
     let targetSoc = document.getElementById('filter-society-sess')?.value || window._currentSocietyId;
@@ -2513,9 +2292,9 @@ async function openSessionModal(id = null) {
         editData = data;
     }
 
-    modal.open(isEdit ? 'Modifica Sessione' : 'Nuova Sessione', `
+    m.open(isEdit ? 'Modifica Sessione' : 'Nuova Sessione', `
         <div style="display:grid; gap:12px;">
-            <input type="text" id="sess-title" value="${editData?.title || ''}" placeholder="Titolo" style="padding:10px; border-radius:6px; border:1px solid #ddd;">
+            <input type="text" id="sess-title" value="${editData?.title || ''}" placeholder="Titolo (es. Allenamento)" style="padding:10px; border-radius:6px; border:1px solid #ddd;">
             <div style="display:flex; gap:10px;">
                 <input type="date" id="sess-date" value="${editData?.session_date || new Date().toISOString().split('T')[0]}" style="flex:1; padding:10px; border-radius:6px; border:1px solid #ddd;">
                 <select id="sess-type" style="flex:1; padding:10px; border-radius:6px; border:1px solid #ddd;">
@@ -2526,9 +2305,7 @@ async function openSessionModal(id = null) {
                 <option value="">Scegli Squadra...</option>
                 ${window._teamsList.map(t => `<option value="${t.id}" ${editData?.team_id === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
             </select>
-            
-            <button class="btn" onclick="saveSession('${id || ''}')" style="background:#2563eb; color:white; padding:12px; font-weight:bold; border:none; border-radius:8px;">SALVA</button>
-            <button class="btn-link" onclick="modal.close()" style="margin-top:5px; background:none; border:none; color:#64748b;">Annulla</button>
+            <button onclick="saveSession('${id || ''}')" style="background:#2563eb; color:white; padding:12px; font-weight:bold; border:none; border-radius:8px; cursor:pointer;">CONFERMA E SALVA</button>
         </div>
     `, "", "");
 }
@@ -2536,54 +2313,258 @@ async function openSessionModal(id = null) {
 async function saveSession(id) {
     const teamId = document.getElementById('sess-team')?.value;
     const team = window._teamsList.find(t => t.id === teamId);
-    if (!team) return alert("Per favore, seleziona una squadra valida!");
+    if (!team) return alert("Scegli una squadra!");
 
+    const societyId = document.getElementById('filter-society-sess')?.value || window._currentSocietyId;
     const p = {
-        title: document.getElementById('sess-title')?.value || "Allenamento",
-        session_date: document.getElementById('sess-date')?.value || new Date().toISOString().split('T')[0],
-        society_id: document.getElementById('filter-society-sess')?.value || window._currentSocietyId,
-        team_id: team.id, category_id: team.category_id, season_id: team.season_id, type_id: document.getElementById('sess-type')?.value
+        title: document.getElementById('sess-title').value || "Allenamento",
+        session_date: document.getElementById('sess-date').value,
+        society_id: societyId,
+        team_id: team.id, category_id: team.category_id, season_id: team.season_id, type_id: document.getElementById('sess-type').value
     };
     const { error } = id ? await client.from('sessions').update(p).eq('id', id) : await client.from('sessions').insert([p]);
-    if (!error) { modal.close(); initSessioni(); }
+    if (!error) { getModal().close(); initSessioni(); }
+}
+
+async function openAttendanceModal(sessionId) {
+    const m = getModal();
+    const { data: session } = await client.from('sessions').select('*, session_types(name), teams(id, name, season_id)').eq('id', sessionId).single();
+    if(!session) return;
+    const isGara = session.session_types?.name.toLowerCase().includes('gara');
+    const { data: relations } = await client.from('athlete_team_seasons').select(`jersey_number, athletes(id, name, surname)`).eq('team_id', session.team_id).eq('season_id', session.season_id);
+    const { data: existing } = await client.from('attendances').select('*').eq('session_id', sessionId);
+    const attMap = {}; existing?.forEach(a => attMap[a.athlete_id] = a);
+
+    m.open(isGara ? "Convocazioni" : "Registro Presenze", `
+        <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:15px; font-size:12px; border:1px solid #e2e8f0;">
+            <strong>${session.title}</strong> (${new Date(session.session_date).toLocaleDateString()})
+        </div>
+        <div style="max-height:450px; overflow-y:auto; padding-right:5px;">
+            ${(relations || []).map(r => {
+                const ath = r.athletes;
+                const reg = attMap[ath.id] || {};
+                const p = reg.performance_data || {vel:0, tec:0, fis:0, res:0, com:0};
+                return `
+                <div style="border:1px solid #eee; border-radius:8px; padding:12px; margin-bottom:10px; background:#fff;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <strong>${ath.surname} ${ath.name} <small style="color:#64748b;">${r.jersey_number ? '#'+r.jersey_number : ''}</small></strong>
+                        <select class="att-status" data-ath="${ath.id}" style="padding:6px; border-radius:4px; border:1px solid #ccc;">
+                            <option value="presente" ${reg.status==='presente'?'selected':''}>Presente</option>
+                            <option value="assente" ${reg.status==='assente'?'selected':''}>Assente</option>
+                            <option value="giustificato" ${reg.status==='giustificato'?'selected':''}>Giustificato</option>
+                            <option value="infortunato" ${reg.status==='infortunato'?'selected':''}>Infortunato</option>
+                        </select>
+                    </div>
+                    ${!isGara ? `
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; border-top:1px solid #f1f5f9; padding-top:10px;">
+                        ${Object.entries({vel:'VEL', tec:'TEC', fis:'FIS', res:'RES', com:'COM'}).map(([k, label]) => `
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:11px; color:#64748b;">${label}</span>
+                                <div class="star-rating" data-ath="${ath.id}" data-key="${k}" data-value="${p[k]||0}">
+                                    ${[1,2,3,4,5].map(s => `<span onclick="setRating(this, ${s})" style="cursor:pointer; color:${s<=(p[k]||0)?'#f59e0b':'#cbd5e1'}; font-size:16px;">★</span>`).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>` : ''}
+                </div>`;
+            }).join('')}
+        </div>
+        <button onclick="saveAttendances('${sessionId}', ${isGara})" style="background:#10b981; color:white; width:100%; padding:15px; border:none; border-radius:8px; font-weight:bold; margin-top:15px; cursor:pointer;">SALVA REGISTRO</button>
+    `, "", "");
+}
+
+async function saveAttendances(sessionId, isGara) {
+    const records = [];
+    document.querySelectorAll('.att-status').forEach(sel => {
+        const athId = sel.getAttribute('data-ath');
+        const perfData = {};
+        if (!isGara) {
+            document.querySelectorAll(`.star-rating[data-ath="${athId}"]`).forEach(group => {
+                perfData[group.getAttribute('data-key')] = parseInt(group.getAttribute('data-value')) || 0;
+            });
+        }
+        records.push({
+            session_id: sessionId, athlete_id: athId, status: sel.value,
+            performance_data: perfData, is_called_up: isGara && sel.value === 'presente'
+        });
+    });
+    const { error } = await client.from('attendances').upsert(records, { onConflict: 'session_id, athlete_id' });
+    if (!error) { getModal().close(); initSessioni(); alert("Registro salvato!"); }
 }
 
 async function deleteSession(id, title) {
-    if (confirm(`Eliminare ${title}? Verranno cancellate anche tutte le presenze.`)) {
-        await client.from('sessions').delete().eq('id', id);
-        initSessioni();
+    if (confirm(`Eliminare "${title}"?`)) {
+        const { error } = await client.from('sessions').delete().eq('id', id);
+        if (!error) initSessioni();
     }
 }
 
-// --- MODALE NOTE (Punto 2 immagine - colonna Note) ---
 async function openSessionNotesModal(id, title) {
-    const { data: session } = await client.from('sessions').select('notes').eq('id', id).single();
-    if (!session) return;
-
-    window.modal.open(`Note Sessione: ${title}`, `
-        <div style="display:grid; gap:10px;">
-            <label style="font-size:11px; font-weight:bold; color:#64748b;">NOTE / RIASSUNTO ALLENAMENTO</label>
-            <textarea id="sess-notes" style="width:100%; height:200px; padding:10px; border:1px solid #e2e8f0; border-radius:8px; box-sizing:border-box;">${session.notes || ''}</textarea>
-            
-            <button class="btn" onclick="saveSessionNotes('${id}')" style="background:#2563eb; color:white; padding:12px; font-weight:bold; border:none; border-radius:8px; cursor:pointer;">SALVA NOTE</button>
-            <button class="btn-link" onclick="window.modal.close()" style="background:none; border:none; color:#64748b; cursor:pointer; padding:5px; text-align:center;">Chiudi Annulla</button>
-        </div>
+    const { data } = await client.from('sessions').select('notes').eq('id', id).single();
+    getModal().open(`Note: ${title}`, `
+        <textarea id="temp-notes" style="width:100%; height:180px; padding:12px; border-radius:8px; border:1px solid #ccc; font-family:inherit; box-sizing:border-box;">${data?.notes || ''}</textarea>
+        <button onclick="saveSessionNotes('${id}')" style="width:100%; margin-top:12px; background:#2563eb; color:white; padding:12px; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">SALVA NOTE</button>
     `, "", "");
 }
 
 async function saveSessionNotes(id) {
-    const notes = document.getElementById('sess-notes')?.value || '';
-    const { error } = await client.from('sessions').update({ notes }).eq('id', id);
-    if (!error) { 
-        window.modal.close(); 
-        initSessioni(); // Ricarica tabella per aggiornare icona note (se vogliamo cambiarne il colore)
-        alert("Note salvate!"); 
-    } else {
-        alert("Errore: " + error.message);
+    const notes = document.getElementById('temp-notes').value;
+    await client.from('sessions').update({ notes }).eq('id', id);
+    getModal().close();
+    initSessioni();
+}
+
+window.setRating = function(el, value) {
+    const container = el.parentElement;
+    const stars = container.querySelectorAll('span');
+    stars.forEach((s, idx) => s.style.color = (idx < value) ? '#f59e0b' : '#cbd5e1');
+    container.setAttribute('data-value', value);
+};
+/**
+ * 6. SALVATAGGIO DETTAGLI MATCH E LOGICA CONVOCAZIONI
+ */
+async function saveMatchDetails(sessionId) {
+    const gf = parseInt(document.getElementById('m-gf').value) || 0;
+    const ga = parseInt(document.getElementById('m-ga').value) || 0;
+    const isFriendly = document.getElementById('m-friendly').checked;
+    
+    let points = 0;
+    if (!isFriendly) {
+        if (gf > ga) points = 3;
+        else if (gf === ga) points = 1;
+    }
+
+    const matchData = {
+        session_id: sessionId,
+        opponent_name: document.getElementById('m-opponent').value,
+        meet_time: document.getElementById('m-meet-time').value,
+        match_start_time: document.getElementById('m-start-time').value,
+        address: document.getElementById('m-address').value,
+        status: document.getElementById('m-status').value,
+        is_friendly: isFriendly,
+        goals_for: gf,
+        goals_against: ga,
+        points: points
+    };
+
+    const { error } = await client.from('match_details').upsert(matchData, { onConflict: 'session_id' });
+    
+    if (!error) {
+        // Applichiamo la logica: non convocati = giustificati
+        await syncNonCalledAsJustified(sessionId);
+        alert("Dati partita salvati e presenze sincronizzate!");
+        getModal().close();
+        initSessioni();
     }
 }
 
-/* 4. ESPOSIZIONE GLOBALE (In fondo) */
+async function syncNonCalledAsJustified(sessionId) {
+    // Recuperiamo tutti gli atleti della squadra che NON sono convocati per questa sessione
+    const { data: session } = await client.from('sessions').select('team_id, season_id').eq('id', sessionId).single();
+    const { data: allAthletes } = await client.from('athlete_team_seasons').select('athlete_id').eq('team_id', session.team_id).eq('season_id', session.season_id);
+    const { data: currentAtt } = await client.from('attendances').select('athlete_id, is_called_up').eq('session_id', sessionId);
+
+    const calledIds = (currentAtt || []).filter(a => a.is_called_up).map(a => a.athlete_id);
+    const toUpdate = (allAthletes || []).filter(a => !calledIds.includes(a.athlete_id));
+
+    const records = toUpdate.map(a => ({
+        session_id: sessionId,
+        athlete_id: a.athlete_id,
+        status: 'giustificato',
+        is_called_up: false
+    }));
+
+    if (records.length > 0) {
+        await client.from('attendances').upsert(records, { onConflict: 'session_id, athlete_id' });
+    }
+}
+
+/**
+ * 7. EXPORT GRAFICO "CAMPO DA CALCIO" (Social Ready)
+ */
+async function exportConvocatiSocial(sessionId) {
+    const { data: session } = await client.from('sessions').select('*, teams(name)').eq('id', sessionId).single();
+    const { data: convocati } = await client.from('attendances')
+        .select('athletes(name, surname, role)') // Assumendo che esista il campo role
+        .eq('session_id', sessionId)
+        .eq('is_called_up', true);
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 1080;
+    canvas.height = 1350; // Formato Portrait Social
+
+    // 1. Sfondo Campo (Verde con sfumatura)
+    const grad = ctx.createRadialGradient(540, 675, 100, 540, 675, 800);
+    grad.addColorStop(0, '#2d5a27');
+    grad.addColorStop(1, '#1e3d1a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. Disegno Linee Campo
+    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(50, 50, 980, 1250); // Perimetro
+    ctx.beginPath(); // Linea Mediana
+    ctx.moveTo(50, 675); ctx.lineTo(1030, 675); ctx.stroke();
+    ctx.beginPath(); // Cerchio centrale
+    ctx.arc(540, 675, 150, 0, Math.PI * 2); ctx.stroke();
+
+    // 3. Testi Intestazione
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.font = "bold 50px sans-serif";
+    ctx.fillText("LISTA CONVOCATI", 540, 120);
+    ctx.font = "italic 40px sans-serif";
+    ctx.fillStyle = "#fbbf24";
+    ctx.fillText(session.teams.name.toUpperCase(), 540, 180);
+
+    // 4. Raggruppamento per Ruoli
+    const roles = { 
+        'Portieri': [], 'Difensori': [], 'Centrocampisti': [], 
+        'Attaccanti': [], 'Staff': [] 
+    };
+
+    convocati.forEach(c => {
+        const r = c.athletes.role?.toLowerCase() || '';
+        if (r.includes('por')) roles['Portieri'].push(c.athletes);
+        else if (r.includes('dif')) roles['Difensori'].push(c.athletes);
+        else if (r.includes('cen')) roles['Centrocampisti'].push(c.athletes);
+        else if (r.includes('att')) roles['Attaccanti'].push(c.athletes);
+        else roles['Staff'].push(c.athletes);
+    });
+
+    // 5. Rendering Nomi sul Campo
+    ctx.textAlign = "left";
+    let y = 280;
+    const xLeft = 150;
+    const xRight = 600;
+
+    Object.entries(roles).forEach(([roleName, list], index) => {
+        if (list.length > 0) {
+            ctx.font = "bold 35px sans-serif";
+            ctx.fillStyle = "#38bdf8"; // Colore categoria
+            ctx.fillText(roleName.toUpperCase(), (index % 2 === 0 ? xLeft : xRight), y);
+            
+            ctx.font = "30px sans-serif";
+            ctx.fillStyle = "white";
+            list.forEach((ath, i) => {
+                ctx.fillText(`• ${ath.surname} ${ath.name}`, (index % 2 === 0 ? xLeft : xRight), y + 45 + (i * 40));
+            });
+            
+            if (index % 2 !== 0) y += 250; // Vai a riga successiva ogni 2 ruoli
+        }
+    });
+
+    // 6. Download
+    const link = document.createElement('a');
+    link.download = `Convocati_${session.teams.name}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+}
+/**
+ * 8. ESPOSIZIONE GLOBALE
+ */
 window.templateSessioni = templateSessioni;
 window.initSessioni = initSessioni;
 window.openAttendanceModal = openAttendanceModal;
@@ -2592,9 +2573,197 @@ window.saveSession = saveSession;
 window.saveAttendances = saveAttendances;
 window.deleteSession = deleteSession;
 window.reloadSubFilters = reloadSubFilters;
+window.reloadTeamsOnly = reloadTeamsOnly;
 window.openSessionNotesModal = openSessionNotesModal;
 window.saveSessionNotes = saveSessionNotes;
+/* ============================================================
+   MODULO: GESTIONE PARTITE - FILTRI PROGRESSIVI COMPLETI
+   ============================================================ */
 
+/**
+ * 1. LOGICA FILTRI PROGRESSIVI (Soc -> Cat -> Team)
+ */
+window.reloadMatchSubFilters = async function() {
+    const selSoc = document.getElementById('f-match-soc');
+    let socId = selSoc?.value || window._currentSocietyId;
+    
+    if (!socId || socId === "null" || socId === "") return;
+
+    // Sincronizza globale
+    window._currentSocietyId = socId;
+
+    // 1. Carica Categorie della Società
+    const { data: cats } = await client.from('categories')
+        .select('id, name')
+        .eq('society_id', socId)
+        .order('name');
+
+    const selCat = document.getElementById('f-match-cat');
+    if (selCat) {
+        selCat.innerHTML = '<option value="">Tutte Categorie</option>' + 
+            (cats ? cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('') : '');
+    }
+
+    // 2. Carica TUTTE le squadre della Società (per filtro lato client veloce)
+    const { data: teams } = await client.from('teams')
+        .select('id, name, category_id')
+        .eq('society_id', socId)
+        .order('name');
+    
+    window._matchTeams = teams || [];
+    
+    // 3. Reset e aggiornamento squadre
+    window.reloadMatchTeamsOnly();
+};
+
+window.reloadMatchTeamsOnly = function() {
+    const catId = document.getElementById('f-match-cat')?.value;
+    const selTeam = document.getElementById('f-match-team');
+    if (!selTeam) return;
+    
+    let filtered = window._matchTeams || [];
+    
+    // Filtro progressivo: se è selezionata una categoria, mostra solo le sue squadre
+    if (catId) {
+        filtered = filtered.filter(t => String(t.category_id) === String(catId));
+    }
+
+    selTeam.innerHTML = '<option value="">Tutte Squadre</option>' + 
+        filtered.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+    // Ad ogni cambio filtro, aggiorna la tabella
+    window.initPartite();
+};
+
+/**
+ * 2. TEMPLATE HTML
+ */
+window.templatePartite = function() {
+    return `
+    <div class="card" id="main-match-card">
+        <div class="header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h2 style="margin:0; color:#1e293b; display:flex; align-items:center; gap:8px;">🏆 GESTIONE PARTITE</h2>
+            <button class="btn" onclick="window.openMatchModal()" style="background:#059669; color:white;">+ Nuova Partita</button>
+        </div>
+        
+        <div id="match-filters-container" style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:15px;">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px;">
+                <select id="f-match-soc" onchange="window.reloadMatchSubFilters()" style="padding:8px; border-radius:6px; border:1px solid #ddd;">
+                    <option value="">Caricamento società...</option>
+                </select>
+                <select id="f-match-cat" onchange="window.reloadMatchTeamsOnly()" style="padding:8px; border-radius:6px; border:1px solid #ddd;">
+                    <option value="">Tutte Categorie</option>
+                </select>
+                <select id="f-match-team" onchange="window.initPartite()" style="padding:8px; border-radius:6px; border:1px solid #ddd;">
+                    <option value="">Tutte Squadre</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                <thead>
+                    <tr style="text-align:left; background:#f1f5f9; color:#475569;">
+                        <th style="padding:12px;">Data</th>
+                        <th style="padding:12px;">Partita / Squadra</th>
+                        <th style="padding:12px; text-align:right;">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="list-partite-body"></tbody>
+            </table>
+        </div>
+    </div>`;
+};
+
+/**
+ * 3. LOGICA DI CARICAMENTO DATI
+ */
+window.initPartite = async function() {
+    const tbody = document.getElementById('list-partite-body');
+    if (!tbody) return;
+
+    const selSoc = document.getElementById('f-match-soc');
+    
+    // Inizializzazione Società (Auto-selezione alfabetica per Admin)
+    if (selSoc && selSoc.options[0].text.includes("Caricamento")) {
+        const { data: socs } = await client.from('societies').select('id, name').order('name');
+        if (socs && socs.length > 0) {
+            selSoc.innerHTML = socs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            
+            // Se non c'è una società pre-selezionata, prendiamo la prima (Admin)
+            if (!window._currentSocietyId) window._currentSocietyId = socs[0].id;
+            selSoc.value = window._currentSocietyId;
+            
+            return window.reloadMatchSubFilters();
+        }
+    }
+
+    const socId = selSoc?.value || window._currentSocietyId;
+    if (!socId) return;
+
+    // Filtra per tipi "Gara" o "Partita"
+    const { data: types } = await client.from('session_types').select('id, name');
+    const validIds = (types || [])
+        .filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara'))
+        .map(t => t.id);
+
+    let query = client.from('sessions')
+        .select('id, title, session_date, teams(name)')
+        .eq('society_id', socId)
+        .in('type_id', validIds);
+    
+    // Applicazione filtri progressivi alla query
+    const fCat = document.getElementById('f-match-cat')?.value;
+    const fTeam = document.getElementById('f-match-team')?.value;
+    if (fCat) query = query.eq('category_id', fCat);
+    if (fTeam) query = query.eq('team_id', fTeam);
+
+    const { data, error } = await query.order('session_date', { ascending: false });
+
+    tbody.innerHTML = (data || []).map(m => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:10px;">${new Date(m.session_date).toLocaleDateString()}</td>
+            <td style="padding:10px;">
+                <strong>${m.title || 'Partita'}</strong><br>
+                <small style="color:#64748b;">${m.teams?.name || '---'}</small>
+            </td>
+            <td style="padding:10px; text-align:right;">
+                <button class="btn-sm" style="background:#8b5cf6; color:white; border:none; margin-right:4px;">Convocazioni</button>
+                <button class="btn-sm" style="background:#3b82f6; color:white; border:none; margin-right:4px;">Modifica</button>
+                <button class="btn-sm" style="background:#ef4444; color:white; border:none;">Cancella</button>
+            </td>
+        </tr>
+    `).join('') || '<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">Nessuna gara trovata per i filtri selezionati.</td></tr>';
+};
+
+/**
+ * 4. NUOVA PARTITA
+ */
+window.openMatchModal = async function() {
+    const socId = document.getElementById('f-match-soc')?.value || window._currentSocietyId;
+    if (!socId) return;
+
+    window._currentSocietyId = socId;
+
+    if (typeof window.openSessionModal === 'function') {
+        await window.openSessionModal();
+        setTimeout(() => {
+            const selType = document.getElementById('sess-type');
+            if (selType) {
+                for (let opt of selType.options) {
+                    if (opt.text.toLowerCase().includes('partita') || opt.text.toLowerCase().includes('gara')) {
+                        selType.value = opt.value;
+                        selType.disabled = true;
+                        break;
+                    }
+                }
+            }
+        }, 400);
+    }
+};
+
+// Start ritardato
+setTimeout(() => { if (document.getElementById('main-match-card')) window.initPartite(); }, 600);
 /* [QUI AGGIUNGEREMO LE FUNZIONI PER SPORT, SOCIETÀ, ECC. UNA ALLA VOLTA] */
 
 </script>
