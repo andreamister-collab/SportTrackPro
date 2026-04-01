@@ -176,8 +176,8 @@ function showOkToast(msg){
       <div><div class="login-title">SportTrack Pro</div><div class="login-sub">Gestione calcistica</div></div>
     </div>
     <div class="alert-err" id="loginErr"></div>
-    <div class="lf"><label>Email</label><input type="email" id="loginEmail" placeholder="mario@club.it" autocomplete="email"></div>
-    <div class="lf"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="lf"><label for="loginEmail">Email</label><input type="email" id="loginEmail" placeholder="mario@club.it" autocomplete="email"></div>
+    <div class="lf"><label for="loginPass">Password</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
     <button class="login-btn" id="loginBtn" onclick="doLogin()">Accedi</button>
   </div>
 </div>
@@ -330,17 +330,17 @@ function showOkToast(msg){
 <div class="mo" id="mAtleta"><div class="modal">
   <div class="modal-hdr"><span class="modal-ttl">Nuovo atleta</span><button class="modal-x" onclick="closeM('mAtleta')">✕</button></div>
   <div class="fg">
-    <div><label>Nome *</label><input type="text" id="aNome" placeholder="Mario"></div>
-    <div><label>Cognome *</label><input type="text" id="aCognome" placeholder="Rossi"></div>
-    <div><label>Data nascita</label><input type="date" id="aNascita"></div>
-    <div><label>Codice fiscale</label><input type="text" id="aCF"></div>
-    <div><label>Email</label><input type="email" id="aEmail"></div>
-    <div><label>Telefono</label><input type="tel" id="aTel"></div>
-    <div><label>Categoria *</label><select id="aCat"></select></div>
-    <div><label>Ruolo</label><select id="aRuolo"><option value="">—</option><option>Portiere</option><option>Difensore</option><option>Centrocampista</option><option>Attaccante</option></select></div>
-    <div><label>N° maglia</label><input type="number" id="aNumero" min="1" max="99"></div>
-    <div><label>Stato</label><select id="aStato"><option value="active">Attivo</option><option value="inactive">Inattivo</option><option value="injured">Infortunato</option><option value="suspended">Sospeso</option></select></div>
-    <div class="full"><label>Note</label><textarea id="aNote"></textarea></div>
+    <div><label for="aNome">Nome *</label><input type="text" id="aNome" placeholder="Mario"></div>
+    <div><label for="aCognome">Cognome *</label><input type="text" id="aCognome" placeholder="Rossi"></div>
+    <div><label for="aNascita">Data nascita</label><input type="date" id="aNascita"></div>
+    <div><label for="aCF">Codice fiscale</label><input type="text" id="aCF"></div>
+    <div><label for="aEmail">Email</label><input type="email" id="aEmail"></div>
+    <div><label for="aTel">Telefono</label><input type="tel" id="aTel"></div>
+    <div><label for="aCat">Categoria *</label><select id="aCat"></select></div>
+    <div><label for="aRuolo">Ruolo</label><select id="aRuolo"><option value="">—</option><option>Portiere</option><option>Difensore</option><option>Centrocampista</option><option>Attaccante</option></select></div>
+    <div><label for="aNumero">N° maglia</label><input type="number" id="aNumero" min="1" max="99"></div>
+    <div><label for="aStato">Stato</label><select id="aStato"><option value="active">Attivo</option><option value="inactive">Inattivo</option><option value="injured">Infortunato</option><option value="suspended">Sospeso</option></select></div>
+    <div class="full"><label for="aNote">Note</label><textarea id="aNote"></textarea></div>
   </div>
   <div class="ferr" id="errA"></div><div class="fok" id="okA"></div>
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mAtleta')">Annulla</button><button class="btn btn-primary" id="btnA" onclick="salvaAtleta()">Salva atleta</button></div>
@@ -350,12 +350,12 @@ function showOkToast(msg){
 <div class="mo" id="mSessione"><div class="modal">
   <div class="modal-hdr"><span class="modal-ttl">Nuova sessione</span><button class="modal-x" onclick="closeM('mSessione')">✕</button></div>
   <div class="fg">
-    <div><label>Tipo *</label><select id="sTipo"><option value="training">Allenamento</option><option value="match">Partita</option><option value="friendly">Amichevole</option><option value="individual">Individuale</option><option value="other">Altro</option></select></div>
-    <div><label>Data *</label><input type="date" id="sData"></div>
-    <div class="full"><label>Titolo</label><input type="text" id="sTitolo" placeholder="Es. Allenamento tattico"></div>
-    <div><label>Categoria *</label><select id="sCat"></select></div>
-    <div><label>Squadra</label><select id="sSquadra"><option value="">—</option></select></div>
-    <div class="full"><label>Note</label><textarea id="sNote"></textarea></div>
+    <div><label for="sTipo">Tipo *</label><select id="sTipo"><option value="training">Allenamento</option><option value="match">Partita</option><option value="friendly">Amichevole</option><option value="individual">Individuale</option><option value="other">Altro</option></select></div>
+    <div><label for="sData">Data *</label><input type="date" id="sData"></div>
+    <div class="full"><label for="sTitolo">Titolo</label><input type="text" id="sTitolo" placeholder="Es. Allenamento tattico"></div>
+    <div><label for="sCat">Categoria *</label><select id="sCat"></select></div>
+    <div><label for="sSquadra">Squadra</label><select id="sSquadra"><option value="">—</option></select></div>
+    <div class="full"><label for="sNote">Note</label><textarea id="sNote"></textarea></div>
   </div>
   <div class="ferr" id="errS"></div><div class="fok" id="okS"></div>
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mSessione')">Annulla</button><button class="btn btn-primary" id="btnS" onclick="salvaSessione()">Crea sessione</button></div>
@@ -365,15 +365,15 @@ function showOkToast(msg){
 <div class="mo" id="mPartita"><div class="modal">
   <div class="modal-hdr"><span class="modal-ttl">Nuova partita</span><button class="modal-x" onclick="closeM('mPartita')">✕</button></div>
   <div class="fg">
-    <div><label>Data *</label><input type="date" id="pData"></div>
-    <div><label>Orario</label><input type="time" id="pOra"></div>
-    <div class="full"><label>Avversario *</label><input type="text" id="pAvv" placeholder="Nome squadra"></div>
-    <div><label>Casa/Trasferta</label><select id="pHA"><option value="home">Casa</option><option value="away">Trasferta</option><option value="neutral">Neutro</option></select></div>
-    <div><label>Categoria *</label><select id="pCat"></select></div>
-    <div><label>Risultato</label><select id="pRis"><option value="">In programma</option><option value="W">Vittoria</option><option value="D">Pareggio</option><option value="L">Sconfitta</option></select></div>
-    <div><label>Gol fatti</label><input type="number" id="pGF" min="0" value="0"></div>
-    <div><label>Gol subiti</label><input type="number" id="pGA" min="0" value="0"></div>
-    <div class="full"><label>Note</label><textarea id="pNote"></textarea></div>
+    <div><label for="pData">Data *</label><input type="date" id="pData"></div>
+    <div><label for="pOra">Orario</label><input type="time" id="pOra"></div>
+    <div class="full"><label for="pAvv">Avversario *</label><input type="text" id="pAvv" placeholder="Nome squadra"></div>
+    <div><label for="pHA">Casa/Trasferta</label><select id="pHA"><option value="home">Casa</option><option value="away">Trasferta</option><option value="neutral">Neutro</option></select></div>
+    <div><label for="pCat">Categoria *</label><select id="pCat"></select></div>
+    <div><label for="pRis">Risultato</label><select id="pRis"><option value="">In programma</option><option value="W">Vittoria</option><option value="D">Pareggio</option><option value="L">Sconfitta</option></select></div>
+    <div><label for="pGF">Gol fatti</label><input type="number" id="pGF" min="0" value="0"></div>
+    <div><label for="pGA">Gol subiti</label><input type="number" id="pGA" min="0" value="0"></div>
+    <div class="full"><label for="pNote">Note</label><textarea id="pNote"></textarea></div>
   </div>
   <div class="ferr" id="errP"></div><div class="fok" id="okP"></div>
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mPartita')">Annulla</button><button class="btn btn-primary" id="btnP" onclick="salvaPartita()">Salva partita</button></div>
@@ -386,9 +386,9 @@ function showOkToast(msg){
     <div style="font-size:12px;color:var(--accent2)">L'utente deve essere già registrato. Inserisci la sua email per assegnargli un ruolo in questa stagione.</div>
   </div>
   <div class="fg">
-    <div class="full"><label>Email utente *</label><input type="email" id="stEmail" placeholder="utente@club.it"></div>
-    <div><label>Ruolo *</label><select id="stRuolo"><option value="segretario">Segretario</option><option value="presidente">Presidente</option><option value="allenatore">Allenatore</option><option value="dirigente">Dirigente</option><option value="responsabile">Responsabile</option><option value="genitore">Genitore</option></select></div>
-    <div><label>Categoria (opz.)</label><select id="stCat"><option value="">Tutte</option></select></div>
+    <div class="full"><label for="stEmail">Email utente *</label><input type="email" id="stEmail" placeholder="utente@club.it"></div>
+    <div><label for="stRuolo">Ruolo *</label><select id="stRuolo"><option value="segretario">Segretario</option><option value="presidente">Presidente</option><option value="allenatore">Allenatore</option><option value="dirigente">Dirigente</option><option value="responsabile">Responsabile</option><option value="genitore">Genitore</option></select></div>
+    <div><label for="stCat">Categoria (opz.)</label><select id="stCat"><option value="">Tutte</option></select></div>
   </div>
   <div class="ferr" id="errSt"></div><div class="fok" id="okSt"></div>
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mStaff')">Annulla</button><button class="btn btn-primary" id="btnSt" onclick="salvaStaff()">Assegna ruolo</button></div>
@@ -398,9 +398,9 @@ function showOkToast(msg){
 <div class="mo" id="mSquadra"><div class="modal">
   <div class="modal-hdr"><span class="modal-ttl">Nuova squadra</span><button class="modal-x" onclick="closeM('mSquadra')">✕</button></div>
   <div class="fg">
-    <div class="full"><label>Nome squadra *</label><input type="text" id="sqNome" placeholder="Es. Under 13 A"></div>
-    <div><label>Sport</label><select id="sqSport"></select></div>
-    <div><label>Categoria</label><select id="sqCat"></select></div>
+    <div class="full"><label for="sqNome">Nome squadra *</label><input type="text" id="sqNome" placeholder="Es. Under 13 A"></div>
+    <div><label for="sqSport">Sport</label><select id="sqSport"></select></div>
+    <div><label for="sqCat">Categoria</label><select id="sqCat"></select></div>
   </div>
   <div class="ferr" id="errSq"></div><div class="fok" id="okSq"></div>
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mSquadra')">Annulla</button><button class="btn btn-primary" id="btnSq" onclick="salvaSquadra()">Crea squadra</button></div>
@@ -410,11 +410,11 @@ function showOkToast(msg){
 <div class="mo" id="mCategoria"><div class="modal">
   <div class="modal-hdr"><span class="modal-ttl">Nuova categoria</span><button class="modal-x" onclick="closeM('mCategoria')">✕</button></div>
   <div class="fg">
-    <div class="full"><label>Nome *</label><input type="text" id="caNome" placeholder="Es. Under 13"></div>
-    <div><label>Sport</label><select id="caSport"></select></div>
+    <div class="full"><label for="caNome">Nome *</label><input type="text" id="caNome" placeholder="Es. Under 13"></div>
+    <div><label for="caSport">Sport</label><select id="caSport"></select></div>
     <div></div>
-    <div><label>Anno nascita (da)</label><input type="number" id="caFrom" placeholder="2010" min="1990" max="2020"></div>
-    <div><label>Anno nascita (a)</label><input type="number" id="caTo" placeholder="2011" min="1990" max="2020"></div>
+    <div><label for="caFrom">Anno nascita (da)</label><input type="number" id="caFrom" placeholder="2010" min="1990" max="2020"></div>
+    <div><label for="caTo">Anno nascita (a)</label><input type="number" id="caTo" placeholder="2011" min="1990" max="2020"></div>
   </div>
   <div class="ferr" id="errCa"></div><div class="fok" id="okCa"></div>
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mCategoria')">Annulla</button><button class="btn btn-primary" id="btnCa" onclick="salvaCategoria()">Crea categoria</button></div>
@@ -519,10 +519,10 @@ async function openWizardStagione(){
   // Crea select per societa nel wizard
   var socOpts=societa.map(function(s){return '<option value="'+s.id+'">'+hA(s.name)+'</option>';}).join('');
   var socField=societa.length>0
-    ?'<div class="fld"><label>Società *</label><select id="wzSoc">'+socOpts+'</select></div>'
-    :'<div class="fld"><label>Nome Società *</label><input id="wzSocNome" placeholder="Es. ASD Olimpia"/></div>'+
-      '<div class="fld"><label>Città</label><input id="wzSocCitta" placeholder="Milano"/></div>'+
-      '<div class="fld"><label>Email</label><input id="wzSocEmail" type="email"/></div>';
+    ?'<div class="fld"><label for="wzSoc">Società *</label><select id="wzSoc">'+socOpts+'</select></div>'
+    :'<div class="fld"><label for="wzSocNome">Nome Società *</label><input id="wzSocNome" placeholder="Es. ASD Olimpia"/></div>'+
+      '<div class="fld"><label for="wzSocCitta">Città</label><input id="wzSocCitta" placeholder="Milano"/></div>'+
+      '<div class="fld"><label for="wzSocEmail">Email</label><input id="wzSocEmail" type="email"/></div>';
 
   var yr=new Date().getFullYear();
   openM('mWizard');
@@ -535,9 +535,9 @@ async function openWizardStagione(){
     '</div>'+
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 0 4px">'+
-      '<div class="fld"><label>Anno Inizio *</label>'+
+      '<div class="fld"><label for="wzYrStart">Anno Inizio *</label>'+
         '<input id="wzYrStart" type="number" min="2000" max="2099" value="'+yr+'" placeholder="'+yr+'"/></div>'+
-      '<div class="fld"><label>Anno Fine *</label>'+
+      '<div class="fld"><label for="wzYrEnd">Anno Fine *</label>'+
         '<input id="wzYrEnd" type="number" min="2000" max="2099" value="'+(yr+1)+'" placeholder="'+(yr+1)+'"/></div>'+
     '</div>'+
     '<div id="wzPreview" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2);margin-bottom:4px">'+
@@ -983,9 +983,9 @@ function openNewStagione(){
   g('mWizardBody').innerHTML=
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 0 4px">'+
-      '<div class="fld"><label>Anno Inizio *</label>'+
+      '<div class="fld"><label for="wzYrStart">Anno Inizio *</label>'+
         '<input id="wzYrStart" type="number" min="2000" max="2099" value="'+yr+'" placeholder="'+yr+'"/></div>'+
-      '<div class="fld"><label>Anno Fine *</label>'+
+      '<div class="fld"><label for="wzYrEnd">Anno Fine *</label>'+
         '<input id="wzYrEnd" type="number" min="2000" max="2099" value="'+(yr+1)+'" placeholder="'+(yr+1)+'"/></div>'+
     '</div>'+
     '<div id="wzPreview" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2);margin-bottom:4px">'+
@@ -1027,11 +1027,11 @@ function openEditStagione(id){
   var yr=new Date().getFullYear();
   g('mWizardBody').innerHTML=
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
-    '<div class="fld"><label>Nome Stagione *</label>'+
+    '<div class="fld"><label for="wzName">Nome Stagione *</label>'+
       '<input id="wzName" value="'+hA(s.name)+'"/></div>'+
-    '<div class="fld"><label>Data Inizio *</label>'+
+    '<div class="fld"><label for="wzStart">Data Inizio *</label>'+
       '<input id="wzStart" type="date" value="'+s.start_date+'"/></div>'+
-    '<div class="fld"><label>Data Fine *</label>'+
+    '<div class="fld"><label for="wzEnd">Data Fine *</label>'+
       '<input id="wzEnd" type="date" value="'+s.end_date+'"/></div>'+
     '<div style="display:flex;gap:10px;margin-top:20px">'+
       '<button class="btn btn-primary" style="flex:1" onclick="saveEditStagione(&quot;"+id+"&quot;)">💾 Salva</button>'+
