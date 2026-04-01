@@ -396,89 +396,55 @@
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mCategoria')">Annulla</button><button class="btn btn-primary" id="btnCa" onclick="salvaCategoria()">Crea categoria</button></div>
 </div></div>
 
-  <script type="module">
-    import { client } from './db.js';
 
-    /* ============================================================
-       STATO GLOBALE (Sincronizzato Build 2.01)
-       ============================================================ */
-    window._currentUserId = null;
-    window._currentSocietyId = null;
-    window._userRole = 'user'; 
-    window.CURRENT_USER = null; // Gestito come proprietà di window per coerenza globale
+<script>
+// ── SUPABASE ─────────────────────────────────────────────
+const SURL='https://jvcplfgozdqirzqfqwox.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
+const sb=supabase.createClient(SURL,SKEY);
 
-    /* ============================================================
-       LOGICA MODAL
-       ============================================================ */
-    const modal = {
-        el: document.getElementById('modal-overlay'),
-        title: document.getElementById('modal-title'),
-        body: document.getElementById('modal-body'),
-        open(title, html) {
-            this.title.innerText = title;
-            this.body.innerHTML = html;
-            this.el.classList.add('modal-active');
-        },
-        close() { this.el.classList.remove('modal-active'); }
-    };
-    document.getElementById('btn-modal-close').onclick = () => modal.close();
+// ── STATO ────────────────────────────────────────────────
+let me=null,prof=null,myRole=null,season=null,society=null;
+let atleti=[],categorie=[],squadre=[],sessioni=[],partite=[],staff=[],sports=[];
 
- /* ============================================================
-       LOGICA DI AUTENTICAZIONE E LOGIN
-       ============================================================ */
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const errDiv = document.getElementById('error-msg');
-        errDiv.style.display = 'none';
+// ── AUTH ────────────────────────────────────────────────
+async function init(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session) await afterLogin(session.user);
+}
 
-        const usernameInput = document.getElementById('username').value.trim().toLowerCase();
-        const password = document.getElementById('password').value;
+async function doLogin(){
+  const email=g('loginEmail').value.trim(), pass=g('loginPass').value;
+  const err=g('loginErr'), btn=g('loginBtn');
+  err.style.display='none';
+  if(!email||!pass){err.textContent='Inserisci email e password';err.style.display='block';return;}
+  btn.disabled=true; btn.textContent='Accesso in corso...';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  btn.disabled=false; btn.textContent='Accedi';
+  if(error){err.textContent=error.message;err.style.display='block';return;}
+  await afterLogin(data.user);
+}
 
-        try {
-            // 1. Verifica utente su tabella public.users
-            const { data: userRow, error: userErr } = await client
-                .from('users')
-                .select('*')
-                .eq('username', usernameInput)
-                .maybeSingle();
+async function afterLogin(user){
+  me=user;
+  const {data:p}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  prof=p;
+  g('loginScreen').style.display='none';
+  g('appScreen').classList.add('vis');
+  const ini2=((p?.name||'?')[0]+(p?.surname||'')[0]).toUpperCase();
+  g('uAv').textContent=ini2;
+  g('uName').textContent=`${p?.name||''} ${p?.surname||''}`.trim()||user.email;
+  await loadBase();
+}
 
-            if (userErr) throw new Error("Errore database: " + userErr.message);
-            if (!userRow) throw new Error(`Username '${usernameInput}' non trovato.`);
-
-            // 2. Autenticazione Supabase Auth
-            const { error: authError } = await client.auth.signInWithPassword({
-                email: userRow.email,
-                password: password
-            });
-
-            if (authError) throw new Error("Password errata o account non attivo.");
-
-            // 3. Setup variabili globali di sessione (window)
-            window._userRole = userRow.role;
-            window._currentSocietyId = userRow.society_id;
-            window._currentUserId = userRow.id;
-            window.CURRENT_USER = userRow; // Popoliamo l'oggetto per la dashboard
-
-            // 4. UI Setup
-            document.documentElement.style.fontSize = "18px";
-            document.getElementById('login-wrap').style.display = 'none';
-            document.getElementById('app').style.display = 'flex'; // Usiamo flex per il layout a due colonne
-            
-            // Update Info Utente nel menu (se presente l'elemento nel tuo HTML)
-            const userInfo = document.getElementById('user-info');
-            if(userInfo) {
-                userInfo.innerText = `👤 ${userRow.name} (${userRow.role.toUpperCase()})`;
-                if(userRow.role === 'admin') userInfo.style.color = "#dc2626";
-            }
-
-            // 5. Navigazione iniziale
-            loadPage('dashboard');
-
-        } catch (err) {
-            errDiv.innerText = "⚠️ " + err.message;
-            errDiv.style.display = 'block';
-        }
-    });
+async function doLogout(){
+  await sb.auth.signOut();
+  g('appScreen').classList.remove('vis');
+  g('loginScreen').style.display='flex';
+  g('loginPass').value='';
+  me=null; prof=null; season=null; society=null;
+  atleti=[];squadre=[];sessioni=[];partite=[];staff=[];
+}
 
 // ── LOAD ────────────────────────────────────────────────
 async function loadBase(){
@@ -752,7 +718,7 @@ function g(id){return document.getElementById(id);}
 function v(id){const el=g(id);return el?el.value.trim():'';}
 function showErr(id,msg){const el=g(id);if(el){el.textContent=msg;el.style.display='block';}}
 function showOk(id,msg){const el=g(id);if(el){el.textContent=msg;el.style.display='block';}}
-function setBusy(id,busy){const btn=g(id);if(btn){btn.disabled=busy;if(busy)btn.dataset.orig=btn.textContent;else btn.textContent=btn.dataset.orig||btn.textContent;if(busy)btn.textContent='Salvataggio...';}}
+function setBusy(id,busy){const btn=g(id);if(btn){btn.disabled=busy;if(busy){btn.dataset.orig=btn.textContent;btn.textContent='Salvataggio...';}else{btn.textContent=btn.dataset.orig||btn.textContent;}}}
 
 g('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 init();
