@@ -429,6 +429,7 @@ const sb=supabase.createClient(SURL,SKEY);
 // STATO
 let me=null,prof=null,myRole=null,season=null,society=null;
 let atleti=[],categorie=[],squadre=[],sessioni=[],partite=[],staff=[],sports=[];
+let societa=[],allStagioni=[];
 
 // AUTH
 async function init(){
@@ -1115,7 +1116,7 @@ init();
 </script>
 
 <!-- WIZARD STAGIONE -->
-<div class="modal-backdrop" id="mWizard" style="display:none" onclick="if(event.target===this){}">
+<div class="modal-backdrop" id="mWizard" onclick="if(event.target===this){closeM('mWizard')}">
   <div class="modal-box" style="max-width:480px">
     <div class="modal-hdr">
       <span id="mWizardTitle">⚽ Prima Configurazione</span>
