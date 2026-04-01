@@ -4,7 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SportTrack Pro</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+function showOkToast(msg){
+  var t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;padding:14px 28px;border-radius:12px;font-weight:700;z-index:9999;font-size:15px;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+  t.textContent=msg;document.body.appendChild(t);
+  setTimeout(function(){t.remove();},3500);
+}
+</script>
 <style>
   :root {
     --bg:#0f1117;--bg2:#1a1d27;--bg3:#22263a;
@@ -214,6 +221,13 @@
         Partite<span class="cnt" id="cntPar" style="display:none"></span>
       </div>
     </nav>
+    <nav class="nav-sec">
+      <div class="nav-lbl">Configurazione</div>
+      <div class="ni" data-p="stagioni" onclick="nav('stagioni',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+        Stagioni
+      </div>
+    </nav>
     <div class="sb-footer">
       <div class="avatar" id="uAv">?</div>
       <div style="flex:1;min-width:0"><div class="u-name" id="uName">—</div><div class="u-role" id="uRole">—</div></div>
@@ -277,7 +291,8 @@
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova partita
           </button>
         </div>
-        <div class="card"><div class="tw" id="wPartite"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
+        <div class="card"><div class="tw" id="wPartite"><div class="loading"><div class="spinner"></div>
+    <div class="page" id="page-stagioni"><div id="wStagioni"></div></div>Caricamento...</div></div></div>
       </div>
 
       <div class="page" id="page-staff">
@@ -448,18 +463,129 @@ async function doLogout(){
 // LOAD
 async function loadBase(){
   var r=await Promise.all([
-    sb.from('seasons').select('*').eq('is_active',true).single(),
+    sb.from('seasons').select('*').order('start_date',{ascending:false}),
     sb.from('user_team_seasons').select('society_id,role,societies(name)').eq('user_id',me.id).limit(1).single(),
     sb.from('categories').select('*').order('name'),
-    sb.from('sports').select('*').order('name')
+    sb.from('sports').select('*').order('name'),
+    sb.from('societies').select('*').order('name')
   ]);
-  season=r[0].data; society=r[1].data?r[1].data.society_id:null; myRole=r[1].data?r[1].data.role:null;
-  categorie=r[2].data||[]; sports=r[3].data||[];
-  g('sbStagione').textContent=season?season.name:'Nessuna';
-  g('uRole').textContent=myRole||'sconosciuto';
+  // Stagione: prima quella attiva, altrimenti la più recente
+  var allSeasons=r[0].data||[];
+  season=allSeasons.find(function(s){return s.is_active;})||allSeasons[0]||null;
+  society=r[1].data?r[1].data.society_id:null;
+  myRole=r[1].data?r[1].data.role:null;
+  categorie=r[2].data||[];
+  sports=r[3].data||[];
+  societa=r[4].data||[];
+  allStagioni=allSeasons;
+  g('sbStagione').textContent=season?season.name:'Nessuna stagione';
+  g('uRole').textContent=myRole||'—';
+  fillSelects();
+  // Se non c'è stagione, mostra wizard
+  if(!season){
+    showNoSeasonWarning();
+    return;
+  }
+  await Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]);
+  renderDashboard();
+}
+
+function showNoSeasonWarning(){
+  // Mostra banner prominente e apre wizard stagione
+  renderDashboard(); // rende la dashboard vuota
+  setTimeout(function(){
+    if(myRole==='admin'||!myRole){
+      openWizardStagione();
+    } else {
+      // Non-admin: avvisa solo
+      var warn=document.createElement('div');
+      warn.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#F59E0B;color:#fff;padding:16px 24px;border-radius:12px;font-weight:700;z-index:999;max-width:500px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+      warn.textContent='⚠️ Nessuna stagione attiva. Contatta l\'amministratore.';
+      document.body.appendChild(warn);
+    }
+  },300);
+}
+
+async function openWizardStagione(){
+  // Crea select per societa nel wizard
+  var socOpts=societa.map(function(s){return '<option value="'+s.id+'">'+hA(s.name)+'</option>';}).join('');
+  var socField=societa.length>0
+    ?'<div class="fld"><label>Società *</label><select id="wzSoc">'+socOpts+'</select></div>'
+    :'<div class="fld"><label>Nome Società *</label><input id="wzSocNome" placeholder="Es. ASD Olimpia"/></div>'+
+      '<div class="fld"><label>Città</label><input id="wzSocCitta" placeholder="Milano"/></div>'+
+      '<div class="fld"><label>Email</label><input id="wzSocEmail" type="email"/></div>';
+
+  var yr=new Date().getFullYear();
+  openM('mWizard');
+  g('mWizardBody').innerHTML=
+    '<div style="text-align:center;margin-bottom:20px">'+
+      '<div style="font-size:48px;margin-bottom:8px">⚽</div>'+
+      '<h3 style="font-size:18px;margin-bottom:6px">Prima configurazione</h3>'+
+      '<p style="color:var(--text2);font-size:14px">Crea la stagione calcistica per iniziare</p>'+
+    '</div>'+
+    '<div id="wzErr" class="err-box" style="display:none"></div>'+
+    '<div class="fld"><label>Nome Stagione *</label>'+
+      '<input id="wzName" value="'+yr+'/'+(yr+1)+'" placeholder="2025/2026"/></div>'+
+    '<div class="fld"><label>Data Inizio *</label>'+
+      '<input id="wzStart" type="date" value="'+yr+'-09-01"/></div>'+
+    '<div class="fld"><label>Data Fine *</label>'+
+      '<input id="wzEnd" type="date" value="'+(yr+1)+'-06-30"/></div>'+
+    '<hr style="margin:16px 0;border-color:var(--border)"/>'+
+    socField+
+    '<div style="display:flex;gap:10px;margin-top:20px">'+
+      '<button class="btn btn-primary" style="flex:1" onclick="salvaWizard()">🚀 Crea e Inizia</button>'+
+    '</div>';
+}
+
+async function salvaWizard(){
+  var nome=v('wzName'),start=v('wzStart'),end=v('wzEnd');
+  if(!nome||!start||!end){showErr('wzErr','Compila tutti i campi obbligatori');return;}
+  if(end<=start){showErr('wzErr','La data fine deve essere dopo quella di inizio');return;}
+
+  // 1. Disattiva tutte le stagioni esistenti
+  await sb.from('seasons').update({is_active:false}).neq('id','00000000-0000-0000-0000-000000000000');
+
+  // 2. Crea nuova stagione
+  var rSeas=await sb.from('seasons').insert({name:nome,start_date:start,end_date:end,is_active:true}).select().single();
+  if(rSeas.error){showErr('wzErr','Errore stagione: '+rSeas.error.message);return;}
+  season=rSeas.data;
+
+  // 3. Gestisci società
+  var socId=null;
+  if(g('wzSoc')){
+    socId=v('wzSoc');
+  } else {
+    var socNome=v('wzSocNome');
+    if(!socNome){showErr('wzErr','Inserisci il nome della società');return;}
+    var rSoc=await sb.from('societies').insert({
+      name:socNome,
+      city:v('wzSocCitta')||'',
+      email:v('wzSocEmail')||''
+    }).select().single();
+    if(rSoc.error){showErr('wzErr','Errore società: '+rSoc.error.message);return;}
+    socId=rSoc.data.id;
+    societa.push(rSoc.data);
+  }
+  society=socId;
+
+  // 4. Associa l'utente corrente come admin della società/stagione
+  if(me&&socId){
+    await sb.from('user_team_seasons').upsert({
+      user_id:me.id,
+      season_id:season.id,
+      society_id:socId,
+      role:myRole||'admin'
+    },{onConflict:'user_id,season_id,society_id,role'});
+    myRole=myRole||'admin';
+    g('uRole').textContent=myRole;
+  }
+
+  closeM('mWizard');
+  g('sbStagione').textContent=season.name;
   fillSelects();
   await Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]);
   renderDashboard();
+  showOkToast('Stagione "'+nome+'" creata! Ora puoi iniziare. 🎉');
 }
 
 async function loadAtleti(){
@@ -769,18 +895,127 @@ async function salvaSquadra(){
 // SAVE CATEGORIA
 async function salvaCategoria(){
   var nome=v('caNome'),sport=v('caSport');
-  if(!nome){showErr('errCa','Il nome e obbligatorio');return;}
+  if(!nome){showErr('errCa','Il nome è obbligatorio');return;}
   setBusy('btnCa',true);
-  var r=await sb.from('categories').insert({name:nome,sport_id:sport,birth_year_from:parseInt(v('caFrom'))||null,birth_year_to:parseInt(v('caTo'))||null});
-  if(r.error){showErr('errCa',r.error.message);setBusy('btnCa',false);return;}
+  var payload={name:nome,sport_id:sport||null,birth_year_from:parseInt(v('caFrom'))||null,birth_year_to:parseInt(v('caTo'))||null};
+  var r=await sb.from('categories').insert(payload);
+  if(r.error){
+    // Se RLS blocca, mostra messaggio utile
+    if(r.error.message&&r.error.message.includes('security policy')){
+      showErr('errCa','Permesso negato. Verifica di avere il ruolo admin o esegui il fix RLS su Supabase (vedi console).');
+      console.warn('FIX RLS: esegui questo SQL su Supabase:\nALTER POLICY \"categories_write\" ON categories USING (true) WITH CHECK (true);');
+    } else {
+      showErr('errCa',r.error.message);
+    }
+    setBusy('btnCa',false);return;
+  }
   showOk('okCa','Categoria creata!');setBusy('btnCa',false);
   var res=await sb.from('categories').select('*').order('name');
   categorie=res.data||[];fillSelects();renderCategorie();
   setTimeout(function(){closeM('mCategoria');},1000);
 }
 
+
+// ═══════════════════════════════════════════════
+//  STAGIONI
+// ═══════════════════════════════════════════════
+function renderStagioni(){
+  var w=g('wStagioni'); if(!w) return;
+  var rows='';
+  (allStagioni||[]).forEach(function(s){
+    var isAct=s.is_active;
+    rows+='<tr>'+
+      '<td style="font-weight:700;font-size:15px">'+hA(s.name)+'</td>'+
+      '<td>'+fd(s.start_date)+'</td>'+
+      '<td>'+fd(s.end_date)+'</td>'+
+      '<td>'+(isAct?'<span class="badge badge-green">★ Attiva</span>':'<span class="badge">Archivio</span>')+'</td>'+
+      '<td style="display:flex;gap:6px">'+
+        (!isAct?'<button class="btn btn-sm btn-outline" onclick="setSeasonActive(&quot;"+s.id+"&quot;)">⚡ Attiva</button>':'')+
+        '<button class="btn btn-sm btn-outline" onclick="openEditStagione(&quot;"+s.id+"&quot;)">✏️</button>'+
+        (!isAct?'<button class="btn btn-sm btn-danger" onclick="deleteStagione(&quot;"+s.id+"&quot;)">🗑️</button>':'')+
+      '</td>'+
+    '</tr>';
+  });
+  w.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'+
+      '<h2 style="font-size:18px;font-weight:700">Stagioni Calcistiche</h2>'+
+      '<button class="btn btn-primary" onclick="openNewStagione()">+ Nuova Stagione</button>'+
+    '</div>'+
+    (allStagioni.length===0
+      ?'<div class="empty">Nessuna stagione. Crea la prima!</div>'
+      :'<div class="table-wrap"><table>'+
+        '<thead><tr><th>Stagione</th><th>Inizio</th><th>Fine</th><th>Stato</th><th>Azioni</th></tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+        '</table></div>'
+    );
+}
+
+function openNewStagione(){
+  openWizardStagione();
+}
+
+function openEditStagione(id){
+  var s=allStagioni.find(function(x){return x.id===id;});
+  if(!s) return;
+  openM('mWizard');
+  g('mWizardTitle').textContent='✏️ Modifica Stagione';
+  var yr=new Date().getFullYear();
+  g('mWizardBody').innerHTML=
+    '<div id="wzErr" class="err-box" style="display:none"></div>'+
+    '<div class="fld"><label>Nome Stagione *</label>'+
+      '<input id="wzName" value="'+hA(s.name)+'"/></div>'+
+    '<div class="fld"><label>Data Inizio *</label>'+
+      '<input id="wzStart" type="date" value="'+s.start_date+'"/></div>'+
+    '<div class="fld"><label>Data Fine *</label>'+
+      '<input id="wzEnd" type="date" value="'+s.end_date+'"/></div>'+
+    '<div style="display:flex;gap:10px;margin-top:20px">'+
+      '<button class="btn btn-primary" style="flex:1" onclick="saveEditStagione(&quot;"+id+"&quot;)">💾 Salva</button>'+
+      '<button class="btn btn-outline" onclick="closeM(&quot;mWizard&quot;)">Annulla</button>'+
+    '</div>';
+}
+
+async function saveEditStagione(id){
+  var nome=v('wzName'),start=v('wzStart'),end=v('wzEnd');
+  if(!nome||!start||!end){showErr('wzErr','Compila tutti i campi');return;}
+  var r=await sb.from('seasons').update({name:nome,start_date:start,end_date:end}).eq('id',id);
+  if(r.error){showErr('wzErr',r.error.message);return;}
+  // Aggiorna locale
+  var idx=allStagioni.findIndex(function(x){return x.id===id;});
+  if(idx>=0) Object.assign(allStagioni[idx],{name:nome,start_date:start,end_date:end});
+  if(season&&season.id===id) {season.name=nome;g('sbStagione').textContent=nome;}
+  closeM('mWizard');
+  renderStagioni();
+  showOkToast('✅ Stagione aggiornata!');
+}
+
+async function setSeasonActive(id){
+  if(!confirm('Impostare questa stagione come attiva? La stagione corrente verrà disattivata.')) return;
+  // Disattiva tutte
+  await sb.from('seasons').update({is_active:false}).neq('id','00000000-0000-0000-0000-000000000000');
+  // Attiva quella scelta
+  var r=await sb.from('seasons').update({is_active:true}).eq('id',id);
+  if(r.error){alert('Errore: '+r.error.message);return;}
+  allStagioni.forEach(function(s){s.is_active=(s.id===id);});
+  season=allStagioni.find(function(s){return s.id===id;})||season;
+  society=society; // mantieni la società
+  g('sbStagione').textContent=season?season.name:'—';
+  renderStagioni();
+  await Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]);
+  renderDashboard();
+  showOkToast('✅ Stagione "'+season.name+'" attivata!');
+}
+
+async function deleteStagione(id){
+  if(!confirm('Eliminare questa stagione? Tutti i dati collegati verranno persi.')) return;
+  var r=await sb.from('seasons').delete().eq('id',id);
+  if(r.error){alert('Errore: '+r.error.message);return;}
+  allStagioni=allStagioni.filter(function(s){return s.id!==id;});
+  renderStagioni();
+  showOkToast('Stagione eliminata');
+}
+
 // NAVIGATION
-var PT={dashboard:'Dashboard',atleti:'Atleti',squadre:'Squadre',sessioni:'Allenamenti',partite:'Partite',staff:'Staff',categorie:'Categorie'};
+var PT={dashboard:'Dashboard',atleti:'Atleti',squadre:'Squadre',sessioni:'Allenamenti',partite:'Partite',staff:'Staff',categorie:'Categorie',stagioni:'Stagioni'};
 function nav(pageId,el){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active');});
@@ -789,6 +1024,7 @@ function nav(pageId,el){
   else { var ni=document.querySelector('[data-p="'+pageId+'"]'); if(ni) ni.classList.add('active'); }
   g('topbarTitle').textContent=PT[pageId]||pageId;
   if(pageId==='categorie') renderCategorie();
+  if(pageId==='stagioni')  renderStagioni();
 }
 
 // MODAL
@@ -811,5 +1047,15 @@ function setBusy(id,busy){var btn=g(id);if(btn){btn.disabled=busy;if(busy){btn.d
 g('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 init();
 </script>
+
+<!-- WIZARD STAGIONE -->
+<div class="modal-backdrop" id="mWizard" style="display:none" onclick="if(event.target===this){}">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr">
+      <span id="mWizardTitle">⚽ Prima Configurazione</span>
+    </div>
+    <div class="modal-body" id="mWizardBody"></div>
+  </div>
+</div>
 </body>
 </html>
