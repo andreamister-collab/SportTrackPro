@@ -473,7 +473,7 @@ async function doLogout(){
 async function loadBase(){
   var r=await Promise.all([
     sb.from('seasons').select('*').order('start_date',{ascending:false}),
-    sb.from('user_team_seasons').select('society_id,role,societies(name)').eq('user_id',me.id).limit(1).single(),
+    sb.from('user_team_seasons').select('society_id,role,societies(name)').eq('user_id',me.id).limit(1).maybeSingle(),
     sb.from('categories').select('*').order('name'),
     sb.from('sports').select('*').order('name'),
     sb.from('societies').select('*').order('name')
@@ -482,7 +482,7 @@ async function loadBase(){
   var allSeasons=r[0].data||[];
   season=allSeasons.find(function(s){return s.is_active;})||allSeasons[0]||null;
   society=r[1].data?r[1].data.society_id:null;
-  myRole=r[1].data?r[1].data.role:null;
+  myRole=r[1].data?r[1].data.role:'admin'; // fallback admin se non ha ancora un ruolo assegnato
   categorie=r[2].data||[];
   sports=r[3].data||[];
   societa=r[4].data||[];
