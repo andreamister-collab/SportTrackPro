@@ -139,6 +139,14 @@ function showOkToast(msg){
   .modal-ft{padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
   .ferr{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:var(--radius2);padding:8px 12px;font-size:12px;margin:0 18px 4px;display:none;}
   .fok{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#34d399;border-radius:var(--radius2);padding:8px 12px;font-size:12px;margin:0 18px 4px;display:none;}
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;}
+  .modal-backdrop.open{display:flex;}
+  .modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;}
+  .modal-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:600;}
+  .err-box{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:var(--radius2);padding:8px 12px;font-size:12px;margin-bottom:12px;}
+  .fld{margin-bottom:12px;}
+  .fld label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500;}
+  .modal-body{padding:18px;}
 
   .bar-chart{padding:18px;display:flex;flex-direction:column;gap:10px;}
   .bar-row{display:flex;align-items:center;gap:10px;}
@@ -291,9 +299,10 @@ function showOkToast(msg){
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova partita
           </button>
         </div>
-        <div class="card"><div class="tw" id="wPartite"><div class="loading"><div class="spinner"></div>
-    <div class="page" id="page-stagioni"><div id="wStagioni"></div></div>Caricamento...</div></div></div>
+        <div class="card"><div class="tw" id="wPartite"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
       </div>
+
+      <div class="page" id="page-stagioni"><div id="wStagioni"></div></div>
 
       <div class="page" id="page-staff">
         <div style="margin-bottom:16px;display:flex;justify-content:flex-end">
@@ -441,7 +450,7 @@ async function doLogin(){
 
 async function afterLogin(user){
   me=user;
-  const {data:p}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  const {data:p}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
   prof=p;
   g('loginScreen').style.display='none';
   g('appScreen').classList.add('vis');
@@ -517,6 +526,7 @@ async function openWizardStagione(){
 
   var yr=new Date().getFullYear();
   openM('mWizard');
+  g('mWizardTitle').textContent='⚽ Prima Configurazione';
   g('mWizardBody').innerHTML=
     '<div style="text-align:center;margin-bottom:20px">'+
       '<div style="font-size:48px;margin-bottom:8px">⚽</div>'+
@@ -524,23 +534,39 @@ async function openWizardStagione(){
       '<p style="color:var(--text2);font-size:14px">Crea la stagione calcistica per iniziare</p>'+
     '</div>'+
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
-    '<div class="fld"><label>Nome Stagione *</label>'+
-      '<input id="wzName" value="'+yr+'/'+(yr+1)+'" placeholder="2025/2026"/></div>'+
-    '<div class="fld"><label>Data Inizio *</label>'+
-      '<input id="wzStart" type="date" value="'+yr+'-09-01"/></div>'+
-    '<div class="fld"><label>Data Fine *</label>'+
-      '<input id="wzEnd" type="date" value="'+(yr+1)+'-06-30"/></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 0 4px">'+
+      '<div class="fld"><label>Anno Inizio *</label>'+
+        '<input id="wzYrStart" type="number" min="2000" max="2099" value="'+yr+'" placeholder="'+yr+'"/></div>'+
+      '<div class="fld"><label>Anno Fine *</label>'+
+        '<input id="wzYrEnd" type="number" min="2000" max="2099" value="'+(yr+1)+'" placeholder="'+(yr+1)+'"/></div>'+
+    '</div>'+
+    '<div id="wzPreview" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2);margin-bottom:4px">'+
+      '<span style="color:var(--accent2);font-weight:600">Anteprima:</span> Stagione <b>'+yr+'/'+(yr+1)+'</b> &mdash; 01/08/'+yr+' → 31/07/'+(yr+1)+
+    '</div>'+
     '<hr style="margin:16px 0;border-color:var(--border)"/>'+
     socField+
     '<div style="display:flex;gap:10px;margin-top:20px">'+
       '<button class="btn btn-primary" style="flex:1" onclick="salvaWizard()">🚀 Crea e Inizia</button>'+
     '</div>';
+
+  // Aggiorna anteprima al cambio anno
+  function updatePreview(){
+    var ys=parseInt(g('wzYrStart').value)||yr;
+    var ye=parseInt(g('wzYrEnd').value)||yr+1;
+    g('wzPreview').innerHTML='<span style="color:var(--accent2);font-weight:600">Anteprima:</span> Stagione <b>'+ys+'/'+ye+'</b> &mdash; 01/08/'+ys+' → 31/07/'+ye;
+  }
+  g('wzYrStart').addEventListener('input',updatePreview);
+  g('wzYrEnd').addEventListener('input',updatePreview);
 }
 
 async function salvaWizard(){
-  var nome=v('wzName'),start=v('wzStart'),end=v('wzEnd');
-  if(!nome||!start||!end){showErr('wzErr','Compila tutti i campi obbligatori');return;}
-  if(end<=start){showErr('wzErr','La data fine deve essere dopo quella di inizio');return;}
+  var ysEl=g('wzYrStart'), yeEl=g('wzYrEnd');
+  var ys=parseInt(ysEl?ysEl.value:''), ye=parseInt(yeEl?yeEl.value:'');
+  if(!ys||!ye){showErr('wzErr','Inserisci anno di inizio e anno di fine');return;}
+  if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore dell\'anno di inizio');return;}
+  var nome='Stagione '+ys+'/'+ye;
+  var start=ys+'-08-01';
+  var end=ye+'-07-31';
 
   // 1. Disattiva tutte le stagioni esistenti
   await sb.from('seasons').update({is_active:false}).neq('id','00000000-0000-0000-0000-000000000000');
@@ -951,7 +977,46 @@ function renderStagioni(){
 }
 
 function openNewStagione(){
-  openWizardStagione();
+  var yr=new Date().getFullYear();
+  openM('mWizard');
+  g('mWizardTitle').textContent='+ Nuova Stagione';
+  g('mWizardBody').innerHTML=
+    '<div id="wzErr" class="err-box" style="display:none"></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 0 4px">'+
+      '<div class="fld"><label>Anno Inizio *</label>'+
+        '<input id="wzYrStart" type="number" min="2000" max="2099" value="'+yr+'" placeholder="'+yr+'"/></div>'+
+      '<div class="fld"><label>Anno Fine *</label>'+
+        '<input id="wzYrEnd" type="number" min="2000" max="2099" value="'+(yr+1)+'" placeholder="'+(yr+1)+'"/></div>'+
+    '</div>'+
+    '<div id="wzPreview" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2);margin-bottom:4px">'+
+      '<span style="color:var(--accent2);font-weight:600">Anteprima:</span> Stagione <b>'+yr+'/'+(yr+1)+'</b> &mdash; 01/08/'+yr+' → 31/07/'+(yr+1)+
+    '</div>'+
+    '<div style="display:flex;gap:10px;margin-top:20px">'+
+      '<button class="btn btn-primary" style="flex:1" onclick="salvaWizardStagioneOnly()">💾 Crea Stagione</button>'+
+      '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
+    '</div>';
+  function updatePreview(){
+    var ys=parseInt(g('wzYrStart').value)||yr;
+    var ye=parseInt(g('wzYrEnd').value)||yr+1;
+    g('wzPreview').innerHTML='<span style="color:var(--accent2);font-weight:600">Anteprima:</span> Stagione <b>'+ys+'/'+ye+'</b> &mdash; 01/08/'+ys+' → 31/07/'+ye;
+  }
+  g('wzYrStart').addEventListener('input',updatePreview);
+  g('wzYrEnd').addEventListener('input',updatePreview);
+}
+
+async function salvaWizardStagioneOnly(){
+  var ys=parseInt(g('wzYrStart')?g('wzYrStart').value:''), ye=parseInt(g('wzYrEnd')?g('wzYrEnd').value:'');
+  if(!ys||!ye){showErr('wzErr','Inserisci anno di inizio e anno di fine');return;}
+  if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore dell\'anno di inizio');return;}
+  var nome='Stagione '+ys+'/'+ye;
+  var start=ys+'-08-01';
+  var end=ye+'-07-31';
+  var rSeas=await sb.from('seasons').insert({name:nome,start_date:start,end_date:end,is_active:false}).select().single();
+  if(rSeas.error){showErr('wzErr','Errore: '+rSeas.error.message);return;}
+  allStagioni.unshift(rSeas.data);
+  closeM('mWizard');
+  renderStagioni();
+  showOkToast('✅ Stagione "'+nome+'" creata!');
 }
 
 function openEditStagione(id){
@@ -1030,8 +1095,9 @@ function nav(pageId,el){
 // MODAL
 function openM(id){g(id).classList.add('open');}
 function closeM(id){
-  g(id).classList.remove('open');
-  g(id).querySelectorAll('.ferr,.fok').forEach(function(e){e.style.display='none';});
+  var el=g(id); if(!el) return;
+  el.classList.remove('open');
+  el.querySelectorAll('.ferr,.fok,.err-box').forEach(function(e){e.style.display='none';});
 }
 document.querySelectorAll('.mo').forEach(function(m){
   m.addEventListener('click',function(e){if(e.target===m)m.classList.remove('open');});
