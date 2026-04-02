@@ -536,6 +536,8 @@ async function openWizardStagione(){
     '<div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Società</div>'+
     '<div class="fld"><label for="wzSocNome">Nome Società *</label>'+
       '<input id="wzSocNome" placeholder="Es. ASD Olimpia"/></div>'+
+    '<div class="fld"><label for="wzSocSport">Sport *</label>'+
+      '<select id="wzSocSport"><option value="">— Seleziona sport —</option>'+_sportOpts(null)+'</select></div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
       '<div class="fld"><label for="wzSocCitta">Città</label>'+
         '<input id="wzSocCitta" placeholder="Milano"/></div>'+
@@ -595,8 +597,11 @@ async function salvaWizard(){
   } else {
     var socNome=v('wzSocNome');
     if(!socNome){showErr('wzErr','Inserisci il nome della società');return;}
+    var socSport=v('wzSocSport');
+    if(!socSport){showErr('wzErr','Seleziona lo sport della società');return;}
     var rSoc=await sb.from('societies').insert({
       name:socNome,
+      sport_id:socSport,
       city:v('wzSocCitta')||'',
       email:v('wzSocEmail')||''
     }).select().single();
@@ -1138,10 +1143,12 @@ async function deleteStagione(id){
 // ═══════════════════════════════════════════════
 function renderSocieta(){
   var w=g('wSocieta'); if(!w) return;
+  var sm={};sports.forEach(function(s){sm[s.id]=s.name;});
   var rows='';
   (societa||[]).forEach(function(s){
     rows+='<tr>'+
       '<td style="font-weight:700">'+hA(s.name)+'</td>'+
+      '<td style="color:var(--text2)">'+hA(sm[s.sport_id]||'—')+'</td>'+
       '<td style="color:var(--text2)">'+hA(s.city||'—')+'</td>'+
       '<td style="color:var(--text2)">'+hA(s.email||'—')+'</td>'+
       '<td>'+
@@ -1165,10 +1172,16 @@ function renderSocieta(){
     (societa.length===0
       ?'<div class="empty">Nessuna società. Crea la prima!</div>'
       :'<div class="card"><div class="tw"><table>'+
-        '<thead><tr><th>Nome</th><th>Città</th><th>Email</th><th>Azioni</th></tr></thead>'+
+        '<thead><tr><th>Nome</th><th>Sport</th><th>Città</th><th>Email</th><th>Azioni</th></tr></thead>'+
         '<tbody>'+rows+'</tbody>'+
         '</table></div></div>'
     );
+}
+
+function _sportOpts(selectedId){
+  return sports.map(function(s){
+    return '<option value="'+s.id+'"'+(s.id===selectedId?' selected':'')+'>'+hA(s.icon?s.icon+' ':'')+hA(s.name)+'</option>';
+  }).join('');
 }
 
 function openNewSocieta(){
@@ -1178,10 +1191,14 @@ function openNewSocieta(){
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
     '<div class="fld"><label for="wzSocNome">Nome Società *</label>'+
       '<input id="wzSocNome" placeholder="Es. ASD Olimpia"/></div>'+
-    '<div class="fld"><label for="wzSocCitta">Città</label>'+
-      '<input id="wzSocCitta" placeholder="Es. Milano"/></div>'+
-    '<div class="fld"><label for="wzSocEmail">Email</label>'+
-      '<input id="wzSocEmail" type="email" placeholder="info@societa.it"/></div>'+
+    '<div class="fld"><label for="wzSocSport">Sport *</label>'+
+      '<select id="wzSocSport"><option value="">— Seleziona sport —</option>'+_sportOpts(null)+'</select></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+      '<div class="fld"><label for="wzSocCitta">Città</label>'+
+        '<input id="wzSocCitta" placeholder="Es. Milano"/></div>'+
+      '<div class="fld"><label for="wzSocEmail">Email</label>'+
+        '<input id="wzSocEmail" type="email" placeholder="info@societa.it"/></div>'+
+    '</div>'+
     '<div style="display:flex;gap:10px;margin-top:16px">'+
       '<button class="btn btn-primary" style="flex:1" onclick="salvaSocieta()">💾 Crea Società</button>'+
       '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
@@ -1189,9 +1206,10 @@ function openNewSocieta(){
 }
 
 async function salvaSocieta(){
-  var nome=v('wzSocNome');
+  var nome=v('wzSocNome'), sport=v('wzSocSport');
   if(!nome){showErr('wzErr','Il nome è obbligatorio');return;}
-  var r=await sb.from('societies').insert({name:nome,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''}).select().single();
+  if(!sport){showErr('wzErr','Seleziona uno sport');return;}
+  var r=await sb.from('societies').insert({name:nome,sport_id:sport,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''}).select().single();
   if(r.error){showErr('wzErr','Errore: '+r.error.message);return;}
   societa.push(r.data);
   closeM('mWizard');
@@ -1208,10 +1226,14 @@ function openEditSocieta(id){
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
     '<div class="fld"><label for="wzSocNome">Nome Società *</label>'+
       '<input id="wzSocNome" value="'+hA(s.name)+'"/></div>'+
-    '<div class="fld"><label for="wzSocCitta">Città</label>'+
-      '<input id="wzSocCitta" value="'+hA(s.city||'')+'"/></div>'+
-    '<div class="fld"><label for="wzSocEmail">Email</label>'+
-      '<input id="wzSocEmail" type="email" value="'+hA(s.email||'')+'"/></div>'+
+    '<div class="fld"><label for="wzSocSport">Sport *</label>'+
+      '<select id="wzSocSport"><option value="">— Seleziona sport —</option>'+_sportOpts(s.sport_id)+'</select></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+      '<div class="fld"><label for="wzSocCitta">Città</label>'+
+        '<input id="wzSocCitta" value="'+hA(s.city||'')+'"/></div>'+
+      '<div class="fld"><label for="wzSocEmail">Email</label>'+
+        '<input id="wzSocEmail" type="email" value="'+hA(s.email||'')+'"/></div>'+
+    '</div>'+
     '<div style="display:flex;gap:10px;margin-top:16px">'+
       '<button class="btn btn-primary" style="flex:1" onclick="saveEditSocieta(\''+id+'\')">💾 Salva</button>'+
       '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
@@ -1219,12 +1241,13 @@ function openEditSocieta(id){
 }
 
 async function saveEditSocieta(id){
-  var nome=v('wzSocNome');
+  var nome=v('wzSocNome'), sport=v('wzSocSport');
   if(!nome){showErr('wzErr','Il nome è obbligatorio');return;}
-  var r=await sb.from('societies').update({name:nome,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''}).eq('id',id);
+  if(!sport){showErr('wzErr','Seleziona uno sport');return;}
+  var r=await sb.from('societies').update({name:nome,sport_id:sport,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''}).eq('id',id);
   if(r.error){showErr('wzErr','Errore: '+r.error.message);return;}
   var idx=societa.findIndex(function(x){return x.id===id;});
-  if(idx>=0) Object.assign(societa[idx],{name:nome,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''});
+  if(idx>=0) Object.assign(societa[idx],{name:nome,sport_id:sport,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''});
   closeM('mWizard');
   renderSocieta();
   showOkToast('✅ Società aggiornata!');
