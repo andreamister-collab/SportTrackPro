@@ -4,171 +4,244 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SportTrack Pro</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-function showOkToast(msg){
-  var t=document.createElement('div');
-  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;padding:14px 28px;border-radius:12px;font-weight:700;z-index:9999;font-size:15px;box-shadow:0 4px 20px rgba(0,0,0,.3)';
-  t.textContent=msg;document.body.appendChild(t);
-  setTimeout(function(){t.remove();},3500);
-}
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:#0f1117;--bg2:#1a1d27;--bg3:#22263a;
-    --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
-    --text:#e8eaf0;--text2:#8b90a0;--text3:#555a6e;
-    --accent:#3b82f6;--accent2:#60a5fa;
-    --green:#10b981;--red:#ef4444;--amber:#f59e0b;--purple:#8b5cf6;
-    --radius:10px;--radius2:6px;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh;}
+/* ═══════════════════════════════════════
+   DESIGN TOKENS — tema grigio-bianco caldo
+═══════════════════════════════════════ */
+:root{
+  --bg:       #f0f2f5;
+  --surface:  #ffffff;
+  --panel:    #ffffff;
+  --sidebar:  #1e2235;
+  --sb-hover: #2b3050;
+  --sb-act:   rgba(99,102,241,0.18);
+  --sb-act-t: #a5b4fc;
+  --border:   #e4e7ef;
+  --border2:  #cdd2e0;
+  --text:     #1a1d2e;
+  --text2:    #6b7280;
+  --text3:    #9ca3af;
+  --accent:   #4f46e5;
+  --accent2:  #6366f1;
+  --green:    #10b981;
+  --red:      #ef4444;
+  --amber:    #f59e0b;
+  --purple:   #8b5cf6;
+  --blue:     #3b82f6;
+  --sw: 232px;
+  --topbar: 56px;
+  --r: 10px;
+  --r2: 14px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  --shadow2: 0 4px 16px rgba(0,0,0,.10);
+  --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
 
-  /* LOGIN */
-  #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
-  .login-box{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:40px;width:100%;max-width:400px;}
-  .login-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px;}
-  .login-icon{width:40px;height:40px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;}
-  .login-icon svg{width:22px;height:22px;fill:white;}
-  .login-title{font-size:20px;font-weight:700;}
-  .login-sub{font-size:12px;color:var(--text3);}
-  .lf{margin-bottom:14px;}
-  .lf label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500;}
-  .lf input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);padding:10px 12px;color:var(--text);font-size:14px;outline:none;transition:border-color 0.15s;}
-  .lf input:focus{border-color:var(--accent);}
-  .login-btn{width:100%;padding:11px;background:var(--accent);color:white;border:none;border-radius:var(--radius2);font-size:14px;font-weight:600;cursor:pointer;transition:background 0.15s;}
-  .login-btn:hover{background:#2563eb;}
-  .login-btn:disabled{opacity:0.6;cursor:not-allowed;}
-  .alert-err{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:var(--radius2);padding:10px 12px;font-size:13px;margin-bottom:14px;display:none;}
+/* ═══════════════ LOGIN ═══════════════ */
+#loginScreen{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;padding:24px;
+  background: linear-gradient(135deg,#e0e7ff 0%,#f0f2f5 50%,#fce7f3 100%);
+}
+.login-box{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:20px;padding:44px 40px;width:100%;max-width:400px;
+  box-shadow:var(--shadow2);animation:fadeUp .4s ease both;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.login-logo{display:flex;align-items:center;gap:13px;margin-bottom:36px;}
+.login-icon{width:44px;height:44px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(79,70,229,.35);}
+.login-icon svg{width:22px;height:22px;fill:white;}
+.login-title{font-size:20px;font-weight:800;color:var(--text);}
+.login-sub{font-size:12px;color:var(--text3);margin-top:1px;}
+.lf{margin-bottom:16px;}
+.lf label{display:block;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);margin-bottom:6px;}
+.lf input{width:100%;background:#f8f9fc;border:1.5px solid var(--border);border-radius:var(--r);padding:11px 13px;color:var(--text);font-family:var(--font);font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s;}
+.lf input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
+.login-btn{width:100%;padding:12px;background:var(--accent);color:white;border:none;border-radius:var(--r);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s;margin-top:6px;letter-spacing:.2px;}
+.login-btn:hover{background:#4338ca;}
+.login-btn:active{transform:scale(.98);}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;}
+.alert-err{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:var(--r);padding:10px 13px;font-size:13px;margin-bottom:14px;display:none;}
 
-  /* APP */
-  #appScreen{display:none;}
-  #appScreen.vis{display:flex;min-height:100vh;}
+/* ═══════════════ APP SHELL ═══════════════ */
+#appScreen{display:none;}
+#appScreen.vis{display:block;min-height:100vh;}
 
-  /* SIDEBAR */
-  .sidebar{width:220px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
-  .sb-logo{padding:20px 18px 16px;border-bottom:1px solid var(--border);}
-  .sb-mark{display:flex;align-items:center;gap:10px;}
-  .sb-icon{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;}
-  .sb-icon svg{width:18px;height:18px;fill:white;}
-  .sb-name{font-size:15px;font-weight:700;}
-  .sb-sub{font-size:11px;color:var(--text3);}
-  .season-pill{margin:12px 18px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;}
-  .season-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;}
-  .season-val{font-size:13px;font-weight:600;color:var(--accent2);margin-top:2px;}
-  .nav-sec{padding:0 10px;margin-top:8px;}
-  .nav-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;padding:10px 8px 4px;}
-  .ni{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius2);cursor:pointer;color:var(--text2);transition:all 0.15s;font-size:13px;user-select:none;}
-  .ni:hover{background:var(--bg3);color:var(--text);}
-  .ni.active{background:rgba(59,130,246,0.15);color:var(--accent2);}
-  .ni svg{width:15px;height:15px;flex-shrink:0;}
-  .ni .cnt{margin-left:auto;background:var(--accent);color:white;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;}
-  .sb-footer{margin-top:auto;padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;}
-  .avatar{width:30px;height:30px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;text-transform:uppercase;}
-  .u-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .u-role{font-size:10px;color:var(--text3);}
-  .logout{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:4px;}
-  .logout:hover{color:var(--red);}
+/* ─── SIDEBAR ─── */
+.sidebar{
+  width:var(--sw);background:var(--sidebar);
+  position:fixed;top:0;left:0;height:100vh;
+  display:flex;flex-direction:column;overflow-y:auto;z-index:50;
+}
+.sb-logo{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.07);}
+.sb-mark{display:flex;align-items:center;gap:11px;}
+.sb-icon{width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(79,70,229,.4);}
+.sb-icon svg{width:18px;height:18px;fill:white;}
+.sb-name{font-size:15px;font-weight:800;color:#fff;}
+.sb-sub{font-size:10px;color:rgba(255,255,255,.35);margin-top:1px;}
+.season-pill{margin:14px 14px 2px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 12px;}
+.season-lbl{font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.8px;}
+.season-val{font-size:13px;font-weight:700;color:#a5b4fc;margin-top:2px;}
+.nav-sec{padding:6px 10px;margin-top:4px;}
+.nav-lbl{font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.9px;padding:10px 10px 4px;font-weight:700;}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,.5);transition:all .14s;font-size:13px;font-weight:500;user-select:none;}
+.ni svg{width:15px;height:15px;flex-shrink:0;}
+.ni .cnt{margin-left:auto;background:var(--accent);color:white;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:700;}
+.ni:hover{background:var(--sb-hover);color:rgba(255,255,255,.85);}
+.ni.active{background:var(--sb-act);color:var(--sb-act-t);}
+.sb-footer{margin-top:auto;padding:14px 16px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;text-transform:uppercase;color:white;}
+.u-name{font-size:12px;font-weight:700;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.u-role{font-size:10px;color:rgba(255,255,255,.35);}
+.logout{background:none;border:none;color:rgba(255,255,255,.3);cursor:pointer;padding:4px;border-radius:4px;transition:color .14s;}
+.logout:hover{color:#f87171;}
 
-  /* MAIN */
-  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
-  .topbar{height:56px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;flex-shrink:0;}
-  .topbar-title{font-size:16px;font-weight:600;}
-  .content{flex:1;padding:24px;overflow-y:auto;}
-  .page{display:none;}
-  .page.active{display:block;}
+/* ─── TOPBAR ─── */
+.main{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh;}
+.topbar{
+  height:var(--topbar);background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 28px;
+  position:sticky;top:0;z-index:40;
+  box-shadow:var(--shadow);
+}
+.topbar-title{font-size:15px;font-weight:700;color:var(--text);}
 
-  /* COMPONENTS */
-  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius2);font-size:13px;cursor:pointer;border:none;font-weight:500;transition:all 0.15s;}
-  .btn-primary{background:var(--accent);color:white;}
-  .btn-primary:hover{background:#2563eb;}
-  .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);}
-  .btn-ghost:hover{background:var(--bg3);color:var(--text);}
-  .btn svg{width:14px;height:14px;}
-  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+/* ─── CONTENT ─── */
+.content{flex:1;padding:24px 28px;overflow-y:auto;}
+.page{display:none;}
+.page.active{display:block;}
 
-  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
-  .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
-  .stat-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;}
-  .stat-icon svg{width:18px;height:18px;}
-  .stat-val{font-size:28px;font-weight:700;line-height:1;}
-  .stat-lbl{font-size:12px;color:var(--text2);margin-top:4px;}
+/* ═══════════════ COMPONENTS ═══════════════ */
 
-  .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);}
-  .card-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
-  .card-ttl{font-size:14px;font-weight:600;}
-  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
-  .three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px;}
+/* Sezione uniforme: ogni pagina usa .section-wrap */
+.section-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);box-shadow:var(--shadow);}
+.section-hdr{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.section-title{font-size:16px;font-weight:800;color:var(--text);}
+.section-sub{font-size:12px;color:var(--text3);margin-top:1px;}
+.section-body{padding:0;}/* table occupa tutta la larghezza */
+.section-filters{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fafbfd;}
 
-  .tw{overflow-x:auto;}
-  table{width:100%;border-collapse:collapse;}
-  th{padding:10px 16px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--bg3);font-weight:500;}
-  td{padding:11px 16px;border-bottom:1px solid var(--border);font-size:13px;}
-  tr:last-child td{border-bottom:none;}
-  tr:hover td{background:rgba(255,255,255,0.02);}
-  .tf{display:flex;align-items:center;gap:8px;}
+/* Card / stat */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);}
+.card-hdr{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-ttl{font-size:13px;font-weight:700;color:var(--text);}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px;}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);}
+.stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+.stat-icon svg{width:18px;height:18px;}
+.stat-val{font-size:30px;font-weight:800;line-height:1;color:var(--text);}
+.stat-lbl{font-size:12px;color:var(--text2);margin-top:5px;font-weight:500;}
 
-  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
-  .bg{background:rgba(16,185,129,0.15);color:#34d399;}
-  .br{background:rgba(239,68,68,0.15);color:#f87171;}
-  .ba{background:rgba(245,158,11,0.15);color:#fbbf24;}
-  .bb{background:rgba(59,130,246,0.15);color:var(--accent2);}
-  .bp{background:rgba(139,92,246,0.15);color:#a78bfa;}
-  .bx{background:rgba(255,255,255,0.06);color:var(--text2);}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);font-size:13px;cursor:pointer;border:none;font-weight:600;transition:all .14s;font-family:var(--font);}
+.btn svg{width:14px;height:14px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-primary{background:var(--accent);color:white;box-shadow:0 2px 8px rgba(79,70,229,.25);}
+.btn-primary:hover{background:#4338ca;}
+.btn-ghost{background:transparent;color:var(--text2);border:1.5px solid var(--border2);}
+.btn-ghost:hover{background:#f3f4f6;color:var(--text);}
+.btn-icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:30px;height:30px;border:none;border-radius:8px;
+  cursor:pointer;font-size:14px;margin-left:4px;
+  transition:opacity .13s,transform .1s;
+}
+.btn-icon:hover{opacity:.8;}
+.btn-icon:active{transform:scale(.9);}
+.btn-edit{background:#fef3c7;color:#92400e;}    /* giallo matita */
+.btn-del {background:#fee2e2;color:#991b1b;}    /* rosso cestino */
+.btn-act {background:#d1fae5;color:#065f46;}    /* verde attiva */
+.btn-off {background:#f1f5f9;color:#475569;}    /* grigio spegni */
+.btn-wide{width:auto;padding:0 13px;font-size:12px;font-weight:700;border-radius:8px;height:30px;}
 
-  .mav{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;text-transform:uppercase;}
+/* Table */
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead tr{border-bottom:2px solid var(--border);}
+th{padding:11px 20px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);background:#fafbfd;}
+td{padding:13px 20px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tbody tr{transition:background .1s;}
+tbody tr:hover td{background:#f8f9ff;}
+.tf{display:flex;align-items:center;gap:9px;}
 
-  .progress{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
-  .pf{height:100%;border-radius:2px;background:var(--accent);}
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.2px;}
+.bg{background:#d1fae5;color:#065f46;}
+.br{background:#fee2e2;color:#991b1b;}
+.ba{background:#fef3c7;color:#92400e;}
+.bb{background:#dbeafe;color:#1e40af;}
+.bp{background:#ede9fe;color:#5b21b6;}
+.bx{background:#f1f5f9;color:#475569;}
 
-  .fg{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:18px;}
-  .fg .full{grid-column:1/-1;}
-  .fg label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500;}
-  input,select,textarea{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);padding:8px 10px;color:var(--text);font-size:13px;outline:none;width:100%;transition:border-color 0.15s;}
-  input:focus,select:focus,textarea:focus{border-color:var(--accent);}
-  select option{background:var(--bg3);}
-  textarea{resize:vertical;min-height:80px;}
+/* Avatar */
+.mav{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;text-transform:uppercase;}
+var AVCOLS_LIGHT=['rgba(99,102,241,.12):#4f46e5','rgba(139,92,246,.12):#7c3aed','rgba(16,185,129,.12):#059669','rgba(245,158,11,.12):#b45309','rgba(239,68,68,.12):#b91c1c'];
 
-  .mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;}
-  .mo.open{display:flex;}
-  .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;}
-  .modal-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
-  .modal-ttl{font-size:15px;font-weight:600;}
-  .modal-x{background:none;border:none;color:var(--text2);cursor:pointer;padding:4px;border-radius:4px;font-size:16px;line-height:1;}
-  .modal-x:hover{color:var(--text);}
-  .modal-ft{padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
-  .ferr{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:var(--radius2);padding:8px 12px;font-size:12px;margin:0 18px 4px;display:none;}
-  .fok{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#34d399;border-radius:var(--radius2);padding:8px 12px;font-size:12px;margin:0 18px 4px;display:none;}
-  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;}
-  .modal-backdrop.open{display:flex;}
-  .modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;}
-  .modal-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:600;}
-  .err-box{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:var(--radius2);padding:8px 12px;font-size:12px;margin-bottom:12px;}
-  .fld{margin-bottom:12px;}
-  .fld label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500;}
-  .modal-body{padding:18px;}
+/* Forms */
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:20px;}
+.fg .full{grid-column:1/-1;}
+.fg label,.fld label{display:block;font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
+input,select,textarea{background:#f8f9fc;border:1.5px solid var(--border);border-radius:var(--r);padding:9px 11px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;width:100%;transition:border-color .14s,box-shadow .14s;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,.1);}
+select option{background:white;}
+textarea{resize:vertical;min-height:80px;}
+.fld{margin-bottom:13px;}
 
-  .bar-chart{padding:18px;display:flex;flex-direction:column;gap:10px;}
-  .bar-row{display:flex;align-items:center;gap:10px;}
-  .bar-lbl{width:90px;font-size:12px;color:var(--text2);text-align:right;flex-shrink:0;}
-  .bar-track{flex:1;height:20px;background:var(--bg3);border-radius:3px;overflow:hidden;}
-  .bar-fill{height:100%;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;}
-  .bar-fill span{font-size:11px;font-weight:600;color:white;}
+/* Modals */
+.mo{display:none;position:fixed;inset:0;background:rgba(30,34,53,.45);backdrop-filter:blur(3px);z-index:100;align-items:center;justify-content:center;}
+.mo.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);width:540px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.18);animation:mIn .18s ease both;}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+.modal-hdr{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-ttl{font-size:15px;font-weight:800;color:var(--text);}
+.modal-x{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:6px;font-size:17px;line-height:1;transition:color .13s,background .13s;}
+.modal-x:hover{color:var(--text);background:#f3f4f6;}
+.modal-ft{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+.ferr{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:var(--r);padding:8px 13px;font-size:12px;margin:0 20px 4px;display:none;}
+.fok{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:var(--r);padding:8px 13px;font-size:12px;margin:0 20px 4px;display:none;}
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(30,34,53,.45);backdrop-filter:blur(3px);z-index:100;align-items:center;justify-content:center;}
+.modal-backdrop.open{display:flex;}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);width:500px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.18);animation:mIn .18s ease both;}
+.modal-body{padding:20px;}
+.err-box{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:var(--r);padding:8px 13px;font-size:12px;margin-bottom:13px;}
 
-  .loading{padding:48px;text-align:center;color:var(--text3);}
-  .spinner{width:28px;height:28px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 12px;}
-  @keyframes spin{to{transform:rotate(360deg);}}
-  .empty{padding:48px;text-align:center;color:var(--text3);font-size:13px;}
+/* Misc */
+.loading{padding:52px;text-align:center;color:var(--text3);}
+.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{padding:52px;text-align:center;color:var(--text3);font-size:13px;font-style:italic;}
+.progress{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.pf{height:100%;border-radius:2px;background:var(--accent);}
+.bar-chart{padding:18px;display:flex;flex-direction:column;gap:10px;}
+.bar-row{display:flex;align-items:center;gap:10px;}
+.bar-lbl{width:90px;font-size:12px;color:var(--text2);text-align:right;flex-shrink:0;}
+.bar-track{flex:1;height:18px;background:var(--border);border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;}
+.bar-fill span{font-size:11px;font-weight:700;color:white;}
 
-  ::-webkit-scrollbar{width:5px;height:5px;}
-  ::-webkit-scrollbar-track{background:transparent;}
-  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
-  @media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr);}.two-col,.three-col{grid-template-columns:1fr;}}
+@media(max-width:900px){
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .two-col,.three-col{grid-template-columns:1fr;}
+  .main{margin-left:0;}
+  .sidebar{transform:translateX(-100%);}
+}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- ═══════════ LOGIN ═══════════ -->
 <div id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
@@ -182,7 +255,7 @@ function showOkToast(msg){
   </div>
 </div>
 
-<!-- APP -->
+<!-- ═══════════ APP ═══════════ -->
 <div id="appScreen">
   <aside class="sidebar">
     <div class="sb-logo">
@@ -232,12 +305,10 @@ function showOkToast(msg){
     <nav class="nav-sec">
       <div class="nav-lbl">Configurazione</div>
       <div class="ni" data-p="stagioni" onclick="nav('stagioni',this)">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
-        Stagioni
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>Stagioni
       </div>
       <div class="ni" data-p="societa" onclick="nav('societa',this)">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
-        Società
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>Società
       </div>
     </nav>
     <div class="sb-footer">
@@ -255,86 +326,119 @@ function showOkToast(msg){
     </header>
     <div class="content">
 
+      <!-- DASHBOARD -->
       <div class="page active" id="page-dashboard">
         <div id="dashContent"><div class="loading"><div class="spinner"></div>Caricamento dati...</div></div>
       </div>
 
+      <!-- ATLETI -->
       <div class="page" id="page-atleti">
-        <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="text" id="fAtNome" placeholder="Cerca atleta..." style="width:200px" oninput="renderAtleti()">
-          <select id="fAtCat" style="width:160px" onchange="renderAtleti()"><option value="">Tutte le categorie</option></select>
-          <select id="fAtStato" style="width:140px" onchange="renderAtleti()">
-            <option value="">Tutti gli stati</option><option value="active">Attivi</option>
-            <option value="injured">Infortunati</option><option value="inactive">Inattivi</option><option value="suspended">Sospesi</option>
-          </select>
-          <button class="btn btn-primary" style="margin-left:auto" onclick="openM('mAtleta')">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuovo atleta
-          </button>
+        <div class="section-wrap">
+          <div class="section-hdr">
+            <div><div class="section-title">Atleti</div><div class="section-sub">Registro atleti della stagione</div></div>
+            <button class="btn btn-primary" onclick="openM('mAtleta')">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuovo atleta
+            </button>
+          </div>
+          <div class="section-filters">
+            <input type="text" id="fAtNome" placeholder="🔍 Cerca atleta..." style="width:200px;margin:0" oninput="renderAtleti()">
+            <select id="fAtCat" style="width:160px;margin:0" onchange="renderAtleti()"><option value="">Tutte le categorie</option></select>
+            <select id="fAtStato" style="width:140px;margin:0" onchange="renderAtleti()">
+              <option value="">Tutti gli stati</option><option value="active">Attivi</option>
+              <option value="injured">Infortunati</option><option value="inactive">Inattivi</option><option value="suspended">Sospesi</option>
+            </select>
+          </div>
+          <div class="section-body"><div class="tw" id="wAtleti"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
         </div>
-        <div class="card"><div class="tw" id="wAtleti"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
       </div>
 
+      <!-- SQUADRE -->
       <div class="page" id="page-squadre">
-        <div style="margin-bottom:16px;display:flex;justify-content:flex-end">
-          <button class="btn btn-primary" onclick="openM('mSquadra')">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova squadra
-          </button>
+        <div class="section-wrap">
+          <div class="section-hdr">
+            <div><div class="section-title">Squadre</div><div class="section-sub">Squadre attive nella stagione corrente</div></div>
+            <button class="btn btn-primary" onclick="openM('mSquadra')">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova squadra
+            </button>
+          </div>
+          <div class="section-body" style="padding:20px" id="wSquadre"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>
         </div>
-        <div id="wSquadre"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>
       </div>
 
+      <!-- SESSIONI -->
       <div class="page" id="page-sessioni">
-        <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="fSesCat" style="width:160px" onchange="renderSessioni()"><option value="">Tutte le categorie</option></select>
-          <select id="fSesTipo" style="width:140px" onchange="renderSessioni()">
-            <option value="">Tutti i tipi</option><option value="training">Allenamento</option>
-            <option value="match">Partita</option><option value="friendly">Amichevole</option><option value="individual">Individuale</option>
-          </select>
-          <button class="btn btn-primary" style="margin-left:auto" onclick="openM('mSessione')">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova sessione
-          </button>
+        <div class="section-wrap">
+          <div class="section-hdr">
+            <div><div class="section-title">Allenamenti</div><div class="section-sub">Sessioni di allenamento e attività</div></div>
+            <button class="btn btn-primary" onclick="openM('mSessione')">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova sessione
+            </button>
+          </div>
+          <div class="section-filters">
+            <select id="fSesCat" style="width:170px;margin:0" onchange="renderSessioni()"><option value="">Tutte le categorie</option></select>
+            <select id="fSesTipo" style="width:150px;margin:0" onchange="renderSessioni()">
+              <option value="">Tutti i tipi</option><option value="training">Allenamento</option>
+              <option value="match">Partita</option><option value="friendly">Amichevole</option><option value="individual">Individuale</option>
+            </select>
+          </div>
+          <div class="section-body"><div class="tw" id="wSessioni"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
         </div>
-        <div class="card"><div class="tw" id="wSessioni"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
       </div>
 
+      <!-- PARTITE -->
       <div class="page" id="page-partite">
-        <div style="margin-bottom:16px;display:flex;justify-content:flex-end">
-          <button class="btn btn-primary" onclick="openM('mPartita')">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova partita
-          </button>
+        <div class="section-wrap">
+          <div class="section-hdr">
+            <div><div class="section-title">Partite</div><div class="section-sub">Calendario e risultati gare</div></div>
+            <button class="btn btn-primary" onclick="openM('mPartita')">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova partita
+            </button>
+          </div>
+          <div class="section-body"><div class="tw" id="wPartite"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
         </div>
-        <div class="card"><div class="tw" id="wPartite"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
       </div>
 
+      <!-- STAFF -->
+      <div class="page" id="page-staff">
+        <div class="section-wrap">
+          <div class="section-hdr">
+            <div><div class="section-title">Staff</div><div class="section-sub">Gestione ruoli e accessi</div></div>
+            <button class="btn btn-primary" onclick="openM('mStaff')">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Aggiungi membro
+            </button>
+          </div>
+          <div class="section-body"><div class="tw" id="wStaff"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
+        </div>
+      </div>
+
+      <!-- CATEGORIE -->
+      <div class="page" id="page-categorie">
+        <div class="section-wrap">
+          <div class="section-hdr">
+            <div><div class="section-title">Categorie</div><div class="section-sub">Fasce d'età e divisioni</div></div>
+            <button class="btn btn-primary" onclick="openM('mCategoria')">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova categoria
+            </button>
+          </div>
+          <div class="section-body"><div class="tw" id="wCategorie"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
+        </div>
+      </div>
+
+      <!-- STAGIONI -->
       <div class="page" id="page-stagioni"><div id="wStagioni"></div></div>
 
+      <!-- SOCIETA -->
       <div class="page" id="page-societa"><div id="wSocieta"></div></div>
 
-      <div class="page" id="page-staff">
-        <div style="margin-bottom:16px;display:flex;justify-content:flex-end">
-          <button class="btn btn-primary" onclick="openM('mStaff')">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Aggiungi membro
-          </button>
-        </div>
-        <div class="card"><div class="tw" id="wStaff"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
-      </div>
-
-      <div class="page" id="page-categorie">
-        <div style="margin-bottom:16px;display:flex;justify-content:flex-end">
-          <button class="btn btn-primary" onclick="openM('mCategoria')">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova categoria
-          </button>
-        </div>
-        <div class="card"><div class="tw" id="wCategorie"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
-      </div>
-
-    </div>
+    </div><!-- end .content -->
   </main>
-</div>
+</div><!-- end #appScreen -->
+
+<!-- ═══════════ MODALS ═══════════ -->
 
 <!-- MODAL ATLETA -->
 <div class="mo" id="mAtleta"><div class="modal">
-  <div class="modal-hdr"><span class="modal-ttl">Nuovo atleta</span><button class="modal-x" onclick="closeM('mAtleta')">✕</button></div>
+  <div class="modal-hdr"><span class="modal-ttl">👤 Nuovo atleta</span><button class="modal-x" onclick="closeM('mAtleta')">✕</button></div>
   <div class="fg">
     <div><label for="aNome">Nome *</label><input type="text" id="aNome" placeholder="Mario"></div>
     <div><label for="aCognome">Cognome *</label><input type="text" id="aCognome" placeholder="Rossi"></div>
@@ -354,7 +458,7 @@ function showOkToast(msg){
 
 <!-- MODAL SESSIONE -->
 <div class="mo" id="mSessione"><div class="modal">
-  <div class="modal-hdr"><span class="modal-ttl">Nuova sessione</span><button class="modal-x" onclick="closeM('mSessione')">✕</button></div>
+  <div class="modal-hdr"><span class="modal-ttl">📅 Nuova sessione</span><button class="modal-x" onclick="closeM('mSessione')">✕</button></div>
   <div class="fg">
     <div><label for="sTipo">Tipo *</label><select id="sTipo"><option value="training">Allenamento</option><option value="match">Partita</option><option value="friendly">Amichevole</option><option value="individual">Individuale</option><option value="other">Altro</option></select></div>
     <div><label for="sData">Data *</label><input type="date" id="sData"></div>
@@ -369,7 +473,7 @@ function showOkToast(msg){
 
 <!-- MODAL PARTITA -->
 <div class="mo" id="mPartita"><div class="modal">
-  <div class="modal-hdr"><span class="modal-ttl">Nuova partita</span><button class="modal-x" onclick="closeM('mPartita')">✕</button></div>
+  <div class="modal-hdr"><span class="modal-ttl">⚽ Nuova partita</span><button class="modal-x" onclick="closeM('mPartita')">✕</button></div>
   <div class="fg">
     <div><label for="pData">Data *</label><input type="date" id="pData"></div>
     <div><label for="pOra">Orario</label><input type="time" id="pOra"></div>
@@ -387,41 +491,20 @@ function showOkToast(msg){
 
 <!-- MODAL STAFF -->
 <div class="mo" id="mStaff"><div class="modal">
-  <div class="modal-hdr"><span class="modal-ttl">Aggiungi membro staff</span><button class="modal-x" onclick="closeM('mStaff')">✕</button></div>
-  <div style="padding:10px 18px;background:rgba(59,130,246,0.08);border-bottom:1px solid var(--border)">
-    <div style="font-size:12px;color:var(--accent2)">L'utente deve essere già registrato. Inserisci la sua email e assegnagli un ruolo seguendo la gerarchia: <b>Società → Categoria → Squadra</b>.</div>
+  <div class="modal-hdr"><span class="modal-ttl">👥 Aggiungi membro staff</span><button class="modal-x" onclick="closeM('mStaff')">✕</button></div>
+  <div style="padding:10px 20px 0;background:#eff6ff;border-bottom:1px solid #dbeafe">
+    <div style="font-size:12px;color:#1d4ed8;padding-bottom:10px">L'utente deve essere già registrato. Inserisci la sua email per assegnargli un ruolo in questa stagione.</div>
   </div>
   <div class="fg">
     <div class="full"><label for="stEmail">Email utente *</label><input type="email" id="stEmail" placeholder="utente@club.it"></div>
-    <div class="full">
-      <label for="stRuolo">Ruolo *</label>
-      <select id="stRuolo" onchange="onStRuoloChange()">
-        <option value="">— Seleziona ruolo —</option>
-        <optgroup label="🏢 Società">
-          <option value="presidente">Presidente</option>
-          <option value="segretario">Segretario</option>
-        </optgroup>
-        <optgroup label="📋 Categoria">
-          <option value="responsabile">Responsabile categoria</option>
-        </optgroup>
-        <optgroup label="👥 Squadra">
-          <option value="allenatore">Allenatore</option>
-          <option value="vice_allenatore">Vice allenatore</option>
-          <option value="dirigente">Dirigente</option>
-          <option value="atleta">Atleta</option>
-        </optgroup>
+    <div><label for="stRuolo">Ruolo *</label>
+      <select id="stRuolo">
+        <optgroup label="Società"><option value="presidente">Presidente</option><option value="segretario">Segretario</option></optgroup>
+        <optgroup label="Categoria"><option value="responsabile">Responsabile categoria</option></optgroup>
+        <optgroup label="Squadra"><option value="allenatore">Allenatore</option><option value="vice_allenatore">Vice allenatore</option><option value="dirigente">Dirigente</option></optgroup>
       </select>
     </div>
-    <!-- Livello Categoria: visibile per responsabile, allenatore, vice_allenatore, dirigente, atleta -->
-    <div class="full" id="stCatRow" style="display:none">
-      <label for="stCat">Categoria *</label>
-      <select id="stCat" onchange="onStCatChange()"><option value="">— Seleziona categoria —</option></select>
-    </div>
-    <!-- Livello Squadra: visibile solo per allenatore, vice_allenatore, dirigente, atleta -->
-    <div class="full" id="stSqRow" style="display:none">
-      <label for="stSq">Squadra *</label>
-      <select id="stSq"><option value="">— Seleziona squadra —</option></select>
-    </div>
+    <div><label for="stCat">Categoria (opz.)</label><select id="stCat"><option value="">Tutte</option></select></div>
   </div>
   <div class="ferr" id="errSt"></div><div class="fok" id="okSt"></div>
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mStaff')">Annulla</button><button class="btn btn-primary" id="btnSt" onclick="salvaStaff()">Assegna ruolo</button></div>
@@ -429,7 +512,7 @@ function showOkToast(msg){
 
 <!-- MODAL SQUADRA -->
 <div class="mo" id="mSquadra"><div class="modal">
-  <div class="modal-hdr"><span class="modal-ttl">Nuova squadra</span><button class="modal-x" onclick="closeM('mSquadra')">✕</button></div>
+  <div class="modal-hdr"><span class="modal-ttl">👕 Nuova squadra</span><button class="modal-x" onclick="closeM('mSquadra')">✕</button></div>
   <div class="fg">
     <div class="full"><label for="sqNome">Nome squadra *</label><input type="text" id="sqNome" placeholder="Es. Under 13 A"></div>
     <div><label for="sqSport">Sport</label><select id="sqSport"></select></div>
@@ -441,7 +524,7 @@ function showOkToast(msg){
 
 <!-- MODAL CATEGORIA -->
 <div class="mo" id="mCategoria"><div class="modal">
-  <div class="modal-hdr"><span class="modal-ttl">Nuova categoria</span><button class="modal-x" onclick="closeM('mCategoria')">✕</button></div>
+  <div class="modal-hdr"><span class="modal-ttl">🏷️ Nuova categoria</span><button class="modal-x" onclick="closeM('mCategoria')">✕</button></div>
   <div class="fg">
     <div class="full"><label for="caNome">Nome *</label><input type="text" id="caNome" placeholder="Es. Under 13"></div>
     <div><label for="caSport">Sport</label><select id="caSport"></select></div>
@@ -453,35 +536,49 @@ function showOkToast(msg){
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mCategoria')">Annulla</button><button class="btn btn-primary" id="btnCa" onclick="salvaCategoria()">Crea categoria</button></div>
 </div></div>
 
+<!-- WIZARD STAGIONE -->
+<div class="modal-backdrop" id="mWizard" onclick="if(event.target===this){closeM('mWizard')}">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr"><span id="mWizardTitle">⚽ Prima Configurazione</span></div>
+    <div class="modal-body" id="mWizardBody"></div>
+  </div>
+</div>
+
 <script>
-// SUPABASE
+/* ════ TOAST ════ */
+function showOkToast(msg){
+  var t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;padding:14px 28px;border-radius:12px;font-weight:700;z-index:9999;font-size:15px;box-shadow:0 4px 20px rgba(0,0,0,.2)';
+  t.textContent=msg;document.body.appendChild(t);
+  setTimeout(function(){t.remove();},3500);
+}
+
+/* ════ SUPABASE ════ */
 const SURL='https://jvcplfgozdqirzqfqwox.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
 const sb=supabase.createClient(SURL,SKEY);
 
-// STATO
+/* ════ STATO ════ */
 let me=null,prof=null,myRole=null,season=null,society=null;
 let atleti=[],categorie=[],squadre=[],sessioni=[],partite=[],staff=[],sports=[];
 let societa=[],allStagioni=[];
 
-// AUTH
+/* ════ AUTH ════ */
 async function init(){
   const {data:{session}}=await sb.auth.getSession();
   if(session) await afterLogin(session.user);
 }
-
 async function doLogin(){
-  const email=g('loginEmail').value.trim(), pass=g('loginPass').value;
-  const err=g('loginErr'), btn=g('loginBtn');
+  const email=g('loginEmail').value.trim(),pass=g('loginPass').value;
+  const err=g('loginErr'),btn=g('loginBtn');
   err.style.display='none';
   if(!email||!pass){err.textContent='Inserisci email e password';err.style.display='block';return;}
-  btn.disabled=true; btn.textContent='Accesso...';
+  btn.disabled=true;btn.textContent='Accesso...';
   const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
-  btn.disabled=false; btn.textContent='Accedi';
+  btn.disabled=false;btn.textContent='Accedi';
   if(error){err.textContent=error.message;err.style.display='block';return;}
   await afterLogin(data.user);
 }
-
 async function afterLogin(user){
   me=user;
   const {data:p}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
@@ -493,7 +590,6 @@ async function afterLogin(user){
   g('uName').textContent=((p&&p.name?p.name:'')+' '+(p&&p.surname?p.surname:'')).trim()||user.email;
   await loadBase();
 }
-
 async function doLogout(){
   await sb.auth.signOut();
   g('appScreen').classList.remove('vis');
@@ -503,7 +599,7 @@ async function doLogout(){
   atleti=[];squadre=[];sessioni=[];partite=[];staff=[];
 }
 
-// LOAD
+/* ════ LOAD ════ */
 async function loadBase(){
   var r=await Promise.all([
     sb.from('seasons').select('*').order('start_date',{ascending:false}),
@@ -512,11 +608,10 @@ async function loadBase(){
     sb.from('sports').select('*').order('name'),
     sb.from('societies').select('*').order('name')
   ]);
-  // Stagione: prima quella attiva, altrimenti la più recente
   var allSeasons=r[0].data||[];
   season=allSeasons.find(function(s){return s.is_active;})||allSeasons[0]||null;
   society=r[1].data?r[1].data.society_id:null;
-  myRole=r[1].data?r[1].data.role:'admin'; // fallback admin se non ha ancora un ruolo assegnato
+  myRole=r[1].data?r[1].data.role:'admin';
   categorie=r[2].data||[];
   sports=r[3].data||[];
   societa=r[4].data||[];
@@ -524,166 +619,48 @@ async function loadBase(){
   g('sbStagione').textContent=season?season.name:'Nessuna stagione';
   g('uRole').textContent=myRole||'—';
   fillSelects();
-  // Se non c'è stagione, mostra wizard
-  if(!season){
-    showNoSeasonWarning();
-    return;
-  }
+  if(!season){showNoSeasonWarning();return;}
   await Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]);
   renderDashboard();
 }
-
 function showNoSeasonWarning(){
-  // Mostra banner prominente e apre wizard stagione
-  renderDashboard(); // rende la dashboard vuota
+  renderDashboard();
   setTimeout(function(){
-    if(myRole==='admin'||!myRole){
-      openWizardStagione();
-    } else {
-      // Non-admin: avvisa solo
+    if(myRole==='admin'||!myRole){openWizardStagione();}
+    else{
       var warn=document.createElement('div');
-      warn.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#F59E0B;color:#fff;padding:16px 24px;border-radius:12px;font-weight:700;z-index:999;max-width:500px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+      warn.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#fff;padding:16px 24px;border-radius:12px;font-weight:700;z-index:999;max-width:500px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.2)';
       warn.textContent='⚠️ Nessuna stagione attiva. Contatta l\'amministratore.';
       document.body.appendChild(warn);
     }
   },300);
 }
-
-async function openWizardStagione(){
-  var yr=new Date().getFullYear();
-  openM('mWizard');
-  g('mWizardTitle').textContent='⚽ Prima Configurazione';
-  g('mWizardBody').innerHTML=
-    '<div style="text-align:center;margin-bottom:20px">'+
-      '<div style="font-size:48px;margin-bottom:8px">⚽</div>'+
-      '<h3 style="font-size:18px;margin-bottom:6px">Prima configurazione</h3>'+
-      '<p style="color:var(--text2);font-size:14px">Crea la società e la prima stagione calcistica</p>'+
-    '</div>'+
-    '<div id="wzErr" class="err-box" style="display:none"></div>'+
-    '<div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Società</div>'+
-    '<div class="fld"><label for="wzSocNome">Nome Società *</label>'+
-      '<input id="wzSocNome" placeholder="Es. ASD Olimpia"/></div>'+
-    '<div class="fld"><label for="wzSocSport">Sport *</label>'+
-      '<select id="wzSocSport"><option value="">— Seleziona sport —</option>'+_sportOpts(null)+'</select></div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
-      '<div class="fld"><label for="wzSocCitta">Città</label>'+
-        '<input id="wzSocCitta" placeholder="Milano"/></div>'+
-      '<div class="fld"><label for="wzSocEmail">Email</label>'+
-        '<input id="wzSocEmail" type="email" placeholder="info@societa.it"/></div>'+
-    '</div>'+
-    '<hr style="margin:16px 0;border-color:var(--border)"/>'+
-    '<div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Prima Stagione</div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'+
-      '<div class="fld"><label for="wzYrStart">Anno Inizio *</label>'+
-        '<input id="wzYrStart" type="number" min="2000" max="2099" value="'+yr+'" placeholder="'+yr+'"/></div>'+
-      '<div class="fld"><label for="wzYrEnd">Anno Fine *</label>'+
-        '<input id="wzYrEnd" type="number" min="2000" max="2099" value="'+(yr+1)+'" placeholder="'+(yr+1)+'"/></div>'+
-    '</div>'+
-    '<div id="wzPreview" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--text2);margin-bottom:16px">'+
-      '<div style="color:var(--accent2);font-weight:600;margin-bottom:4px">Anteprima automatica</div>'+
-      '<div>📋 Nome: <b style="color:var(--text)">Stagione '+yr+'/'+(yr+1)+'</b></div>'+
-      '<div>📅 Inizio: <b style="color:var(--text)">01/08/'+yr+'</b></div>'+
-      '<div>📅 Fine: <b style="color:var(--text)">31/07/'+(yr+1)+'</b></div>'+
-    '</div>'+
-    '<button class="btn btn-primary" style="width:100%" onclick="salvaWizard()">🚀 Crea e Inizia</button>';
-
-  function updatePreview(){
-    var ys=parseInt(g('wzYrStart').value)||yr;
-    var ye=parseInt(g('wzYrEnd').value)||yr+1;
-    g('wzPreview').innerHTML=
-      '<div style="color:var(--accent2);font-weight:600;margin-bottom:4px">Anteprima automatica</div>'+
-      '<div>📋 Nome: <b style="color:var(--text)">Stagione '+ys+'/'+ye+'</b></div>'+
-      '<div>📅 Inizio: <b style="color:var(--text)">01/08/'+ys+'</b></div>'+
-      '<div>📅 Fine: <b style="color:var(--text)">31/07/'+ye+'</b></div>';
-  }
-  g('wzYrStart').addEventListener('input',updatePreview);
-  g('wzYrEnd').addEventListener('input',updatePreview);
-}
-
-async function salvaWizard(){
-  var ysEl=g('wzYrStart'), yeEl=g('wzYrEnd');
-  var ys=parseInt(ysEl?ysEl.value:''), ye=parseInt(yeEl?yeEl.value:'');
-  if(!ys||!ye){showErr('wzErr','Inserisci anno di inizio e anno di fine');return;}
-  if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore dell\'anno di inizio');return;}
-  var nome='Stagione '+ys+'/'+ye;
-  var start=ys+'-08-01';
-  var end=ye+'-07-31';
-
-  // 1. Disattiva tutte le stagioni esistenti
-  await sb.from('seasons').update({is_active:false}).neq('id','00000000-0000-0000-0000-000000000000');
-
-  // 2. Crea nuova stagione
-  var rSeas=await sb.from('seasons').insert({name:nome,start_date:start,end_date:end,is_active:true}).select().single();
-  if(rSeas.error){showErr('wzErr','Errore stagione: '+rSeas.error.message);return;}
-  season=rSeas.data;
-
-  // 3. Gestisci società
-  var socId=null;
-  if(g('wzSoc')){
-    socId=v('wzSoc');
-  } else {
-    var socNome=v('wzSocNome');
-    if(!socNome){showErr('wzErr','Inserisci il nome della società');return;}
-    var socSport=v('wzSocSport');
-    if(!socSport){showErr('wzErr','Seleziona lo sport della società');return;}
-    var rSoc=await sb.from('societies').insert({
-      name:socNome,
-      sport_id:socSport,
-      city:v('wzSocCitta')||'',
-      email:v('wzSocEmail')||''
-    }).select().single();
-    if(rSoc.error){showErr('wzErr','Errore società: '+rSoc.error.message);return;}
-    socId=rSoc.data.id;
-    societa.push(rSoc.data);
-  }
-  society=socId;
-
-  // 4. Associa l'utente corrente come admin della società/stagione
-  if(me&&socId){
-    await sb.from('user_team_seasons').upsert({
-      user_id:me.id,
-      season_id:season.id,
-      society_id:socId,
-      role:myRole||'admin'
-    },{onConflict:'user_id,season_id,society_id,role'});
-    myRole=myRole||'admin';
-    g('uRole').textContent=myRole;
-  }
-
-  closeM('mWizard');
-  g('sbStagione').textContent=season.name;
-  fillSelects();
-  await Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]);
-  renderDashboard();
-  showOkToast('Stagione "'+nome+'" creata! Ora puoi iniziare. 🎉');
-}
-
 async function loadAtleti(){
   if(!season||!society)return;
   var res=await sb.from('athlete_seasons').select('*,athletes(*),categories(name),teams(name)').eq('season_id',season.id).eq('society_id',society);
   atleti=res.data||[];
-  var c=g('cntAt'); c.textContent=atleti.length; c.style.display=atleti.length?'':'none';
+  var c=g('cntAt');c.textContent=atleti.length;c.style.display=atleti.length?'':'none';
   renderAtleti();
 }
 async function loadSquadre(){
   if(!season||!society)return;
   var res=await sb.from('team_seasons').select('*,teams(*),categories(name)').eq('season_id',season.id).eq('society_id',society);
   squadre=res.data||[];
-  var c=g('cntSq'); c.textContent=squadre.length; c.style.display=squadre.length?'':'none';
+  var c=g('cntSq');c.textContent=squadre.length;c.style.display=squadre.length?'':'none';
   renderSquadre();
 }
 async function loadSessioni(){
   if(!season||!society)return;
   var res=await sb.from('sessions').select('*,categories(name),teams(name)').eq('season_id',season.id).eq('society_id',society).order('session_date',{ascending:false});
   sessioni=res.data||[];
-  var c=g('cntSes'); c.textContent=sessioni.length; c.style.display=sessioni.length?'':'none';
+  var c=g('cntSes');c.textContent=sessioni.length;c.style.display=sessioni.length?'':'none';
   renderSessioni();
 }
 async function loadPartite(){
   if(!season||!society)return;
   var res=await sb.from('matches').select('*,categories(name)').eq('season_id',season.id).eq('society_id',society).order('match_date',{ascending:false});
   partite=res.data||[];
-  var c=g('cntPar'); c.textContent=partite.length; c.style.display=partite.length?'':'none';
+  var c=g('cntPar');c.textContent=partite.length;c.style.display=partite.length?'':'none';
   renderPartite();
 }
 async function loadStaff(){
@@ -693,34 +670,28 @@ async function loadStaff(){
   renderStaff();
 }
 
-// FILL SELECTS
+/* ════ FILL SELECTS ════ */
 function fillSelects(){
   var ids=['fAtCat','fSesCat','aCat','sCat','pCat','sqCat','stCat'];
   ids.forEach(function(id){
-    var el=g(id); if(!el)return;
-    while(el.options.length>1) el.remove(1);
-    categorie.forEach(function(c){
-      var o=document.createElement('option'); o.value=c.id; o.textContent=c.name; el.appendChild(o);
-    });
+    var el=g(id);if(!el)return;
+    while(el.options.length>1)el.remove(1);
+    categorie.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.name;el.appendChild(o);});
   });
   var sqEl=g('sSquadra');
   if(sqEl){
-    while(sqEl.options.length>1) sqEl.remove(1);
-    squadre.forEach(function(s){
-      var o=document.createElement('option'); o.value=s.team_id; o.textContent=(s.teams?s.teams.name:'?'); sqEl.appendChild(o);
-    });
+    while(sqEl.options.length>1)sqEl.remove(1);
+    squadre.forEach(function(s){var o=document.createElement('option');o.value=s.team_id;o.textContent=(s.teams?s.teams.name:'?');sqEl.appendChild(o);});
   }
   ['sqSport','caSport'].forEach(function(id){
-    var el=g(id); if(!el)return;
+    var el=g(id);if(!el)return;
     el.innerHTML='';
-    sports.forEach(function(s){
-      var o=document.createElement('option'); o.value=s.id; o.textContent=s.icon+' '+s.name; el.appendChild(o);
-    });
+    sports.forEach(function(s){var o=document.createElement('option');o.value=s.id;o.textContent=s.icon+' '+s.name;el.appendChild(o);});
   });
 }
 
-// HELPERS RENDER
-var AVCOLS=['rgba(59,130,246,0.2):#60a5fa','rgba(139,92,246,0.2):#a78bfa','rgba(16,185,129,0.15):#34d399','rgba(245,158,11,0.15):#fbbf24','rgba(239,68,68,0.15):#f87171'];
+/* ════ HELPERS ════ */
+var AVCOLS=['rgba(99,102,241,.15):#4338ca','rgba(139,92,246,.15):#7c3aed','rgba(16,185,129,.15):#047857','rgba(245,158,11,.15):#b45309','rgba(239,68,68,.15):#b91c1c'];
 function avc(i){var p=AVCOLS[i%AVCOLS.length].split(':');return 'background:'+p[0]+';color:'+p[1];}
 function ini(n,s){n=n||'';s=s||'';return ((n[0]||'')+(s[0]||'')).toUpperCase()||'?';}
 function fd(d){if(!d)return '-';return new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});}
@@ -734,7 +705,7 @@ function colGol(r){return r==='W'?'var(--green)':r==='D'?'var(--amber)':r==='L'?
 function labelRis(r){return r==='W'?'V':r==='D'?'P':'S';}
 function hA(x){return (x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-// RENDER DASHBOARD
+/* ════ DASHBOARD ════ */
 function renderDashboard(){
   var totA=atleti.length;
   var totSes=sessioni.filter(function(s){return s.session_type!=='match';}).length;
@@ -744,30 +715,25 @@ function renderDashboard(){
   var L=played.filter(function(p){return p.result==='L';}).length;
   var prossimi=sessioni.filter(function(s){return new Date(s.session_date)>=new Date();}).slice(0,5);
   var ultP=partite.filter(function(p){return p.result;}).slice(0,5);
-
-  var h='';
-  h+='<div class="stats-grid">';
-  h+='<div class="stat-card"><div class="stat-icon" style="background:rgba(59,130,246,0.15)"><svg viewBox="0 0 24 24" fill="#60a5fa"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div><div class="stat-val">'+totA+'</div><div class="stat-lbl">Atleti registrati</div></div>';
-  h+='<div class="stat-card"><div class="stat-icon" style="background:rgba(16,185,129,0.15)"><svg viewBox="0 0 24 24" fill="#34d399"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></div><div class="stat-val">'+totSes+'</div><div class="stat-lbl">Allenamenti</div></div>';
-  h+='<div class="stat-card"><div class="stat-icon" style="background:rgba(245,158,11,0.15)"><svg viewBox="0 0 24 24" fill="#fbbf24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg></div><div class="stat-val">'+played.length+'</div><div class="stat-lbl">Partite giocate</div><div style="font-size:11px;margin-top:6px"><span style="color:var(--green)">'+V+'V</span> &middot; <span style="color:var(--amber)">'+D+'P</span> &middot; <span style="color:var(--red)">'+L+'S</span></div></div>';
-  h+='<div class="stat-card"><div class="stat-icon" style="background:rgba(139,92,246,0.15)"><svg viewBox="0 0 24 24" fill="#a78bfa"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div><div class="stat-val">'+squadre.length+'</div><div class="stat-lbl">Squadre attive</div></div>';
+  var h='<div class="stats-grid">';
+  h+='<div class="stat-card"><div class="stat-icon" style="background:rgba(99,102,241,.12)"><svg viewBox="0 0 24 24" fill="#4f46e5"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div><div class="stat-val">'+totA+'</div><div class="stat-lbl">Atleti registrati</div></div>';
+  h+='<div class="stat-card"><div class="stat-icon" style="background:rgba(16,185,129,.12)"><svg viewBox="0 0 24 24" fill="#059669"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></div><div class="stat-val">'+totSes+'</div><div class="stat-lbl">Allenamenti</div></div>';
+  h+='<div class="stat-card"><div class="stat-icon" style="background:rgba(245,158,11,.12)"><svg viewBox="0 0 24 24" fill="#b45309"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg></div><div class="stat-val">'+played.length+'</div><div class="stat-lbl">Partite giocate</div><div style="font-size:11px;margin-top:5px"><span style="color:var(--green)">'+V+'V</span> &middot; <span style="color:var(--amber)">'+D+'P</span> &middot; <span style="color:var(--red)">'+L+'S</span></div></div>';
+  h+='<div class="stat-card"><div class="stat-icon" style="background:rgba(139,92,246,.12)"><svg viewBox="0 0 24 24" fill="#7c3aed"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div><div class="stat-val">'+squadre.length+'</div><div class="stat-lbl">Squadre attive</div></div>';
   h+='</div>';
-
   var evRows='';
   prossimi.forEach(function(s){
     var cat=(s.categories&&s.categories.name)||'';
     var tit=s.title||tipoName(s.session_type);
-    evRows+='<tr><td><div class="tf"><span class="badge '+tipoBadge(s.session_type)+'">'+tipoName(s.session_type).slice(0,3).toUpperCase()+'</span><div><div style="font-weight:600">'+hA(cat)+' - '+hA(tit)+'</div><div style="color:var(--text2);font-size:12px">'+fd(s.session_date)+'</div></div></div></td></tr>';
+    evRows+='<tr><td><div class="tf"><span class="badge '+tipoBadge(s.session_type)+'">'+tipoName(s.session_type).slice(0,3).toUpperCase()+'</span><div><div style="font-weight:700">'+hA(cat)+' - '+hA(tit)+'</div><div style="color:var(--text3);font-size:12px">'+fd(s.session_date)+'</div></div></div></td></tr>';
   });
   var evHtml=prossimi.length?('<table><tbody>'+evRows+'</tbody></table>'):'<div class="empty">Nessun evento programmato</div>';
-
   var risRows='';
   ultP.forEach(function(p){
     var cat=(p.categories&&p.categories.name)||'';
-    risRows+='<tr><td><span class="badge '+risBadge(p.result)+'">'+labelRis(p.result)+'</span></td><td style="font-weight:600">'+hA(p.opponent)+'</td><td style="font-weight:700;color:'+colGol(p.result)+'">'+p.goals_for+'-'+p.goals_against+'</td><td style="color:var(--text2);font-size:12px">'+hA(cat)+'</td></tr>';
+    risRows+='<tr><td><span class="badge '+risBadge(p.result)+'">'+labelRis(p.result)+'</span></td><td style="font-weight:700">'+hA(p.opponent)+'</td><td style="font-weight:800;color:'+colGol(p.result)+'">'+p.goals_for+'-'+p.goals_against+'</td><td style="color:var(--text3);font-size:12px">'+hA(cat)+'</td></tr>';
   });
   var risHtml=ultP.length?('<table><tbody>'+risRows+'</tbody></table>'):'<div class="empty">Nessuna partita giocata</div>';
-
   h+='<div class="two-col">';
   h+='<div class="card"><div class="card-hdr"><span class="card-ttl">Prossimi eventi</span></div>'+evHtml+'</div>';
   h+='<div class="card"><div class="card-hdr"><span class="card-ttl">Ultimi risultati</span></div>'+risHtml+'</div>';
@@ -775,7 +741,7 @@ function renderDashboard(){
   g('dashContent').innerHTML=h;
 }
 
-// RENDER ATLETI
+/* ════ RENDER ATLETI ════ */
 function renderAtleti(){
   var q=(g('fAtNome')?g('fAtNome').value:'').toLowerCase();
   var cat=g('fAtCat')?g('fAtCat').value:'';
@@ -792,7 +758,7 @@ function renderAtleti(){
     var cat2=a.categories?a.categories.name:'-';
     var bd=a.athletes?a.athletes.born_date:null;
     rows+='<tr>';
-    rows+='<td><div class="tf"><div class="mav" style="'+avc(i)+'">'+ini(a.athletes?a.athletes.name:'',a.athletes?a.athletes.surname:'')+'</div><div><div style="font-weight:600">'+hA(nm)+'</div><div style="color:var(--text2);font-size:11px">'+hA(em)+'</div></div></div></td>';
+    rows+='<td><div class="tf"><div class="mav" style="'+avc(i)+'">'+ini(a.athletes?a.athletes.name:'',a.athletes?a.athletes.surname:'')+'</div><div><div style="font-weight:700">'+hA(nm)+'</div><div style="color:var(--text3);font-size:11px">'+hA(em)+'</div></div></div></td>';
     rows+='<td><span class="badge bb">'+hA(cat2)+'</span></td>';
     rows+='<td style="color:var(--text2)">'+hA(a.role||'-')+'</td>';
     rows+='<td style="color:var(--text2)">'+(a.jersey_number||'-')+'</td>';
@@ -803,7 +769,7 @@ function renderAtleti(){
   g('wAtleti').innerHTML='<table><thead><tr><th>Atleta</th><th>Categoria</th><th>Ruolo</th><th>N.</th><th>Nascita</th><th>Stato</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
-// RENDER SQUADRE
+/* ════ RENDER SQUADRE ════ */
 function renderSquadre(){
   var el=g('wSquadre');
   if(!squadre.length){el.innerHTML='<div class="empty">Nessuna squadra per questa stagione</div>';return;}
@@ -813,19 +779,19 @@ function renderSquadre(){
   squadre.forEach(function(s,i){
     var nm=s.teams?s.teams.name:'-';
     var cat=s.categories?s.categories.name:'';
-    cards+='<div class="card" style="padding:0"><div style="padding:20px">';
-    cards+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
-    cards+='<div class="mav" style="width:44px;height:44px;'+avc(i)+';font-size:14px;font-weight:700;border-radius:10px">'+nm.slice(0,2).toUpperCase()+'</div>';
+    cards+='<div class="card" style="padding:0;overflow:hidden"><div style="padding:20px">';
+    cards+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">';
+    cards+='<div class="mav" style="width:46px;height:46px;'+avc(i)+';font-size:14px;font-weight:800;border-radius:12px">'+nm.slice(0,2).toUpperCase()+'</div>';
     cards+='<span class="badge bg">Attiva</span></div>';
-    cards+='<div style="font-weight:700;font-size:16px">'+hA(nm)+'</div>';
-    cards+='<div style="color:var(--text2);font-size:12px;margin-top:2px">'+hA(cat)+'</div>';
-    cards+='<div style="background:var(--bg3);border-radius:6px;padding:10px;text-align:center;margin-top:14px"><div style="font-size:20px;font-weight:700">'+(ap[s.team_id]||0)+'</div><div style="font-size:11px;color:var(--text2)">Atleti</div></div>';
+    cards+='<div style="font-weight:800;font-size:15px;color:var(--text)">'+hA(nm)+'</div>';
+    cards+='<div style="color:var(--text3);font-size:12px;margin-top:2px">'+hA(cat)+'</div>';
+    cards+='<div style="background:var(--bg);border-radius:8px;padding:10px;text-align:center;margin-top:14px;border:1px solid var(--border)"><div style="font-size:22px;font-weight:800;color:var(--text)">'+(ap[s.team_id]||0)+'</div><div style="font-size:11px;color:var(--text3);font-weight:600">Atleti</div></div>';
     cards+='</div></div>';
   });
   el.innerHTML='<div class="three-col">'+cards+'</div>';
 }
 
-// RENDER SESSIONI
+/* ════ RENDER SESSIONI ════ */
 function renderSessioni(){
   var cat=g('fSesCat')?g('fSesCat').value:'';
   var tipo=g('fSesTipo')?g('fSesTipo').value:'';
@@ -836,9 +802,9 @@ function renderSessioni(){
     var cat2=s.categories?s.categories.name:'-';
     var team=s.teams?s.teams.name:'-';
     rows+='<tr>';
-    rows+='<td style="color:var(--text2);white-space:nowrap">'+fd(s.session_date)+'</td>';
+    rows+='<td style="color:var(--text2);white-space:nowrap;font-weight:500">'+fd(s.session_date)+'</td>';
     rows+='<td><span class="badge '+tipoBadge(s.session_type)+'">'+tipoName(s.session_type)+'</span></td>';
-    rows+='<td style="font-weight:600">'+hA(s.title||'-')+'</td>';
+    rows+='<td style="font-weight:700">'+hA(s.title||'-')+'</td>';
     rows+='<td style="color:var(--text2)">'+hA(cat2)+'</td>';
     rows+='<td style="color:var(--text2)">'+hA(team)+'</td>';
     rows+='</tr>';
@@ -846,7 +812,7 @@ function renderSessioni(){
   g('wSessioni').innerHTML='<table><thead><tr><th>Data</th><th>Tipo</th><th>Titolo</th><th>Categoria</th><th>Squadra</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
-// RENDER PARTITE
+/* ════ RENDER PARTITE ════ */
 function renderPartite(){
   if(!partite.length){g('wPartite').innerHTML='<div class="empty">Nessuna partita registrata</div>';return;}
   var hl={home:'Casa',away:'Trasferta',neutral:'Neutro'};
@@ -856,53 +822,123 @@ function renderPartite(){
     var haBadge=p.home_away==='home'?'bg':p.home_away==='away'?'bb':'bx';
     var risCell=p.result?('<span class="badge '+risBadge(p.result)+'">'+(p.result==='W'?'Vittoria':p.result==='D'?'Pareggio':'Sconfitta')+'</span>'):'<span class="badge bx">In programma</span>';
     rows+='<tr>';
-    rows+='<td style="color:var(--text2);white-space:nowrap">'+fd(p.match_date)+'</td>';
-    rows+='<td style="font-weight:600">'+hA(p.opponent)+'</td>';
+    rows+='<td style="color:var(--text2);white-space:nowrap;font-weight:500">'+fd(p.match_date)+'</td>';
+    rows+='<td style="font-weight:700">'+hA(p.opponent)+'</td>';
     rows+='<td><span class="badge '+haBadge+'">'+(hl[p.home_away]||'-')+'</span></td>';
     rows+='<td>'+risCell+'</td>';
-    rows+='<td style="font-weight:700;color:'+colGol(p.result)+'">'+p.goals_for+'-'+p.goals_against+'</td>';
+    rows+='<td style="font-weight:800;color:'+colGol(p.result)+'">'+p.goals_for+'-'+p.goals_against+'</td>';
     rows+='<td style="color:var(--text2)">'+hA(cat)+'</td>';
     rows+='</tr>';
   });
   g('wPartite').innerHTML='<table><thead><tr><th>Data</th><th>Avversario</th><th>Luogo</th><th>Risultato</th><th>Gol</th><th>Categoria</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
-// RENDER STAFF
+/* ════ RENDER STAFF ════ */
 function renderStaff(){
   if(!staff.length){g('wStaff').innerHTML='<div class="empty">Nessuno staff per questa stagione</div>';return;}
   var rows='';
   staff.forEach(function(s,i){
     var nm=(s.profiles?s.profiles.name:'')+' '+(s.profiles?s.profiles.surname:'');
     var em=s.profiles?s.profiles.email:'';
-    var cat=s.categories?s.categories.name:'—';
-    var team=s.teams?s.teams.name:'—';
-    var livello,livBadge;
-    if(RUOLI_SQUADRA.indexOf(s.role)>=0){livello='Squadra';livBadge='ba';}
-    else if(s.role==='responsabile'){livello='Categoria';livBadge='bb';}
-    else{livello='Società';livBadge='bp';}
+    var cat=s.categories?s.categories.name:'Tutte';
+    var team=s.teams?s.teams.name:'-';
     rows+='<tr>';
-    rows+='<td><div class="tf"><div class="mav" style="'+avc(i)+'">'+ini(s.profiles?s.profiles.name:'',s.profiles?s.profiles.surname:'')+'</div><div><div style="font-weight:600">'+hA(nm)+'</div><div style="color:var(--text2);font-size:11px">'+hA(em)+'</div></div></div></td>';
+    rows+='<td><div class="tf"><div class="mav" style="'+avc(i)+'">'+ini(s.profiles?s.profiles.name:'',s.profiles?s.profiles.surname:'')+'</div><div><div style="font-weight:700">'+hA(nm)+'</div><div style="color:var(--text3);font-size:11px">'+hA(em)+'</div></div></div></td>';
     rows+='<td><span class="badge '+roleBadge(s.role)+'">'+hA(s.role)+'</span></td>';
-    rows+='<td><span class="badge '+livBadge+'">'+livello+'</span></td>';
     rows+='<td style="color:var(--text2)">'+hA(cat)+'</td>';
     rows+='<td style="color:var(--text2)">'+hA(team)+'</td>';
     rows+='</tr>';
   });
-  g('wStaff').innerHTML='<table><thead><tr><th>Membro</th><th>Ruolo</th><th>Livello</th><th>Categoria</th><th>Squadra</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  g('wStaff').innerHTML='<table><thead><tr><th>Membro</th><th>Ruolo</th><th>Categoria</th><th>Squadra</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
-// RENDER CATEGORIE
+/* ════ RENDER CATEGORIE ════ */
 function renderCategorie(){
   var sm={};sports.forEach(function(s){sm[s.id]=s.name;});
   if(!categorie.length){g('wCategorie').innerHTML='<div class="empty">Nessuna categoria</div>';return;}
   var rows='';
   categorie.forEach(function(c){
-    rows+='<tr><td style="font-weight:600">'+hA(c.name)+'</td><td style="color:var(--text2)">'+hA(sm[c.sport_id]||'-')+'</td><td style="color:var(--text2)">'+(c.birth_year_from||'-')+'</td><td style="color:var(--text2)">'+(c.birth_year_to||'-')+'</td></tr>';
+    rows+='<tr><td style="font-weight:700">'+hA(c.name)+'</td><td style="color:var(--text2)">'+hA(sm[c.sport_id]||'-')+'</td><td style="color:var(--text2)">'+(c.birth_year_from||'-')+'</td><td style="color:var(--text2)">'+(c.birth_year_to||'-')+'</td></tr>';
   });
   g('wCategorie').innerHTML='<table><thead><tr><th>Categoria</th><th>Sport</th><th>Anno nasc. da</th><th>Anno nasc. a</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
-// SAVE ATLETA
+/* ════ RENDER STAGIONI ════ */
+function renderStagioni(){
+  var w=g('wStagioni');if(!w)return;
+  var rows='';
+  (allStagioni||[]).forEach(function(s){
+    var isAct=s.is_active;
+    rows+='<tr>'+
+      '<td><div class="tf">'+
+        (isAct?'<span style="width:9px;height:9px;border-radius:50%;background:var(--green);display:inline-block;flex-shrink:0;box-shadow:0 0 0 2px rgba(16,185,129,.2)"></span>':
+                '<span style="width:9px;height:9px;border-radius:50%;background:var(--border2);display:inline-block;flex-shrink:0"></span>')+
+        '<span style="font-weight:800;font-size:14px">'+hA(s.name)+'</span>'+
+      '</div></td>'+
+      '<td style="color:var(--text2)">01/08/'+s.start_date.substring(0,4)+'</td>'+
+      '<td style="color:var(--text2)">31/07/'+s.end_date.substring(0,4)+'</td>'+
+      '<td>'+(isAct?'<span class="badge bg">★ Attiva</span>':'<span class="badge bx">Archivio</span>')+'</td>'+
+      '<td><div style="display:flex;gap:4px;align-items:center">'+
+        (!isAct?'<button class="btn-icon btn-act btn-wide" onclick="setSeasonActive(\''+s.id+'\')">⚡ Attiva</button>':'')+
+        '<button class="btn-icon btn-edit" onclick="openEditStagione(\''+s.id+'\')" title="Modifica">✏️</button>'+
+        (!isAct?'<button class="btn-icon btn-del" onclick="deleteStagione(\''+s.id+'\')" title="Elimina">🗑️</button>':'')+
+      '</div></td>'+
+    '</tr>';
+  });
+  w.innerHTML=
+    '<div class="section-wrap">'+
+      '<div class="section-hdr">'+
+        '<div><div class="section-title">Stagioni Calcistiche</div><div class="section-sub">Solo una stagione può essere attiva alla volta</div></div>'+
+        '<button class="btn btn-primary" onclick="openNewStagione()">'+
+          '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Nuova Stagione'+
+        '</button>'+
+      '</div>'+
+      (allStagioni.length===0
+        ?'<div class="empty">Nessuna stagione. Crea la prima!</div>'
+        :'<div class="tw"><table>'+
+          '<thead><tr><th>Stagione</th><th>Data Inizio</th><th>Data Fine</th><th>Stato</th><th>Azioni</th></tr></thead>'+
+          '<tbody>'+rows+'</tbody>'+
+          '</table></div>'
+      )+
+    '</div>';
+}
+
+/* ════ RENDER SOCIETÀ ════ */
+function renderSocieta(){
+  var w=g('wSocieta');if(!w)return;
+  var sm={};sports.forEach(function(s){sm[s.id]=s.name;});
+  var rows='';
+  (societa||[]).forEach(function(s){
+    rows+='<tr>'+
+      '<td style="font-weight:700">'+hA(s.name)+'</td>'+
+      '<td style="color:var(--text2)">'+hA(sm[s.sport_id]||'—')+'</td>'+
+      '<td style="color:var(--text2)">'+hA(s.city||'—')+'</td>'+
+      '<td style="color:var(--text2)">'+hA(s.email||'—')+'</td>'+
+      '<td><div style="display:flex;gap:4px">'+
+        '<button class="btn-icon btn-edit" onclick="openEditSocieta(\''+s.id+'\')" title="Modifica">✏️</button>'+
+        '<button class="btn-icon btn-del" onclick="deleteSocieta(\''+s.id+'\')" title="Elimina">🗑️</button>'+
+      '</div></td>'+
+    '</tr>';
+  });
+  w.innerHTML=
+    '<div class="section-wrap">'+
+      '<div class="section-hdr">'+
+        '<div><div class="section-title">Società</div><div class="section-sub">Gestione delle società sportive</div></div>'+
+        '<button class="btn btn-primary" onclick="openNewSocieta()">'+
+          '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Nuova Società'+
+        '</button>'+
+      '</div>'+
+      (societa.length===0
+        ?'<div class="empty">Nessuna società. Crea la prima!</div>'
+        :'<div class="tw"><table>'+
+          '<thead><tr><th>Nome</th><th>Sport</th><th>Città</th><th>Email</th><th>Azioni</th></tr></thead>'+
+          '<tbody>'+rows+'</tbody>'+
+          '</table></div>'
+      )+
+    '</div>';
+}
+
+/* ════ SAVE ATLETA ════ */
 async function salvaAtleta(){
   var nome=v('aNome'),cognome=v('aCognome'),cat=v('aCat');
   if(!nome||!cognome||!cat){showErr('errA','Nome, cognome e categoria sono obbligatori');return;}
@@ -916,7 +952,7 @@ async function salvaAtleta(){
   setTimeout(function(){closeM('mAtleta');},1000);
 }
 
-// SAVE SESSIONE
+/* ════ SAVE SESSIONE ════ */
 async function salvaSessione(){
   var tipo=v('sTipo'),data=v('sData'),cat=v('sCat');
   if(!tipo||!data||!cat){showErr('errS','Tipo, data e categoria obbligatori');return;}
@@ -928,7 +964,7 @@ async function salvaSessione(){
   setTimeout(function(){closeM('mSessione');},1000);
 }
 
-// SAVE PARTITA
+/* ════ SAVE PARTITA ════ */
 async function salvaPartita(){
   var data=v('pData'),avv=v('pAvv'),cat=v('pCat');
   if(!data||!avv||!cat){showErr('errP','Data, avversario e categoria obbligatori');return;}
@@ -940,87 +976,34 @@ async function salvaPartita(){
   setTimeout(function(){closeM('mPartita');},1000);
 }
 
-// STAFF MODAL GERARCHIA
-var RUOLI_SOCIETA  = ['presidente','segretario'];
-var RUOLI_CATEGORIA= ['responsabile','allenatore','vice_allenatore','dirigente','atleta'];
-var RUOLI_SQUADRA  = ['allenatore','vice_allenatore','dirigente','atleta'];
-
-function onStRuoloChange(){
-  var ruolo=v('stRuolo');
-  var needCat = RUOLI_CATEGORIA.indexOf(ruolo)>=0;
-  var needSq  = RUOLI_SQUADRA.indexOf(ruolo)>=0;
-  var catRow=g('stCatRow'), sqRow=g('stSqRow');
-  if(catRow) catRow.style.display = needCat ? '' : 'none';
-  if(sqRow)  sqRow.style.display  = needSq  ? '' : 'none';
-  // Se non serve cat, azzera selezione squadra
-  if(!needCat){ var sc=g('stCat'); if(sc) sc.value=''; }
-  if(!needSq){  var ss=g('stSq');  if(ss) ss.value=''; }
-}
-
-function onStCatChange(){
-  var catId=v('stCat');
-  var ruolo=v('stRuolo');
-  var needSq=RUOLI_SQUADRA.indexOf(ruolo)>=0;
-  var sqSel=g('stSq'); if(!sqSel) return;
-  sqSel.innerHTML='<option value="">— Seleziona squadra —</option>';
-  if(!needSq||!catId) return;
-  // Filtra squadre per categoria selezionata
-  squadre.filter(function(s){return s.category_id===catId;}).forEach(function(s){
-    var o=document.createElement('option');
-    o.value=s.team_id;
-    o.textContent=s.teams?s.teams.name:'?';
-    sqSel.appendChild(o);
-  });
-}
-
-// SAVE STAFF
+/* ════ SAVE STAFF ════ */
 async function salvaStaff(){
   var email=v('stEmail'),ruolo=v('stRuolo');
   if(!email||!ruolo){showErr('errSt','Email e ruolo obbligatori');return;}
-
-  var needCat = RUOLI_CATEGORIA.indexOf(ruolo)>=0;
-  var needSq  = RUOLI_SQUADRA.indexOf(ruolo)>=0;
-  var catId   = needCat ? v('stCat') : null;
-  var sqId    = needSq  ? v('stSq')  : null;
-
-  if(needCat && !catId){showErr('errSt','Seleziona la categoria per questo ruolo');return;}
-  if(needSq  && !sqId) {showErr('errSt','Seleziona la squadra per questo ruolo');return;}
-
   setBusy('btnSt',true);
   var rp=await sb.from('profiles').select('id').eq('email',email).single();
   if(!rp.data){showErr('errSt','Nessun utente trovato con questa email');setBusy('btnSt',false);return;}
-  var payload={user_id:rp.data.id,season_id:season.id,society_id:society,role:ruolo};
-  if(catId) payload.category_id=catId;
-  if(sqId)  payload.team_id=sqId;
-  var r=await sb.from('user_team_seasons').insert(payload);
+  var r=await sb.from('user_team_seasons').insert({user_id:rp.data.id,season_id:season.id,society_id:society,role:ruolo,category_id:v('stCat')||null});
   if(r.error){showErr('errSt',r.error.message);setBusy('btnSt',false);return;}
   showOk('okSt','Ruolo assegnato!');setBusy('btnSt',false);
   await loadStaff();
   setTimeout(function(){closeM('mStaff');},1000);
 }
 
-// SAVE SQUADRA
+/* ════ SAVE SQUADRA ════ */
 async function salvaSquadra(){
   var nome=v('sqNome'),sport=v('sqSport'),cat=v('sqCat');
-  if(!nome){showErr('errSq','Il nome e obbligatorio');return;}
+  if(!nome){showErr('errSq','Il nome è obbligatorio');return;}
   setBusy('btnSq',true);
-  var r1=await sb.from('teams').insert({name:nome,sport_id:sport,society_id:society}).select().single();
-  if(r1.error){
-    if(r1.error.message&&r1.error.message.includes('security policy')){
-      showErr('errSq','Permesso negato (RLS). Verifica che la policy sulla tabella "teams" accetti society_id. Vedi console per il fix SQL.');
-      console.warn('FIX RLS teams: esegui su Supabase SQL Editor:\nALTER TABLE teams ADD COLUMN IF NOT EXISTS society_id uuid REFERENCES societies(id);\nALTER POLICY "teams_insert" ON teams WITH CHECK (society_id IN (SELECT society_id FROM user_team_seasons WHERE user_id = auth.uid()));');
-    } else {
-      showErr('errSq',r1.error.message);
-    }
-    setBusy('btnSq',false);return;
-  }
+  var r1=await sb.from('teams').insert({name:nome,sport_id:sport}).select().single();
+  if(r1.error){showErr('errSq',r1.error.message);setBusy('btnSq',false);return;}
   if(cat&&season&&society) await sb.from('team_seasons').insert({team_id:r1.data.id,season_id:season.id,society_id:society,category_id:cat});
   showOk('okSq','Squadra creata!');setBusy('btnSq',false);
   await loadSquadre();renderDashboard();fillSelects();
   setTimeout(function(){closeM('mSquadra');},1000);
 }
 
-// SAVE CATEGORIA
+/* ════ SAVE CATEGORIA ════ */
 async function salvaCategoria(){
   var nome=v('caNome'),sport=v('caSport');
   if(!nome){showErr('errCa','Il nome è obbligatorio');return;}
@@ -1028,13 +1011,9 @@ async function salvaCategoria(){
   var payload={name:nome,sport_id:sport||null,birth_year_from:parseInt(v('caFrom'))||null,birth_year_to:parseInt(v('caTo'))||null};
   var r=await sb.from('categories').insert(payload);
   if(r.error){
-    // Se RLS blocca, mostra messaggio utile
     if(r.error.message&&r.error.message.includes('security policy')){
-      showErr('errCa','Permesso negato. Verifica di avere il ruolo admin o esegui il fix RLS su Supabase (vedi console).');
-      console.warn('FIX RLS: esegui questo SQL su Supabase:\nALTER POLICY \"categories_write\" ON categories USING (true) WITH CHECK (true);');
-    } else {
-      showErr('errCa',r.error.message);
-    }
+      showErr('errCa','Permesso negato. Verifica di avere il ruolo admin.');
+    } else {showErr('errCa',r.error.message);}
     setBusy('btnCa',false);return;
   }
   showOk('okCa','Categoria creata!');setBusy('btnCa',false);
@@ -1043,165 +1022,144 @@ async function salvaCategoria(){
   setTimeout(function(){closeM('mCategoria');},1000);
 }
 
-
-// ═══════════════════════════════════════════════
-//  STAGIONI
-// ═══════════════════════════════════════════════
-function renderStagioni(){
-  var w=g('wStagioni'); if(!w) return;
-  var rows='';
-  (allStagioni||[]).forEach(function(s){
-    var isAct=s.is_active;
-    rows+='<tr>'+
-      '<td>'+
-        '<div style="display:flex;align-items:center;gap:8px">'+
-          (isAct?'<span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;flex-shrink:0"></span>':
-                  '<span style="width:8px;height:8px;border-radius:50%;background:var(--border2);display:inline-block;flex-shrink:0"></span>')+
-          '<span style="font-weight:700;font-size:14px">'+hA(s.name)+'</span>'+
-        '</div>'+
-      '</td>'+
-      '<td style="color:var(--text2)">01/08/'+s.start_date.substring(0,4)+'</td>'+
-      '<td style="color:var(--text2)">31/07/'+s.end_date.substring(0,4)+'</td>'+
-      '<td>'+(isAct
-        ?'<span class="badge bg">★ Attiva</span>'
-        :'<span class="badge bx">Archivio</span>')+
-      '</td>'+
-      '<td>'+
-        '<div style="display:flex;gap:6px;align-items:center">'+
-          (!isAct?'<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="setSeasonActive(\''+s.id+'\')">⚡ Imposta attiva</button>':'')+
-          '<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="openEditStagione(\''+s.id+'\')">✏️ Modifica</button>'+
-          (!isAct?'<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px;color:var(--red)" onclick="deleteStagione(\''+s.id+'\')">🗑️</button>':'')+
-        '</div>'+
-      '</td>'+
-    '</tr>';
-  });
-  w.innerHTML=
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'+
-      '<div>'+
-        '<h2 style="font-size:18px;font-weight:700">Stagioni Calcistiche</h2>'+
-        '<p style="color:var(--text2);font-size:12px;margin-top:2px">Solo una stagione può essere attiva alla volta</p>'+
-      '</div>'+
-      '<button class="btn btn-primary" onclick="openNewStagione()">'+
-        '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Nuova Stagione'+
-      '</button>'+
+/* ════ STAGIONI CRUD ════ */
+async function openWizardStagione(){
+  var yr=new Date().getFullYear();
+  openM('mWizard');
+  g('mWizardTitle').textContent='⚽ Prima Configurazione';
+  g('mWizardBody').innerHTML=
+    '<div style="text-align:center;margin-bottom:20px">'+
+      '<div style="font-size:48px;margin-bottom:8px">⚽</div>'+
+      '<h3 style="font-size:17px;margin-bottom:6px;font-weight:800">Prima configurazione</h3>'+
+      '<p style="color:var(--text2);font-size:13px">Crea la società e la prima stagione calcistica</p>'+
     '</div>'+
-    (allStagioni.length===0
-      ?'<div class="empty">Nessuna stagione. Crea la prima!</div>'
-      :'<div class="card"><div class="tw"><table>'+
-        '<thead><tr><th>Stagione</th><th>Data Inizio</th><th>Data Fine</th><th>Stato</th><th>Azioni</th></tr></thead>'+
-        '<tbody>'+rows+'</tbody>'+
-        '</table></div></div>'
-    );
+    '<div id="wzErr" class="err-box" style="display:none"></div>'+
+    '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Società</div>'+
+    '<div class="fld"><label for="wzSocNome">Nome Società *</label><input id="wzSocNome" placeholder="Es. ASD Olimpia"/></div>'+
+    '<div class="fld"><label for="wzSocSport">Sport *</label><select id="wzSocSport"><option value="">— Seleziona sport —</option>'+_sportOpts(null)+'</select></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+      '<div class="fld"><label for="wzSocCitta">Città</label><input id="wzSocCitta" placeholder="Milano"/></div>'+
+      '<div class="fld"><label for="wzSocEmail">Email</label><input id="wzSocEmail" type="email" placeholder="info@societa.it"/></div>'+
+    '</div>'+
+    '<hr style="margin:16px 0;border-color:var(--border)"/>'+
+    '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Prima Stagione</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'+
+      '<div class="fld"><label for="wzYrStart">Anno Inizio *</label><input id="wzYrStart" type="number" min="2000" max="2099" value="'+yr+'"/></div>'+
+      '<div class="fld"><label for="wzYrEnd">Anno Fine *</label><input id="wzYrEnd" type="number" min="2000" max="2099" value="'+(yr+1)+'"/></div>'+
+    '</div>'+
+    '<div id="wzPreview" style="background:#eff6ff;border:1px solid #dbeafe;border-radius:8px;padding:12px 16px;font-size:13px;color:var(--text2);margin-bottom:16px">'+
+      '<div style="color:#1d4ed8;font-weight:700;margin-bottom:4px">Anteprima automatica</div>'+
+      '<div>📋 Nome: <b style="color:var(--text)">Stagione '+yr+'/'+(yr+1)+'</b></div>'+
+      '<div>📅 Inizio: <b style="color:var(--text)">01/08/'+yr+'</b></div>'+
+      '<div>📅 Fine: <b style="color:var(--text)">31/07/'+(yr+1)+'</b></div>'+
+    '</div>'+
+    '<button class="btn btn-primary" style="width:100%" onclick="salvaWizard()">🚀 Crea e Inizia</button>';
+  function updatePreview(){
+    var ys=parseInt(g('wzYrStart').value)||yr,ye=parseInt(g('wzYrEnd').value)||yr+1;
+    g('wzPreview').innerHTML='<div style="color:#1d4ed8;font-weight:700;margin-bottom:4px">Anteprima automatica</div><div>📋 Nome: <b style="color:var(--text)">Stagione '+ys+'/'+ye+'</b></div><div>📅 Inizio: <b style="color:var(--text)">01/08/'+ys+'</b></div><div>📅 Fine: <b style="color:var(--text)">31/07/'+ye+'</b></div>';
+  }
+  g('wzYrStart').addEventListener('input',updatePreview);
+  g('wzYrEnd').addEventListener('input',updatePreview);
+}
+
+async function salvaWizard(){
+  var ys=parseInt(g('wzYrStart')?g('wzYrStart').value:''),ye=parseInt(g('wzYrEnd')?g('wzYrEnd').value:'');
+  if(!ys||!ye){showErr('wzErr','Inserisci anno di inizio e anno di fine');return;}
+  if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore dell\'anno di inizio');return;}
+  var nome='Stagione '+ys+'/'+ye,start=ys+'-08-01',end=ye+'-07-31';
+  await sb.from('seasons').update({is_active:false}).neq('id','00000000-0000-0000-0000-000000000000');
+  var rSeas=await sb.from('seasons').insert({name:nome,start_date:start,end_date:end,is_active:true}).select().single();
+  if(rSeas.error){showErr('wzErr','Errore stagione: '+rSeas.error.message);return;}
+  season=rSeas.data;
+  var socId=null;
+  if(g('wzSoc')){socId=v('wzSoc');}
+  else{
+    var socNome=v('wzSocNome');if(!socNome){showErr('wzErr','Inserisci il nome della società');return;}
+    var socSport=v('wzSocSport');if(!socSport){showErr('wzErr','Seleziona lo sport della società');return;}
+    var rSoc=await sb.from('societies').insert({name:socNome,sport_id:socSport,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''}).select().single();
+    if(rSoc.error){showErr('wzErr','Errore società: '+rSoc.error.message);return;}
+    socId=rSoc.data.id;societa.push(rSoc.data);
+  }
+  society=socId;
+  if(me&&socId){
+    await sb.from('user_team_seasons').upsert({user_id:me.id,season_id:season.id,society_id:socId,role:myRole||'admin'},{onConflict:'user_id,season_id,society_id,role'});
+    myRole=myRole||'admin';g('uRole').textContent=myRole;
+  }
+  closeM('mWizard');g('sbStagione').textContent=season.name;fillSelects();
+  await Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]);
+  renderDashboard();showOkToast('Stagione "'+nome+'" creata! Ora puoi iniziare. 🎉');
 }
 
 function openNewStagione(){
   var yr=new Date().getFullYear();
-  openM('mWizard');
-  g('mWizardTitle').textContent='+ Nuova Stagione';
+  openM('mWizard');g('mWizardTitle').textContent='+ Nuova Stagione';
   g('mWizardBody').innerHTML=
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'+
-      '<div class="fld"><label for="wzYrStart">Anno Inizio *</label>'+
-        '<input id="wzYrStart" type="number" min="2000" max="2099" value="'+yr+'" placeholder="'+yr+'"/></div>'+
-      '<div class="fld"><label for="wzYrEnd">Anno Fine *</label>'+
-        '<input id="wzYrEnd" type="number" min="2000" max="2099" value="'+(yr+1)+'" placeholder="'+(yr+1)+'"/></div>'+
+      '<div class="fld"><label for="wzYrStart">Anno Inizio *</label><input id="wzYrStart" type="number" min="2000" max="2099" value="'+yr+'"/></div>'+
+      '<div class="fld"><label for="wzYrEnd">Anno Fine *</label><input id="wzYrEnd" type="number" min="2000" max="2099" value="'+(yr+1)+'"/></div>'+
     '</div>'+
-    '<div id="wzPreview" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--text2);margin-bottom:16px">'+
-      '<div style="color:var(--accent2);font-weight:600;margin-bottom:4px">Anteprima automatica</div>'+
-      '<div>📋 Nome: <b style="color:var(--text)">Stagione '+yr+'/'+(yr+1)+'</b></div>'+
-      '<div>📅 Inizio: <b style="color:var(--text)">01/08/'+yr+'</b></div>'+
-      '<div>📅 Fine: <b style="color:var(--text)">31/07/'+(yr+1)+'</b></div>'+
+    '<div id="wzPreview" style="background:#eff6ff;border:1px solid #dbeafe;border-radius:8px;padding:12px 16px;font-size:13px;color:var(--text2);margin-bottom:16px">'+
+      '<div style="color:#1d4ed8;font-weight:700;margin-bottom:4px">Anteprima</div>'+
+      '<div>📋 Nome: <b>Stagione '+yr+'/'+(yr+1)+'</b></div>'+
+      '<div>📅 Inizio: <b>01/08/'+yr+'</b></div>'+
+      '<div>📅 Fine: <b>31/07/'+(yr+1)+'</b></div>'+
     '</div>'+
     '<div style="display:flex;gap:10px;margin-top:4px">'+
       '<button class="btn btn-primary" style="flex:1" onclick="salvaWizardStagioneOnly()">💾 Crea Stagione</button>'+
       '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
     '</div>';
   function updatePreview(){
-    var ys=parseInt(g('wzYrStart').value)||yr;
-    var ye=parseInt(g('wzYrEnd').value)||yr+1;
-    g('wzPreview').innerHTML=
-      '<div style="color:var(--accent2);font-weight:600;margin-bottom:4px">Anteprima automatica</div>'+
-      '<div>📋 Nome: <b style="color:var(--text)">Stagione '+ys+'/'+ye+'</b></div>'+
-      '<div>📅 Inizio: <b style="color:var(--text)">01/08/'+ys+'</b></div>'+
-      '<div>📅 Fine: <b style="color:var(--text)">31/07/'+ye+'</b></div>';
+    var ys=parseInt(g('wzYrStart').value)||yr,ye=parseInt(g('wzYrEnd').value)||yr+1;
+    g('wzPreview').innerHTML='<div style="color:#1d4ed8;font-weight:700;margin-bottom:4px">Anteprima</div><div>📋 Nome: <b>Stagione '+ys+'/'+ye+'</b></div><div>📅 Inizio: <b>01/08/'+ys+'</b></div><div>📅 Fine: <b>31/07/'+ye+'</b></div>';
   }
   g('wzYrStart').addEventListener('input',updatePreview);
   g('wzYrEnd').addEventListener('input',updatePreview);
 }
 
 async function salvaWizardStagioneOnly(){
-  var ys=parseInt(g('wzYrStart')?g('wzYrStart').value:''), ye=parseInt(g('wzYrEnd')?g('wzYrEnd').value:'');
+  var ys=parseInt(g('wzYrStart')?g('wzYrStart').value:''),ye=parseInt(g('wzYrEnd')?g('wzYrEnd').value:'');
   if(!ys||!ye){showErr('wzErr','Inserisci anno di inizio e anno di fine');return;}
   if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore dell\'anno di inizio');return;}
-  var nome='Stagione '+ys+'/'+ye;
-  var start=ys+'-08-01';
-  var end=ye+'-07-31';
+  var nome='Stagione '+ys+'/'+ye,start=ys+'-08-01',end=ye+'-07-31';
   var rSeas=await sb.from('seasons').insert({name:nome,start_date:start,end_date:end,is_active:false}).select().single();
   if(rSeas.error){showErr('wzErr','Errore: '+rSeas.error.message);return;}
-  allStagioni.unshift(rSeas.data);
-  closeM('mWizard');
-  renderStagioni();
+  allStagioni.unshift(rSeas.data);closeM('mWizard');renderStagioni();
   showOkToast('✅ Stagione "'+nome+'" creata!');
 }
 
 function openEditStagione(id){
-  var s=allStagioni.find(function(x){return x.id===id;});
-  if(!s) return;
-  // Estrai gli anni dalla stagione esistente
+  var s=allStagioni.find(function(x){return x.id===id;});if(!s)return;
   var ysOld=s.start_date?parseInt(s.start_date.substring(0,4)):new Date().getFullYear();
   var yeOld=s.end_date?parseInt(s.end_date.substring(0,4)):ysOld+1;
-  openM('mWizard');
-  g('mWizardTitle').textContent='✏️ Modifica Stagione';
+  openM('mWizard');g('mWizardTitle').textContent='✏️ Modifica Stagione';
   g('mWizardBody').innerHTML=
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'+
-      '<div class="fld"><label for="wzYrStartE">Anno Inizio *</label>'+
-        '<input id="wzYrStartE" type="number" min="2000" max="2099" value="'+ysOld+'"/></div>'+
-      '<div class="fld"><label for="wzYrEndE">Anno Fine *</label>'+
-        '<input id="wzYrEndE" type="number" min="2000" max="2099" value="'+yeOld+'"/></div>'+
-    '</div>'+
-    '<div id="wzPreviewE" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--text2);margin-bottom:16px">'+
-      '<div style="color:var(--accent2);font-weight:600;margin-bottom:4px">Anteprima automatica</div>'+
-      '<div>📋 Nome: <b style="color:var(--text)">Stagione '+ysOld+'/'+yeOld+'</b></div>'+
-      '<div>📅 Inizio: <b style="color:var(--text)">01/08/'+ysOld+'</b></div>'+
-      '<div>📅 Fine: <b style="color:var(--text)">31/07/'+yeOld+'</b></div>'+
+      '<div class="fld"><label for="wzYrStartE">Anno Inizio *</label><input id="wzYrStartE" type="number" min="2000" max="2099" value="'+ysOld+'"/></div>'+
+      '<div class="fld"><label for="wzYrEndE">Anno Fine *</label><input id="wzYrEndE" type="number" min="2000" max="2099" value="'+yeOld+'"/></div>'+
     '</div>'+
     '<div style="display:flex;gap:10px;margin-top:4px">'+
       '<button class="btn btn-primary" style="flex:1" onclick="saveEditStagione(\''+id+'\')">💾 Salva</button>'+
       '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
     '</div>';
-  function updatePreviewE(){
-    var ys=parseInt(g('wzYrStartE').value)||ysOld;
-    var ye=parseInt(g('wzYrEndE').value)||yeOld;
-    g('wzPreviewE').innerHTML=
-      '<div style="color:var(--accent2);font-weight:600;margin-bottom:4px">Anteprima automatica</div>'+
-      '<div>📋 Nome: <b style="color:var(--text)">Stagione '+ys+'/'+ye+'</b></div>'+
-      '<div>📅 Inizio: <b style="color:var(--text)">01/08/'+ys+'</b></div>'+
-      '<div>📅 Fine: <b style="color:var(--text)">31/07/'+ye+'</b></div>';
-  }
-  g('wzYrStartE').addEventListener('input',updatePreviewE);
-  g('wzYrEndE').addEventListener('input',updatePreviewE);
 }
 
 async function saveEditStagione(id){
-  var ys=parseInt(g('wzYrStartE')?g('wzYrStartE').value:''), ye=parseInt(g('wzYrEndE')?g('wzYrEndE').value:'');
-  if(!ys||!ye){showErr('wzErr','Inserisci anno di inizio e anno di fine');return;}
-  if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore dell\'anno di inizio');return;}
-  var nome='Stagione '+ys+'/'+ye;
-  var start=ys+'-08-01';
-  var end=ye+'-07-31';
+  var ys=parseInt(g('wzYrStartE')?g('wzYrStartE').value:''),ye=parseInt(g('wzYrEndE')?g('wzYrEndE').value:'');
+  if(!ys||!ye){showErr('wzErr','Inserisci anno');return;}
+  if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore');return;}
+  var nome='Stagione '+ys+'/'+ye,start=ys+'-08-01',end=ye+'-07-31';
   var r=await sb.from('seasons').update({name:nome,start_date:start,end_date:end}).eq('id',id);
   if(r.error){showErr('wzErr',r.error.message);return;}
   var idx=allStagioni.findIndex(function(x){return x.id===id;});
-  if(idx>=0) Object.assign(allStagioni[idx],{name:nome,start_date:start,end_date:end});
+  if(idx>=0)Object.assign(allStagioni[idx],{name:nome,start_date:start,end_date:end});
   if(season&&season.id===id){season.name=nome;g('sbStagione').textContent=nome;}
-  closeM('mWizard');
-  renderStagioni();
-  showOkToast('✅ Stagione aggiornata!');
+  closeM('mWizard');renderStagioni();showOkToast('✅ Stagione aggiornata!');
 }
 
 async function setSeasonActive(id){
-  if(!confirm('Impostare questa stagione come attiva? La stagione corrente verrà disattivata.')) return;
+  if(!confirm('Impostare questa stagione come attiva? La stagione corrente verrà disattivata.'))return;
   await sb.from('seasons').update({is_active:false}).neq('id','00000000-0000-0000-0000-000000000000');
   var r=await sb.from('seasons').update({is_active:true}).eq('id',id);
   if(r.error){alert('Errore: '+r.error.message);return;}
@@ -1210,161 +1168,96 @@ async function setSeasonActive(id){
   g('sbStagione').textContent=season?season.name:'—';
   renderStagioni();
   await Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]);
-  renderDashboard();
-  showOkToast('✅ Stagione "'+season.name+'" attivata!');
+  renderDashboard();showOkToast('✅ Stagione "'+season.name+'" attivata!');
 }
 
 async function deleteStagione(id){
-  if(!confirm('Eliminare questa stagione? Tutti i dati collegati verranno persi.')) return;
+  if(!confirm('Eliminare questa stagione? Tutti i dati collegati verranno persi.'))return;
   var r=await sb.from('seasons').delete().eq('id',id);
   if(r.error){alert('Errore: '+r.error.message);return;}
   allStagioni=allStagioni.filter(function(s){return s.id!==id;});
-  renderStagioni();
-  showOkToast('Stagione eliminata');
+  renderStagioni();showOkToast('Stagione eliminata');
 }
 
-// ═══════════════════════════════════════════════
-//  SOCIETÀ
-// ═══════════════════════════════════════════════
-function renderSocieta(){
-  var w=g('wSocieta'); if(!w) return;
-  var sm={};sports.forEach(function(s){sm[s.id]=s.name;});
-  var rows='';
-  (societa||[]).forEach(function(s){
-    rows+='<tr>'+
-      '<td style="font-weight:700">'+hA(s.name)+'</td>'+
-      '<td style="color:var(--text2)">'+hA(sm[s.sport_id]||'—')+'</td>'+
-      '<td style="color:var(--text2)">'+hA(s.city||'—')+'</td>'+
-      '<td style="color:var(--text2)">'+hA(s.email||'—')+'</td>'+
-      '<td>'+
-        '<div style="display:flex;gap:6px">'+
-          '<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="openEditSocieta(\''+s.id+'\')">✏️ Modifica</button>'+
-          '<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px;color:var(--red)" onclick="deleteSocieta(\''+s.id+'\')">🗑️</button>'+
-        '</div>'+
-      '</td>'+
-    '</tr>';
-  });
-  w.innerHTML=
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'+
-      '<div>'+
-        '<h2 style="font-size:18px;font-weight:700">Società</h2>'+
-        '<p style="color:var(--text2);font-size:12px;margin-top:2px">Gestione delle società sportive</p>'+
-      '</div>'+
-      '<button class="btn btn-primary" onclick="openNewSocieta()">'+
-        '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Nuova Società'+
-      '</button>'+
-    '</div>'+
-    (societa.length===0
-      ?'<div class="empty">Nessuna società. Crea la prima!</div>'
-      :'<div class="card"><div class="tw"><table>'+
-        '<thead><tr><th>Nome</th><th>Sport</th><th>Città</th><th>Email</th><th>Azioni</th></tr></thead>'+
-        '<tbody>'+rows+'</tbody>'+
-        '</table></div></div>'
-    );
-}
-
+/* ════ SOCIETÀ CRUD ════ */
 function _sportOpts(selectedId){
-  return sports.map(function(s){
-    return '<option value="'+s.id+'"'+(s.id===selectedId?' selected':'')+'>'+hA(s.icon?s.icon+' ':'')+hA(s.name)+'</option>';
-  }).join('');
+  return sports.map(function(s){return '<option value="'+s.id+'"'+(s.id===selectedId?' selected':'')+'>'+hA(s.icon?s.icon+' ':'')+hA(s.name)+'</option>';}).join('');
 }
-
 function openNewSocieta(){
-  openM('mWizard');
-  g('mWizardTitle').textContent='+ Nuova Società';
+  openM('mWizard');g('mWizardTitle').textContent='+ Nuova Società';
   g('mWizardBody').innerHTML=
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
-    '<div class="fld"><label for="wzSocNome">Nome Società *</label>'+
-      '<input id="wzSocNome" placeholder="Es. ASD Olimpia"/></div>'+
-    '<div class="fld"><label for="wzSocSport">Sport *</label>'+
-      '<select id="wzSocSport"><option value="">— Seleziona sport —</option>'+_sportOpts(null)+'</select></div>'+
+    '<div class="fld"><label for="wzSocNome">Nome Società *</label><input id="wzSocNome" placeholder="Es. ASD Olimpia"/></div>'+
+    '<div class="fld"><label for="wzSocSport">Sport *</label><select id="wzSocSport"><option value="">— Seleziona sport —</option>'+_sportOpts(null)+'</select></div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
-      '<div class="fld"><label for="wzSocCitta">Città</label>'+
-        '<input id="wzSocCitta" placeholder="Es. Milano"/></div>'+
-      '<div class="fld"><label for="wzSocEmail">Email</label>'+
-        '<input id="wzSocEmail" type="email" placeholder="info@societa.it"/></div>'+
+      '<div class="fld"><label for="wzSocCitta">Città</label><input id="wzSocCitta" placeholder="Es. Milano"/></div>'+
+      '<div class="fld"><label for="wzSocEmail">Email</label><input id="wzSocEmail" type="email" placeholder="info@societa.it"/></div>'+
     '</div>'+
     '<div style="display:flex;gap:10px;margin-top:16px">'+
       '<button class="btn btn-primary" style="flex:1" onclick="salvaSocieta()">💾 Crea Società</button>'+
       '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
     '</div>';
 }
-
 async function salvaSocieta(){
-  var nome=v('wzSocNome'), sport=v('wzSocSport');
+  var nome=v('wzSocNome'),sport=v('wzSocSport');
   if(!nome){showErr('wzErr','Il nome è obbligatorio');return;}
   if(!sport){showErr('wzErr','Seleziona uno sport');return;}
   var r=await sb.from('societies').insert({name:nome,sport_id:sport,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''}).select().single();
   if(r.error){showErr('wzErr','Errore: '+r.error.message);return;}
-  societa.push(r.data);
-  closeM('mWizard');
-  renderSocieta();
-  showOkToast('✅ Società "'+nome+'" creata!');
+  societa.push(r.data);closeM('mWizard');renderSocieta();showOkToast('✅ Società "'+nome+'" creata!');
 }
-
 function openEditSocieta(id){
-  var s=societa.find(function(x){return x.id===id;});
-  if(!s) return;
-  openM('mWizard');
-  g('mWizardTitle').textContent='✏️ Modifica Società';
+  var s=societa.find(function(x){return x.id===id;});if(!s)return;
+  openM('mWizard');g('mWizardTitle').textContent='✏️ Modifica Società';
   g('mWizardBody').innerHTML=
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
-    '<div class="fld"><label for="wzSocNome">Nome Società *</label>'+
-      '<input id="wzSocNome" value="'+hA(s.name)+'"/></div>'+
-    '<div class="fld"><label for="wzSocSport">Sport *</label>'+
-      '<select id="wzSocSport"><option value="">— Seleziona sport —</option>'+_sportOpts(s.sport_id)+'</select></div>'+
+    '<div class="fld"><label for="wzSocNome">Nome Società *</label><input id="wzSocNome" value="'+hA(s.name)+'"/></div>'+
+    '<div class="fld"><label for="wzSocSport">Sport *</label><select id="wzSocSport"><option value="">— Seleziona sport —</option>'+_sportOpts(s.sport_id)+'</select></div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
-      '<div class="fld"><label for="wzSocCitta">Città</label>'+
-        '<input id="wzSocCitta" value="'+hA(s.city||'')+'"/></div>'+
-      '<div class="fld"><label for="wzSocEmail">Email</label>'+
-        '<input id="wzSocEmail" type="email" value="'+hA(s.email||'')+'"/></div>'+
+      '<div class="fld"><label for="wzSocCitta">Città</label><input id="wzSocCitta" value="'+hA(s.city||'')+'"/></div>'+
+      '<div class="fld"><label for="wzSocEmail">Email</label><input id="wzSocEmail" type="email" value="'+hA(s.email||'')+'"/></div>'+
     '</div>'+
     '<div style="display:flex;gap:10px;margin-top:16px">'+
       '<button class="btn btn-primary" style="flex:1" onclick="saveEditSocieta(\''+id+'\')">💾 Salva</button>'+
       '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
     '</div>';
 }
-
 async function saveEditSocieta(id){
-  var nome=v('wzSocNome'), sport=v('wzSocSport');
+  var nome=v('wzSocNome'),sport=v('wzSocSport');
   if(!nome){showErr('wzErr','Il nome è obbligatorio');return;}
   if(!sport){showErr('wzErr','Seleziona uno sport');return;}
   var r=await sb.from('societies').update({name:nome,sport_id:sport,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''}).eq('id',id);
   if(r.error){showErr('wzErr','Errore: '+r.error.message);return;}
   var idx=societa.findIndex(function(x){return x.id===id;});
-  if(idx>=0) Object.assign(societa[idx],{name:nome,sport_id:sport,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''});
-  closeM('mWizard');
-  renderSocieta();
-  showOkToast('✅ Società aggiornata!');
+  if(idx>=0)Object.assign(societa[idx],{name:nome,sport_id:sport,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''});
+  closeM('mWizard');renderSocieta();showOkToast('✅ Società aggiornata!');
 }
-
 async function deleteSocieta(id){
-  if(!confirm('Eliminare questa società? I dati collegati potrebbero essere persi.')) return;
+  if(!confirm('Eliminare questa società? I dati collegati potrebbero essere persi.'))return;
   var r=await sb.from('societies').delete().eq('id',id);
   if(r.error){alert('Errore: '+r.error.message);return;}
   societa=societa.filter(function(s){return s.id!==id;});
-  renderSocieta();
-  showOkToast('Società eliminata');
+  renderSocieta();showOkToast('Società eliminata');
 }
 
-// NAVIGATION
+/* ════ NAVIGAZIONE ════ */
 var PT={dashboard:'Dashboard',atleti:'Atleti',squadre:'Squadre',sessioni:'Allenamenti',partite:'Partite',staff:'Staff',categorie:'Categorie',stagioni:'Stagioni',societa:'Società'};
 function nav(pageId,el){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active');});
-  var pg=g('page-'+pageId); if(pg) pg.classList.add('active');
-  if(el) el.classList.add('active');
-  else { var ni=document.querySelector('[data-p="'+pageId+'"]'); if(ni) ni.classList.add('active'); }
+  var pg=g('page-'+pageId);if(pg)pg.classList.add('active');
+  if(el)el.classList.add('active');
+  else{var ni=document.querySelector('[data-p="'+pageId+'"]');if(ni)ni.classList.add('active');}
   g('topbarTitle').textContent=PT[pageId]||pageId;
-  if(pageId==='categorie') renderCategorie();
-  if(pageId==='stagioni')  renderStagioni();
-  if(pageId==='societa')   renderSocieta();
+  if(pageId==='categorie')renderCategorie();
+  if(pageId==='stagioni') renderStagioni();
+  if(pageId==='societa')  renderSocieta();
 }
 
-// MODAL
+/* ════ MODAL ════ */
 function openM(id){g(id).classList.add('open');}
 function closeM(id){
-  var el=g(id); if(!el) return;
+  var el=g(id);if(!el)return;
   el.classList.remove('open');
   el.querySelectorAll('.ferr,.fok,.err-box').forEach(function(e){e.style.display='none';});
 }
@@ -1372,7 +1265,7 @@ document.querySelectorAll('.mo').forEach(function(m){
   m.addEventListener('click',function(e){if(e.target===m)m.classList.remove('open');});
 });
 
-// UTILS
+/* ════ UTILS ════ */
 function g(id){return document.getElementById(id);}
 function v(id){var el=g(id);return el?el.value.trim():'';}
 function showErr(id,msg){var el=g(id);if(el){el.textContent=msg;el.style.display='block';}}
@@ -1382,15 +1275,5 @@ function setBusy(id,busy){var btn=g(id);if(btn){btn.disabled=busy;if(busy){btn.d
 g('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 init();
 </script>
-
-<!-- WIZARD STAGIONE -->
-<div class="modal-backdrop" id="mWizard" onclick="if(event.target===this){closeM('mWizard')}">
-  <div class="modal-box" style="max-width:480px">
-    <div class="modal-hdr">
-      <span id="mWizardTitle">⚽ Prima Configurazione</span>
-    </div>
-    <div class="modal-body" id="mWizardBody"></div>
-  </div>
-</div>
 </body>
 </html>
