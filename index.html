@@ -7,36 +7,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* ═══════════════════════════════════════
-   DESIGN TOKENS — tema grigio-bianco caldo
-═══════════════════════════════════════ */
 :root{
-  --bg:       #f0f2f5;
-  --surface:  #ffffff;
-  --panel:    #ffffff;
-  --sidebar:  #1e2235;
-  --sb-hover: #2b3050;
-  --sb-act:   rgba(99,102,241,0.18);
-  --sb-act-t: #a5b4fc;
-  --border:   #e4e7ef;
-  --border2:  #cdd2e0;
-  --text:     #1a1d2e;
-  --text2:    #6b7280;
-  --text3:    #9ca3af;
-  --accent:   #4f46e5;
-  --accent2:  #6366f1;
-  --green:    #10b981;
-  --red:      #ef4444;
-  --amber:    #f59e0b;
-  --purple:   #8b5cf6;
-  --blue:     #3b82f6;
-  --sw: 232px;
-  --topbar: 56px;
-  --r: 10px;
-  --r2: 14px;
-  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
-  --shadow2: 0 4px 16px rgba(0,0,0,.10);
-  --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --bg:#f0f2f5;--surface:#ffffff;--panel:#ffffff;--sidebar:#1e2235;
+  --sb-hover:#2b3050;--sb-act:rgba(99,102,241,0.18);--sb-act-t:#a5b4fc;
+  --border:#e4e7ef;--border2:#cdd2e0;--text:#1a1d2e;--text2:#6b7280;--text3:#9ca3af;
+  --accent:#4f46e5;--accent2:#6366f1;--green:#10b981;--red:#ef4444;--amber:#f59e0b;
+  --purple:#8b5cf6;--blue:#3b82f6;--sw:240px;--topbar:56px;--r:10px;--r2:14px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow2:0 4px 16px rgba(0,0,0,.10);--font:'Plus Jakarta Sans',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased;}
@@ -44,17 +22,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
 
-/* ═══════════════ LOGIN ═══════════════ */
-#loginScreen{
-  display:flex;align-items:center;justify-content:center;
-  min-height:100vh;padding:24px;
-  background: linear-gradient(135deg,#e0e7ff 0%,#f0f2f5 50%,#fce7f3 100%);
-}
-.login-box{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:20px;padding:44px 40px;width:100%;max-width:400px;
-  box-shadow:var(--shadow2);animation:fadeUp .4s ease both;
-}
+/* LOGIN */
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:linear-gradient(135deg,#e0e7ff 0%,#f0f2f5 50%,#fce7f3 100%);}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:44px 40px;width:100%;max-width:400px;box-shadow:var(--shadow2);animation:fadeUp .4s ease both;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 .login-logo{display:flex;align-items:center;gap:13px;margin-bottom:36px;}
 .login-icon{width:44px;height:44px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(79,70,229,.35);}
@@ -65,22 +35,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .lf label{display:block;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);margin-bottom:6px;}
 .lf input{width:100%;background:#f8f9fc;border:1.5px solid var(--border);border-radius:var(--r);padding:11px 13px;color:var(--text);font-family:var(--font);font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s;}
 .lf input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
-.login-btn{width:100%;padding:12px;background:var(--accent);color:white;border:none;border-radius:var(--r);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s;margin-top:6px;letter-spacing:.2px;}
+.login-btn{width:100%;padding:12px;background:var(--accent);color:white;border:none;border-radius:var(--r);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s;margin-top:6px;}
 .login-btn:hover{background:#4338ca;}
 .login-btn:active{transform:scale(.98);}
 .login-btn:disabled{opacity:.6;cursor:not-allowed;}
 .alert-err{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:var(--r);padding:10px 13px;font-size:13px;margin-bottom:14px;display:none;}
 
-/* ═══════════════ APP SHELL ═══════════════ */
+/* APP SHELL */
 #appScreen{display:none;}
 #appScreen.vis{display:block;min-height:100vh;}
 
-/* ─── SIDEBAR ─── */
-.sidebar{
-  width:var(--sw);background:var(--sidebar);
-  position:fixed;top:0;left:0;height:100vh;
-  display:flex;flex-direction:column;overflow-y:auto;z-index:50;
-}
+/* SIDEBAR */
+.sidebar{width:var(--sw);background:var(--sidebar);position:fixed;top:0;left:0;height:100vh;display:flex;flex-direction:column;overflow-y:auto;z-index:50;}
 .sb-logo{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.07);}
 .sb-mark{display:flex;align-items:center;gap:11px;}
 .sb-icon{width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(79,70,229,.4);}
@@ -104,33 +70,23 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .logout{background:none;border:none;color:rgba(255,255,255,.3);cursor:pointer;padding:4px;border-radius:4px;transition:color .14s;}
 .logout:hover{color:#f87171;}
 
-/* ─── TOPBAR ─── */
+/* TOPBAR */
 .main{margin-left:var(--sw);display:flex;flex-direction:column;min-height:100vh;}
-.topbar{
-  height:var(--topbar);background:var(--surface);
-  border-bottom:1px solid var(--border);
-  display:flex;align-items:center;padding:0 28px;
-  position:sticky;top:0;z-index:40;
-  box-shadow:var(--shadow);
-}
+.topbar{height:var(--topbar);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;position:sticky;top:0;z-index:40;box-shadow:var(--shadow);}
 .topbar-title{font-size:15px;font-weight:700;color:var(--text);}
 
-/* ─── CONTENT ─── */
+/* CONTENT */
 .content{flex:1;padding:24px 28px;overflow-y:auto;}
 .page{display:none;}
 .page.active{display:block;}
 
-/* ═══════════════ COMPONENTS ═══════════════ */
-
-/* Sezione uniforme: ogni pagina usa .section-wrap */
+/* COMPONENTS */
 .section-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);box-shadow:var(--shadow);}
 .section-hdr{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .section-title{font-size:16px;font-weight:800;color:var(--text);}
 .section-sub{font-size:12px;color:var(--text3);margin-top:1px;}
-.section-body{padding:0;}/* table occupa tutta la larghezza */
+.section-body{padding:0;}
 .section-filters{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fafbfd;}
-
-/* Card / stat */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);}
 .card-hdr{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .card-ttl{font-size:13px;font-weight:700;color:var(--text);}
@@ -151,18 +107,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .btn-primary:hover{background:#4338ca;}
 .btn-ghost{background:transparent;color:var(--text2);border:1.5px solid var(--border2);}
 .btn-ghost:hover{background:#f3f4f6;color:var(--text);}
-.btn-icon{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:30px;height:30px;border:none;border-radius:8px;
-  cursor:pointer;font-size:14px;margin-left:4px;
-  transition:opacity .13s,transform .1s;
-}
+.btn-icon{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:none;border-radius:8px;cursor:pointer;font-size:14px;margin-left:4px;transition:opacity .13s,transform .1s;}
 .btn-icon:hover{opacity:.8;}
 .btn-icon:active{transform:scale(.9);}
-.btn-edit{background:#fef3c7;color:#92400e;}    /* giallo matita */
-.btn-del {background:#fee2e2;color:#991b1b;}    /* rosso cestino */
-.btn-act {background:#d1fae5;color:#065f46;}    /* verde attiva */
-.btn-off {background:#f1f5f9;color:#475569;}    /* grigio spegni */
+.btn-edit{background:#fef3c7;color:#92400e;}
+.btn-del{background:#fee2e2;color:#991b1b;}
+.btn-act{background:#d1fae5;color:#065f46;}
+.btn-off{background:#f1f5f9;color:#475569;}
 .btn-wide{width:auto;padding:0 13px;font-size:12px;font-weight:700;border-radius:8px;height:30px;}
 
 /* Table */
@@ -187,7 +138,6 @@ tbody tr:hover td{background:#f8f9ff;}
 
 /* Avatar */
 .mav{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;text-transform:uppercase;}
-var AVCOLS_LIGHT=['rgba(99,102,241,.12):#4f46e5','rgba(139,92,246,.12):#7c3aed','rgba(16,185,129,.12):#059669','rgba(245,158,11,.12):#b45309','rgba(239,68,68,.12):#b91c1c'];
 
 /* Forms */
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:20px;}
@@ -217,6 +167,10 @@ textarea{resize:vertical;min-height:80px;}
 .modal-body{padding:20px;}
 .err-box{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:var(--r);padding:8px 13px;font-size:12px;margin-bottom:13px;}
 
+/* Info banner step */
+.step-banner{background:#eff6ff;border:1px solid #dbeafe;border-radius:var(--r);padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1d4ed8;}
+.step-banner strong{display:block;margin-bottom:2px;font-size:13px;}
+
 /* Misc */
 .loading{padding:52px;text-align:center;color:var(--text3);}
 .spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;}
@@ -241,12 +195,12 @@ textarea{resize:vertical;min-height:80px;}
 </head>
 <body>
 
-<!-- ═══════════ LOGIN ═══════════ -->
+<!-- LOGIN -->
 <div id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
       <div class="login-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></div>
-      <div><div class="login-title">SportTrack Pro</div><div class="login-sub">Gestione calcistica</div></div>
+      <div><div class="login-title">SportTrack Pro</div><div class="login-sub">Gestione sportiva</div></div>
     </div>
     <div class="alert-err" id="loginErr"></div>
     <div class="lf"><label for="loginEmail">Email</label><input type="email" id="loginEmail" placeholder="mario@club.it" autocomplete="email"></div>
@@ -255,13 +209,13 @@ textarea{resize:vertical;min-height:80px;}
   </div>
 </div>
 
-<!-- ═══════════ APP ═══════════ -->
+<!-- APP -->
 <div id="appScreen">
   <aside class="sidebar">
     <div class="sb-logo">
       <div class="sb-mark">
         <div class="sb-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></div>
-        <div><div class="sb-name">SportTrack Pro</div><div class="sb-sub">Gestione calcistica</div></div>
+        <div><div class="sb-name">SportTrack Pro</div><div class="sb-sub">Gestione sportiva</div></div>
       </div>
     </div>
     <div class="season-pill">
@@ -275,24 +229,35 @@ textarea{resize:vertical;min-height:80px;}
       </div>
     </nav>
     <nav class="nav-sec">
-      <div class="nav-lbl">Organizzazione</div>
+      <!-- Ordine logico di configurazione -->
+      <div class="nav-lbl">Configurazione</div>
+      <div class="ni" data-p="stagioni" onclick="nav('stagioni',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+        Stagioni
+      </div>
+      <div class="ni" data-p="societa" onclick="nav('societa',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+        Società
+      </div>
+      <div class="ni" data-p="staff" onclick="nav('staff',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        Staff
+      </div>
+      <div class="ni" data-p="categorie" onclick="nav('categorie',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l-5.5 9h11z M17.5 21.5A4.5 4.5 0 0 0 22 17 4.5 4.5 0 0 0 17.5 12.5 4.5 4.5 0 0 0 13 17 4.5 4.5 0 0 0 17.5 21.5z M3 13.5h8v8H3z"/></svg>
+        Categorie
+      </div>
       <div class="ni" data-p="squadre" onclick="nav('squadre',this)">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
         Squadre<span class="cnt" id="cntSq" style="display:none"></span>
       </div>
+    </nav>
+    <nav class="nav-sec">
+      <div class="nav-lbl">Attività</div>
       <div class="ni" data-p="atleti" onclick="nav('atleti',this)">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
         Atleti<span class="cnt" id="cntAt" style="display:none"></span>
       </div>
-      <div class="ni" data-p="staff" onclick="nav('staff',this)">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.07-.44.18-.86.18-1.3C18 2.12 15.88 0 13.3 0c-1.3 0-2.49.52-3.3 1.48L9 3 7.99 1.48C7.18.52 5.99 0 4.69 0 2.12 0 0 2.12 0 4.7c0 .44.1.86.18 1.3H0v2h20V6zM4 8v12h16V8H4z"/></svg>Staff
-      </div>
-      <div class="ni" data-p="categorie" onclick="nav('categorie',this)">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l-5.5 9h11z M17.5 21.5A4.5 4.5 0 0 0 22 17 4.5 4.5 0 0 0 17.5 12.5 4.5 4.5 0 0 0 13 17 4.5 4.5 0 0 0 17.5 21.5z M3 13.5h8v8H3z"/></svg>Categorie
-      </div>
-    </nav>
-    <nav class="nav-sec">
-      <div class="nav-lbl">Attività</div>
       <div class="ni" data-p="sessioni" onclick="nav('sessioni',this)">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 7h-2v2h2V7zm0 4h-2v6h2v-6zm4-9.99L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2.01-2-2.01zM17 19H7V5h10v14z"/></svg>
         Allenamenti<span class="cnt" id="cntSes" style="display:none"></span>
@@ -300,15 +265,6 @@ textarea{resize:vertical;min-height:80px;}
       <div class="ni" data-p="partite" onclick="nav('partite',this)">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg>
         Partite<span class="cnt" id="cntPar" style="display:none"></span>
-      </div>
-    </nav>
-    <nav class="nav-sec">
-      <div class="nav-lbl">Configurazione</div>
-      <div class="ni" data-p="stagioni" onclick="nav('stagioni',this)">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>Stagioni
-      </div>
-      <div class="ni" data-p="societa" onclick="nav('societa',this)">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>Società
       </div>
     </nav>
     <div class="sb-footer">
@@ -331,6 +287,51 @@ textarea{resize:vertical;min-height:80px;}
         <div id="dashContent"><div class="loading"><div class="spinner"></div>Caricamento dati...</div></div>
       </div>
 
+      <!-- STAGIONI -->
+      <div class="page" id="page-stagioni"><div id="wStagioni"></div></div>
+
+      <!-- SOCIETA -->
+      <div class="page" id="page-societa"><div id="wSocieta"></div></div>
+
+      <!-- STAFF -->
+      <div class="page" id="page-staff">
+        <div class="section-wrap">
+          <div class="section-hdr">
+            <div><div class="section-title">Staff</div><div class="section-sub">Gestione ruoli e accessi per stagione</div></div>
+            <button class="btn btn-primary" onclick="openM('mStaff')">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Aggiungi membro
+            </button>
+          </div>
+          <div class="section-body"><div class="tw" id="wStaff"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
+        </div>
+      </div>
+
+      <!-- CATEGORIE -->
+      <div class="page" id="page-categorie">
+        <div class="section-wrap">
+          <div class="section-hdr">
+            <div><div class="section-title">Categorie</div><div class="section-sub">Fasce d'età associate alla società</div></div>
+            <button class="btn btn-primary" onclick="openM('mCategoria')">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova categoria
+            </button>
+          </div>
+          <div class="section-body"><div class="tw" id="wCategorie"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
+        </div>
+      </div>
+
+      <!-- SQUADRE -->
+      <div class="page" id="page-squadre">
+        <div class="section-wrap">
+          <div class="section-hdr">
+            <div><div class="section-title">Squadre</div><div class="section-sub">Squadre associate a categoria e stagione</div></div>
+            <button class="btn btn-primary" onclick="openM('mSquadra')">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova squadra
+            </button>
+          </div>
+          <div class="section-body" style="padding:20px" id="wSquadre"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>
+        </div>
+      </div>
+
       <!-- ATLETI -->
       <div class="page" id="page-atleti">
         <div class="section-wrap">
@@ -343,6 +344,7 @@ textarea{resize:vertical;min-height:80px;}
           <div class="section-filters">
             <input type="text" id="fAtNome" placeholder="🔍 Cerca atleta..." style="width:200px;margin:0" oninput="renderAtleti()">
             <select id="fAtCat" style="width:160px;margin:0" onchange="renderAtleti()"><option value="">Tutte le categorie</option></select>
+            <select id="fAtSq" style="width:160px;margin:0" onchange="renderAtleti()"><option value="">Tutte le squadre</option></select>
             <select id="fAtStato" style="width:140px;margin:0" onchange="renderAtleti()">
               <option value="">Tutti gli stati</option><option value="active">Attivi</option>
               <option value="injured">Infortunati</option><option value="inactive">Inattivi</option><option value="suspended">Sospesi</option>
@@ -352,30 +354,18 @@ textarea{resize:vertical;min-height:80px;}
         </div>
       </div>
 
-      <!-- SQUADRE -->
-      <div class="page" id="page-squadre">
-        <div class="section-wrap">
-          <div class="section-hdr">
-            <div><div class="section-title">Squadre</div><div class="section-sub">Squadre attive nella stagione corrente</div></div>
-            <button class="btn btn-primary" onclick="openM('mSquadra')">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova squadra
-            </button>
-          </div>
-          <div class="section-body" style="padding:20px" id="wSquadre"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>
-        </div>
-      </div>
-
       <!-- SESSIONI -->
       <div class="page" id="page-sessioni">
         <div class="section-wrap">
           <div class="section-hdr">
-            <div><div class="section-title">Allenamenti</div><div class="section-sub">Sessioni di allenamento e attività</div></div>
+            <div><div class="section-title">Allenamenti</div><div class="section-sub">Sessioni con presenze e performance</div></div>
             <button class="btn btn-primary" onclick="openM('mSessione')">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova sessione
             </button>
           </div>
           <div class="section-filters">
             <select id="fSesCat" style="width:170px;margin:0" onchange="renderSessioni()"><option value="">Tutte le categorie</option></select>
+            <select id="fSesSq" style="width:170px;margin:0" onchange="renderSessioni()"><option value="">Tutte le squadre</option></select>
             <select id="fSesTipo" style="width:150px;margin:0" onchange="renderSessioni()">
               <option value="">Tutti i tipi</option><option value="training">Allenamento</option>
               <option value="match">Partita</option><option value="friendly">Amichevole</option><option value="individual">Individuale</option>
@@ -389,46 +379,18 @@ textarea{resize:vertical;min-height:80px;}
       <div class="page" id="page-partite">
         <div class="section-wrap">
           <div class="section-hdr">
-            <div><div class="section-title">Partite</div><div class="section-sub">Calendario e risultati gare</div></div>
+            <div><div class="section-title">Partite</div><div class="section-sub">Calendario, convocazioni e risultati</div></div>
             <button class="btn btn-primary" onclick="openM('mPartita')">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova partita
             </button>
           </div>
+          <div class="section-filters">
+            <select id="fParCat" style="width:170px;margin:0" onchange="renderPartite()"><option value="">Tutte le categorie</option></select>
+            <select id="fParSq" style="width:170px;margin:0" onchange="renderPartite()"><option value="">Tutte le squadre</option></select>
+          </div>
           <div class="section-body"><div class="tw" id="wPartite"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
         </div>
       </div>
-
-      <!-- STAFF -->
-      <div class="page" id="page-staff">
-        <div class="section-wrap">
-          <div class="section-hdr">
-            <div><div class="section-title">Staff</div><div class="section-sub">Gestione ruoli e accessi</div></div>
-            <button class="btn btn-primary" onclick="openM('mStaff')">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Aggiungi membro
-            </button>
-          </div>
-          <div class="section-body"><div class="tw" id="wStaff"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
-        </div>
-      </div>
-
-      <!-- CATEGORIE -->
-      <div class="page" id="page-categorie">
-        <div class="section-wrap">
-          <div class="section-hdr">
-            <div><div class="section-title">Categorie</div><div class="section-sub">Fasce d'età e divisioni</div></div>
-            <button class="btn btn-primary" onclick="openM('mCategoria')">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Nuova categoria
-            </button>
-          </div>
-          <div class="section-body"><div class="tw" id="wCategorie"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div>
-        </div>
-      </div>
-
-      <!-- STAGIONI -->
-      <div class="page" id="page-stagioni"><div id="wStagioni"></div></div>
-
-      <!-- SOCIETA -->
-      <div class="page" id="page-societa"><div id="wSocieta"></div></div>
 
     </div><!-- end .content -->
   </main>
@@ -446,7 +408,8 @@ textarea{resize:vertical;min-height:80px;}
     <div><label for="aCF">Codice fiscale</label><input type="text" id="aCF"></div>
     <div><label for="aEmail">Email</label><input type="email" id="aEmail"></div>
     <div><label for="aTel">Telefono</label><input type="tel" id="aTel"></div>
-    <div><label for="aCat">Categoria *</label><select id="aCat"></select></div>
+    <div><label for="aCat">Categoria *</label><select id="aCat"><option value="">— Seleziona —</option></select></div>
+    <div><label for="aSquadra">Squadra</label><select id="aSquadra"><option value="">— Nessuna —</option></select></div>
     <div><label for="aRuolo">Ruolo</label><select id="aRuolo"><option value="">—</option><option>Portiere</option><option>Difensore</option><option>Centrocampista</option><option>Attaccante</option></select></div>
     <div><label for="aNumero">N° maglia</label><input type="number" id="aNumero" min="1" max="99"></div>
     <div><label for="aStato">Stato</label><select id="aStato"><option value="active">Attivo</option><option value="inactive">Inattivo</option><option value="injured">Infortunato</option><option value="suspended">Sospeso</option></select></div>
@@ -463,8 +426,8 @@ textarea{resize:vertical;min-height:80px;}
     <div><label for="sTipo">Tipo *</label><select id="sTipo"><option value="training">Allenamento</option><option value="match">Partita</option><option value="friendly">Amichevole</option><option value="individual">Individuale</option><option value="other">Altro</option></select></div>
     <div><label for="sData">Data *</label><input type="date" id="sData"></div>
     <div class="full"><label for="sTitolo">Titolo</label><input type="text" id="sTitolo" placeholder="Es. Allenamento tattico"></div>
-    <div><label for="sCat">Categoria *</label><select id="sCat"></select></div>
-    <div><label for="sSquadra">Squadra</label><select id="sSquadra"><option value="">—</option></select></div>
+    <div><label for="sCat">Categoria *</label><select id="sCat"><option value="">— Seleziona —</option></select></div>
+    <div><label for="sSquadra">Squadra *</label><select id="sSquadra"><option value="">— Seleziona —</option></select></div>
     <div class="full"><label for="sNote">Note</label><textarea id="sNote"></textarea></div>
   </div>
   <div class="ferr" id="errS"></div><div class="fok" id="okS"></div>
@@ -478,8 +441,9 @@ textarea{resize:vertical;min-height:80px;}
     <div><label for="pData">Data *</label><input type="date" id="pData"></div>
     <div><label for="pOra">Orario</label><input type="time" id="pOra"></div>
     <div class="full"><label for="pAvv">Avversario *</label><input type="text" id="pAvv" placeholder="Nome squadra"></div>
+    <div><label for="pCat">Categoria *</label><select id="pCat"><option value="">— Seleziona —</option></select></div>
+    <div><label for="pSquadra">Squadra *</label><select id="pSquadra"><option value="">— Seleziona —</option></select></div>
     <div><label for="pHA">Casa/Trasferta</label><select id="pHA"><option value="home">Casa</option><option value="away">Trasferta</option><option value="neutral">Neutro</option></select></div>
-    <div><label for="pCat">Categoria *</label><select id="pCat"></select></div>
     <div><label for="pRis">Risultato</label><select id="pRis"><option value="">In programma</option><option value="W">Vittoria</option><option value="D">Pareggio</option><option value="L">Sconfitta</option></select></div>
     <div><label for="pGF">Gol fatti</label><input type="number" id="pGF" min="0" value="0"></div>
     <div><label for="pGA">Gol subiti</label><input type="number" id="pGA" min="0" value="0"></div>
@@ -493,7 +457,7 @@ textarea{resize:vertical;min-height:80px;}
 <div class="mo" id="mStaff"><div class="modal">
   <div class="modal-hdr"><span class="modal-ttl">👥 Aggiungi membro staff</span><button class="modal-x" onclick="closeM('mStaff')">✕</button></div>
   <div style="padding:10px 20px 0;background:#eff6ff;border-bottom:1px solid #dbeafe">
-    <div style="font-size:12px;color:#1d4ed8;padding-bottom:10px">L'utente deve essere già registrato. Inserisci la sua email per assegnargli un ruolo in questa stagione.</div>
+    <div style="font-size:12px;color:#1d4ed8;padding-bottom:10px">L'utente deve essere già registrato. Inserisci la sua email per assegnargli un ruolo nella stagione corrente.</div>
   </div>
   <div class="fg">
     <div class="full"><label for="stEmail">Email utente *</label><input type="email" id="stEmail" placeholder="utente@club.it"></div>
@@ -505,6 +469,7 @@ textarea{resize:vertical;min-height:80px;}
       </select>
     </div>
     <div><label for="stCat">Categoria (opz.)</label><select id="stCat"><option value="">Tutte</option></select></div>
+    <div><label for="stSq">Squadra (opz.)</label><select id="stSq"><option value="">Tutte</option></select></div>
   </div>
   <div class="ferr" id="errSt"></div><div class="fok" id="okSt"></div>
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mStaff')">Annulla</button><button class="btn btn-primary" id="btnSt" onclick="salvaStaff()">Assegna ruolo</button></div>
@@ -515,8 +480,8 @@ textarea{resize:vertical;min-height:80px;}
   <div class="modal-hdr"><span class="modal-ttl">👕 Nuova squadra</span><button class="modal-x" onclick="closeM('mSquadra')">✕</button></div>
   <div class="fg">
     <div class="full"><label for="sqNome">Nome squadra *</label><input type="text" id="sqNome" placeholder="Es. Under 13 A"></div>
+    <div><label for="sqCat">Categoria *</label><select id="sqCat"><option value="">— Seleziona —</option></select></div>
     <div><label for="sqSport">Sport</label><select id="sqSport"></select></div>
-    <div><label for="sqCat">Categoria</label><select id="sqCat"></select></div>
   </div>
   <div class="ferr" id="errSq"></div><div class="fok" id="okSq"></div>
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mSquadra')">Annulla</button><button class="btn btn-primary" id="btnSq" onclick="salvaSquadra()">Crea squadra</button></div>
@@ -536,10 +501,10 @@ textarea{resize:vertical;min-height:80px;}
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mCategoria')">Annulla</button><button class="btn btn-primary" id="btnCa" onclick="salvaCategoria()">Crea categoria</button></div>
 </div></div>
 
-<!-- WIZARD STAGIONE -->
+<!-- WIZARD STAGIONE / PRIMA CONFIGURAZIONE -->
 <div class="modal-backdrop" id="mWizard" onclick="if(event.target===this){closeM('mWizard')}">
   <div class="modal-box" style="max-width:480px">
-    <div class="modal-hdr"><span id="mWizardTitle">⚽ Prima Configurazione</span></div>
+    <div class="modal-hdr"><span id="mWizardTitle">⚽ Prima Configurazione</span><button class="modal-x" onclick="closeM('mWizard')">✕</button></div>
     <div class="modal-body" id="mWizardBody"></div>
   </div>
 </div>
@@ -558,8 +523,8 @@ const SURL='https://jvcplfgozdqirzqfqwox.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Y3BsZmdvemRxaXJ6cWZxd294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTIxMjIsImV4cCI6MjA4OTE2ODEyMn0.-W724h8dTtaAyV1HxydYRddoD1oRxmEm0-zZc_8bxx8';
 const sb=supabase.createClient(SURL,SKEY);
 
-/* ════ STATO ════ */
-let me=null,prof=null,myRole=null,season=null,society=null;
+/* ════ STATO GLOBALE ════ */
+let me=null,prof=null,myRole=null,season=null,societyId=null;
 let atleti=[],categorie=[],squadre=[],sessioni=[],partite=[],staff=[],sports=[];
 let societa=[],allStagioni=[];
 
@@ -595,11 +560,11 @@ async function doLogout(){
   g('appScreen').classList.remove('vis');
   g('loginScreen').style.display='flex';
   g('loginPass').value='';
-  me=null;prof=null;season=null;society=null;
+  me=null;prof=null;season=null;societyId=null;
   atleti=[];squadre=[];sessioni=[];partite=[];staff=[];
 }
 
-/* ════ LOAD ════ */
+/* ════ CARICAMENTO BASE ════ */
 async function loadBase(){
   var r=await Promise.all([
     sb.from('seasons').select('*').order('start_date',{ascending:false}),
@@ -610,12 +575,15 @@ async function loadBase(){
   ]);
   var allSeasons=r[0].data||[];
   season=allSeasons.find(function(s){return s.is_active;})||allSeasons[0]||null;
-  society=r[1].data?r[1].data.society_id:null;
+  // societyId: usa quello dell'utente oppure il primo disponibile
+  societyId=r[1].data?r[1].data.society_id:(societa.length?societa[0].id:null);
   myRole=r[1].data?r[1].data.role:'admin';
   categorie=r[2].data||[];
   sports=r[3].data||[];
   societa=r[4].data||[];
   allStagioni=allSeasons;
+  // Se societyId ancora non risolto, prova dal primo in lista
+  if(!societyId&&societa.length)societyId=societa[0].id;
   g('sbStagione').textContent=season?season.name:'Nessuna stagione';
   g('uRole').textContent=myRole||'—';
   fillSelects();
@@ -635,58 +603,93 @@ function showNoSeasonWarning(){
     }
   },300);
 }
+
+/* ════ LOAD DATA ════ */
 async function loadAtleti(){
-  if(!season||!society)return;
-  var res=await sb.from('athlete_seasons').select('*,athletes(*),categories(name),teams(name)').eq('season_id',season.id).eq('society_id',society);
+  if(!season||!societyId)return;
+  var res=await sb.from('athlete_seasons')
+    .select('*,athletes(*),categories(name,id),teams(name,id)')
+    .eq('season_id',season.id)
+    .eq('society_id',societyId);
   atleti=res.data||[];
   var c=g('cntAt');c.textContent=atleti.length;c.style.display=atleti.length?'':'none';
   renderAtleti();
 }
 async function loadSquadre(){
-  if(!season||!society)return;
-  var res=await sb.from('team_seasons').select('*,teams(*),categories(name)').eq('season_id',season.id).eq('society_id',society);
+  if(!season||!societyId)return;
+  var res=await sb.from('team_seasons')
+    .select('*,teams(*),categories(name,id)')
+    .eq('season_id',season.id)
+    .eq('society_id',societyId);
   squadre=res.data||[];
   var c=g('cntSq');c.textContent=squadre.length;c.style.display=squadre.length?'':'none';
+  fillSquadreSelects();
   renderSquadre();
 }
 async function loadSessioni(){
-  if(!season||!society)return;
-  var res=await sb.from('sessions').select('*,categories(name),teams(name)').eq('season_id',season.id).eq('society_id',society).order('session_date',{ascending:false});
+  if(!season||!societyId)return;
+  var res=await sb.from('sessions')
+    .select('*,categories(name),teams(name)')
+    .eq('season_id',season.id)
+    .eq('society_id',societyId)
+    .order('session_date',{ascending:false});
   sessioni=res.data||[];
   var c=g('cntSes');c.textContent=sessioni.length;c.style.display=sessioni.length?'':'none';
   renderSessioni();
 }
 async function loadPartite(){
-  if(!season||!society)return;
-  var res=await sb.from('matches').select('*,categories(name)').eq('season_id',season.id).eq('society_id',society).order('match_date',{ascending:false});
+  if(!season||!societyId)return;
+  var res=await sb.from('matches')
+    .select('*,categories(name),teams(name)')
+    .eq('season_id',season.id)
+    .eq('society_id',societyId)
+    .order('match_date',{ascending:false});
   partite=res.data||[];
   var c=g('cntPar');c.textContent=partite.length;c.style.display=partite.length?'':'none';
   renderPartite();
 }
 async function loadStaff(){
-  if(!season||!society)return;
-  var res=await sb.from('user_team_seasons').select('*,profiles(name,surname,email),categories(name),teams(name)').eq('season_id',season.id).eq('society_id',society);
+  if(!season||!societyId)return;
+  var res=await sb.from('user_team_seasons')
+    .select('*,profiles(name,surname,email),categories(name),teams(name)')
+    .eq('season_id',season.id)
+    .eq('society_id',societyId);
   staff=res.data||[];
   renderStaff();
 }
 
 /* ════ FILL SELECTS ════ */
 function fillSelects(){
-  var ids=['fAtCat','fSesCat','aCat','sCat','pCat','sqCat','stCat'];
-  ids.forEach(function(id){
+  // Categorie
+  var catIds=['fAtCat','fSesCat','aCat','sCat','pCat','sqCat','stCat','fParCat'];
+  catIds.forEach(function(id){
     var el=g(id);if(!el)return;
+    var prev=el.value;
     while(el.options.length>1)el.remove(1);
     categorie.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.name;el.appendChild(o);});
+    if(prev)el.value=prev;
   });
-  var sqEl=g('sSquadra');
-  if(sqEl){
-    while(sqEl.options.length>1)sqEl.remove(1);
-    squadre.forEach(function(s){var o=document.createElement('option');o.value=s.team_id;o.textContent=(s.teams?s.teams.name:'?');sqEl.appendChild(o);});
-  }
+  // Sport
   ['sqSport','caSport'].forEach(function(id){
     var el=g(id);if(!el)return;
     el.innerHTML='';
-    sports.forEach(function(s){var o=document.createElement('option');o.value=s.id;o.textContent=s.icon+' '+s.name;el.appendChild(o);});
+    sports.forEach(function(s){var o=document.createElement('option');o.value=s.id;o.textContent=(s.icon||'')+' '+s.name;el.appendChild(o);});
+  });
+}
+function fillSquadreSelects(){
+  // Squadre nei select di filtro e nei form
+  var sqIds=['fAtSq','fSesSq','fParSq','sSquadra','pSquadra','aSquadra','stSq'];
+  sqIds.forEach(function(id){
+    var el=g(id);if(!el)return;
+    var prev=el.value;
+    while(el.options.length>1)el.remove(1);
+    squadre.forEach(function(s){
+      var o=document.createElement('option');
+      o.value=s.team_id;
+      o.textContent=s.teams?s.teams.name:'?';
+      el.appendChild(o);
+    });
+    if(prev)el.value=prev;
   });
 }
 
@@ -723,15 +726,15 @@ function renderDashboard(){
   h+='</div>';
   var evRows='';
   prossimi.forEach(function(s){
-    var cat=(s.categories&&s.categories.name)||'';
-    var tit=s.title||tipoName(s.session_type);
-    evRows+='<tr><td><div class="tf"><span class="badge '+tipoBadge(s.session_type)+'">'+tipoName(s.session_type).slice(0,3).toUpperCase()+'</span><div><div style="font-weight:700">'+hA(cat)+' - '+hA(tit)+'</div><div style="color:var(--text3);font-size:12px">'+fd(s.session_date)+'</div></div></div></td></tr>';
+    var cat=(s.categories&&s.categories.name)||'';var tit=s.title||tipoName(s.session_type);
+    var team=(s.teams&&s.teams.name)||'';
+    evRows+='<tr><td><div class="tf"><span class="badge '+tipoBadge(s.session_type)+'">'+tipoName(s.session_type).slice(0,3).toUpperCase()+'</span><div><div style="font-weight:700">'+hA(cat)+(team?' - '+hA(team):'')+' · '+hA(tit)+'</div><div style="color:var(--text3);font-size:12px">'+fd(s.session_date)+'</div></div></div></td></tr>';
   });
   var evHtml=prossimi.length?('<table><tbody>'+evRows+'</tbody></table>'):'<div class="empty">Nessun evento programmato</div>';
   var risRows='';
   ultP.forEach(function(p){
-    var cat=(p.categories&&p.categories.name)||'';
-    risRows+='<tr><td><span class="badge '+risBadge(p.result)+'">'+labelRis(p.result)+'</span></td><td style="font-weight:700">'+hA(p.opponent)+'</td><td style="font-weight:800;color:'+colGol(p.result)+'">'+p.goals_for+'-'+p.goals_against+'</td><td style="color:var(--text3);font-size:12px">'+hA(cat)+'</td></tr>';
+    var cat=(p.categories&&p.categories.name)||'';var team=(p.teams&&p.teams.name)||'';
+    risRows+='<tr><td><span class="badge '+risBadge(p.result)+'">'+labelRis(p.result)+'</span></td><td style="font-weight:700">'+hA(p.opponent)+'</td><td style="font-weight:800;color:'+colGol(p.result)+'">'+p.goals_for+'-'+p.goals_against+'</td><td style="color:var(--text3);font-size:12px">'+hA(cat)+(team?' / '+hA(team):'')+'</td></tr>';
   });
   var risHtml=ultP.length?('<table><tbody>'+risRows+'</tbody></table>'):'<div class="empty">Nessuna partita giocata</div>';
   h+='<div class="two-col">';
@@ -745,10 +748,11 @@ function renderDashboard(){
 function renderAtleti(){
   var q=(g('fAtNome')?g('fAtNome').value:'').toLowerCase();
   var cat=g('fAtCat')?g('fAtCat').value:'';
+  var sq=g('fAtSq')?g('fAtSq').value:'';
   var stato=g('fAtStato')?g('fAtStato').value:'';
   var f=atleti.filter(function(a){
     var nm=((a.athletes?a.athletes.name:'')+' '+(a.athletes?a.athletes.surname:'')).toLowerCase();
-    return (!q||nm.indexOf(q)>=0)&&(!cat||a.category_id===cat)&&(!stato||a.status===stato);
+    return (!q||nm.indexOf(q)>=0)&&(!cat||a.category_id===cat)&&(!sq||a.team_id===sq)&&(!stato||a.status===stato);
   });
   if(!f.length){g('wAtleti').innerHTML='<div class="empty">Nessun atleta trovato</div>';return;}
   var rows='';
@@ -756,17 +760,19 @@ function renderAtleti(){
     var nm=(a.athletes?a.athletes.name:'')+' '+(a.athletes?a.athletes.surname:'');
     var em=a.athletes?a.athletes.email:'';
     var cat2=a.categories?a.categories.name:'-';
+    var team2=a.teams?a.teams.name:'-';
     var bd=a.athletes?a.athletes.born_date:null;
     rows+='<tr>';
     rows+='<td><div class="tf"><div class="mav" style="'+avc(i)+'">'+ini(a.athletes?a.athletes.name:'',a.athletes?a.athletes.surname:'')+'</div><div><div style="font-weight:700">'+hA(nm)+'</div><div style="color:var(--text3);font-size:11px">'+hA(em)+'</div></div></div></td>';
     rows+='<td><span class="badge bb">'+hA(cat2)+'</span></td>';
+    rows+='<td style="color:var(--text2)">'+hA(team2)+'</td>';
     rows+='<td style="color:var(--text2)">'+hA(a.role||'-')+'</td>';
     rows+='<td style="color:var(--text2)">'+(a.jersey_number||'-')+'</td>';
     rows+='<td style="color:var(--text2)">'+fd(bd)+'</td>';
     rows+='<td><span class="badge '+statoBadge(a.status)+'">'+statoLabel(a.status)+'</span></td>';
     rows+='</tr>';
   });
-  g('wAtleti').innerHTML='<table><thead><tr><th>Atleta</th><th>Categoria</th><th>Ruolo</th><th>N.</th><th>Nascita</th><th>Stato</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  g('wAtleti').innerHTML='<table><thead><tr><th>Atleta</th><th>Categoria</th><th>Squadra</th><th>Ruolo</th><th>N.</th><th>Nascita</th><th>Stato</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
 /* ════ RENDER SQUADRE ════ */
@@ -794,8 +800,9 @@ function renderSquadre(){
 /* ════ RENDER SESSIONI ════ */
 function renderSessioni(){
   var cat=g('fSesCat')?g('fSesCat').value:'';
+  var sq=g('fSesSq')?g('fSesSq').value:'';
   var tipo=g('fSesTipo')?g('fSesTipo').value:'';
-  var f=sessioni.filter(function(s){return (!cat||s.category_id===cat)&&(!tipo||s.session_type===tipo);});
+  var f=sessioni.filter(function(s){return (!cat||s.category_id===cat)&&(!sq||s.team_id===sq)&&(!tipo||s.session_type===tipo);});
   if(!f.length){g('wSessioni').innerHTML='<div class="empty">Nessuna sessione trovata</div>';return;}
   var rows='';
   f.forEach(function(s){
@@ -814,23 +821,28 @@ function renderSessioni(){
 
 /* ════ RENDER PARTITE ════ */
 function renderPartite(){
-  if(!partite.length){g('wPartite').innerHTML='<div class="empty">Nessuna partita registrata</div>';return;}
+  var cat=g('fParCat')?g('fParCat').value:'';
+  var sq=g('fParSq')?g('fParSq').value:'';
+  var f=partite.filter(function(p){return (!cat||p.category_id===cat)&&(!sq||p.team_id===sq);});
+  if(!f.length){g('wPartite').innerHTML='<div class="empty">Nessuna partita registrata</div>';return;}
   var hl={home:'Casa',away:'Trasferta',neutral:'Neutro'};
   var rows='';
-  partite.forEach(function(p){
-    var cat=p.categories?p.categories.name:'-';
+  f.forEach(function(p){
+    var cat2=p.categories?p.categories.name:'-';
+    var team2=p.teams?p.teams.name:'-';
     var haBadge=p.home_away==='home'?'bg':p.home_away==='away'?'bb':'bx';
     var risCell=p.result?('<span class="badge '+risBadge(p.result)+'">'+(p.result==='W'?'Vittoria':p.result==='D'?'Pareggio':'Sconfitta')+'</span>'):'<span class="badge bx">In programma</span>';
     rows+='<tr>';
     rows+='<td style="color:var(--text2);white-space:nowrap;font-weight:500">'+fd(p.match_date)+'</td>';
     rows+='<td style="font-weight:700">'+hA(p.opponent)+'</td>';
+    rows+='<td style="color:var(--text2)">'+hA(team2)+'</td>';
     rows+='<td><span class="badge '+haBadge+'">'+(hl[p.home_away]||'-')+'</span></td>';
     rows+='<td>'+risCell+'</td>';
     rows+='<td style="font-weight:800;color:'+colGol(p.result)+'">'+p.goals_for+'-'+p.goals_against+'</td>';
-    rows+='<td style="color:var(--text2)">'+hA(cat)+'</td>';
+    rows+='<td style="color:var(--text2)">'+hA(cat2)+'</td>';
     rows+='</tr>';
   });
-  g('wPartite').innerHTML='<table><thead><tr><th>Data</th><th>Avversario</th><th>Luogo</th><th>Risultato</th><th>Gol</th><th>Categoria</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  g('wPartite').innerHTML='<table><thead><tr><th>Data</th><th>Avversario</th><th>Squadra</th><th>Luogo</th><th>Risultato</th><th>Gol</th><th>Categoria</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
 /* ════ RENDER STAFF ════ */
@@ -858,9 +870,15 @@ function renderCategorie(){
   if(!categorie.length){g('wCategorie').innerHTML='<div class="empty">Nessuna categoria</div>';return;}
   var rows='';
   categorie.forEach(function(c){
-    rows+='<tr><td style="font-weight:700">'+hA(c.name)+'</td><td style="color:var(--text2)">'+hA(sm[c.sport_id]||'-')+'</td><td style="color:var(--text2)">'+(c.birth_year_from||'-')+'</td><td style="color:var(--text2)">'+(c.birth_year_to||'-')+'</td></tr>';
+    rows+='<tr>'+
+      '<td style="font-weight:700">'+hA(c.name)+'</td>'+
+      '<td style="color:var(--text2)">'+hA(sm[c.sport_id]||'-')+'</td>'+
+      '<td style="color:var(--text2)">'+(c.birth_year_from||'-')+'</td>'+
+      '<td style="color:var(--text2)">'+(c.birth_year_to||'-')+'</td>'+
+      '<td><button class="btn-icon btn-del" onclick="deleteCategoria(\''+c.id+'\')" title="Elimina">🗑️</button></td>'+
+    '</tr>';
   });
-  g('wCategorie').innerHTML='<table><thead><tr><th>Categoria</th><th>Sport</th><th>Anno nasc. da</th><th>Anno nasc. a</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  g('wCategorie').innerHTML='<table><thead><tr><th>Categoria</th><th>Sport</th><th>Anno nasc. da</th><th>Anno nasc. a</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
 /* ════ RENDER STAGIONI ════ */
@@ -875,8 +893,8 @@ function renderStagioni(){
                 '<span style="width:9px;height:9px;border-radius:50%;background:var(--border2);display:inline-block;flex-shrink:0"></span>')+
         '<span style="font-weight:800;font-size:14px">'+hA(s.name)+'</span>'+
       '</div></td>'+
-      '<td style="color:var(--text2)">01/08/'+s.start_date.substring(0,4)+'</td>'+
-      '<td style="color:var(--text2)">31/07/'+s.end_date.substring(0,4)+'</td>'+
+      '<td style="color:var(--text2)">'+fd(s.start_date)+'</td>'+
+      '<td style="color:var(--text2)">'+fd(s.end_date)+'</td>'+
       '<td>'+(isAct?'<span class="badge bg">★ Attiva</span>':'<span class="badge bx">Archivio</span>')+'</td>'+
       '<td><div style="display:flex;gap:4px;align-items:center">'+
         (!isAct?'<button class="btn-icon btn-act btn-wide" onclick="setSeasonActive(\''+s.id+'\')">⚡ Attiva</button>':'')+
@@ -888,7 +906,7 @@ function renderStagioni(){
   w.innerHTML=
     '<div class="section-wrap">'+
       '<div class="section-hdr">'+
-        '<div><div class="section-title">Stagioni Calcistiche</div><div class="section-sub">Solo una stagione può essere attiva alla volta</div></div>'+
+        '<div><div class="section-title">Stagioni</div><div class="section-sub">Solo una stagione può essere attiva alla volta</div></div>'+
         '<button class="btn btn-primary" onclick="openNewStagione()">'+
           '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Nuova Stagione'+
         '</button>'+
@@ -896,7 +914,7 @@ function renderStagioni(){
       (allStagioni.length===0
         ?'<div class="empty">Nessuna stagione. Crea la prima!</div>'
         :'<div class="tw"><table>'+
-          '<thead><tr><th>Stagione</th><th>Data Inizio</th><th>Data Fine</th><th>Stato</th><th>Azioni</th></tr></thead>'+
+          '<thead><tr><th>Stagione</th><th>Inizio</th><th>Fine</th><th>Stato</th><th>Azioni</th></tr></thead>'+
           '<tbody>'+rows+'</tbody>'+
           '</table></div>'
       )+
@@ -909,12 +927,17 @@ function renderSocieta(){
   var sm={};sports.forEach(function(s){sm[s.id]=s.name;});
   var rows='';
   (societa||[]).forEach(function(s){
+    var isActive=(s.id===societyId);
     rows+='<tr>'+
-      '<td style="font-weight:700">'+hA(s.name)+'</td>'+
+      '<td><div class="tf">'+
+        (isActive?'<span style="width:9px;height:9px;border-radius:50%;background:var(--accent);display:inline-block;flex-shrink:0"></span>':'')+
+        '<span style="font-weight:700">'+hA(s.name)+'</span>'+
+      '</div></td>'+
       '<td style="color:var(--text2)">'+hA(sm[s.sport_id]||'—')+'</td>'+
       '<td style="color:var(--text2)">'+hA(s.city||'—')+'</td>'+
       '<td style="color:var(--text2)">'+hA(s.email||'—')+'</td>'+
       '<td><div style="display:flex;gap:4px">'+
+        (!isActive?'<button class="btn-icon btn-act btn-wide" onclick="setSocietaActive(\''+s.id+'\')" title="Usa questa">⚡ Usa</button>':'')+
         '<button class="btn-icon btn-edit" onclick="openEditSocieta(\''+s.id+'\')" title="Modifica">✏️</button>'+
         '<button class="btn-icon btn-del" onclick="deleteSocieta(\''+s.id+'\')" title="Elimina">🗑️</button>'+
       '</div></td>'+
@@ -938,92 +961,42 @@ function renderSocieta(){
     '</div>';
 }
 
-/* ════ SAVE ATLETA ════ */
-async function salvaAtleta(){
-  var nome=v('aNome'),cognome=v('aCognome'),cat=v('aCat');
-  if(!nome||!cognome||!cat){showErr('errA','Nome, cognome e categoria sono obbligatori');return;}
-  setBusy('btnA',true);
-  var r1=await sb.from('athletes').insert({name:nome,surname:cognome,born_date:v('aNascita')||null,tax_code:v('aCF'),email:v('aEmail'),phone:v('aTel'),notes:v('aNote')}).select().single();
-  if(r1.error){showErr('errA',r1.error.message);setBusy('btnA',false);return;}
-  var r2=await sb.from('athlete_seasons').insert({athlete_id:r1.data.id,season_id:season.id,society_id:society,category_id:cat,jersey_number:parseInt(v('aNumero'))||null,role:v('aRuolo'),status:v('aStato')||'active',notes:v('aNote')});
-  if(r2.error){showErr('errA',r2.error.message);setBusy('btnA',false);return;}
-  showOk('okA','Atleta salvato!');setBusy('btnA',false);
-  await loadAtleti();renderDashboard();
-  setTimeout(function(){closeM('mAtleta');},1000);
+/* ════ NAVIGAZIONE ════ */
+var PT={dashboard:'Dashboard',atleti:'Atleti',squadre:'Squadre',sessioni:'Allenamenti',partite:'Partite',staff:'Staff',categorie:'Categorie',stagioni:'Stagioni',societa:'Società'};
+function nav(pageId,el){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active');});
+  var pg=g('page-'+pageId);if(pg)pg.classList.add('active');
+  if(el)el.classList.add('active');
+  else{var ni=document.querySelector('[data-p="'+pageId+'"]');if(ni)ni.classList.add('active');}
+  g('topbarTitle').textContent=PT[pageId]||pageId;
+  if(pageId==='categorie')renderCategorie();
+  if(pageId==='stagioni')renderStagioni();
+  if(pageId==='societa')renderSocieta();
 }
 
-/* ════ SAVE SESSIONE ════ */
-async function salvaSessione(){
-  var tipo=v('sTipo'),data=v('sData'),cat=v('sCat');
-  if(!tipo||!data||!cat){showErr('errS','Tipo, data e categoria obbligatori');return;}
-  setBusy('btnS',true);
-  var r=await sb.from('sessions').insert({season_id:season.id,society_id:society,category_id:cat,team_id:v('sSquadra')||null,session_date:data,session_type:tipo,title:v('sTitolo'),notes:v('sNote'),created_by:me.id});
-  if(r.error){showErr('errS',r.error.message);setBusy('btnS',false);return;}
-  showOk('okS','Sessione creata!');setBusy('btnS',false);
-  await loadSessioni();renderDashboard();
-  setTimeout(function(){closeM('mSessione');},1000);
+/* ════ MODAL ════ */
+function openM(id){var el=g(id);if(el)el.classList.add('open');}
+function closeM(id){
+  var el=g(id);if(!el)return;
+  el.classList.remove('open');
+  el.querySelectorAll('.ferr,.fok,.err-box').forEach(function(e){e.style.display='none';});
 }
+document.querySelectorAll('.mo').forEach(function(m){
+  m.addEventListener('click',function(e){if(e.target===m)m.classList.remove('open');});
+});
 
-/* ════ SAVE PARTITA ════ */
-async function salvaPartita(){
-  var data=v('pData'),avv=v('pAvv'),cat=v('pCat');
-  if(!data||!avv||!cat){showErr('errP','Data, avversario e categoria obbligatori');return;}
-  setBusy('btnP',true);
-  var r=await sb.from('matches').insert({season_id:season.id,society_id:society,category_id:cat,match_date:data,match_time:v('pOra')||null,opponent:avv,home_away:v('pHA')||'home',result:v('pRis')||null,goals_for:parseInt(v('pGF'))||0,goals_against:parseInt(v('pGA'))||0,notes:v('pNote'),created_by:me.id});
-  if(r.error){showErr('errP',r.error.message);setBusy('btnP',false);return;}
-  showOk('okP','Partita salvata!');setBusy('btnP',false);
-  await loadPartite();renderDashboard();
-  setTimeout(function(){closeM('mPartita');},1000);
-}
+/* ════ UTILS ════ */
+function g(id){return document.getElementById(id);}
+function v(id){var el=g(id);return el?el.value.trim():'';}
+function showErr(id,msg){var el=g(id);if(el){el.textContent=msg;el.style.display='block';}}
+function showOk(id,msg){var el=g(id);if(el){el.textContent=msg;el.style.display='block';}}
+function setBusy(id,busy){var btn=g(id);if(btn){btn.disabled=busy;if(busy){btn.dataset.orig=btn.textContent;btn.textContent='Salvataggio...';}else{btn.textContent=btn.dataset.orig||btn.textContent;}}}
 
-/* ════ SAVE STAFF ════ */
-async function salvaStaff(){
-  var email=v('stEmail'),ruolo=v('stRuolo');
-  if(!email||!ruolo){showErr('errSt','Email e ruolo obbligatori');return;}
-  setBusy('btnSt',true);
-  var rp=await sb.from('profiles').select('id').eq('email',email).single();
-  if(!rp.data){showErr('errSt','Nessun utente trovato con questa email');setBusy('btnSt',false);return;}
-  var r=await sb.from('user_team_seasons').insert({user_id:rp.data.id,season_id:season.id,society_id:society,role:ruolo,category_id:v('stCat')||null});
-  if(r.error){showErr('errSt',r.error.message);setBusy('btnSt',false);return;}
-  showOk('okSt','Ruolo assegnato!');setBusy('btnSt',false);
-  await loadStaff();
-  setTimeout(function(){closeM('mStaff');},1000);
-}
-
-/* ════ SAVE SQUADRA ════ */
-async function salvaSquadra(){
-  var nome=v('sqNome'),sport=v('sqSport'),cat=v('sqCat');
-  if(!nome){showErr('errSq','Il nome è obbligatorio');return;}
-  setBusy('btnSq',true);
-  var r1=await sb.from('teams').insert({name:nome,sport_id:sport}).select().single();
-  if(r1.error){showErr('errSq',r1.error.message);setBusy('btnSq',false);return;}
-  if(cat&&season&&society) await sb.from('team_seasons').insert({team_id:r1.data.id,season_id:season.id,society_id:society,category_id:cat});
-  showOk('okSq','Squadra creata!');setBusy('btnSq',false);
-  await loadSquadre();renderDashboard();fillSelects();
-  setTimeout(function(){closeM('mSquadra');},1000);
-}
-
-/* ════ SAVE CATEGORIA ════ */
-async function salvaCategoria(){
-  var nome=v('caNome'),sport=v('caSport');
-  if(!nome){showErr('errCa','Il nome è obbligatorio');return;}
-  setBusy('btnCa',true);
-  var payload={name:nome,sport_id:sport||null,birth_year_from:parseInt(v('caFrom'))||null,birth_year_to:parseInt(v('caTo'))||null};
-  var r=await sb.from('categories').insert(payload);
-  if(r.error){
-    if(r.error.message&&r.error.message.includes('security policy')){
-      showErr('errCa','Permesso negato. Verifica di avere il ruolo admin.');
-    } else {showErr('errCa',r.error.message);}
-    setBusy('btnCa',false);return;
-  }
-  showOk('okCa','Categoria creata!');setBusy('btnCa',false);
-  var res=await sb.from('categories').select('*').order('name');
-  categorie=res.data||[];fillSelects();renderCategorie();
-  setTimeout(function(){closeM('mCategoria');},1000);
-}
-
-/* ════ STAGIONI CRUD ════ */
-async function openWizardStagione(){
+/* ═══════════════════════════════════════════════
+   CRUD STAGIONI
+═══════════════════════════════════════════════ */
+function openWizardStagione(){
   var yr=new Date().getFullYear();
   openM('mWizard');
   g('mWizardTitle').textContent='⚽ Prima Configurazione';
@@ -1031,17 +1004,9 @@ async function openWizardStagione(){
     '<div style="text-align:center;margin-bottom:20px">'+
       '<div style="font-size:48px;margin-bottom:8px">⚽</div>'+
       '<h3 style="font-size:17px;margin-bottom:6px;font-weight:800">Prima configurazione</h3>'+
-      '<p style="color:var(--text2);font-size:13px">Crea la società e la prima stagione calcistica</p>'+
+      '<p style="color:var(--text2);font-size:13px">Crea la prima stagione sportiva</p>'+
     '</div>'+
     '<div id="wzErr" class="err-box" style="display:none"></div>'+
-    '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Società</div>'+
-    '<div class="fld"><label for="wzSocNome">Nome Società *</label><input id="wzSocNome" placeholder="Es. ASD Olimpia"/></div>'+
-    '<div class="fld"><label for="wzSocSport">Sport *</label><select id="wzSocSport"><option value="">— Seleziona sport —</option>'+_sportOpts(null)+'</select></div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
-      '<div class="fld"><label for="wzSocCitta">Città</label><input id="wzSocCitta" placeholder="Milano"/></div>'+
-      '<div class="fld"><label for="wzSocEmail">Email</label><input id="wzSocEmail" type="email" placeholder="info@societa.it"/></div>'+
-    '</div>'+
-    '<hr style="margin:16px 0;border-color:var(--border)"/>'+
     '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Prima Stagione</div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'+
       '<div class="fld"><label for="wzYrStart">Anno Inizio *</label><input id="wzYrStart" type="number" min="2000" max="2099" value="'+yr+'"/></div>'+
@@ -1053,41 +1018,14 @@ async function openWizardStagione(){
       '<div>📅 Inizio: <b style="color:var(--text)">01/08/'+yr+'</b></div>'+
       '<div>📅 Fine: <b style="color:var(--text)">31/07/'+(yr+1)+'</b></div>'+
     '</div>'+
-    '<button class="btn btn-primary" style="width:100%" onclick="salvaWizard()">🚀 Crea e Inizia</button>';
+    '<button class="btn btn-primary" style="width:100%" onclick="salvaWizardStagioneOnly(true)">🚀 Crea e Inizia</button>';
   function updatePreview(){
     var ys=parseInt(g('wzYrStart').value)||yr,ye=parseInt(g('wzYrEnd').value)||yr+1;
+    if(!g('wzPreview'))return;
     g('wzPreview').innerHTML='<div style="color:#1d4ed8;font-weight:700;margin-bottom:4px">Anteprima automatica</div><div>📋 Nome: <b style="color:var(--text)">Stagione '+ys+'/'+ye+'</b></div><div>📅 Inizio: <b style="color:var(--text)">01/08/'+ys+'</b></div><div>📅 Fine: <b style="color:var(--text)">31/07/'+ye+'</b></div>';
   }
-  g('wzYrStart').addEventListener('input',updatePreview);
-  g('wzYrEnd').addEventListener('input',updatePreview);
-}
-
-async function salvaWizard(){
-  var ys=parseInt(g('wzYrStart')?g('wzYrStart').value:''),ye=parseInt(g('wzYrEnd')?g('wzYrEnd').value:'');
-  if(!ys||!ye){showErr('wzErr','Inserisci anno di inizio e anno di fine');return;}
-  if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore dell\'anno di inizio');return;}
-  var nome='Stagione '+ys+'/'+ye,start=ys+'-08-01',end=ye+'-07-31';
-  await sb.from('seasons').update({is_active:false}).neq('id','00000000-0000-0000-0000-000000000000');
-  var rSeas=await sb.from('seasons').insert({name:nome,start_date:start,end_date:end,is_active:true}).select().single();
-  if(rSeas.error){showErr('wzErr','Errore stagione: '+rSeas.error.message);return;}
-  season=rSeas.data;
-  var socId=null;
-  if(g('wzSoc')){socId=v('wzSoc');}
-  else{
-    var socNome=v('wzSocNome');if(!socNome){showErr('wzErr','Inserisci il nome della società');return;}
-    var socSport=v('wzSocSport');if(!socSport){showErr('wzErr','Seleziona lo sport della società');return;}
-    var rSoc=await sb.from('societies').insert({name:socNome,sport_id:socSport,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''}).select().single();
-    if(rSoc.error){showErr('wzErr','Errore società: '+rSoc.error.message);return;}
-    socId=rSoc.data.id;societa.push(rSoc.data);
-  }
-  society=socId;
-  if(me&&socId){
-    await sb.from('user_team_seasons').upsert({user_id:me.id,season_id:season.id,society_id:socId,role:myRole||'admin'},{onConflict:'user_id,season_id,society_id,role'});
-    myRole=myRole||'admin';g('uRole').textContent=myRole;
-  }
-  closeM('mWizard');g('sbStagione').textContent=season.name;fillSelects();
-  await Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]);
-  renderDashboard();showOkToast('Stagione "'+nome+'" creata! Ora puoi iniziare. 🎉');
+  if(g('wzYrStart'))g('wzYrStart').addEventListener('input',updatePreview);
+  if(g('wzYrEnd'))g('wzYrEnd').addEventListener('input',updatePreview);
 }
 
 function openNewStagione(){
@@ -1106,26 +1044,49 @@ function openNewStagione(){
       '<div>📅 Fine: <b>31/07/'+(yr+1)+'</b></div>'+
     '</div>'+
     '<div style="display:flex;gap:10px;margin-top:4px">'+
-      '<button class="btn btn-primary" style="flex:1" onclick="salvaWizardStagioneOnly()">💾 Crea Stagione</button>'+
+      '<button class="btn btn-primary" style="flex:1" onclick="salvaWizardStagioneOnly(false)">💾 Crea Stagione</button>'+
       '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
     '</div>';
-  function updatePreview(){
+  function up(){
     var ys=parseInt(g('wzYrStart').value)||yr,ye=parseInt(g('wzYrEnd').value)||yr+1;
+    if(!g('wzPreview'))return;
     g('wzPreview').innerHTML='<div style="color:#1d4ed8;font-weight:700;margin-bottom:4px">Anteprima</div><div>📋 Nome: <b>Stagione '+ys+'/'+ye+'</b></div><div>📅 Inizio: <b>01/08/'+ys+'</b></div><div>📅 Fine: <b>31/07/'+ye+'</b></div>';
   }
-  g('wzYrStart').addEventListener('input',updatePreview);
-  g('wzYrEnd').addEventListener('input',updatePreview);
+  if(g('wzYrStart'))g('wzYrStart').addEventListener('input',up);
+  if(g('wzYrEnd'))g('wzYrEnd').addEventListener('input',up);
 }
 
-async function salvaWizardStagioneOnly(){
+async function salvaWizardStagioneOnly(setActive){
   var ys=parseInt(g('wzYrStart')?g('wzYrStart').value:''),ye=parseInt(g('wzYrEnd')?g('wzYrEnd').value:'');
-  if(!ys||!ye){showErr('wzErr','Inserisci anno di inizio e anno di fine');return;}
-  if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore dell\'anno di inizio');return;}
+  if(!ys||!ye){showErr('wzErr','Inserisci anno di inizio e di fine');return;}
+  if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore');return;}
   var nome='Stagione '+ys+'/'+ye,start=ys+'-08-01',end=ye+'-07-31';
-  var rSeas=await sb.from('seasons').insert({name:nome,start_date:start,end_date:end,is_active:false}).select().single();
+  if(setActive){
+    // disattiva le altre
+    await sb.from('seasons').update({is_active:false}).neq('id','00000000-0000-0000-0000-000000000000');
+  }
+  var rSeas=await sb.from('seasons').insert({name:nome,start_date:start,end_date:end,is_active:!!setActive}).select().single();
   if(rSeas.error){showErr('wzErr','Errore: '+rSeas.error.message);return;}
-  allStagioni.unshift(rSeas.data);closeM('mWizard');renderStagioni();
-  showOkToast('✅ Stagione "'+nome+'" creata!');
+  if(setActive){
+    season=rSeas.data;
+    allStagioni.forEach(function(s){s.is_active=false;});
+    allStagioni.unshift(rSeas.data);
+    g('sbStagione').textContent=season.name;
+    // Collega l'utente alla stagione se c'è una società
+    if(me&&societyId){
+      await sb.from('user_team_seasons').upsert(
+        {user_id:me.id,season_id:season.id,society_id:societyId,role:myRole||'admin'},
+        {onConflict:'user_id,season_id,society_id,role'}
+      );
+    }
+    closeM('mWizard');fillSelects();
+    await Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]);
+    renderDashboard();showOkToast('Stagione "'+nome+'" creata e attivata! 🎉');
+  } else {
+    allStagioni.unshift(rSeas.data);
+    closeM('mWizard');renderStagioni();
+    showOkToast('✅ Stagione "'+nome+'" creata!');
+  }
 }
 
 function openEditStagione(id){
@@ -1144,11 +1105,10 @@ function openEditStagione(id){
       '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
     '</div>';
 }
-
 async function saveEditStagione(id){
-  var ys=parseInt(g('wzYrStartE')?g('wzYrStartE').value:''),ye=parseInt(g('wzYrEndE')?g('wzYrEndE').value:'');
+  var ys=parseInt(v('wzYrStartE')),ye=parseInt(v('wzYrEndE'));
   if(!ys||!ye){showErr('wzErr','Inserisci anno');return;}
-  if(ye<=ys){showErr('wzErr','L\'anno di fine deve essere maggiore');return;}
+  if(ye<=ys){showErr('wzErr','Anno fine deve essere maggiore');return;}
   var nome='Stagione '+ys+'/'+ye,start=ys+'-08-01',end=ye+'-07-31';
   var r=await sb.from('seasons').update({name:nome,start_date:start,end_date:end}).eq('id',id);
   if(r.error){showErr('wzErr',r.error.message);return;}
@@ -1157,20 +1117,25 @@ async function saveEditStagione(id){
   if(season&&season.id===id){season.name=nome;g('sbStagione').textContent=nome;}
   closeM('mWizard');renderStagioni();showOkToast('✅ Stagione aggiornata!');
 }
-
 async function setSeasonActive(id){
-  if(!confirm('Impostare questa stagione come attiva? La stagione corrente verrà disattivata.'))return;
+  if(!confirm('Impostare questa stagione come attiva?'))return;
   await sb.from('seasons').update({is_active:false}).neq('id','00000000-0000-0000-0000-000000000000');
   var r=await sb.from('seasons').update({is_active:true}).eq('id',id);
   if(r.error){alert('Errore: '+r.error.message);return;}
   allStagioni.forEach(function(s){s.is_active=(s.id===id);});
   season=allStagioni.find(function(s){return s.id===id;})||season;
   g('sbStagione').textContent=season?season.name:'—';
+  // Collega utente alla nuova stagione attiva
+  if(me&&societyId){
+    await sb.from('user_team_seasons').upsert(
+      {user_id:me.id,season_id:season.id,society_id:societyId,role:myRole||'admin'},
+      {onConflict:'user_id,season_id,society_id,role'}
+    );
+  }
   renderStagioni();
   await Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]);
   renderDashboard();showOkToast('✅ Stagione "'+season.name+'" attivata!');
 }
-
 async function deleteStagione(id){
   if(!confirm('Eliminare questa stagione? Tutti i dati collegati verranno persi.'))return;
   var r=await sb.from('seasons').delete().eq('id',id);
@@ -1179,9 +1144,11 @@ async function deleteStagione(id){
   renderStagioni();showOkToast('Stagione eliminata');
 }
 
-/* ════ SOCIETÀ CRUD ════ */
+/* ═══════════════════════════════════════════════
+   CRUD SOCIETÀ
+═══════════════════════════════════════════════ */
 function _sportOpts(selectedId){
-  return sports.map(function(s){return '<option value="'+s.id+'"'+(s.id===selectedId?' selected':'')+'>'+hA(s.icon?s.icon+' ':'')+hA(s.name)+'</option>';}).join('');
+  return sports.map(function(s){return '<option value="'+s.id+'"'+(s.id===selectedId?' selected':'')+'>'+hA((s.icon||'')+' '+s.name)+'</option>';}).join('');
 }
 function openNewSocieta(){
   openM('mWizard');g('mWizardTitle').textContent='+ Nuova Società';
@@ -1204,7 +1171,19 @@ async function salvaSocieta(){
   if(!sport){showErr('wzErr','Seleziona uno sport');return;}
   var r=await sb.from('societies').insert({name:nome,sport_id:sport,city:v('wzSocCitta')||'',email:v('wzSocEmail')||''}).select().single();
   if(r.error){showErr('wzErr','Errore: '+r.error.message);return;}
-  societa.push(r.data);closeM('mWizard');renderSocieta();showOkToast('✅ Società "'+nome+'" creata!');
+  societa.push(r.data);
+  // Se è la prima società, impostala come attiva
+  if(!societyId){
+    societyId=r.data.id;
+    // Collega utente a questa società nella stagione corrente
+    if(me&&season){
+      await sb.from('user_team_seasons').upsert(
+        {user_id:me.id,season_id:season.id,society_id:societyId,role:myRole||'admin'},
+        {onConflict:'user_id,season_id,society_id,role'}
+      );
+    }
+  }
+  closeM('mWizard');renderSocieta();showOkToast('✅ Società "'+nome+'" creata!');
 }
 function openEditSocieta(id){
   var s=societa.find(function(x){return x.id===id;});if(!s)return;
@@ -1237,43 +1216,211 @@ async function deleteSocieta(id){
   var r=await sb.from('societies').delete().eq('id',id);
   if(r.error){alert('Errore: '+r.error.message);return;}
   societa=societa.filter(function(s){return s.id!==id;});
+  if(societyId===id)societyId=societa.length?societa[0].id:null;
   renderSocieta();showOkToast('Società eliminata');
 }
-
-/* ════ NAVIGAZIONE ════ */
-var PT={dashboard:'Dashboard',atleti:'Atleti',squadre:'Squadre',sessioni:'Allenamenti',partite:'Partite',staff:'Staff',categorie:'Categorie',stagioni:'Stagioni',societa:'Società'};
-function nav(pageId,el){
-  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
-  document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active');});
-  var pg=g('page-'+pageId);if(pg)pg.classList.add('active');
-  if(el)el.classList.add('active');
-  else{var ni=document.querySelector('[data-p="'+pageId+'"]');if(ni)ni.classList.add('active');}
-  g('topbarTitle').textContent=PT[pageId]||pageId;
-  if(pageId==='categorie')renderCategorie();
-  if(pageId==='stagioni') renderStagioni();
-  if(pageId==='societa')  renderSocieta();
+function setSocietaActive(id){
+  societyId=id;
+  // Salva preferenza nell'utente
+  if(me&&season){
+    sb.from('user_team_seasons').upsert(
+      {user_id:me.id,season_id:season.id,society_id:id,role:myRole||'admin'},
+      {onConflict:'user_id,season_id,society_id,role'}
+    );
+  }
+  renderSocieta();
+  Promise.all([loadAtleti(),loadSquadre(),loadSessioni(),loadPartite(),loadStaff()]).then(function(){renderDashboard();});
+  showOkToast('✅ Società attiva cambiata');
 }
 
-/* ════ MODAL ════ */
-function openM(id){g(id).classList.add('open');}
-function closeM(id){
-  var el=g(id);if(!el)return;
-  el.classList.remove('open');
-  el.querySelectorAll('.ferr,.fok,.err-box').forEach(function(e){e.style.display='none';});
+/* ═══════════════════════════════════════════════
+   CRUD CATEGORIE
+═══════════════════════════════════════════════ */
+async function salvaCategoria(){
+  var nome=v('caNome'),sport=v('caSport');
+  if(!nome){showErr('errCa','Il nome è obbligatorio');return;}
+  setBusy('btnCa',true);
+  var payload={name:nome,sport_id:sport||null,birth_year_from:parseInt(v('caFrom'))||null,birth_year_to:parseInt(v('caTo'))||null};
+  var r=await sb.from('categories').insert(payload).select().single();
+  if(r.error){
+    var msg=r.error.message;
+    if(msg&&msg.includes('security policy'))msg='Permesso negato. Verifica di avere il ruolo admin.';
+    showErr('errCa',msg);setBusy('btnCa',false);return;
+  }
+  categorie.push(r.data);
+  showOk('okCa','Categoria creata!');setBusy('btnCa',false);
+  fillSelects();renderCategorie();
+  setTimeout(function(){closeM('mCategoria');},1000);
 }
-document.querySelectorAll('.mo').forEach(function(m){
-  m.addEventListener('click',function(e){if(e.target===m)m.classList.remove('open');});
-});
+async function deleteCategoria(id){
+  if(!confirm('Eliminare questa categoria?'))return;
+  var r=await sb.from('categories').delete().eq('id',id);
+  if(r.error){alert('Errore: '+r.error.message);return;}
+  categorie=categorie.filter(function(c){return c.id!==id;});
+  fillSelects();renderCategorie();showOkToast('Categoria eliminata');
+}
 
-/* ════ UTILS ════ */
-function g(id){return document.getElementById(id);}
-function v(id){var el=g(id);return el?el.value.trim():'';}
-function showErr(id,msg){var el=g(id);if(el){el.textContent=msg;el.style.display='block';}}
-function showOk(id,msg){var el=g(id);if(el){el.textContent=msg;el.style.display='block';}}
-function setBusy(id,busy){var btn=g(id);if(btn){btn.disabled=busy;if(busy){btn.dataset.orig=btn.textContent;btn.textContent='Salvataggio...';}else{btn.textContent=btn.dataset.orig||btn.textContent;}}}
+/* ═══════════════════════════════════════════════
+   CRUD SQUADRE
+   FIX RLS: teams richiede society_id + created_by
+═══════════════════════════════════════════════ */
+async function salvaSquadra(){
+  if(!season||!societyId){showErr('errSq','Nessuna stagione o società attiva');return;}
+  var nome=v('sqNome'),cat=v('sqCat'),sport=v('sqSport');
+  if(!nome){showErr('errSq','Il nome è obbligatorio');return;}
+  if(!cat){showErr('errSq','Seleziona la categoria');return;}
+  setBusy('btnSq',true);
+  // INSERT su teams con society_id e created_by per rispettare RLS
+  var r1=await sb.from('teams').insert({
+    name:nome,
+    sport_id:sport||null,
+    society_id:societyId,
+    created_by:me.id
+  }).select().single();
+  if(r1.error){showErr('errSq',r1.error.message);setBusy('btnSq',false);return;}
+  // Associazione squadra → stagione → categoria → società
+  var r2=await sb.from('team_seasons').insert({
+    team_id:r1.data.id,
+    season_id:season.id,
+    society_id:societyId,
+    category_id:cat
+  });
+  if(r2.error){showErr('errSq',r2.error.message);setBusy('btnSq',false);return;}
+  showOk('okSq','Squadra creata!');setBusy('btnSq',false);
+  await loadSquadre();renderDashboard();fillSelects();
+  setTimeout(function(){closeM('mSquadra');},1000);
+}
 
+/* ═══════════════════════════════════════════════
+   CRUD ATLETI
+   FIX RLS: athletes richiede created_by
+═══════════════════════════════════════════════ */
+async function salvaAtleta(){
+  if(!season||!societyId){showErr('errA','Nessuna stagione o società attiva');return;}
+  var nome=v('aNome'),cognome=v('aCognome'),cat=v('aCat');
+  if(!nome||!cognome){showErr('errA','Nome e cognome sono obbligatori');return;}
+  if(!cat){showErr('errA','Seleziona la categoria');return;}
+  setBusy('btnA',true);
+  // INSERT su athletes con created_by per rispettare RLS
+  var r1=await sb.from('athletes').insert({
+    name:nome,
+    surname:cognome,
+    born_date:v('aNascita')||null,
+    tax_code:v('aCF')||null,
+    email:v('aEmail')||null,
+    phone:v('aTel')||null,
+    created_by:me.id
+  }).select().single();
+  if(r1.error){
+    var msg=r1.error.message;
+    if(msg&&msg.includes('security policy'))msg='Permesso negato su athletes. Verifica di avere il ruolo admin.';
+    showErr('errA',msg);setBusy('btnA',false);return;
+  }
+  // Associazione atleta → stagione → categoria → squadra → società
+  var r2=await sb.from('athlete_seasons').insert({
+    athlete_id:r1.data.id,
+    season_id:season.id,
+    society_id:societyId,
+    category_id:cat,
+    team_id:v('aSquadra')||null,
+    jersey_number:parseInt(v('aNumero'))||null,
+    role:v('aRuolo')||null,
+    status:v('aStato')||'active',
+    notes:v('aNote')||null
+  });
+  if(r2.error){showErr('errA',r2.error.message);setBusy('btnA',false);return;}
+  showOk('okA','Atleta salvato!');setBusy('btnA',false);
+  await loadAtleti();renderDashboard();
+  setTimeout(function(){closeM('mAtleta');},1000);
+}
+
+/* ═══════════════════════════════════════════════
+   CRUD SESSIONI
+═══════════════════════════════════════════════ */
+async function salvaSessione(){
+  if(!season||!societyId){showErr('errS','Nessuna stagione o società attiva');return;}
+  var tipo=v('sTipo'),data=v('sData'),cat=v('sCat'),sq=v('sSquadra');
+  if(!tipo||!data){showErr('errS','Tipo e data sono obbligatori');return;}
+  if(!cat){showErr('errS','Seleziona la categoria');return;}
+  if(!sq){showErr('errS','Seleziona la squadra');return;}
+  setBusy('btnS',true);
+  var r=await sb.from('sessions').insert({
+    season_id:season.id,
+    society_id:societyId,
+    category_id:cat,
+    team_id:sq,
+    session_date:data,
+    session_type:tipo,
+    title:v('sTitolo')||null,
+    notes:v('sNote')||null,
+    created_by:me.id
+  });
+  if(r.error){showErr('errS',r.error.message);setBusy('btnS',false);return;}
+  showOk('okS','Sessione creata!');setBusy('btnS',false);
+  await loadSessioni();renderDashboard();
+  setTimeout(function(){closeM('mSessione');},1000);
+}
+
+/* ═══════════════════════════════════════════════
+   CRUD PARTITE
+═══════════════════════════════════════════════ */
+async function salvaPartita(){
+  if(!season||!societyId){showErr('errP','Nessuna stagione o società attiva');return;}
+  var data=v('pData'),avv=v('pAvv'),cat=v('pCat'),sq=v('pSquadra');
+  if(!data||!avv){showErr('errP','Data e avversario sono obbligatori');return;}
+  if(!cat){showErr('errP','Seleziona la categoria');return;}
+  if(!sq){showErr('errP','Seleziona la squadra');return;}
+  setBusy('btnP',true);
+  var r=await sb.from('matches').insert({
+    season_id:season.id,
+    society_id:societyId,
+    category_id:cat,
+    team_id:sq,
+    match_date:data,
+    match_time:v('pOra')||null,
+    opponent:avv,
+    home_away:v('pHA')||'home',
+    result:v('pRis')||null,
+    goals_for:parseInt(v('pGF'))||0,
+    goals_against:parseInt(v('pGA'))||0,
+    notes:v('pNote')||null,
+    created_by:me.id
+  });
+  if(r.error){showErr('errP',r.error.message);setBusy('btnP',false);return;}
+  showOk('okP','Partita salvata!');setBusy('btnP',false);
+  await loadPartite();renderDashboard();
+  setTimeout(function(){closeM('mPartita');},1000);
+}
+
+/* ═══════════════════════════════════════════════
+   CRUD STAFF
+═══════════════════════════════════════════════ */
+async function salvaStaff(){
+  if(!season||!societyId){showErr('errSt','Nessuna stagione o società attiva');return;}
+  var email=v('stEmail'),ruolo=v('stRuolo');
+  if(!email||!ruolo){showErr('errSt','Email e ruolo obbligatori');return;}
+  setBusy('btnSt',true);
+  var rp=await sb.from('profiles').select('id').eq('email',email).maybeSingle();
+  if(!rp.data){showErr('errSt','Nessun utente trovato con questa email');setBusy('btnSt',false);return;}
+  var r=await sb.from('user_team_seasons').insert({
+    user_id:rp.data.id,
+    season_id:season.id,
+    society_id:societyId,
+    role:ruolo,
+    category_id:v('stCat')||null,
+    team_id:v('stSq')||null
+  });
+  if(r.error){showErr('errSt',r.error.message);setBusy('btnSt',false);return;}
+  showOk('okSt','Ruolo assegnato!');setBusy('btnSt',false);
+  await loadStaff();
+  setTimeout(function(){closeM('mStaff');},1000);
+}
+
+/* ════ AVVIO ════ */
 g('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 init();
+
+
 </script>
 </body>
 </html>
