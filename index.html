@@ -389,12 +389,39 @@ function showOkToast(msg){
 <div class="mo" id="mStaff"><div class="modal">
   <div class="modal-hdr"><span class="modal-ttl">Aggiungi membro staff</span><button class="modal-x" onclick="closeM('mStaff')">✕</button></div>
   <div style="padding:10px 18px;background:rgba(59,130,246,0.08);border-bottom:1px solid var(--border)">
-    <div style="font-size:12px;color:var(--accent2)">L'utente deve essere già registrato. Inserisci la sua email per assegnargli un ruolo in questa stagione.</div>
+    <div style="font-size:12px;color:var(--accent2)">L'utente deve essere già registrato. Inserisci la sua email e assegnagli un ruolo seguendo la gerarchia: <b>Società → Categoria → Squadra</b>.</div>
   </div>
   <div class="fg">
     <div class="full"><label for="stEmail">Email utente *</label><input type="email" id="stEmail" placeholder="utente@club.it"></div>
-    <div><label for="stRuolo">Ruolo *</label><select id="stRuolo"><option value="segretario">Segretario</option><option value="presidente">Presidente</option><option value="allenatore">Allenatore</option><option value="dirigente">Dirigente</option><option value="responsabile">Responsabile</option><option value="genitore">Genitore</option></select></div>
-    <div><label for="stCat">Categoria (opz.)</label><select id="stCat"><option value="">Tutte</option></select></div>
+    <div class="full">
+      <label for="stRuolo">Ruolo *</label>
+      <select id="stRuolo" onchange="onStRuoloChange()">
+        <option value="">— Seleziona ruolo —</option>
+        <optgroup label="🏢 Società">
+          <option value="presidente">Presidente</option>
+          <option value="segretario">Segretario</option>
+        </optgroup>
+        <optgroup label="📋 Categoria">
+          <option value="responsabile">Responsabile categoria</option>
+        </optgroup>
+        <optgroup label="👥 Squadra">
+          <option value="allenatore">Allenatore</option>
+          <option value="vice_allenatore">Vice allenatore</option>
+          <option value="dirigente">Dirigente</option>
+          <option value="atleta">Atleta</option>
+        </optgroup>
+      </select>
+    </div>
+    <!-- Livello Categoria: visibile per responsabile, allenatore, vice_allenatore, dirigente, atleta -->
+    <div class="full" id="stCatRow" style="display:none">
+      <label for="stCat">Categoria *</label>
+      <select id="stCat" onchange="onStCatChange()"><option value="">— Seleziona categoria —</option></select>
+    </div>
+    <!-- Livello Squadra: visibile solo per allenatore, vice_allenatore, dirigente, atleta -->
+    <div class="full" id="stSqRow" style="display:none">
+      <label for="stSq">Squadra *</label>
+      <select id="stSq"><option value="">— Seleziona squadra —</option></select>
+    </div>
   </div>
   <div class="ferr" id="errSt"></div><div class="fok" id="okSt"></div>
   <div class="modal-ft"><button class="btn btn-ghost" onclick="closeM('mStaff')">Annulla</button><button class="btn btn-primary" id="btnSt" onclick="salvaStaff()">Assegna ruolo</button></div>
@@ -847,16 +874,21 @@ function renderStaff(){
   staff.forEach(function(s,i){
     var nm=(s.profiles?s.profiles.name:'')+' '+(s.profiles?s.profiles.surname:'');
     var em=s.profiles?s.profiles.email:'';
-    var cat=s.categories?s.categories.name:'Tutte';
-    var team=s.teams?s.teams.name:'-';
+    var cat=s.categories?s.categories.name:'—';
+    var team=s.teams?s.teams.name:'—';
+    var livello,livBadge;
+    if(RUOLI_SQUADRA.indexOf(s.role)>=0){livello='Squadra';livBadge='ba';}
+    else if(s.role==='responsabile'){livello='Categoria';livBadge='bb';}
+    else{livello='Società';livBadge='bp';}
     rows+='<tr>';
     rows+='<td><div class="tf"><div class="mav" style="'+avc(i)+'">'+ini(s.profiles?s.profiles.name:'',s.profiles?s.profiles.surname:'')+'</div><div><div style="font-weight:600">'+hA(nm)+'</div><div style="color:var(--text2);font-size:11px">'+hA(em)+'</div></div></div></td>';
     rows+='<td><span class="badge '+roleBadge(s.role)+'">'+hA(s.role)+'</span></td>';
+    rows+='<td><span class="badge '+livBadge+'">'+livello+'</span></td>';
     rows+='<td style="color:var(--text2)">'+hA(cat)+'</td>';
     rows+='<td style="color:var(--text2)">'+hA(team)+'</td>';
     rows+='</tr>';
   });
-  g('wStaff').innerHTML='<table><thead><tr><th>Membro</th><th>Ruolo</th><th>Categoria</th><th>Squadra</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  g('wStaff').innerHTML='<table><thead><tr><th>Membro</th><th>Ruolo</th><th>Livello</th><th>Categoria</th><th>Squadra</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
 // RENDER CATEGORIE
@@ -908,14 +940,59 @@ async function salvaPartita(){
   setTimeout(function(){closeM('mPartita');},1000);
 }
 
+// STAFF MODAL GERARCHIA
+var RUOLI_SOCIETA  = ['presidente','segretario'];
+var RUOLI_CATEGORIA= ['responsabile','allenatore','vice_allenatore','dirigente','atleta'];
+var RUOLI_SQUADRA  = ['allenatore','vice_allenatore','dirigente','atleta'];
+
+function onStRuoloChange(){
+  var ruolo=v('stRuolo');
+  var needCat = RUOLI_CATEGORIA.indexOf(ruolo)>=0;
+  var needSq  = RUOLI_SQUADRA.indexOf(ruolo)>=0;
+  var catRow=g('stCatRow'), sqRow=g('stSqRow');
+  if(catRow) catRow.style.display = needCat ? '' : 'none';
+  if(sqRow)  sqRow.style.display  = needSq  ? '' : 'none';
+  // Se non serve cat, azzera selezione squadra
+  if(!needCat){ var sc=g('stCat'); if(sc) sc.value=''; }
+  if(!needSq){  var ss=g('stSq');  if(ss) ss.value=''; }
+}
+
+function onStCatChange(){
+  var catId=v('stCat');
+  var ruolo=v('stRuolo');
+  var needSq=RUOLI_SQUADRA.indexOf(ruolo)>=0;
+  var sqSel=g('stSq'); if(!sqSel) return;
+  sqSel.innerHTML='<option value="">— Seleziona squadra —</option>';
+  if(!needSq||!catId) return;
+  // Filtra squadre per categoria selezionata
+  squadre.filter(function(s){return s.category_id===catId;}).forEach(function(s){
+    var o=document.createElement('option');
+    o.value=s.team_id;
+    o.textContent=s.teams?s.teams.name:'?';
+    sqSel.appendChild(o);
+  });
+}
+
 // SAVE STAFF
 async function salvaStaff(){
   var email=v('stEmail'),ruolo=v('stRuolo');
   if(!email||!ruolo){showErr('errSt','Email e ruolo obbligatori');return;}
+
+  var needCat = RUOLI_CATEGORIA.indexOf(ruolo)>=0;
+  var needSq  = RUOLI_SQUADRA.indexOf(ruolo)>=0;
+  var catId   = needCat ? v('stCat') : null;
+  var sqId    = needSq  ? v('stSq')  : null;
+
+  if(needCat && !catId){showErr('errSt','Seleziona la categoria per questo ruolo');return;}
+  if(needSq  && !sqId) {showErr('errSt','Seleziona la squadra per questo ruolo');return;}
+
   setBusy('btnSt',true);
   var rp=await sb.from('profiles').select('id').eq('email',email).single();
   if(!rp.data){showErr('errSt','Nessun utente trovato con questa email');setBusy('btnSt',false);return;}
-  var r=await sb.from('user_team_seasons').insert({user_id:rp.data.id,season_id:season.id,society_id:society,role:ruolo,category_id:v('stCat')||null});
+  var payload={user_id:rp.data.id,season_id:season.id,society_id:society,role:ruolo};
+  if(catId) payload.category_id=catId;
+  if(sqId)  payload.team_id=sqId;
+  var r=await sb.from('user_team_seasons').insert(payload);
   if(r.error){showErr('errSt',r.error.message);setBusy('btnSt',false);return;}
   showOk('okSt','Ruolo assegnato!');setBusy('btnSt',false);
   await loadStaff();
@@ -927,8 +1004,16 @@ async function salvaSquadra(){
   var nome=v('sqNome'),sport=v('sqSport'),cat=v('sqCat');
   if(!nome){showErr('errSq','Il nome e obbligatorio');return;}
   setBusy('btnSq',true);
-  var r1=await sb.from('teams').insert({name:nome,sport_id:sport}).select().single();
-  if(r1.error){showErr('errSq',r1.error.message);setBusy('btnSq',false);return;}
+  var r1=await sb.from('teams').insert({name:nome,sport_id:sport,society_id:society}).select().single();
+  if(r1.error){
+    if(r1.error.message&&r1.error.message.includes('security policy')){
+      showErr('errSq','Permesso negato (RLS). Verifica che la policy sulla tabella "teams" accetti society_id. Vedi console per il fix SQL.');
+      console.warn('FIX RLS teams: esegui su Supabase SQL Editor:\nALTER TABLE teams ADD COLUMN IF NOT EXISTS society_id uuid REFERENCES societies(id);\nALTER POLICY "teams_insert" ON teams WITH CHECK (society_id IN (SELECT society_id FROM user_team_seasons WHERE user_id = auth.uid()));');
+    } else {
+      showErr('errSq',r1.error.message);
+    }
+    setBusy('btnSq',false);return;
+  }
   if(cat&&season&&society) await sb.from('team_seasons').insert({team_id:r1.data.id,season_id:season.id,society_id:society,category_id:cat});
   showOk('okSq','Squadra creata!');setBusy('btnSq',false);
   await loadSquadre();renderDashboard();fillSelects();
