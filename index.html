@@ -1540,7 +1540,8 @@ async function salvaAssocAtleta(){
     category_id:cat,team_id:v('wzAssocSq')||null,
     role:v('wzAssocRuolo')||null,
     jersey_number:parseInt(g('wzAssocNum')?g('wzAssocNum').value:'')||null,
-    status:v('wzAssocStato')||'active'
+    status:v('wzAssocStato')||'active',
+    notes:''
   });
   if(r.error){showErr('wzErr',r.error.message);return;}
   closeM('mWizard');
@@ -1656,7 +1657,7 @@ async function salvaAtleta(){
     jersey_number:parseInt(v('aNumero'))||null,
     role:v('aRuolo')||null,
     status:v('aStato')||'active',
-    notes:v('aNote')||null
+    notes:v('aNote')||''
   });
   if(r2.error){showErr('errA',r2.error.message);setBusy('btnA',false);return;}
   showOk('okA','Atleta salvato!');setBusy('btnA',false);
@@ -1681,8 +1682,8 @@ async function salvaSessione(){
     team_id:sq,
     session_date:data,
     session_type:tipo,
-    title:v('sTitolo')||null,
-    notes:v('sNote')||null,
+    title:v('sTitolo')||'',
+    notes:v('sNote')||'',
     created_by:me.id
   });
   if(r.error){showErr('errS',r.error.message);setBusy('btnS',false);return;}
@@ -1713,7 +1714,7 @@ async function salvaPartita(){
     result:v('pRis')||null,
     goals_for:parseInt(v('pGF'))||0,
     goals_against:parseInt(v('pGA'))||0,
-    notes:v('pNote')||null,
+    notes:v('pNote')||'',
     created_by:me.id
   });
   if(r.error){showErr('errP',r.error.message);setBusy('btnP',false);return;}
