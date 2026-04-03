@@ -251,6 +251,10 @@ textarea{resize:vertical;min-height:80px;}
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
         Squadre<span class="cnt" id="cntSq" style="display:none"></span>
       </div>
+      <div class="ni" data-p="associazioni" onclick="nav('associazioni',this)">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+        Associazioni<span class="cnt" id="cntAssoc" style="display:none"></span>
+      </div>
     </nav>
     <nav class="nav-sec">
       <div class="nav-lbl">Attività</div>
@@ -330,6 +334,11 @@ textarea{resize:vertical;min-height:80px;}
           </div>
           <div class="section-body" style="padding:20px" id="wSquadre"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>
         </div>
+      </div>
+
+      <!-- ASSOCIAZIONI -->
+      <div class="page" id="page-associazioni">
+        <div id="wAssociazioni"></div>
       </div>
 
       <!-- ATLETI -->
@@ -962,7 +971,7 @@ function renderSocieta(){
 }
 
 /* ════ NAVIGAZIONE ════ */
-var PT={dashboard:'Dashboard',atleti:'Atleti',squadre:'Squadre',sessioni:'Allenamenti',partite:'Partite',staff:'Staff',categorie:'Categorie',stagioni:'Stagioni',societa:'Società'};
+var PT={dashboard:'Dashboard',atleti:'Atleti',squadre:'Squadre',sessioni:'Allenamenti',partite:'Partite',staff:'Staff',categorie:'Categorie',stagioni:'Stagioni',societa:'Società',associazioni:'Associazioni Stagione'};
 function nav(pageId,el){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active');});
@@ -973,6 +982,7 @@ function nav(pageId,el){
   if(pageId==='categorie')renderCategorie();
   if(pageId==='stagioni')renderStagioni();
   if(pageId==='societa')renderSocieta();
+  if(pageId==='associazioni')renderAssociazioni();
 }
 
 /* ════ MODAL ════ */
@@ -1262,7 +1272,7 @@ async function deleteCategoria(id){
 
 /* ═══════════════════════════════════════════════
    CRUD SQUADRE
-   FIX RLS: teams richiede society_id + created_by
+   FIX RLS: team_seasons richiede created_by
 ═══════════════════════════════════════════════ */
 async function salvaSquadra(){
   if(!season||!societyId){showErr('errSq','Nessuna stagione o società attiva');return;}
@@ -1270,7 +1280,7 @@ async function salvaSquadra(){
   if(!nome){showErr('errSq','Il nome è obbligatorio');return;}
   if(!cat){showErr('errSq','Seleziona la categoria');return;}
   setBusy('btnSq',true);
-  // INSERT su teams con society_id e created_by per rispettare RLS
+  // 1) crea il team base con society_id + created_by per RLS
   var r1=await sb.from('teams').insert({
     name:nome,
     sport_id:sport||null,
@@ -1278,17 +1288,337 @@ async function salvaSquadra(){
     created_by:me.id
   }).select().single();
   if(r1.error){showErr('errSq',r1.error.message);setBusy('btnSq',false);return;}
-  // Associazione squadra → stagione → categoria → società
+  // 2) associa squadra → stagione con created_by per RLS team_seasons
   var r2=await sb.from('team_seasons').insert({
     team_id:r1.data.id,
     season_id:season.id,
     society_id:societyId,
-    category_id:cat
+    category_id:cat,
+    created_by:me.id
   });
   if(r2.error){showErr('errSq',r2.error.message);setBusy('btnSq',false);return;}
   showOk('okSq','Squadra creata!');setBusy('btnSq',false);
   await loadSquadre();renderDashboard();fillSelects();
   setTimeout(function(){closeM('mSquadra');},1000);
+}
+
+/* ═══════════════════════════════════════════════
+   SEZIONE ASSOCIAZIONI
+   Gestisce i link stagione ↔ categoria ↔ squadra ↔ atleta ↔ staff
+   per la stagione attiva
+═══════════════════════════════════════════════ */
+var assocTab='squadre'; // tab attivo: 'squadre' | 'atleti' | 'staff'
+
+async function renderAssociazioni(){
+  var w=g('wAssociazioni');if(!w)return;
+  if(!season||!societyId){
+    w.innerHTML='<div class="empty">Seleziona una stagione e una società attiva</div>';return;
+  }
+  // Conta badge
+  var totAssoc=squadre.length+atleti.length+staff.length;
+  var c=g('cntAssoc');if(c){c.textContent=totAssoc;c.style.display=totAssoc?'':'none';}
+
+  var tabs=[
+    {id:'squadre',label:'🏟️ Squadre ('+squadre.length+')'},
+    {id:'atleti', label:'👤 Atleti ('+atleti.length+')'},
+    {id:'staff',  label:'👥 Staff ('+staff.length+')'}
+  ];
+  var tabHtml=tabs.map(function(t){
+    return '<button onclick="switchAssocTab(\''+t.id+'\')" id="aTab_'+t.id+'" style="padding:8px 18px;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:700;border-bottom:2px solid '+(assocTab===t.id?'var(--accent)':'transparent')+';color:'+(assocTab===t.id?'var(--accent)':'var(--text2)')+';background:none;transition:all .14s">'+t.label+'</button>';
+  }).join('');
+
+  w.innerHTML=
+    '<div class="section-wrap">'+
+      '<div class="section-hdr">'+
+        '<div>'+
+          '<div class="section-title">Associazioni — '+hA(season.name)+'</div>'+
+          '<div class="section-sub">Gestisci i link tra squadre, atleti e staff per la stagione attiva</div>'+
+        '</div>'+
+        '<button class="btn btn-primary" onclick="openNewAssoc()">'+
+          '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Nuova associazione'+
+        '</button>'+
+      '</div>'+
+      '<div style="padding:0 24px;border-bottom:1px solid var(--border);background:#fafbfd;display:flex;gap:0">'+tabHtml+'</div>'+
+      '<div id="wAssocBody" style="padding:0"></div>'+
+    '</div>';
+  renderAssocTab();
+}
+
+function switchAssocTab(tab){
+  assocTab=tab;
+  // aggiorna stile tab
+  ['squadre','atleti','staff'].forEach(function(t){
+    var btn=g('aTab_'+t);if(!btn)return;
+    btn.style.borderBottomColor=t===tab?'var(--accent)':'transparent';
+    btn.style.color=t===tab?'var(--accent)':'var(--text2)';
+  });
+  renderAssocTab();
+}
+
+function renderAssocTab(){
+  var body=g('wAssocBody');if(!body)return;
+  if(assocTab==='squadre')renderAssocSquadre(body);
+  else if(assocTab==='atleti')renderAssocAtleti(body);
+  else renderAssocStaff(body);
+}
+
+function renderAssocSquadre(body){
+  if(!squadre.length){body.innerHTML='<div class="empty">Nessuna squadra associata a questa stagione.<br>Vai su <b>Squadre</b> per crearne una.</div>';return;}
+  var ap={};atleti.forEach(function(a){if(a.team_id)ap[a.team_id]=(ap[a.team_id]||0)+1;});
+  var rows='';
+  squadre.forEach(function(s,i){
+    var nm=s.teams?s.teams.name:'-';
+    var cat=s.categories?s.categories.name:'-';
+    rows+='<tr>'+
+      '<td><div class="tf"><div class="mav" style="'+avc(i)+';width:36px;height:36px;border-radius:9px;font-size:13px">'+nm.slice(0,2).toUpperCase()+'</div>'+
+        '<div><div style="font-weight:700">'+hA(nm)+'</div><div style="color:var(--text3);font-size:11px">ID: '+s.team_id.slice(0,8)+'…</div></div>'+
+      '</div></td>'+
+      '<td><span class="badge bb">'+hA(cat)+'</span></td>'+
+      '<td style="color:var(--text2)">'+hA(season.name)+'</td>'+
+      '<td style="color:var(--text2)">'+(ap[s.team_id]||0)+' atleti</td>'+
+      '<td>'+
+        '<button class="btn-icon btn-del" onclick="removeAssocSquadra(\''+s.id+'\')" title="Rimuovi associazione">🗑️</button>'+
+      '</td>'+
+    '</tr>';
+  });
+  body.innerHTML='<div class="tw"><table>'+
+    '<thead><tr><th>Squadra</th><th>Categoria</th><th>Stagione</th><th>Atleti</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+  '</table></div>';
+}
+
+function renderAssocAtleti(body){
+  if(!atleti.length){body.innerHTML='<div class="empty">Nessun atleta associato a questa stagione.<br>Vai su <b>Atleti</b> per aggiungerne uno.</div>';return;}
+  var rows='';
+  atleti.forEach(function(a,i){
+    var nm=(a.athletes?a.athletes.name:'')+' '+(a.athletes?a.athletes.surname:'');
+    var cat=a.categories?a.categories.name:'-';
+    var team=a.teams?a.teams.name:'-';
+    rows+='<tr>'+
+      '<td><div class="tf"><div class="mav" style="'+avc(i)+'">'+ini(a.athletes?a.athletes.name:'',a.athletes?a.athletes.surname:'')+'</div>'+
+        '<div><div style="font-weight:700">'+hA(nm.trim())+'</div></div>'+
+      '</div></td>'+
+      '<td><span class="badge bb">'+hA(cat)+'</span></td>'+
+      '<td style="color:var(--text2)">'+hA(team)+'</td>'+
+      '<td style="color:var(--text2)">'+hA(season.name)+'</td>'+
+      '<td><span class="badge '+statoBadge(a.status)+'">'+statoLabel(a.status)+'</span></td>'+
+      '<td>'+
+        '<button class="btn-icon btn-edit" onclick="openEditAssocAtleta(\''+a.id+'\')" title="Modifica">✏️</button>'+
+        '<button class="btn-icon btn-del" onclick="removeAssocAtleta(\''+a.id+'\')" title="Rimuovi">🗑️</button>'+
+      '</td>'+
+    '</tr>';
+  });
+  body.innerHTML='<div class="tw"><table>'+
+    '<thead><tr><th>Atleta</th><th>Categoria</th><th>Squadra</th><th>Stagione</th><th>Stato</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+  '</table></div>';
+}
+
+function renderAssocStaff(body){
+  if(!staff.length){body.innerHTML='<div class="empty">Nessuno staff associato a questa stagione.<br>Vai su <b>Staff</b> per aggiungerne uno.</div>';return;}
+  var rows='';
+  staff.forEach(function(s,i){
+    var nm=(s.profiles?s.profiles.name:'')+' '+(s.profiles?s.profiles.surname:'');
+    var cat=s.categories?s.categories.name:'Tutte';
+    var team=s.teams?s.teams.name:'-';
+    rows+='<tr>'+
+      '<td><div class="tf"><div class="mav" style="'+avc(i)+'">'+ini(s.profiles?s.profiles.name:'',s.profiles?s.profiles.surname:'')+'</div>'+
+        '<div><div style="font-weight:700">'+hA(nm.trim())+'</div><div style="font-size:11px;color:var(--text3)">'+hA(s.profiles?s.profiles.email:'')+'</div></div>'+
+      '</div></td>'+
+      '<td><span class="badge '+roleBadge(s.role)+'">'+hA(s.role)+'</span></td>'+
+      '<td style="color:var(--text2)">'+hA(cat)+'</td>'+
+      '<td style="color:var(--text2)">'+hA(team)+'</td>'+
+      '<td style="color:var(--text2)">'+hA(season.name)+'</td>'+
+      '<td>'+
+        '<button class="btn-icon btn-del" onclick="removeAssocStaff(\''+s.id+'\')" title="Rimuovi">🗑️</button>'+
+      '</td>'+
+    '</tr>';
+  });
+  body.innerHTML='<div class="tw"><table>'+
+    '<thead><tr><th>Membro</th><th>Ruolo</th><th>Categoria</th><th>Squadra</th><th>Stagione</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+  '</table></div>';
+}
+
+// Apre il modal "nuova associazione" con selezione tipo
+function openNewAssoc(){
+  openM('mWizard');
+  g('mWizardTitle').textContent='🔗 Nuova Associazione';
+  var catOpts='<option value="">— Seleziona —</option>'+categorie.map(function(c){return '<option value="'+c.id+'">'+hA(c.name)+'</option>';}).join('');
+  var sqOpts='<option value="">— Nessuna —</option>'+squadre.map(function(s){return '<option value="'+s.team_id+'">'+hA(s.teams?s.teams.name:'?')+'</option>';}).join('');
+  g('mWizardBody').innerHTML=
+    '<div id="wzErr" class="err-box" style="display:none"></div>'+
+    '<div class="fld"><label>Tipo di associazione *</label>'+
+      '<select id="wzAssocTipo" onchange="renderAssocForm()">'+
+        '<option value="">— Seleziona tipo —</option>'+
+        '<option value="squadra">Associa Squadra esistente alla stagione</option>'+
+        '<option value="atleta">Associa Atleta esistente alla stagione</option>'+
+        '<option value="staff">Associa Staff esistente alla stagione</option>'+
+      '</select>'+
+    '</div>'+
+    '<div id="wzAssocFormBody"></div>';
+}
+
+async function renderAssocForm(){
+  var tipo=v('wzAssocTipo');
+  var body=g('wzAssocFormBody');if(!body)return;
+  var catOpts='<option value="">— Seleziona —</option>'+categorie.map(function(c){return '<option value="'+c.id+'">'+hA(c.name)+'</option>';}).join('');
+  var sqOpts='<option value="">— Nessuna —</option>'+squadre.map(function(s){return '<option value="'+s.team_id+'">'+hA(s.teams?s.teams.name:'?')+'</option>';}).join('');
+
+  if(tipo==='squadra'){
+    // Carica squadre non ancora associate alla stagione
+    var {data:allTeams}=await sb.from('teams').select('*').eq('society_id',societyId);
+    var associatedIds=squadre.map(function(s){return s.team_id;});
+    var available=(allTeams||[]).filter(function(t){return !associatedIds.includes(t.id);});
+    var teamOpts='<option value="">— Seleziona squadra —</option>'+available.map(function(t){return '<option value="'+t.id+'">'+hA(t.name)+'</option>';}).join('');
+    body.innerHTML=
+      '<div class="fld"><label>Squadra *</label><select id="wzAssocTeam">'+teamOpts+'</select></div>'+
+      '<div class="fld"><label>Categoria *</label><select id="wzAssocCat">'+catOpts+'</select></div>'+
+      '<div style="display:flex;gap:10px;margin-top:16px">'+
+        '<button class="btn btn-primary" style="flex:1" onclick="salvaAssocSquadra()">💾 Associa Squadra</button>'+
+        '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
+      '</div>';
+  } else if(tipo==='atleta'){
+    // Carica atleti non ancora associati alla stagione
+    var {data:allAthletes}=await sb.from('athletes').select('*');
+    var associatedAthIds=atleti.map(function(a){return a.athlete_id;});
+    var availableAth=(allAthletes||[]).filter(function(a){return !associatedAthIds.includes(a.id);});
+    var athOpts='<option value="">— Seleziona atleta —</option>'+availableAth.map(function(a){return '<option value="'+a.id+'">'+hA(a.name+' '+a.surname)+'</option>';}).join('');
+    body.innerHTML=
+      '<div class="fld"><label>Atleta *</label><select id="wzAssocAtleta">'+athOpts+'</select></div>'+
+      '<div class="fld"><label>Categoria *</label><select id="wzAssocCat">'+catOpts+'</select></div>'+
+      '<div class="fld"><label>Squadra</label><select id="wzAssocSq">'+sqOpts+'</select></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+        '<div class="fld"><label>Ruolo</label><select id="wzAssocRuolo"><option value="">—</option><option>Portiere</option><option>Difensore</option><option>Centrocampista</option><option>Attaccante</option></select></div>'+
+        '<div class="fld"><label>N° maglia</label><input id="wzAssocNum" type="number" min="1" max="99" placeholder="10"/></div>'+
+      '</div>'+
+      '<div class="fld"><label>Stato</label><select id="wzAssocStato"><option value="active">Attivo</option><option value="inactive">Inattivo</option><option value="injured">Infortunato</option><option value="suspended">Sospeso</option></select></div>'+
+      '<div style="display:flex;gap:10px;margin-top:16px">'+
+        '<button class="btn btn-primary" style="flex:1" onclick="salvaAssocAtleta()">💾 Associa Atleta</button>'+
+        '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
+      '</div>';
+  } else if(tipo==='staff'){
+    body.innerHTML=
+      '<div class="fld"><label>Email utente *</label><input id="wzAssocEmail" type="email" placeholder="utente@club.it"/></div>'+
+      '<div class="fld"><label>Ruolo *</label>'+
+        '<select id="wzAssocRuoloSt">'+
+          '<optgroup label="Società"><option value="presidente">Presidente</option><option value="segretario">Segretario</option></optgroup>'+
+          '<optgroup label="Categoria"><option value="responsabile">Responsabile categoria</option></optgroup>'+
+          '<optgroup label="Squadra"><option value="allenatore">Allenatore</option><option value="vice_allenatore">Vice allenatore</option><option value="dirigente">Dirigente</option></optgroup>'+
+        '</select>'+
+      '</div>'+
+      '<div class="fld"><label>Categoria (opz.)</label><select id="wzAssocCatSt">'+catOpts+'</select></div>'+
+      '<div class="fld"><label>Squadra (opz.)</label><select id="wzAssocSqSt">'+sqOpts+'</select></div>'+
+      '<div style="display:flex;gap:10px;margin-top:16px">'+
+        '<button class="btn btn-primary" style="flex:1" onclick="salvaAssocStaff()">💾 Associa Staff</button>'+
+        '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
+      '</div>';
+  } else {
+    body.innerHTML='';
+  }
+}
+
+async function salvaAssocSquadra(){
+  var teamId=v('wzAssocTeam'),cat=v('wzAssocCat');
+  if(!teamId){showErr('wzErr','Seleziona una squadra');return;}
+  if(!cat){showErr('wzErr','Seleziona la categoria');return;}
+  var r=await sb.from('team_seasons').insert({
+    team_id:teamId,season_id:season.id,society_id:societyId,category_id:cat,created_by:me.id
+  });
+  if(r.error){showErr('wzErr',r.error.message);return;}
+  closeM('mWizard');
+  await loadSquadre();renderAssociazioni();
+  showOkToast('✅ Squadra associata alla stagione!');
+}
+
+async function salvaAssocAtleta(){
+  var athId=v('wzAssocAtleta'),cat=v('wzAssocCat');
+  if(!athId){showErr('wzErr','Seleziona un atleta');return;}
+  if(!cat){showErr('wzErr','Seleziona la categoria');return;}
+  var r=await sb.from('athlete_seasons').insert({
+    athlete_id:athId,season_id:season.id,society_id:societyId,
+    category_id:cat,team_id:v('wzAssocSq')||null,
+    role:v('wzAssocRuolo')||null,
+    jersey_number:parseInt(g('wzAssocNum')?g('wzAssocNum').value:'')||null,
+    status:v('wzAssocStato')||'active'
+  });
+  if(r.error){showErr('wzErr',r.error.message);return;}
+  closeM('mWizard');
+  await loadAtleti();renderAssociazioni();
+  showOkToast('✅ Atleta associato alla stagione!');
+}
+
+async function salvaAssocStaff(){
+  var email=v('wzAssocEmail'),ruolo=v('wzAssocRuoloSt');
+  if(!email){showErr('wzErr','Inserisci email');return;}
+  if(!ruolo){showErr('wzErr','Seleziona ruolo');return;}
+  var rp=await sb.from('profiles').select('id').eq('email',email).maybeSingle();
+  if(!rp.data){showErr('wzErr','Nessun utente trovato con questa email');return;}
+  var r=await sb.from('user_team_seasons').insert({
+    user_id:rp.data.id,season_id:season.id,society_id:societyId,
+    role:ruolo,category_id:v('wzAssocCatSt')||null,team_id:v('wzAssocSqSt')||null
+  });
+  if(r.error){showErr('wzErr',r.error.message);return;}
+  closeM('mWizard');
+  await loadStaff();renderAssociazioni();
+  showOkToast('✅ Staff associato alla stagione!');
+}
+
+// Modifica associazione atleta (categoria / squadra / stato)
+function openEditAssocAtleta(assocId){
+  var a=atleti.find(function(x){return x.id===assocId;});if(!a)return;
+  var catOpts=categorie.map(function(c){return '<option value="'+c.id+'"'+(c.id===a.category_id?' selected':'')+'>'+hA(c.name)+'</option>';}).join('');
+  var sqOpts='<option value="">— Nessuna —</option>'+squadre.map(function(s){return '<option value="'+s.team_id+'"'+(s.team_id===a.team_id?' selected':'')+'>'+hA(s.teams?s.teams.name:'?')+'</option>';}).join('');
+  openM('mWizard');g('mWizardTitle').textContent='✏️ Modifica Associazione Atleta';
+  var nm=(a.athletes?a.athletes.name:'')+' '+(a.athletes?a.athletes.surname:'');
+  g('mWizardBody').innerHTML=
+    '<div id="wzErr" class="err-box" style="display:none"></div>'+
+    '<div style="background:#f8f9fc;border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-weight:700">'+hA(nm.trim())+'</div>'+
+    '<div class="fld"><label>Categoria *</label><select id="wzEdCat">'+catOpts+'</select></div>'+
+    '<div class="fld"><label>Squadra</label><select id="wzEdSq">'+sqOpts+'</select></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+      '<div class="fld"><label>Ruolo</label><select id="wzEdRuolo"><option value="">—</option><option'+(a.role==='Portiere'?' selected':'')+'>Portiere</option><option'+(a.role==='Difensore'?' selected':'')+'>Difensore</option><option'+(a.role==='Centrocampista'?' selected':'')+'>Centrocampista</option><option'+(a.role==='Attaccante'?' selected':'')+'>Attaccante</option></select></div>'+
+      '<div class="fld"><label>N° maglia</label><input id="wzEdNum" type="number" min="1" max="99" value="'+(a.jersey_number||'')+'"/></div>'+
+    '</div>'+
+    '<div class="fld"><label>Stato</label><select id="wzEdStato"><option value="active"'+(a.status==='active'?' selected':'')+'>Attivo</option><option value="inactive"'+(a.status==='inactive'?' selected':'')+'>Inattivo</option><option value="injured"'+(a.status==='injured'?' selected':'')+'>Infortunato</option><option value="suspended"'+(a.status==='suspended'?' selected':'')+'>Sospeso</option></select></div>'+
+    '<div style="display:flex;gap:10px;margin-top:16px">'+
+      '<button class="btn btn-primary" style="flex:1" onclick="saveEditAssocAtleta(\''+assocId+'\')">💾 Salva</button>'+
+      '<button class="btn btn-ghost" onclick="closeM(\'mWizard\')">Annulla</button>'+
+    '</div>';
+}
+async function saveEditAssocAtleta(assocId){
+  var cat=v('wzEdCat');
+  if(!cat){showErr('wzErr','Seleziona la categoria');return;}
+  var r=await sb.from('athlete_seasons').update({
+    category_id:cat,
+    team_id:v('wzEdSq')||null,
+    role:v('wzEdRuolo')||null,
+    jersey_number:parseInt(g('wzEdNum')?g('wzEdNum').value:'')||null,
+    status:v('wzEdStato')||'active'
+  }).eq('id',assocId);
+  if(r.error){showErr('wzErr',r.error.message);return;}
+  closeM('mWizard');
+  await loadAtleti();renderAssociazioni();
+  showOkToast('✅ Associazione aggiornata!');
+}
+
+async function removeAssocSquadra(teamSeasonId){
+  if(!confirm('Rimuovere questa squadra dalla stagione? Gli atleti associati perderanno il link squadra.'))return;
+  var r=await sb.from('team_seasons').delete().eq('id',teamSeasonId);
+  if(r.error){alert('Errore: '+r.error.message);return;}
+  await loadSquadre();renderAssociazioni();showOkToast('Squadra rimossa dalla stagione');
+}
+async function removeAssocAtleta(assocId){
+  if(!confirm('Rimuovere questo atleta dalla stagione corrente?'))return;
+  var r=await sb.from('athlete_seasons').delete().eq('id',assocId);
+  if(r.error){alert('Errore: '+r.error.message);return;}
+  await loadAtleti();renderAssociazioni();showOkToast('Atleta rimosso dalla stagione');
+}
+async function removeAssocStaff(assocId){
+  if(!confirm('Rimuovere questo membro dallo staff della stagione?'))return;
+  var r=await sb.from('user_team_seasons').delete().eq('id',assocId);
+  if(r.error){alert('Errore: '+r.error.message);return;}
+  await loadStaff();renderAssociazioni();showOkToast('Membro rimosso dallo staff');
 }
 
 /* ═══════════════════════════════════════════════
@@ -1420,7 +1750,63 @@ async function salvaStaff(){
 g('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 init();
 
+/* ═══════════════════════════════════════════════
+   SQL POLICIES SUPABASE — esegui nel SQL Editor
+   ═══════════════════════════════════════════════
 
+   -- TEAMS: aggiungi colonne mancanti
+   alter table teams add column if not exists society_id uuid references societies(id);
+   alter table teams add column if not exists created_by uuid references auth.users(id);
+
+   drop policy if exists "teams_insert" on teams;
+   create policy "teams_insert" on teams for insert
+     with check (auth.uid() = created_by);
+   drop policy if exists "teams_select" on teams;
+   create policy "teams_select" on teams for select using (true);
+   drop policy if exists "teams_update" on teams;
+   create policy "teams_update" on teams for update
+     using (auth.uid() = created_by);
+
+   -- TEAM_SEASONS: aggiungi created_by
+   alter table team_seasons add column if not exists created_by uuid references auth.users(id);
+
+   drop policy if exists "team_seasons_insert" on team_seasons;
+   create policy "team_seasons_insert" on team_seasons for insert
+     with check (auth.uid() = created_by);
+   drop policy if exists "team_seasons_select" on team_seasons;
+   create policy "team_seasons_select" on team_seasons for select using (true);
+   drop policy if exists "team_seasons_delete" on team_seasons;
+   create policy "team_seasons_delete" on team_seasons for delete
+     using (auth.uid() = created_by);
+
+   -- ATHLETES: aggiungi created_by
+   alter table athletes add column if not exists created_by uuid references auth.users(id);
+
+   drop policy if exists "athletes_insert" on athletes;
+   create policy "athletes_insert" on athletes for insert
+     with check (auth.uid() = created_by);
+   drop policy if exists "athletes_select" on athletes;
+   create policy "athletes_select" on athletes for select using (true);
+
+   -- ATHLETE_SEASONS: policy basata su user_team_seasons
+   drop policy if exists "athlete_seasons_insert" on athlete_seasons;
+   create policy "athlete_seasons_insert" on athlete_seasons for insert
+     with check (
+       exists (
+         select 1 from user_team_seasons
+         where user_id = auth.uid()
+           and season_id = athlete_seasons.season_id
+           and society_id = athlete_seasons.society_id
+       )
+     );
+   drop policy if exists "athlete_seasons_select" on athlete_seasons;
+   create policy "athlete_seasons_select" on athlete_seasons for select using (true);
+   drop policy if exists "athlete_seasons_update" on athlete_seasons;
+   create policy "athlete_seasons_update" on athlete_seasons for update using (true);
+   drop policy if exists "athlete_seasons_delete" on athlete_seasons;
+   create policy "athlete_seasons_delete" on athlete_seasons for delete using (true);
+
+═══════════════════════════════════════════════ */
 </script>
 </body>
 </html>
