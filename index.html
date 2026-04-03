@@ -349,10 +349,121 @@
             <a data-section="atleti"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>Anagrafica Squadra</a>
 
             <span class="sb-grp">Attività</span>
-            <a data-section="sessioni"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 7h-2v2h2V7zm0 4h-2v6h2v-6zm4-9.99L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2.01-2-2.01zM17 19H7V5h10v14z"/></svg>Allenamenti</a>
-            <a data-section="partite"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg>Partite</a>
+            <a data-section="sessioni"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 7h-2v2h2V7zm0 4h-2v6h2v-6zm4-9.99L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2.01-2-2.01zM17 19H7V5h10v14z"/></svg>Gestione Sessioni</a>
+
+
 
 <script>
+/**
+ * Funzione principale richiamata dai tasti del menu
+ */
+function preparePartite(sezione) {
+    console.log("Avvio sezione:", sezione); 
+    // Correzione: Il tuo div principale nel file index.html ha id="content"
+    const main = document.getElementById('content'); 
+    
+    if (main) {
+        // 1. Inserisce la struttura della pagina
+        main.innerHTML = templatePartite();
+        
+        setTimeout(() => {
+            // 2. Aggiorna il titolo visibile
+            const title = document.getElementById('match-title-display');
+            if (title) {
+                const nomi = { 
+                    'sintesi': 'RIEPILOGO GARE', 
+                    'convocazioni': 'GESTIONE CONVOCAZIONI', 
+                    'risultati': 'TABELLINI E RISULTATI' 
+                };
+                title.innerText = nomi[sezione] || 'GESTIONE GARE';
+            }
+
+            // 3. Carica i dati dal database
+            initPartite(sezione);
+        }, 50);
+    }
+}
+
+function templatePartite() {
+    return `
+    <div class="card">
+        <div class="header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 id="match-title-display" style="margin:0; color:white; text-transform:uppercase;">GESTIONE GARE</h2>
+            <button class="btn" onclick="openSessionModal()" style="background:#2563eb; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">+ Nuova Gara</button>
+        </div>
+        
+        <div id="gare-filters-container" style="display:none; background:#13151e; padding:15px; border-radius:12px; border:1px solid #2d303e; margin-bottom:20px;">
+            <label style="display:block; font-size:11px; color:#94a3b8; margin-bottom:5px; font-weight:bold;">FILTRO SOCIETÀ (ADMIN)</label>
+            <select id="f-match-soc" onchange="initPartite()" style="width:100%; max-width:300px; background:#1c1f2e; color:white; border:1px solid #333; padding:10px; border-radius:8px;"></select>
+        </div>
+
+        <div id="match-main-content" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:20px;">
+            <div style="grid-column:1/-1; text-align:center; padding:50px; color:#64748b;">
+                <i class="fas fa-spinner fa-spin"></i> Caricamento gare...
+            </div>
+        </div>
+    </div>`;
+}
+
+async function initPartite(sub = 'sintesi') {
+    const container = document.getElementById('match-main-content');
+    if (!container) return;
+
+    const myRole = (window._userRole || '').toLowerCase();
+    const isAdminOrManager = ['admin', 'manager'].includes(myRole);
+    const userSocId = window._currentSocietyId;
+
+    // Se Admin, mostra il selettore società
+    if (isAdminOrManager) {
+        const fContainer = document.getElementById('gare-filters-container');
+        if (fContainer) fContainer.style.display = 'block';
+        const selSoc = document.getElementById('f-match-soc');
+        if (selSoc && selSoc.options.length === 0) {
+            const { data: socs } = await client.from('societies').select('id, name').order('name');
+            selSoc.innerHTML = '<option value="">Tutte le Società (Vedi Tutto)</option>' + 
+                               (socs || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
+    }
+
+    try {
+        const { data: typeData } = await client.from('session_types').select('id').ilike('name', 'Partita').single();
+        if (!typeData) return container.innerHTML = "Errore: Tipo sessione 'Partita' non trovato.";
+
+        let query = client.from('sessions').select(`*, teams(name), attendances(id, status)`).eq('type_id', typeData.id);
+
+        // LOGICA VISIBILITÀ: L'admin vede tutto (anche i record senza società) a meno che non ne selezioni una
+        if (!isAdminOrManager) {
+            query = query.eq('society_id', userSocId);
+        } else {
+            const selectedSoc = document.getElementById('f-match-soc')?.value;
+            if (selectedSoc) query = query.eq('society_id', selectedSoc);
+        }
+
+        const { data: matches, error } = await query.order('session_date', { ascending: false });
+        if (error) throw error;
+
+        if (!matches || matches.length === 0) {
+            container.innerHTML = "<div style='grid-column:1/-1; text-align:center; padding:40px; color:#64748b;'>Nessuna gara programmata trovata.</div>";
+            return;
+        }
+
+        container.innerHTML = matches.map(m => `
+            <div style="background:#13151e; border:1px solid #2d303e; border-radius:15px; padding:20px; border-top:4px solid ${sub === 'risultati' ? '#10b981' : '#2563eb'};">
+                <div style="color:#94a3b8; font-size:11px; text-transform:uppercase; font-weight:bold; margin-bottom:10px;">${m.teams?.name || 'SQUADRA DA ASSEGNARE'}</div>
+                <h3 style="color:white; margin:0 0 15px 0; font-size:18px;">${m.title}</h3>
+                <div style="color:#64748b; font-size:13px; margin-bottom:20px;"><i class="far fa-calendar-alt"></i> ${new Date(m.session_date).toLocaleDateString()}</div>
+                <button class="btn" style="width:100%; background:${sub === 'risultati' ? '#10b981' : '#2563eb'}; color:white; border:none; padding:12px; border-radius:10px; cursor:pointer; font-weight:bold;" 
+                    onclick="openAttendanceModal('${m.id}')">
+                    ${sub === 'risultati' ? '⚽ TABELLINO E VOTI' : '📋 GESTISCI CONVOCATI'}
+                </button>
+            </div>
+        `).join('');
+
+    } catch (e) {
+        container.innerHTML = `<div style="grid-column:1/-1; color:#ef4444;">Errore nel caricamento: ${e.message}</div>`;
+    }
+}
+
 function toggleSubmenu(id) {
     const sub = document.getElementById(id);
     if(sub) sub.style.display = sub.style.display === 'none' ? 'block' : 'none';
@@ -361,6 +472,45 @@ function toggleSubmenu(id) {
 
 
 
+
+
+
+
+
+
+
+<a data-section="sessioni">
+    <svg viewBox="0 0 24 24" fill="currentColor" width="20"><path d="M13 7h-2v2h2V7zm0 4h-2v6h2v-6zm4-9.99L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2.01-2-2.01zM17 19H7V5h10v14z"/></svg>
+    Gestione Sessioni
+</a>
+
+
+
+
+
+<div class="nav-item-group">
+    <div class="nav-item" onclick="window.toggleSubmenu('menu-gare')" style="background: rgba(37,99,235,0.1); border-left: 4px solid #2563eb; cursor: pointer; padding: 12px;">
+        <span style="display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-trophy" style="color: #2563eb;"></i>
+            <b style="color: white; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Gestione Gare</b>
+        </span>
+    </div>
+    
+    <div id="menu-gare" class="nav-submenu" style="padding-left: 20px; display: none; background: rgba(0,0,0,0.2);">
+        <div class="nav-submenu-item" onclick="window.preparePartite('sintesi')" style="padding: 10px; cursor: pointer; color: #94a3b8; font-size: 12px; transition: 0.2s;">
+            <i class="fas fa-chart-line" style="margin-right: 8px; font-size: 10px;"></i> Riepilogo
+        </div>
+        <div class="nav-submenu-item" onclick="window.preparePartite('convocazioni')" style="padding: 10px; cursor: pointer; color: #94a3b8; font-size: 12px; transition: 0.2s;">
+            <i class="fas fa-clipboard-list" style="margin-right: 8px; font-size: 10px;"></i> Convocazioni
+        </div>
+    </div>
+</div>
+
+
+
+
+
+        </div>
         <div class="sb-foot">
             <span id="user-info"></span>
             <button id="btn-logout">
@@ -965,11 +1115,6 @@ async function initCategoria() {
                 
                 if(!name || !society_id) return alert("Compila tutti i campi!");
 
-                // Controllo duplicato: stessa categoria nella stessa società
-                const { data: existing } = await client.from('categories')
-                    .select('id').eq('society_id', society_id).ilike('name', name).maybeSingle();
-                if(existing) return alert(`❌ La categoria "${name}" esiste già per questa società!`);
-
                 const { error: insErr } = await client.from('categories').insert({ name, society_id });
                 if(!insErr) { 
                     modal.close(); 
@@ -1096,26 +1241,18 @@ async function initSquadra() {
             sport_id,
             societies (name),
             categories (name),
-            sports (name, icon),
-            athlete_team_seasons (id)
+            sports (name, icon)
         `)
         .eq('season_id', activeSeason.id)
         .order('name');
 
     if (error) {
         console.error("Errore query teams:", error);
-        tbody.innerHTML = `<tr><td colspan="6">Errore: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5">Errore: ${error.message}</td></tr>`;
         return;
     }
 
-    // Aggiorna header tabella per mostrare colonna atleti
-    const thead = document.querySelector('#list-squadra')?.closest('table')?.querySelector('thead tr');
-    if (thead && thead.children.length < 6) {
-        thead.innerHTML = '<th>Nome Squadra</th><th>Società</th><th>Categoria</th><th>Sport</th><th style="text-align:center">Atleti</th><th style="text-align:right">Azioni</th>';
-    }
-
     tbody.innerHTML = data?.map(t => {
-        const atlCount = t.athlete_team_seasons ? t.athlete_team_seasons.length : 0;
         const safeName = t.name.replace(/'/g, "\\'");
         return `
         <tr>
@@ -1123,7 +1260,6 @@ async function initSquadra() {
             <td>${t.societies?.name || '-'}</td>
             <td>${t.categories?.name || '-'}</td>
             <td>${t.sports ? t.sports.icon + ' ' + t.sports.name : '-'}</td>
-            <td style="text-align:center"><span style="background:rgba(79,124,255,.15);color:#7b9fff;padding:3px 10px;border-radius:12px;font-weight:700;font-size:12px;">${atlCount}</span></td>
             <td style="text-align:right">
                 <button class="btn-sm btn-warning" onclick="handleEditSquadra('${t.id}')">✏️</button>
                 <button class="btn-sm btn-danger" onclick="handleDeleteSquadra('${t.id}')">🗑️</button>
@@ -1387,12 +1523,6 @@ async function openStaffModal(editData = null) {
         const soc_id = document.getElementById('st-society_id').value;
 
         if(!name || !username) return alert("Nome e Username obbligatori!");
-
-        // Controllo duplicato: stesso username
-        if (!isEdit) {
-            const { data: dup } = await client.from('users').select('id').eq('username', username).maybeSingle();
-            if(dup) return alert(`❌ Username "${username}" già in uso!`);
-        }
 
         // Payload PULITO: Solo colonne esistenti nel DB public.users
         const payload = { 
@@ -2241,17 +2371,9 @@ window.importAtleti = async function(event) {
             const aId = document.getElementById('m-link-atleta').value;
             const cId = document.getElementById('m-link-cat').value;
             if(!sId || !aId || !cId) return alert("Campi obbligatori mancanti!");
-
-            // Controllo duplicato: stesso atleta nella stessa stagione+categoria+squadra
-            const tId = document.getElementById('m-link-team').value || null;
-            const { data: dupCheck } = await client.from('athlete_team_seasons')
-                .select('id').eq('athlete_id', aId).eq('season_id', activeSeasonId)
-                .eq('category_id', cId).maybeSingle();
-            if(dupCheck) return alert('❌ Questo atleta è già associato a questa categoria nella stagione corrente!');
-
             const { error } = await client.from('athlete_team_seasons').insert([{
                 athlete_id: aId, society_id: sId, season_id: activeSeasonId, category_id: cId,
-                team_id: tId,
+                team_id: document.getElementById('m-link-team').value || null,
                 jersey_number: document.getElementById('m-link-jersey').value || null,
                 role: document.getElementById('m-link-role').value.trim() || null
             }]);
@@ -2469,10 +2591,6 @@ async function initSessioni() {
     }
 
     let query = client.from('sessions').select(`*, session_types(name), teams(id, name, categories(name)), attendances(status)`).eq('society_id', targetSociety);
-    
-    // ESCLUDE le sessioni di tipo "Partita" dalla lista allenamenti
-    const { data: tipoPartita } = await client.from('session_types').select('id').ilike('name', 'Partita').maybeSingle();
-    if (tipoPartita) query = query.neq('type_id', tipoPartita.id);
     
     const fCat = document.getElementById('filter-category-sess')?.value;
     const fTeam = document.getElementById('filter-team-sess')?.value;
@@ -2762,514 +2880,145 @@ window.saveSessionNotes = saveSessionNotes;
 
 
 /* ──────────────────────────────────────────────────────────────────────────
-   MODULO PARTITE — Sezione separata da sessioni, con modifica, convocazioni,
-   marcature per atleta e locandina immagine.
+   MODULO INTEGRALE: GARE E CONVOCAZIONI (CON GESTIONE ERRORI AUTH)
    ────────────────────────────────────────────────────────────────────────── */
 
-function templatePartite() {
-    return `
-    <div class="card">
-        <div class="header">
-            <h2>GESTIONE PARTITE</h2>
-            <button class="btn" onclick="openPartitaModal()">+ Nuova Partita</button>
+// 1. RECUPERO CLIENT E CONTROLLO SESSIONE
+function getDb() {
+    const db = (typeof supabase !== 'undefined' && typeof supabase.from === 'function') ? supabase : 
+               (typeof client !== 'undefined' && typeof client.from === 'function') ? client : null;
+    return db;
+}
+
+// 2. PREPARAZIONE DASHBOARD
+window.preparePartite = function(sezione) {
+    const main = document.getElementById('content'); 
+    if (!main) return;
+
+    main.innerHTML = `
+    <div class="card" style="width: 100%; border-radius: 15px; background: #13151e; border: 1px solid #2d303e; padding: 25px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+            <h2 id="match-title-display" style="margin:0; color:white; font-size: 18px; font-weight:700;"></h2>
         </div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
-            <select id="f-par-soc" onchange="loadPartiteData()" style="width:auto;margin:0;padding:8px 12px;">
-                <option value="">Tutte le Società</option>
-            </select>
-            <select id="f-par-team" onchange="loadPartiteData()" style="width:auto;margin:0;padding:8px 12px;">
-                <option value="">Tutte le Squadre</option>
-            </select>
-        </div>
-        <div class="table-container">
-            <table>
-                <thead><tr>
-                    <th>Data</th><th>Avversario</th><th>Squadra</th>
-                    <th>Luogo</th><th>Risultato</th><th style="text-align:right">Azioni</th>
-                </tr></thead>
-                <tbody id="list-partite-body"></tbody>
-            </table>
+        <div id="match-main-content">
+            <div style="text-align:center; padding:50px; color:#64748b;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
         </div>
     </div>`;
-}
+    
+    const nomi = { 'sintesi': '📊 RIEPILOGO GARE', 'convocazioni': '📋 GESTIONE CONVOCAZIONI' };
+    document.getElementById('match-title-display').innerText = nomi[sezione] || 'GARE';
+    window.initPartite(sezione);
+};
 
-async function initPartite() {
-    // Popola filtro società
-    const { data: socs } = await client.from('societies').select('id,name').order('name');
-    const fSoc = document.getElementById('f-par-soc');
-    if (fSoc && socs) {
-        const mySoc = window._currentSocietyId;
-        socs.forEach(s => {
-            const o = document.createElement('option');
-            o.value = s.id; o.textContent = s.name;
-            if(s.id === mySoc) o.selected = true;
-            fSoc.appendChild(o);
-        });
-    }
-    await loadPartiteTeams();
-    await loadPartiteData();
-}
+// 3. CARICAMENTO GARE CON ALERT ERRORE TOKEN
+window.initPartite = async function(sub) {
+    const container = document.getElementById('match-main-content');
+    const db = getDb();
 
-async function loadPartiteTeams() {
-    const socId = document.getElementById('f-par-soc')?.value || window._currentSocietyId;
-    const { data: teams } = await client.from('teams').select('id,name').eq('society_id', socId).order('name');
-    const fTeam = document.getElementById('f-par-team');
-    if (!fTeam) return;
-    const prev = fTeam.value;
-    fTeam.innerHTML = '<option value="">Tutte le Squadre</option>';
-    (teams || []).forEach(t => {
-        const o = document.createElement('option');
-        o.value = t.id; o.textContent = t.name;
-        if(t.id === prev) o.selected = true;
-        fTeam.appendChild(o);
-    });
-}
-
-async function loadPartiteData() {
-    const tbody = document.getElementById('list-partite-body');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Caricamento...</td></tr>';
-
-    const socId = document.getElementById('f-par-soc')?.value || window._currentSocietyId;
-    const teamId = document.getElementById('f-par-team')?.value;
-
-    // Recupera il type_id per "Partita" dalla tabella session_types
-    const { data: typeRow } = await client.from('session_types').select('id').ilike('name', 'Partita').maybeSingle();
-    if (!typeRow) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#f87171;padding:20px;">⚠️ Tipo sessione "Partita" non trovato nel DB.</td></tr>';
+    if (!db) {
+        container.innerHTML = "<div style='color:#ef4444;'>Database non configurato correttamente.</div>";
         return;
     }
 
-    let q = client.from('sessions')
-        .select('*, teams(id,name,societies(name)), session_types(name)')
-        .eq('type_id', typeRow.id)
-        .order('session_date', { ascending: false });
+    try {
+        const { data: typeData, error: typeError } = await db.from('session_types').select('id').ilike('name', 'Partita').single();
+        
+        if (typeError) throw typeError;
 
-    if (socId) q = q.eq('society_id', socId);
-    if (teamId) q = q.eq('team_id', teamId);
+        const { data: matches, error: mError } = await db.from('sessions')
+            .select(`*, teams(name)`)
+            .eq('type_id', typeData.id)
+            .order('session_date', { ascending: false });
 
-    const { data: partite, error } = await q;
-    if (error) { tbody.innerHTML = `<tr><td colspan="6">Errore: ${error.message}</td></tr>`; return; }
-    if (!partite || !partite.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#64748b;">Nessuna partita trovata.</td></tr>';
-        return;
+        if (mError) throw mError;
+
+        if (sub === 'sintesi') {
+            container.innerHTML = `<table style="width:100%; color:white; border-collapse:collapse;">
+                ${matches.map(m => `
+                <tr style="border-bottom:1px solid #2d303e;">
+                    <td style="padding:15px; color:#94a3b8;">${new Date(m.session_date).toLocaleDateString()}</td>
+                    <td style="font-weight:600; color:#2563eb;">${m.teams?.name || '-'}</td>
+                    <td>${m.title}</td>
+                    <td style="text-align:right;"><button class="btn-sm" onclick="window.openAttendanceModal('${m.id}')" style="background:#1e293b; color:white; padding:6px 12px; border-radius:6px; cursor:pointer; border:1px solid #334155;">Dettagli</button></td>
+                </tr>`).join('')}
+            </table>`;
+        } else {
+            container.innerHTML = `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">
+                ${matches.map(m => `
+                <div style="background:#1a1d29; border:1px solid #2d303e; padding:18px; border-radius:12px; border-top:4px solid #2563eb;">
+                    <div style="font-size:10px; color:#64748b; margin-bottom:5px;">${new Date(m.session_date).toLocaleDateString()}</div>
+                    <h4 style="margin:0 0 15px 0; color:white; font-size:15px;">${m.title}</h4>
+                    <button class="btn" onclick="window.openAttendanceModal('${m.id}')" style="width:100%; background:#2563eb; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">📋 GESTISCI CONVOCATI</button>
+                </div>`).join('')}
+            </div>`;
+        }
+    } catch (e) { 
+        console.error("Errore Database:", e);
+        // Messaggio specifico per l'errore di Refresh Token
+        if (e.message && e.message.includes("JWN") || e.status === 400) {
+            container.innerHTML = "<div style='color:#ef4444; text-align:center; padding:20px;'><b>Sessione Scaduta!</b><br>Ricarica la pagina o rifai il Login.</div>";
+        } else {
+            container.innerHTML = "<div style='color:#64748b; padding:20px;'>Nessuna gara trovata o errore di connessione.</div>";
+        }
     }
+};
 
-    // Legge risultati (dal campo notes o da marcature)
-    tbody.innerHTML = partite.map(p => {
-        const risultato = p.match_result || p.notes_result || '—';
-        const luogo = p.location || '—';
-        const avv = p.opponent || p.title || '—';
-        const ris = p.result_score ? `<strong style="color:#22c55e">${p.result_score}</strong>` : '<span style="color:#64748b;font-size:11px">Non inserito</span>';
-        return `
-        <tr>
-            <td>${new Date(p.session_date).toLocaleDateString('it-IT')}</td>
-            <td><strong>${avv}</strong></td>
-            <td><span style="color:#7b9fff">${p.teams?.name || '—'}</span></td>
-            <td style="color:#94a3b8;font-size:12px">${luogo}</td>
-            <td>${ris}</td>
-            <td style="text-align:right;white-space:nowrap">
-                <button class="btn-sm btn-safe wide" onclick="openConvocazioniModal('${p.id}')" title="Convocazioni">📋</button>
-                <button class="btn-sm btn-info wide" onclick="openMarcatureModal('${p.id}')" title="Marcature">⚽</button>
-                <button class="btn-sm" style="background:#8b5cf6" onclick="openLocandinaModal('${p.id}')" title="Locandina">🖼️</button>
-                <button class="btn-sm btn-warning" onclick="openPartitaModal('${p.id}')" title="Modifica">✏️</button>
-                <button class="btn-sm btn-danger" onclick="deletePartita('${p.id}')" title="Elimina">🗑️</button>
-            </td>
-        </tr>`;
-    }).join('');
-}
+// 4. MODALE CONVOCATI (SPUNTA ATLETA PER ATLETA)
+window.openAttendanceModal = async function(sessionId) {
+    const modal = document.getElementById('modal-attendance');
+    const list = document.getElementById('attendance-list');
+    const db = getDb();
+    
+    if (!modal || !list || !db) return;
+    modal.style.display = 'flex';
+    list.innerHTML = 'Caricamento...';
 
-async function openPartitaModal(id = null) {
-    const m = getModal();
-    const isEdit = !!id;
-    let editData = null;
-    const socId = document.getElementById('f-par-soc')?.value || window._currentSocietyId;
+    try {
+        const { data: session } = await db.from('sessions').select('team_id, title').eq('id', sessionId).single();
+        const { data: players } = await db.from('players').select('*').eq('team_id', session.team_id).order('last_name');
+        const { data: currentAtt } = await db.from('attendances').select('player_id, status').eq('session_id', sessionId);
 
-    const [typesRes, teamsRes] = await Promise.all([
-        client.from('session_types').select('*').order('name'),
-        client.from('teams').select('id,name,season_id,category_id').eq('society_id', socId).order('name')
-    ]);
-    const tipoPartita = typesRes.data?.find(t => t.name.toLowerCase().includes('partita'));
-
-    if (isEdit) {
-        const { data } = await client.from('sessions').select('*').eq('id', id).single();
-        editData = data;
-    }
-
-    m.open(isEdit ? '✏️ Modifica Partita' : '⚽ Nuova Partita', `
-        <div style="display:grid;gap:12px;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                <div>
-                    <label>DATA *</label>
-                    <input type="date" id="pm-date" value="${editData?.session_date || new Date().toISOString().split('T')[0]}">
-                </div>
-                <div>
-                    <label>ORA</label>
-                    <input type="time" id="pm-time" value="${editData?.match_time || ''}">
-                </div>
+        list.innerHTML = `
+            <div style="background:rgba(37,99,235,0.1); padding:10px; border-radius:8px; color:#2563eb; font-weight:bold; margin-bottom:15px; text-align:center; font-size:12px;">
+                CONVOCAZIONI: ${session.title}
             </div>
-            <div>
-                <label>AVVERSARIO *</label>
-                <input type="text" id="pm-opponent" value="${editData?.opponent || editData?.title || ''}" placeholder="Nome squadra avversaria">
-            </div>
-            <div>
-                <label>SQUADRA *</label>
-                <select id="pm-team">
-                    <option value="">— Seleziona squadra —</option>
-                    ${(teamsRes.data || []).map(t => `<option value="${t.id}" data-season="${t.season_id}" data-cat="${t.category_id}" ${editData?.team_id === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
-                </select>
-            </div>
-            <div>
-                <label>LUOGO / INDIRIZZO</label>
-                <input type="text" id="pm-location" value="${editData?.location || ''}" placeholder="es. Campo Comunale Via Roma 1">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                <div>
-                    <label>GOL FATTI</label>
-                    <input type="number" id="pm-gf" min="0" value="${editData?.goals_for ?? ''}">
-                </div>
-                <div>
-                    <label>GOL SUBITI</label>
-                    <input type="number" id="pm-gs" min="0" value="${editData?.goals_against ?? ''}">
-                </div>
-            </div>
-            <div>
-                <label>NOTE</label>
-                <textarea id="pm-notes" rows="2">${editData?.notes || ''}</textarea>
-            </div>
-            <button onclick="savePartita('${id || ''}')" style="background:#4f7cff;color:white;padding:12px;font-weight:700;border:none;border-radius:8px;cursor:pointer;margin-top:4px;">SALVA PARTITA</button>
-        </div>
-    `);
-
-    // nascondi il pulsante "Salva" del modal globale
-    const btnSave = document.getElementById('btn-modal-save');
-    if(btnSave) btnSave.style.display = 'none';
-}
-
-async function savePartita(id) {
-    const teamSel = document.getElementById('pm-team');
-    const teamId = teamSel?.value;
-    if (!teamId) return alert('Seleziona una squadra!');
-    const selOpt = teamSel.options[teamSel.selectedIndex];
-    const seasonId = selOpt.dataset.season;
-    const catId = selOpt.dataset.cat;
-    const socId = document.getElementById('f-par-soc')?.value || window._currentSocietyId;
-
-    const { data: typeRow } = await client.from('session_types').select('id').ilike('name', 'Partita').maybeSingle();
-    if (!typeRow) return alert('Tipo "Partita" non trovato nel DB!');
-
-    const opponent = document.getElementById('pm-opponent').value.trim();
-    if (!opponent) return alert('Inserisci il nome dell\'avversario!');
-
-    const gf = document.getElementById('pm-gf').value;
-    const gs = document.getElementById('pm-gs').value;
-    const score = (gf !== '' && gs !== '') ? `${gf}-${gs}` : null;
-
-    const payload = {
-        title: `vs ${opponent}`,
-        opponent,
-        session_date: document.getElementById('pm-date').value,
-        match_time: document.getElementById('pm-time').value || null,
-        type_id: typeRow.id,
-        team_id: teamId,
-        season_id: seasonId,
-        category_id: catId,
-        society_id: socId,
-        location: document.getElementById('pm-location').value.trim() || null,
-        goals_for: gf !== '' ? parseInt(gf) : null,
-        goals_against: gs !== '' ? parseInt(gs) : null,
-        result_score: score,
-        notes: document.getElementById('pm-notes').value.trim() || null
-    };
-
-    const { error } = id
-        ? await client.from('sessions').update(payload).eq('id', id)
-        : await client.from('sessions').insert([payload]);
-
-    if (error) return alert('Errore: ' + error.message);
-    getModal().close();
-    document.getElementById('btn-modal-save').style.display = '';
-    loadPartiteData();
-}
-
-async function deletePartita(id) {
-    if (!confirm('Eliminare questa partita e tutte le convocazioni associate?')) return;
-    await client.from('attendances').delete().eq('session_id', id);
-    const { error } = await client.from('sessions').delete().eq('id', id);
-    if (error) alert('Errore: ' + error.message);
-    else loadPartiteData();
-}
-
-/* ── CONVOCAZIONI ── */
-async function openConvocazioniModal(sessionId) {
-    const m = getModal();
-    const { data: session } = await client.from('sessions').select('*, teams(id,name,season_id)').eq('id', sessionId).single();
-    if (!session) return;
-
-    const { data: relations } = await client.from('athlete_team_seasons')
-        .select('jersey_number, athletes(id, name, surname)')
-        .eq('team_id', session.team_id).eq('season_id', session.teams?.season_id || session.season_id);
-
-    const { data: existing } = await client.from('attendances').select('*').eq('session_id', sessionId);
-    const attMap = {}; (existing || []).forEach(a => attMap[a.athlete_id] = a);
-
-    const avv = session.opponent || session.title;
-    m.open(`📋 Convocazioni — vs ${avv}`, `
-        <div style="background:rgba(79,124,255,.1);padding:10px;border-radius:8px;margin-bottom:14px;font-size:12px;color:#7b9fff;font-weight:700;">
-            ${session.teams?.name} — ${new Date(session.session_date).toLocaleDateString('it-IT')}
-            ${session.location ? '<br>📍 ' + session.location : ''}
-            ${session.match_time ? ' — ⏰ ' + session.match_time : ''}
-        </div>
-        <div style="max-height:420px;overflow-y:auto;padding-right:4px;">
-            ${(relations || []).map(r => {
-                const ath = r.athletes;
-                const reg = attMap[ath.id];
-                const isConv = reg?.is_called_up;
+            ${players.map(p => {
+                const isConvocato = currentAtt?.find(a => a.player_id === p.id)?.status === 'Convocato';
                 return `
-                <div class="conv-row" data-ath="${ath.id}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;border-radius:8px;border:1px solid ${isConv ? 'rgba(79,124,255,.5)' : 'var(--border)'};background:${isConv ? 'rgba(79,124,255,.08)' : 'transparent'};">
-                    <span style="font-weight:600">${r.jersey_number ? '<span style="color:#7b9fff;margin-right:8px">#' + r.jersey_number + '</span>' : ''}${ath.surname} ${ath.name}</span>
-                    <button onclick="toggleConvocazione('${ath.id}','${sessionId}',${!isConv}, this)"
-                        style="padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:11px;background:${isConv ? '#4f7cff' : '#1e293b'};color:white;">
-                        ${isConv ? '✓ CONV.' : 'CONVOCA'}
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:${isConvocato ? 'rgba(37,99,235,0.08)' : 'transparent'}; border:1px solid ${isConvocato ? '#2563eb' : '#2d303e'}; border-radius:10px; margin-bottom:8px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:25px; color:${isConvocato ? '#2563eb' : '#444'}; font-weight:bold; font-size:12px;">${p.shirt_number || '-'}</div>
+                        <div style="color:white; font-size:14px; font-weight:600;">${p.last_name} ${p.first_name}</div>
+                    </div>
+                    <button onclick="window.salvaStatoGara('${p.id}', '${sessionId}', '${isConvocato ? 'Escluso' : 'Convocato'}')" 
+                        style="padding:7px 12px; border-radius:6px; border:none; cursor:pointer; font-weight:bold; font-size:10px; background:${isConvocato ? '#2563eb' : '#1c202e'}; color:white; transition: 0.2s;">
+                        ${isConvocato ? '✓ SELEZIONATO' : 'CONVOCA'}
                     </button>
                 </div>`;
-            }).join('')}
-        </div>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-            <button onclick="convocaTutti('${sessionId}')" style="flex:1;padding:10px;background:#22c55e;color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Seleziona Tutti</button>
-            <button onclick="deconvocaTutti('${sessionId}')" style="flex:1;padding:10px;background:#475569;color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;">❌ Deseleziona Tutti</button>
-        </div>
-    `);
-    document.getElementById('btn-modal-save').style.display = 'none';
-}
-
-window.toggleConvocazione = async function(athId, sessionId, nuovoStato, btn) {
-    await client.from('attendances').upsert(
-        { session_id: sessionId, athlete_id: athId, is_called_up: nuovoStato, status: nuovoStato ? 'presente' : 'assente' },
-        { onConflict: 'session_id,athlete_id' }
-    );
-    const row = btn.closest('.conv-row');
-    if (nuovoStato) {
-        row.style.borderColor = 'rgba(79,124,255,.5)'; row.style.background = 'rgba(79,124,255,.08)';
-        btn.style.background = '#4f7cff'; btn.textContent = '✓ CONV.';
-        btn.onclick = () => window.toggleConvocazione(athId, sessionId, false, btn);
-    } else {
-        row.style.borderColor = 'var(--border)'; row.style.background = 'transparent';
-        btn.style.background = '#1e293b'; btn.textContent = 'CONVOCA';
-        btn.onclick = () => window.toggleConvocazione(athId, sessionId, true, btn);
+            }).join('')}`;
+    } catch (e) { 
+        console.error(e);
+        list.innerHTML = "Errore nel caricamento. Assicurati di essere loggato.";
     }
 };
 
-window.convocaTutti = async function(sessionId) {
-    const btns = document.querySelectorAll('.conv-row button');
-    for(const btn of btns) {
-        const athId = btn.closest('.conv-row').dataset.ath;
-        await window.toggleConvocazione(athId, sessionId, true, btn);
+// 5. SALVATAGGIO
+window.salvaStatoGara = async function(playerId, sessionId, nuovoStato) {
+    const db = getDb();
+    try {
+        await db.from('attendances').upsert({
+            player_id: playerId,
+            session_id: sessionId,
+            status: nuovoStato,
+            updated_at: new Date()
+        }, { onConflict: 'player_id, session_id' });
+
+        window.openAttendanceModal(sessionId); 
+    } catch (e) {
+        alert("Sessione scaduta. Ricarica la pagina.");
     }
 };
-window.deconvocaTutti = async function(sessionId) {
-    const btns = document.querySelectorAll('.conv-row button');
-    for(const btn of btns) {
-        const athId = btn.closest('.conv-row').dataset.ath;
-        await window.toggleConvocazione(athId, sessionId, false, btn);
-    }
-};
-
-/* ── MARCATURE ── */
-async function openMarcatureModal(sessionId) {
-    const m = getModal();
-    const { data: session } = await client.from('sessions').select('*, teams(id,name,season_id)').eq('id', sessionId).single();
-    if (!session) return;
-
-    const { data: convocati } = await client.from('attendances')
-        .select('athlete_id, goals, assists, yellow_cards, red_cards, rating, athletes(name,surname)')
-        .eq('session_id', sessionId).eq('is_called_up', true);
-
-    const avv = session.opponent || session.title;
-    const score = session.result_score || '';
-
-    m.open(`⚽ Marcature — vs ${avv}`, `
-        <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(79,124,255,.1);padding:12px;border-radius:8px;margin-bottom:14px;">
-            <span style="color:#7b9fff;font-weight:700">${session.teams?.name} — ${new Date(session.session_date).toLocaleDateString('it-IT')}</span>
-            <span id="score-display" style="font-size:20px;font-weight:800;color:white">${score || '? - ?'}</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;background:#1a1d29;padding:12px;border-radius:8px;">
-            <div><label style="font-size:10px">GOL FATTI</label>
-                <input type="number" id="sc-gf" min="0" value="${session.goals_for ?? ''}" oninput="aggiornaScore()" style="text-align:center;font-size:18px;font-weight:800;">
-            </div>
-            <div><label style="font-size:10px">GOL SUBITI</label>
-                <input type="number" id="sc-gs" min="0" value="${session.goals_against ?? ''}" oninput="aggiornaScore()" style="text-align:center;font-size:18px;font-weight:800;">
-            </div>
-        </div>
-        <div style="max-height:380px;overflow-y:auto;padding-right:4px;">
-            ${(!convocati || !convocati.length) 
-                ? '<div style="text-align:center;padding:30px;color:#64748b;">Nessun atleta convocato. Vai prima nelle convocazioni.</div>'
-                : convocati.map(c => {
-                    const ath = c.athletes;
-                    return `
-                    <div style="background:#13151e;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;">
-                        <div style="font-weight:700;margin-bottom:8px;color:white">${ath?.surname} ${ath?.name}</div>
-                        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center;">
-                            <div><label style="font-size:9px;letter-spacing:.5px">GOL</label>
-                                <input type="number" class="marc-input" data-ath="${c.athlete_id}" data-field="goals" min="0" value="${c.goals||0}" style="text-align:center;padding:6px;"></div>
-                            <div><label style="font-size:9px">ASSIST</label>
-                                <input type="number" class="marc-input" data-ath="${c.athlete_id}" data-field="assists" min="0" value="${c.assists||0}" style="text-align:center;padding:6px;"></div>
-                            <div><label style="font-size:9px">🟨</label>
-                                <input type="number" class="marc-input" data-ath="${c.athlete_id}" data-field="yellow_cards" min="0" max="2" value="${c.yellow_cards||0}" style="text-align:center;padding:6px;"></div>
-                            <div><label style="font-size:9px">🟥</label>
-                                <input type="number" class="marc-input" data-ath="${c.athlete_id}" data-field="red_cards" min="0" max="1" value="${c.red_cards||0}" style="text-align:center;padding:6px;"></div>
-                            <div><label style="font-size:9px">VOTO</label>
-                                <input type="number" class="marc-input" data-ath="${c.athlete_id}" data-field="rating" min="1" max="10" step="0.5" value="${c.rating||''}" style="text-align:center;padding:6px;"></div>
-                        </div>
-                    </div>`; 
-                }).join('')}
-        </div>
-        <button onclick="saveMarcature('${sessionId}')" style="width:100%;margin-top:12px;padding:13px;background:#22c55e;color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;">💾 SALVA MARCATURE</button>
-    `);
-    document.getElementById('btn-modal-save').style.display = 'none';
-}
-
-window.aggiornaScore = function() {
-    const gf = document.getElementById('sc-gf')?.value;
-    const gs = document.getElementById('sc-gs')?.value;
-    const disp = document.getElementById('score-display');
-    if(disp) disp.textContent = (gf !== '' && gs !== '') ? `${gf} - ${gs}` : '? - ?';
-};
-
-window.saveMarcature = async function(sessionId) {
-    const gf = document.getElementById('sc-gf')?.value;
-    const gs = document.getElementById('sc-gs')?.value;
-    const score = (gf !== '' && gs !== '') ? `${gf}-${gs}` : null;
-
-    // Aggiorna punteggio partita
-    await client.from('sessions').update({
-        goals_for: gf !== '' ? parseInt(gf) : null,
-        goals_against: gs !== '' ? parseInt(gs) : null,
-        result_score: score
-    }).eq('id', sessionId);
-
-    // Aggiorna marcature per ogni atleta
-    const inputs = document.querySelectorAll('.marc-input');
-    const byAth = {};
-    inputs.forEach(inp => {
-        const ath = inp.dataset.ath;
-        const field = inp.dataset.field;
-        if (!byAth[ath]) byAth[ath] = { session_id: sessionId, athlete_id: ath };
-        byAth[ath][field] = parseFloat(inp.value) || 0;
-    });
-
-    for(const rec of Object.values(byAth)) {
-        await client.from('attendances').upsert(rec, { onConflict: 'session_id,athlete_id' });
-    }
-
-    getModal().close();
-    document.getElementById('btn-modal-save').style.display = '';
-    loadPartiteData();
-    alert('✅ Marcature salvate!');
-};
-
-/* ── LOCANDINA ── */
-async function openLocandinaModal(sessionId) {
-    const m = getModal();
-    const { data: session } = await client.from('sessions').select('*, teams(name,societies(name))').eq('id', sessionId).single();
-    if (!session) return;
-
-    const avv = session.opponent || session.title;
-    const data = new Date(session.session_date).toLocaleDateString('it-IT', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    const ora = session.match_time || 'Orario da definire';
-    const luogo = session.location || 'Campo da definire';
-    const squadra = session.teams?.name || '';
-    const societa = session.teams?.societies?.name || '';
-
-    m.open('🖼️ Locandina Partita', `
-        <div id="locandina-preview" style="background:linear-gradient(135deg,#0f1117 0%,#1a1d29 100%);border:2px solid #4f7cff;border-radius:16px;padding:30px;text-align:center;color:white;font-family:var(--fh,sans-serif);max-width:400px;margin:0 auto;">
-            <div style="font-size:11px;letter-spacing:2px;color:#7b9fff;text-transform:uppercase;margin-bottom:6px">${societa}</div>
-            <div style="font-size:14px;font-weight:600;color:#94a3b8;margin-bottom:20px">${squadra}</div>
-            <div style="font-size:38px;font-weight:800;margin-bottom:8px;letter-spacing:-1px">⚽</div>
-            <div style="font-size:13px;color:#94a3b8;margin-bottom:4px">VS</div>
-            <div style="font-size:26px;font-weight:800;color:#4f7cff;margin-bottom:24px">${avv.toUpperCase()}</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;background:rgba(255,255,255,.05);border-radius:12px;padding:16px;margin-bottom:20px;">
-                <div>
-                    <div style="font-size:10px;color:#64748b;letter-spacing:1px;margin-bottom:4px">📅 DATA</div>
-                    <div style="font-size:13px;font-weight:700;text-transform:capitalize">${data}</div>
-                </div>
-                <div>
-                    <div style="font-size:10px;color:#64748b;letter-spacing:1px;margin-bottom:4px">⏰ ORA</div>
-                    <div style="font-size:13px;font-weight:700">${ora}</div>
-                </div>
-            </div>
-            <div style="background:rgba(79,124,255,.12);border:1px solid rgba(79,124,255,.3);border-radius:10px;padding:12px;">
-                <div style="font-size:10px;color:#64748b;letter-spacing:1px;margin-bottom:4px">📍 DOVE</div>
-                <div style="font-size:13px;font-weight:600;color:#a5b4fc">${luogo}</div>
-            </div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:14px;">
-            <button onclick="downloadLocandina()" style="flex:1;padding:11px;background:#4f7cff;color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;">📥 Salva Immagine</button>
-        </div>
-    `);
-    document.getElementById('btn-modal-save').style.display = 'none';
-}
-
-window.downloadLocandina = function() {
-    const el = document.getElementById('locandina-preview');
-    if (!el) return;
-    if (typeof html2canvas === 'undefined') {
-        alert('html2canvas non disponibile. Usa lo screenshot del browser.');
-        return;
-    }
-    html2canvas(el, { backgroundColor: null, scale: 2 }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = 'locandina-partita.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    });
-};
-
-// Ripristina btn-modal-save alla chiusura del modal
-document.getElementById('btn-modal-close').addEventListener('click', function() {
-    const btn = document.getElementById('btn-modal-save');
-    if(btn) btn.style.display = '';
-});
-
-// Esposizione globale
-window.templatePartite = templatePartite;
-window.initPartite = initPartite;
-window.loadPartiteData = loadPartiteData;
-window.openPartitaModal = openPartitaModal;
-window.openConvocazioniModal = openConvocazioniModal;
-window.openMarcatureModal = openMarcatureModal;
-window.openLocandinaModal = openLocandinaModal;
-window.deletePartita = deletePartita;
-
-/* ═══════════════════════════════════════════════════════════
-   MIGRAZIONI SQL NECESSARIE — eseguire nel SQL Editor Supabase
-   ═══════════════════════════════════════════════════════════
-
-   -- Colonne partita sulla tabella sessions:
-   alter table sessions add column if not exists opponent text;
-   alter table sessions add column if not exists location text;
-   alter table sessions add column if not exists match_time time;
-   alter table sessions add column if not exists goals_for int;
-   alter table sessions add column if not exists goals_against int;
-   alter table sessions add column if not exists result_score text;
-
-   -- Colonne marcature sulla tabella attendances:
-   alter table attendances add column if not exists goals int default 0;
-   alter table attendances add column if not exists assists int default 0;
-   alter table attendances add column if not exists yellow_cards int default 0;
-   alter table attendances add column if not exists red_cards int default 0;
-   alter table attendances add column if not exists rating numeric(3,1);
-   alter table attendances add column if not exists is_called_up boolean default false;
-
-   -- Unique constraint prevenire duplicati atleta in sessione:
-   alter table attendances add constraint uq_att_session_athlete
-     unique (session_id, athlete_id);
-
-   -- Unique constraint prevenire duplicati atleta in stagione+categoria:
-   alter table athlete_team_seasons add constraint uq_ats_athlete_season_cat
-     unique (athlete_id, season_id, category_id);
-
-═══════════════════════════════════════════════════════════ */
+/* [QUI AGGIUNGEREMO LE FUNZIONI PER SPORT, SOCIETÀ, ECC. UNA ALLA VOLTA] */
 </script>
 </body>
 </html>
