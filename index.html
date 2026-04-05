@@ -2970,11 +2970,18 @@ async function openSessionModal(id = null) {
     let editData = null;
     let targetSoc = document.getElementById('filter-society-sess')?.value || window._currentSocietyId;
 
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isScopedStaff = ['dirigente','allenatore','responsabile'].includes(effRole);
+    const assignedTeamIds = isScopedStaff ? await window.loadUserAssignedTeams() : null;
+
     const [typesRes, teamsRes] = await Promise.all([
         client.from('session_types').select('*').order('name'),
         client.from('teams').select('id, name, category_id, season_id').eq('society_id', targetSoc).order('name')
     ]);
-    window._teamsList = teamsRes.data || [];
+    const allTeams = teamsRes.data || [];
+    window._teamsList = (isScopedStaff && assignedTeamIds?.length)
+        ? allTeams.filter(t => assignedTeamIds.includes(t.id))
+        : allTeams;
 
     if (isEdit) {
         const { data } = await client.from('sessions').select('*').eq('id', id).single();
