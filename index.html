@@ -2441,26 +2441,63 @@ window.handleDeleteStaff = async function(id) {
             </div>
         `);
 
+        // Per ruoli scoped: leggi i team_id e category_id assegnati a questo utente per la stagione attiva
+        let _scopedTeamIds = null;   // null = nessun filtro (admin), [] = nessuno assegnato
+        let _scopedCatIds  = null;
+        if (isScopedUser) {
+            const { data: ucs } = await client.from('user_category_seasons')
+                .select('team_id, category_id')
+                .eq('user_id', window._currentUserId)
+                .eq('season_id', activeSeasonId);
+            _scopedTeamIds = [...new Set((ucs || []).map(r => r.team_id).filter(Boolean))];
+            _scopedCatIds  = [...new Set((ucs || []).map(r => r.category_id).filter(Boolean))];
+        }
+
         const refreshTeams = async (catId) => {
             const mTeam = document.getElementById('m-link-team');
             mTeam.innerHTML = '<option value="">Intera Categoria</option>';
             if(!catId) return;
-            const { data } = await client.from('teams').select('id, name').eq('category_id', catId).eq('season_id', activeSeasonId).order('name');
+            let q = client.from('teams').select('id, name').eq('category_id', catId).eq('season_id', activeSeasonId).order('name');
+            // Per utenti scoped: mostra solo le squadre a cui sono assegnati
+            if (_scopedTeamIds !== null && _scopedTeamIds.length > 0) {
+                q = q.in('id', _scopedTeamIds);
+            } else if (_scopedTeamIds !== null && _scopedTeamIds.length === 0) {
+                // Nessuna squadra assegnata per questa categoria: niente opzioni
+                return;
+            }
+            const { data } = await q;
             data?.forEach(t => mTeam.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+            // Se c'è una sola squadra disponibile, pre-selezionala
+            if (data?.length === 1) mTeam.value = data[0].id;
         };
 
         const refreshLists = async (socId) => {
             if(!socId) return;
-            const [atletiRes, catsRes, assignedRes] = await Promise.all([
+            const [atletiRes, assignedRes] = await Promise.all([
                 client.from('athletes').select('id, name, surname').eq('society_id', socId).order('surname'),
-                client.from('categories').select('id, name').eq('society_id', socId).order('name'),
                 client.from('athlete_team_seasons').select('athlete_id').eq('season_id', activeSeasonId).eq('society_id', socId)
             ]);
             const assignedIds = (assignedRes.data || []).map(a => a.athlete_id);
             const available = (atletiRes.data || []).filter(a => !assignedIds.includes(a.id));
             document.getElementById('m-link-atleta').innerHTML = '<option value="">-- Seleziona --</option>' + available.map(a => `<option value="${a.id}">${a.surname.toUpperCase()} ${a.name}</option>`).join('');
-            document.getElementById('m-link-cat').innerHTML = '<option value="">-- Scegli --</option>' + (catsRes.data || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-            document.getElementById('m-link-team').innerHTML = '<option value="">Intera Categoria</option>';
+
+            // Categorie: per utenti scoped mostra solo quelle assegnate, altrimenti tutte della società
+            let catsData = [];
+            if (_scopedCatIds !== null && _scopedCatIds.length > 0) {
+                const { data } = await client.from('categories').select('id, name').in('id', _scopedCatIds).order('name');
+                catsData = data || [];
+            } else if (_scopedCatIds === null) {
+                const { data } = await client.from('categories').select('id, name').eq('society_id', socId).order('name');
+                catsData = data || [];
+            }
+            document.getElementById('m-link-cat').innerHTML = '<option value="">-- Scegli --</option>' + catsData.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            // Se una sola categoria disponibile, pre-selezionala e carica le squadre
+            if (catsData.length === 1) {
+                document.getElementById('m-link-cat').value = catsData[0].id;
+                await refreshTeams(catsData[0].id);
+            } else {
+                document.getElementById('m-link-team').innerHTML = '<option value="">Intera Categoria</option>';
+            }
         };
 
         document.getElementById('m-link-soc').onchange = (e) => refreshLists(e.target.value);
