@@ -633,8 +633,8 @@
                            'nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
                            'nav-sessioni','nav-partite','nav-import','nav-group-admin'],
             responsabile: ['nav-anagrafica-pura','nav-atleti','nav-group-admin'],
-            dirigente:    ['nav-anagrafica-pura','nav-atleti','nav-sessioni','nav-partite','nav-import'],
-            allenatore:   ['nav-anagrafica-pura','nav-atleti','nav-sessioni','nav-partite','nav-import'],
+            dirigente:    ['nav-atleti','nav-sessioni','nav-partite','nav-import'],
+            allenatore:   ['nav-atleti','nav-sessioni','nav-partite','nav-import'],
             genitore:     ['nav-atleti'],
         };
 
@@ -2273,20 +2273,50 @@ window.handleDeleteStaff = async function(id) {
 
     window.initAtleti = async function() {
         try {
+            const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+            const isScopedUser = ['dirigente','allenatore','responsabile','genitore'].includes(effRole);
+            const userSocId = window._currentSocietyId;
+
+            // Query base — se utente è scopato, filtra per la sua società
+            const socQuery = isScopedUser && userSocId
+                ? client.from('societies').select('*').eq('id', userSocId)
+                : client.from('societies').select('*').order('name');
+
+            const catQuery = isScopedUser && userSocId
+                ? client.from('categories').select('*').eq('society_id', userSocId).order('name')
+                : client.from('categories').select('*').order('name');
+
+            const teamQuery = isScopedUser && userSocId
+                ? client.from('teams').select('*').eq('society_id', userSocId).order('name')
+                : client.from('teams').select('*').order('name');
+
             const [socs, seas, cats, teams] = await Promise.all([
-                client.from('societies').select('*').order('name'),
+                socQuery,
                 client.from('seasons').select('*').order('name'),
-                client.from('categories').select('*').order('name'),
-                client.from('teams').select('*').order('name')
+                catQuery,
+                teamQuery
             ]);
-            _lookupSocs = Object.fromEntries(socs.data.map(s => [s.id, s.name]));
-            _lookupSeas = Object.fromEntries(seas.data.map(s => [s.id, s.name]));
+
+            _lookupSocs = Object.fromEntries((socs.data||[]).map(s => [s.id, s.name]));
+            _lookupSeas = Object.fromEntries((seas.data||[]).map(s => [s.id, s.name]));
             _allCategories = cats.data || [];
             _allTeams = teams.data || [];
+
             const fSoc = document.getElementById('f-atleta-soc');
             const fSea = document.getElementById('f-atleta-sea');
-            if(fSoc) fSoc.innerHTML = '<option value="">Tutte</option>' + socs.data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-            if(fSea) fSea.innerHTML = seas.data.map(s => `<option value="${s.id}" ${s.is_active ? 'selected' : ''}>${s.name}</option>`).join('');
+
+            if (isScopedUser && userSocId) {
+                // Utente limitato: nascondi filtro società, pre-imposta la sua
+                if (fSoc) {
+                    fSoc.closest('div').style.display = 'none'; // nascondi il filtro società
+                    fSoc.innerHTML = (socs.data||[]).map(s => `<option value="${s.id}" selected>${s.name}</option>`).join('');
+                }
+            } else {
+                if(fSoc) fSoc.innerHTML = '<option value="">Tutte</option>' + (socs.data||[]).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            }
+
+            if(fSea) fSea.innerHTML = (seas.data||[]).map(s => `<option value="${s.id}" ${s.is_active ? 'selected' : ''}>${s.name}</option>`).join('');
+
             window.updateAtletaCategoryFilter();
             await _fetchAtletiData();
         } catch (err) { console.error(err); }
@@ -2295,20 +2325,42 @@ window.handleDeleteStaff = async function(id) {
     /* --- ASSOCIAZIONE ATLETI (LOGICA A CASCATA) --- */
     window.openAggiungiAtletiASquadra = async function() {
         const activeSeasonId = document.getElementById('f-atleta-sea').value;
-        const initialSocId = document.getElementById('f-atleta-soc').value;
+        const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const isScopedUser = ['dirigente','allenatore','responsabile','genitore'].includes(effRole);
+        const userSocId = window._currentSocietyId;
+
+        // Se utente scoped usa direttamente la propria società senza mostrare il select
+        const initialSocId = isScopedUser && userSocId
+            ? userSocId
+            : (document.getElementById('f-atleta-soc')?.value || '');
+
         if(!activeSeasonId) return alert("Seleziona una Stagione dai filtri.");
 
-        const { data: allSocs } = await client.from('societies').select('id, name').order('name');
+        let allSocs = [];
+        if (isScopedUser && userSocId) {
+            const { data: mySoc } = await client.from('societies').select('id, name').eq('id', userSocId).maybeSingle();
+            if (mySoc) allSocs = [mySoc];
+        } else {
+            const { data: socs } = await client.from('societies').select('id, name').order('name');
+            allSocs = socs || [];
+        }
+
+        const socSelectorHtml = isScopedUser && userSocId
+            ? `<div style="background:#f0f9ff; padding:10px; border-radius:8px; border:1px solid #bae6fd; font-size:12px; color:#0369a1; margin-bottom:5px;">
+                <strong>Società:</strong> ${allSocs[0]?.name || ''}
+                <input type="hidden" id="m-link-soc" value="${userSocId}">
+               </div>`
+            : `<div>
+                <label style="font-weight:bold; font-size:11px; color:#2563eb;">1. SELEZIONA SOCIETÀ</label>
+                <select id="m-link-soc" style="width:100%; padding:10px; border-radius:8px; border:2px solid #2563eb;">
+                    <option value="">-- Scegli Società --</option>
+                    ${allSocs.map(s => `<option value="${s.id}" ${s.id == initialSocId ? 'selected' : ''}>${s.name}</option>`).join('')}
+                </select>
+               </div>`;
 
         modal.open('🔗 Aggiungi Atleti alla Stagione', `
             <div style="display:grid; gap:15px; padding:10px 0;">
-                <div>
-                    <label style="font-weight:bold; font-size:11px; color:#2563eb;">1. SELEZIONA SOCIETÀ</label>
-                    <select id="m-link-soc" style="width:100%; padding:10px; border-radius:8px; border:2px solid #2563eb;">
-                        <option value="">-- Scegli Società --</option>
-                        ${allSocs.map(s => `<option value="${s.id}" ${s.id == initialSocId ? 'selected' : ''}>${s.name}</option>`).join('')}
-                    </select>
-                </div>
+                ${socSelectorHtml}
                 <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
                 <div>
                     <label style="font-weight:bold; font-size:11px; color:#64748b;">2. ATLETA DISPONIBILE *</label>
@@ -2391,10 +2443,17 @@ window.handleDeleteStaff = async function(id) {
     };
 
     async function _fetchAtletiData() {
-        const { data, error } = await client.from('athlete_team_seasons').select(`
+        const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const isScopedUser = ['dirigente','allenatore','responsabile','genitore'].includes(effRole);
+        const userSocId = window._currentSocietyId;
+
+        let q = client.from('athlete_team_seasons').select(`
             id, jersey_number, role, season_id, team_id, athlete_id, society_id, category_id,
             athletes!inner (name, surname, born_date), teams (name), categories (name)
         `);
+        if (isScopedUser && userSocId) q = q.eq('society_id', userSocId);
+
+        const { data, error } = await q;
         if(error) return console.error(error);
         _allAtletiAssignments = data || [];
         window.applyAtletiFilters();
@@ -2934,53 +2993,34 @@ async function initPartite() {
     const selSoc = document.getElementById('f-match-soc');
     
     if (selSoc && (selSoc.value === "" || selSoc.options[0].text.includes("Caricamento"))) {
-        try {
-            const { data: { user: authUser } } = await client.auth.getUser();
-            if (!authUser) throw new Error("Utente non autenticato");
+        // Usa il ruolo e la società già caricati al login — non serve rileggere il DB
+        const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const isGlobal = ['admin', 'manager'].includes(effRole);
+        const userSocId = window._currentSocietyId;
 
-            // --- LETTURA DALLA TABELLA USERS ---
-            const { data: userData, error: userError } = await client.from('users')
-                .select('role, society_id')
-                .eq('id', authUser.id)
-                .single();
-
-            const role = userData?.role || 'manager';
-            const societyId = userData?.society_id;
-
-            if (role === 'admin') {
-                // ADMIN: Carica tutte le società in ordine alfabetico
-                const { data: socs } = await client.from('societies').select('id, name').order('name', { ascending: true });
-                if (socs && socs.length > 0) {
-                    selSoc.innerHTML = socs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-                    // Se l'admin ha una society_id specifica la usa, altrimenti la prima della lista
-                    window._currentSocietyId = societyId || socs[0].id;
-                    selSoc.value = window._currentSocietyId;
-                }
-            } else {
-                // MANAGER: Nasconde filtro e forza società
-                const container = document.getElementById('soc-filter-container');
-                if (container) container.style.display = 'none';
-
-                if (societyId) {
-                    selSoc.innerHTML = `<option value="${societyId}" selected>Società corrente</option>`;
-                    window._currentSocietyId = societyId;
-                } else {
-                    selSoc.innerHTML = `<option value="">Nessuna società</option>`;
-                    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">Utente senza società assegnata.</td></tr>';
-                    return;
-                }
+        if (isGlobal) {
+            // Admin/Manager: mostra tutte le società
+            const { data: socs } = await client.from('societies').select('id, name').order('name', { ascending: true });
+            if (socs && socs.length > 0) {
+                selSoc.innerHTML = socs.map(s => `<option value="${s.id}" ${s.id === userSocId ? 'selected' : ''}>${s.name}</option>`).join('');
+                window._currentSocietyId = userSocId || socs[0].id;
+                selSoc.value = window._currentSocietyId;
             }
-            return reloadMatchSubFilters();
-        } catch (err) {
-            console.error("Errore initPartite:", err);
-            // Fallback estremo se la tabella users fallisce: prova a caricare come admin se possibile
-            const { data: socs } = await client.from('societies').select('id, name').order('name');
-            if (socs?.length > 0) {
-                selSoc.innerHTML = socs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-                window._currentSocietyId = socs[0].id;
-                return reloadMatchSubFilters();
+        } else {
+            // Tutti gli altri ruoli (presidente, segretario, dirigente, allenatore...):
+            // Nasconde il filtro società e usa solo la propria
+            const container = document.getElementById('soc-filter-container');
+            if (container) container.style.display = 'none';
+
+            if (userSocId) {
+                selSoc.innerHTML = `<option value="${userSocId}" selected>Società corrente</option>`;
+                selSoc.value = userSocId; // forza il valore nel DOM
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; color:#94a3b8;">Profilo non associato a una società.</td></tr>';
+                return;
             }
         }
+        return reloadMatchSubFilters();
     }
 
     const socId = selSoc?.value || window._currentSocietyId;
