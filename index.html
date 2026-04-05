@@ -2824,7 +2824,7 @@ async function _sessFillScopedFilters() {
     const selTeam = document.getElementById('filter-team-sess');
     const activeCat = selCat?.value;
     const teamsForCat = activeCat
-        ? window._sessState.scopedTeams.filter(t => t.category_id === activeCat)
+        ? window._sessState.scopedTeams.filter(t => String(t.category_id) === String(activeCat))
         : window._sessState.scopedTeams;
     if (selTeam) {
         selTeam.innerHTML = '<option value="">Tutte le squadre</option>' +
@@ -2852,7 +2852,7 @@ window.sessOnCatChange = function() {
     if (isScoped) {
         const activeCat = document.getElementById('filter-category-sess')?.value;
         const teams = activeCat
-            ? window._sessState.scopedTeams.filter(t => t.category_id === activeCat)
+            ? window._sessState.scopedTeams.filter(t => String(t.category_id) === String(activeCat))
             : window._sessState.scopedTeams;
         const selTeam = document.getElementById('filter-team-sess');
         if (selTeam) {
@@ -3078,7 +3078,7 @@ async function reloadTeamsOnly() {
     if (!selTeam) return;
 
     let filtered = window._currentSocTeams || [];
-    if (catId) filtered = filtered.filter(t => t.category_id === catId);
+    if (catId) filtered = filtered.filter(t => String(t.category_id) === String(catId));
 
     selTeam.innerHTML = '<option value="">Tutte le squadre</option>' +
         filtered.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
