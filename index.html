@@ -838,6 +838,7 @@
 
             case 'partite':
                 content.innerHTML = templatePartite();
+                window._matchState = { seasons: [] }; // reset cache stagioni ad ogni navigazione
                 initPartite();
                 break;
              case 'import-atleti':
@@ -3321,6 +3322,12 @@ function templatePartite() {
                 </select>
             </div>
             <div>
+                <label style="font-size:11px; color:#64748b; font-weight:bold;">STAGIONE</label>
+                <select id="f-match-season" style="width:100%; padding:8px; margin-top:4px;" onchange="matchOnSeasonChange()">
+                    <option value="">Tutte le stagioni</option>
+                </select>
+            </div>
+            <div>
                 <label style="font-size:11px; color:#64748b; font-weight:bold;">CATEGORIA</label>
                 <select id="f-match-cat" style="width:100%; padding:8px; margin-top:4px;" onchange="reloadMatchTeamsOnly()">
                     <option value="">Tutte</option>
@@ -3400,6 +3407,7 @@ async function initPartite() {
                 return;
             }
         }
+        await _matchFillSeasons();
         return reloadMatchSubFilters();
     }
 
@@ -3407,8 +3415,10 @@ async function initPartite() {
     if (!socId) return;
 
     // --- FILTRI E QUERY SESSIONS ---
-    const dateFrom = document.getElementById('f-match-from')?.value;
-    const dateTo = document.getElementById('f-match-to')?.value;
+    // Stagione: se selezionata, usa le sue date; altrimenti usa i campi da/a data
+    const seasonRange = _matchGetSeasonRange();
+    const dateFrom = seasonRange ? seasonRange.from : document.getElementById('f-match-from')?.value;
+    const dateTo   = seasonRange ? seasonRange.to   : document.getElementById('f-match-to')?.value;
     const teamFilter = document.getElementById('f-match-team')?.value;
 
     const { data: types } = await client.from('session_types').select('id, name');
@@ -3449,6 +3459,46 @@ async function initPartite() {
 /**
  * 3. LOGICA FILTRI SECONDARI
  */
+
+/* Stato stagioni per Match Center */
+window._matchState = window._matchState || { seasons: [] };
+
+/* Carica stagioni nel select una sola volta */
+async function _matchFillSeasons() {
+    const sel = document.getElementById('f-match-season');
+    if (!sel || window._matchState.seasons.length > 0) return;
+    const { data } = await client.from('seasons')
+        .select('id, name, start_date, end_date, is_active')
+        .order('name', { ascending: false });
+    window._matchState.seasons = data || [];
+    (data || []).forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = s.name + (s.is_active ? ' ✓' : '');
+        if (s.is_active) o.selected = true;
+        sel.appendChild(o);
+    });
+}
+
+/* Ritorna {from, to} della stagione selezionata, o null */
+function _matchGetSeasonRange() {
+    const sel = document.getElementById('f-match-season');
+    if (!sel || !sel.value) return null;
+    const s = window._matchState.seasons.find(x => x.id === sel.value);
+    return (s?.start_date && s?.end_date) ? { from: s.start_date, to: s.end_date } : null;
+}
+
+/* Quando cambia la stagione: mostra/nascondi i campi data manuali e ricarica */
+window.matchOnSeasonChange = function() {
+    const hasSeason = !!document.getElementById('f-match-season')?.value;
+    const fromEl = document.getElementById('f-match-from');
+    const toEl   = document.getElementById('f-match-to');
+    // Se stagione selezionata, i campi data manuali diventano readonly (la stagione li sovrascrive)
+    if (fromEl) { fromEl.disabled = hasSeason; fromEl.style.opacity = hasSeason ? '0.4' : '1'; }
+    if (toEl)   { toEl.disabled   = hasSeason; toEl.style.opacity   = hasSeason ? '0.4' : '1'; }
+    initPartite();
+};
+
 async function reloadMatchSubFilters() {
     const socId = document.getElementById('f-match-soc')?.value || window._currentSocietyId;
     if (!socId) return;
@@ -3497,6 +3547,7 @@ window.templatePartite = templatePartite;
 window.initPartite = initPartite;
 window.reloadMatchSubFilters = reloadMatchSubFilters;
 window.reloadMatchTeamsOnly = reloadMatchTeamsOnly;
+window.matchOnSeasonChange = window.matchOnSeasonChange;
 
 /**
  * ============================================================
