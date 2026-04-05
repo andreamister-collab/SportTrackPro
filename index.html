@@ -827,7 +827,12 @@
                 
             case 'sessioni':
                 content.innerHTML = templateSessioni();
-                if (window._sessState) window._sessState.initialized = false;
+                // Reset completo dello stato filtri ad ogni navigazione
+                window._sessState = {
+                    seasons: [],
+                    scopedTeams: [],
+                    initialized: false,
+                };
                 initSessioni();
                 break;
 
@@ -2835,6 +2840,9 @@ async function _sessFillScopedFilters() {
         selType.innerHTML = '<option value="">Tutti i tipi</option>' +
             (types || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     }
+
+    /* Dopo aver popolato tutti i filtri, carica le sessioni */
+    initSessioni();
 }
 
 /* Ricarica squadre nel select quando l'utente cambia categoria (scoped) */
@@ -2933,14 +2941,12 @@ async function initSessioni() {
         }
 
     } else if (isScoped) {
-        /* Carica filtri se non ancora inizializzati O se i select sono stati resettati (cambio pagina) */
-        const catSel = document.getElementById('filter-category-sess');
-        const needsInit = !window._sessState.initialized || 
-                          (window._sessState.scopedTeams.length > 0 && catSel && catSel.options.length <= 1);
-        if (needsInit) {
+        /* Carica/ricarica filtri: _sessState viene resettato ad ogni navigazione */
+        if (!window._sessState.initialized) {
             window._sessState.initialized = true;
             await _sessFillScopedFilters();
-            /* _sessFillScopedFilters auto-seleziona se c'è 1 sola categoria/squadra */
+            /* _sessFillScopedFilters popola filtri e richiama initSessioni alla fine — usciamo qui */
+            return;
         }
     }
 
@@ -2950,9 +2956,14 @@ async function initSessioni() {
     const fType   = document.getElementById('filter-type-sess')?.value;
     const range   = _sessGetRange();
 
+    /* Costruzione query — per scoped NON usiamo society_id ma i team assegnati */
     let query = client.from('sessions')
-        .select('*, session_types(name), teams(id, name, categories(name)), attendances(status)')
-        .eq('society_id', targetSociety);
+        .select('*, session_types(name), teams(id, name, categories(name)), attendances(status)');
+
+    if (!isScoped) {
+        // Admin/SocAdmin: filtra per società
+        query = query.eq('society_id', targetSociety);
+    }
 
     if (fCat)  query = query.eq('category_id', fCat);
     if (fType) query = query.eq('type_id', fType);
@@ -2960,16 +2971,19 @@ async function initSessioni() {
     /* Filtro stagione per date */
     if (range) query = query.gte('session_date', range.from).lte('session_date', range.to);
 
-    /* Ruoli scoped: limita SEMPRE alle squadre assegnate (fTeam affina ulteriormente) */
+    /* Ruoli scoped: filtra per i team assegnati, con eventuale affinamento da fTeam */
     if (isScoped) {
         const ids = window._sessState.scopedTeams.map(t => t.id).filter(Boolean);
         if (ids.length > 0) {
-            // Se l'utente ha scelto una squadra specifica, usa quella (se appartiene alle sue)
             if (fTeam && ids.includes(fTeam)) {
                 query = query.eq('team_id', fTeam);
             } else {
                 query = query.in('team_id', ids);
             }
+        } else {
+            // Nessun team assegnato: mostra niente
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#94a3b8;">Nessuna squadra assegnata.</td></tr>';
+            return;
         }
     } else if (fTeam) {
         query = query.eq('team_id', fTeam);
