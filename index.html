@@ -3,536 +3,562 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SportTrackPro</title>
+    <title>SportTrackPro - Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 	<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 	<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        /* ─── TOKENS ─── */
         :root {
-            --bg:      #08090c;
-            --surface: #0f1117;
-            --panel:   #13151e;
-            --border:  rgba(255,255,255,0.07);
-            --border2: rgba(255,255,255,0.13);
-            --text:    #e8eaf0;
-            --muted:   #565c73;
-            --accent:  #4f7cff;
-            --accent2: #7b9fff;
-            --green:   #22c55e;
-            --red:     #ef4444;
-            --amber:   #f59e0b;
-            --sw: 220px;
-            --r:  10px;
-            --r2: 14px;
-            --fh: 'Syne', sans-serif;
-            --fb: 'DM Sans', sans-serif;
-            /* legacy aliases usati dal vecchio JS */
-            --primary: #4f7cff;
-            --danger:  #ef4444;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --accent: #06b6d4;
+            --bg: #f0f4f8;
+            --card: #ffffff;
+            --sidebar: #0f172a;
+            --sidebar-border: rgba(255,255,255,0.06);
+            --sidebar-active: rgba(37,99,235,0.25);
+            --sidebar-hover: rgba(255,255,255,0.06);
+            --danger: #ef4444;
             --warning: #f59e0b;
+            --success: #10b981;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
         }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: var(--fb);
+            font-family: 'DM Sans', system-ui, sans-serif;
             background: var(--bg);
-            color: var(--text);
             min-height: 100vh;
-            font-size: 14px;
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
+            color: var(--text-main);
         }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
 
-        /* ── LOGIN ── */
+        /* ══════════════════════════════════════
+           LOGIN PAGE
+        ══════════════════════════════════════ */
         #login-wrap {
-            display: flex; align-items: center; justify-content: center;
-            min-height: 100vh; padding: 24px;
-            background:
-                radial-gradient(ellipse 55% 45% at 25% 20%, rgba(79,124,255,.13) 0%, transparent 65%),
-                radial-gradient(ellipse 45% 40% at 80% 75%, rgba(79,124,255,.07) 0%, transparent 65%),
-                var(--bg);
-        }
-        .login-box {
-            background: var(--panel); border: 1px solid var(--border2);
-            border-radius: var(--r2); padding: 44px 40px;
-            width: 100%; max-width: 400px;
-            box-shadow: 0 32px 80px rgba(0,0,0,.5);
-            animation: fadeUp .45s ease both;
-        }
-        @keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
-        .login-brand { display:flex;align-items:center;gap:12px;margin-bottom:34px; }
-        .login-brand-icon { width:40px;height:40px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0; }
-        .login-brand-name { font-family:var(--fh);font-size:19px;font-weight:800;letter-spacing:-.4px; }
-        .login-brand-sub  { font-size:11px;color:var(--muted);margin-top:1px; }
-        .lf { margin-bottom:16px; }
-        .lf label { display:block;font-size:11px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin-bottom:6px; }
-        .lf input { width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:11px 14px;color:var(--text);font-family:var(--fb);font-size:14px;outline:none;transition:border-color .15s;margin:0; }
-        .lf input:focus { border-color:var(--accent); }
-        .login-submit { width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-family:var(--fb);font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;transition:background .15s,transform .1s; }
-        .login-submit:hover  { background:#3a6be8; }
-        .login-submit:active { transform:scale(.98); }
-        #error-msg { margin-top:14px;padding:10px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--r);color:#f87171;font-size:13px;display:none; }
-
-        /* ── APP SHELL ── */
-        #app { display: none; }
-
-        /* ── Sidebar ── */
-        #sidebar {
-            width: var(--sw); background: var(--panel); border-right: 1px solid var(--border);
-            position: fixed; top:0; left:0; height:100vh;
-            display:flex; flex-direction:column; overflow-y:auto; z-index:50;
-        }
-        .sb-top { padding:20px 18px 16px; border-bottom:1px solid var(--border); }
-        .sb-brand { display:flex;align-items:center;gap:10px; }
-        .sb-brand-icon { width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0; }
-        .sb-brand-name { font-family:var(--fh);font-size:14px;font-weight:800;letter-spacing:-.3px; }
-        .sb-nav { padding:14px 10px; flex:1; }
-        .sb-grp { font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:0 8px;margin:14px 0 5px;display:block; }
-        .sb-grp:first-child { margin-top:0; }
-        #sidebar a {
-            display:flex;align-items:center;gap:9px;
-            padding:8px 10px;border-radius:8px;
-            color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;
-            cursor:pointer;margin-bottom:1px;transition:background .12s,color .12s;
-        }
-        #sidebar a svg { width:15px;height:15px;flex-shrink:0;opacity:.6; }
-        #sidebar a:hover  { background:rgba(255,255,255,.05);color:var(--text); }
-        #sidebar a.active { background:rgba(79,124,255,.15);color:var(--accent2); }
-        #sidebar a.active svg { opacity:1; }
-        .sb-foot { padding:14px 10px 16px; border-top:1px solid var(--border); }
-        #user-info { font-size:11px;color:var(--muted);padding:0 8px;margin-bottom:10px;display:block;word-break:break-word; }
-        #btn-logout {
-            width:100%;display:flex;align-items:center;gap:8px;
-            padding:9px 10px;border-radius:8px;
-            background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);
-            color:#f87171;font-family:var(--fb);font-size:13px;font-weight:500;
-            cursor:pointer;transition:background .12s;
-        }
-        #btn-logout:hover { background:rgba(239,68,68,.15); }
-
-        /* ── Topbar ── */
-        #topbar {
-            position:fixed;top:0;left:var(--sw);right:0;height:52px;
-            background:rgba(8,9,12,.88);
-            backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-            border-bottom:1px solid var(--border);
-            display:flex;align-items:center;padding:0 28px;z-index:40;
-        }
-        #topbar-title { font-family:var(--fh);font-size:14px;font-weight:700;letter-spacing:-.2px; }
-
-        /* ── Content ── */
-        #content {
-            margin-left: var(--sw);
-            padding: 72px 28px 28px;
             min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0f172a 100%);
+            padding: 2rem;
         }
 
-        /* ── COMPONENTI ── */
-        .card {
+        .login-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2.5rem 2rem;
             width: 100%;
-            background: var(--panel);
+            max-width: 360px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+        }
+
+        .login-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 0.4rem;
+        }
+
+        .login-logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #2563eb, #06b6d4);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .login-logo h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.3rem;
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .login-subtitle {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.82rem;
+            margin-bottom: 2rem;
+            padding-left: 50px;
+        }
+
+        .login-card label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.45);
+            margin-bottom: 0.4rem;
+        }
+
+        .login-card input {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.9rem;
+            font-family: inherit;
+            margin-bottom: 1rem;
+            margin-top: 0;
+            transition: border-color 0.2s;
+        }
+        .login-card input:focus {
+            outline: none;
+            border-color: #2563eb;
+            background: rgba(37,99,235,0.1);
+        }
+        .login-card input::placeholder { color: rgba(255,255,255,0.25); }
+
+        .btn-login {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            letter-spacing: 0.03em;
+            margin-top: 0.5rem;
+        }
+        .btn-login:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(37,99,235,0.45); }
+        .btn-login:active { transform: translateY(0); }
+
+        /* ══════════════════════════════════════
+           APP LAYOUT
+        ══════════════════════════════════════ */
+        #app { display: none; min-height: 100vh; }
+
+        /* ── SIDEBAR ── */
+        #sidebar {
+            width: 240px;
+            background: var(--sidebar);
+            color: #94a3b8;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 100;
+            border-right: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .sidebar-header {
+            padding: 1.25rem 1rem 1rem;
+            border-bottom: 1px solid var(--sidebar-border);
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-brand-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #2563eb, #06b6d4);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-brand-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.3px;
+        }
+
+        .sidebar-user-pill {
+            margin-top: 0.75rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sidebar-user-pill span { color: rgba(255,255,255,0.8); font-weight: 600; }
+
+        /* MENU GROUPS */
+        .sidebar-nav { padding: 0.75rem 0.75rem; flex: 1; }
+
+        .sidebar-group-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.2);
+            padding: 0.6rem 0.5rem 0.3rem;
+            margin-top: 0.5rem;
+        }
+
+        #sidebar a {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 0.55rem 0.75rem;
+            color: #94a3b8;
+            text-decoration: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 1px;
+            font-weight: 500;
+            font-size: 0.82rem;
+            transition: all 0.15s;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        #sidebar a:hover {
+            background: var(--sidebar-hover);
+            color: #e2e8f0;
+        }
+
+        #sidebar a.active {
+            background: var(--sidebar-active);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        #sidebar a.active::before {
+            content: '';
+            display: block;
+            width: 3px;
+            height: 16px;
+            background: #2563eb;
+            border-radius: 2px;
+            position: absolute;
+            left: 0;
+        }
+        #sidebar a { position: relative; }
+
+        .sidebar-footer {
+            padding: 0.75rem;
+            border-top: 1px solid var(--sidebar-border);
+        }
+
+        .btn-logout {
+            width: 100%;
+            background: rgba(239,68,68,0.12);
+            border: 1px solid rgba(239,68,68,0.2);
+            color: #f87171;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-logout:hover { background: rgba(239,68,68,0.2); color: #fca5a5; }
+
+        /* IMPORT SPECIAL LINK */
+        #sidebar a[data-section="import-atleti"] {
+            background: rgba(37,99,235,0.15);
+            color: #93c5fd;
+            border: 1px solid rgba(37,99,235,0.2);
+            font-weight: 800;
+            margin-top: 4px;
+        }
+        #sidebar a[data-section="import-atleti"]:hover {
+            background: rgba(37,99,235,0.25);
+        }
+
+        /* ── MAIN CONTENT ── */
+        /* #app viene impostato a flex dal JS al login */
+        #content {
+            margin-left: 240px;
+            padding: 1.75rem 2rem;
+            min-height: 100vh;
+            overflow-x: hidden;
+            width: calc(100% - 240px);
+            box-sizing: border-box;
+            flex: 1;
+        }
+
+        /* Assicura che tutte le card occupino la larghezza piena */
+        #content .card,
+        #content > div {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        /* Fix: quando #app è flex, il content deve espandersi */
+        #app[style*="flex"] {
+            width: 100%;
+        }
+
+        /* ══════════════════════════════════════
+           COMPONENTS
+        ══════════════════════════════════════ */
+        .card {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
             border: 1px solid var(--border);
-            border-radius: var(--r2);
-            padding: 28px 32px;
         }
+
         .header {
-            display:flex;justify-content:space-between;align-items:center;
-            margin-bottom:24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
         }
-        .header h2 { font-family:var(--fh);font-size:17px;font-weight:700;letter-spacing:-.3px; }
 
-        /* ── BUTTONS ── */
+        .header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* BUTTONS */
         .btn {
-            display:inline-flex;align-items:center;gap:6px;
-            padding:9px 18px;background:var(--accent);color:#fff;
-            border:none;border-radius:var(--r);
-            font-family:var(--fb);font-size:13px;font-weight:600;
-            cursor:pointer;transition:background .14s,transform .1s;letter-spacing:.2px;
-            white-space:nowrap;
+            padding: 0.55rem 1.1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.83rem;
+            font-family: inherit;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
-        .btn:hover  { background:#3a6be8; }
-        .btn:active { transform:scale(.97); }
+        .btn:hover { background: var(--primary-dark); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
 
-        /* btn-sm: icona quadrata 32×32, oppure .wide per testo */
         .btn-sm {
-            display:inline-flex;align-items:center;justify-content:center;
-            width:32px;height:32px;
-            border:none;border-radius:8px;color:#fff;
-            cursor:pointer;font-size:15px;margin-left:5px;
-            transition:opacity .15s,transform .1s;flex-shrink:0;
+            padding: 0.35rem 0.65rem;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-family: inherit;
+            font-weight: 600;
+            margin-left: 3px;
+            transition: all 0.12s;
         }
-        .btn-sm:hover  { opacity:.82; }
-        .btn-sm:active { transform:scale(.92); }
-        .btn-sm.wide   { width:auto;padding:0 14px;font-size:12px;font-weight:600; }
-        .btn-warning { background:#f59e0b; }   /* matita gialla */
-        .btn-danger  { background:#ef4444; }   /* cestino rosso */
-        .btn-info    { background:#8b5cf6; }   /* presenze viola */
-        .btn-safe    { background:#22c55e; }   /* attiva verde */
-        .btn-neutral { background:#475569; }   /* spegni grigio */
-        .btn-logout-old { background:var(--red); }
+        .btn-sm:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
-        /* btn-icon-atleta (sezione anagrafica) */
-        .btn-icon-atleta {
-            border:none;width:32px;height:32px;
-            display:inline-flex;align-items:center;justify-content:center;
-            border-radius:8px;cursor:pointer;transition:.15s;margin-left:5px;font-size:15px;
-        }
-        .btn-icon-atleta.edit   { background:rgba(245,158,11,.15);color:#fbbf24; }
-        .btn-icon-atleta.delete { background:rgba(239,68,68,.15);color:#f87171; }
-        .btn-icon-atleta.link   { background:rgba(34,197,94,.12);color:#4ade80; }
-        .btn-icon-atleta:hover  { opacity:.8; }
+        .btn-warning { background: #f59e0b; }
+        .btn-danger  { background: #ef4444; }
 
-        /* ── TABLE ── */
-        table { width:100%;border-collapse:collapse; }
-        thead tr { border-bottom:1px solid var(--border2); }
-        th {
-            padding:10px 14px;text-align:left;
-            font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
-            color:var(--muted);background:transparent;
-        }
-        td { padding:13px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle; }
-        tr:last-child td { border-bottom:none; }
-        tbody tr { transition:background .1s; }
-        tbody tr:hover td, .att-row-data:hover { background:rgba(255,255,255,.025) !important; }
+        /* TABLES */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem 0.9rem; border-bottom: 1px solid #f1f5f9; text-align: left; }
+        th { background: #f8fafc; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+        tr:hover td { background: #fafbff; }
+        tr:last-child td { border-bottom: none; }
 
-        /* ── BADGES ── */
-        .badge { display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.2px; }
-        .badge-active, .active    { background:rgba(34,197,94,.15);color:#4ade80; }
-        .badge-inactive, .inactive{ background:rgba(255,255,255,.06);color:var(--muted); }
-        .badge-default            { background:rgba(255,255,255,.06);color:var(--muted); }
+        /* BADGES */
+        .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+        .badge-active   { background: #dcfce7; color: #166534; }
+        .badge-inactive { background: #f1f5f9; color: #475569; }
+        .badge-default  { background: #e2e8f0; color: #475569; }
 
-        /* ── INPUTS ── */
-        input, select, textarea {
-            width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);
-            padding:9px 12px;color:var(--text);font-family:var(--fb);font-size:13px;
-            outline:none;margin-bottom:10px;margin-top:3px;transition:border-color .14s;
-        }
-        input:focus, select:focus, textarea:focus { border-color:var(--accent); }
-        select option { background:var(--panel); }
-        label { display:block;font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-top:4px; }
-
-        /* ── MODAL ── */
+        /* MODAL */
         .modal-overlay {
-            position:fixed;inset:0;background:rgba(0,0,0,.65);
-            display:none;align-items:center;justify-content:center;
-            z-index:1000;backdrop-filter:blur(4px);
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
         }
-        .modal-active { display:flex !important; }
         .modal-content {
-            background:var(--panel);border:1px solid var(--border2);
-            border-radius:var(--r2);width:90%;max-width:480px;
-            box-shadow:0 24px 80px rgba(0,0,0,.6);
-            animation:mIn .18s ease both;overflow:hidden;padding:0;
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
         }
-        @keyframes mIn { from{opacity:0;transform:scale(.96) translateY(8px)} to{opacity:1;transform:none} }
-        #modal-title { font-family:var(--fh);font-size:15px;font-weight:700;padding:18px 24px;border-bottom:1px solid var(--border);margin:0; }
-        #modal-body  { padding:20px 24px 8px; }
-        .modal-content > div:last-child {
-            display:flex;gap:10px;justify-content:flex-end;
-            padding:14px 24px 18px;border-top:1px solid var(--border);
-        }
-        #btn-modal-close {
-            background:transparent;border:1px solid var(--border2);
-            color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:500;cursor:pointer;
-            padding:9px 18px;border-radius:var(--r);transition:background .13s,color .13s;
-        }
-        #btn-modal-close:hover { background:rgba(255,255,255,.05);color:var(--text); }
+        .modal-active { display: flex; }
 
-        /* ── MISC ── */
-        .star-rating { display:flex;gap:3px;user-select:none; }
-        .star { font-size:1.4rem;color:var(--border2);transition:all .14s;cursor:pointer; }
-        .star.active { color:var(--amber) !important; }
-        .star:hover  { transform:scale(1.2); }
+        #modal-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+        }
+
+        /* FORM INPUTS */
+        input:not(.login-card input), select { 
+            width: 100%;
+            padding: 0.6rem 0.85rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 0.85rem;
+            margin-top: 0.25rem;
+            font-size: 0.875rem;
+            font-family: inherit;
+            color: var(--text-main);
+            background: #fff;
+            transition: border-color 0.15s;
+        }
+        input:not(.login-card input):focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+
+        /* STAR RATINGS */
+        .star-rating { display: flex; gap: 3px; user-select: none; }
+        .star { font-size: 1.5rem; color: #cbd5e1; transition: all 0.2s ease; cursor: pointer; }
+        .star.active { color: #f59e0b !important; }
+        .star:hover { transform: scale(1.2); }
+        .att-row-data:hover { background: #f8fafc; }
+
+        /* SESSION FILTER */
         #filter-society-sess {
-            padding:8px 12px;border-radius:8px;border:1px solid var(--border2);
-            font-weight:600;color:var(--accent2);background:var(--panel);
-            outline:none;width:auto;margin:0;
+            padding: 8px;
+            border-radius: 8px;
+            border: 2px solid #2563eb;
+            font-weight: 600;
+            color: #2563eb;
+            background: white;
+            outline: none;
         }
-        h2, h3 { font-family:var(--fh);letter-spacing:-.3px; }
-        p { color:var(--muted);font-size:13px; }
-		/* Container del sottomenu */
-.nav-submenu {
-    display: none; /* Nascosto di base */
-    padding-left: 20px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 0 0 8px 8px;
-}
 
-/* Mostra il sottomenu quando si passa sopra al genitore o alla voce stessa */
-.nav-item-group:hover .nav-submenu {
-    display: block;
-    animation: fadeIn 0.3s ease;
-}
+        /* ROLE BADGE IN SIDEBAR */
+        .role-badge {
+            display: inline-block;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(37,99,235,0.2);
+            color: #93c5fd;
+            margin-left: auto;
+        }
 
-.nav-submenu-item {
-    padding: 10px 15px;
-    font-size: 13px;
-    color: #94a3b8;
-    cursor: pointer;
-    transition: 0.2s;
-    display: block;
-}
-
-.nav-submenu-item:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.05);
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-#convocazioni_01 .nav-item:hover {
-    background: rgba(37, 99, 235, 0.1);
-    border-left: 4px solid #2563eb;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-#convocazioni_01 i {
-    font-size: 1.1rem;
-    width: 20px;
-    text-align: center;
-}
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            #sidebar { width: 200px; }
+            #content { margin-left: 200px; padding: 1rem; }
+        }
     </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="login-wrap">
-    <div class="login-box">
-        <div class="login-brand">
-            <div class="login-brand-icon">⚽</div>
-            <div>
-                <div class="login-brand-name">SportTrackPro</div>
-                <div class="login-brand-sub">Gestione attività sportiva</div>
-            </div>
+    <div class="login-card">
+        <div class="login-logo">
+            <div class="login-logo-icon">🏆</div>
+            <h1>SportTrackPro</h1>
         </div>
+        <p class="login-subtitle">Gestione sportiva avanzata</p>
         <form id="login-form">
-            <div class="lf"><label>Username</label><input type="text" id="username" placeholder="Il tuo username" required autocomplete="username"></div>
-            <div class="lf"><label>Password</label><input type="password" id="password" placeholder="••••••••" required autocomplete="current-password"></div>
-            <button type="submit" class="login-submit">Accedi</button>
-            <div id="error-msg"></div>
+            <label>Username</label>
+            <input type="text" id="username" placeholder="Inserisci username" required>
+            <label>Password</label>
+            <input type="password" id="password" placeholder="••••••••" required>
+            <button type="submit" class="btn-login">Accedi →</button>
+            <div id="error-msg" style="color:#f87171; margin-top:12px; display:none; font-size:0.82rem; background:rgba(239,68,68,0.1); padding:8px 12px; border-radius:8px; border:1px solid rgba(239,68,68,0.2);"></div>
         </form>
     </div>
 </div>
 
-<!-- APP -->
-<div id="app">
+<div id="app" style="display:none">
     <nav id="sidebar">
-        <div class="sb-top">
-            <div class="sb-brand">
-                <div class="sb-brand-icon">⚽</div>
-                <div class="sb-brand-name">SportTrackPro</div>
+        <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon">🏆</div>
+                <span class="sidebar-brand-name">SportTrackPro</span>
             </div>
-        </div>
-        <div class="sb-nav">
-            <span class="sb-grp">Generale</span>
-            <a data-section="dashboard"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Dashboard</a>
-
-            <span class="sb-grp">Configurazione</span>
-            <a data-section="stagioni"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>Stagioni</a>
-            <a data-section="sport"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95a15.65 15.65 0 0 0-1.38-3.56A8.03 8.03 0 0 1 18.92 8zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56A7.987 7.987 0 0 1 5.08 16zm2.95-8H5.08a7.987 7.987 0 0 1 4.33-3.56A15.65 15.65 0 0 0 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2s.07-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z"/></svg>Sport</a>
-            <a data-section="societa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>Società</a>
-            <a data-section="categoria"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l-5.5 9h11L12 2zm0 14.5c-1.38 0-2.5 1.12-2.5 2.5S10.62 21.5 12 21.5s2.5-1.12 2.5-2.5S13.38 16.5 12 16.5zM3 15.5h7v7H3z"/></svg>Categorie</a>
-            <a data-section="squadra"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Squadre</a>
-
-            <span class="sb-grp">Persone</span>
-            <a data-section="staff"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Anagrafica Staff</a>
-            <a data-section="anagrafica-pura"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Anagrafica Atleti</a>
-            <a data-section="assegnazioni"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>Assegnazioni Tecniche</a>
-            <a data-section="atleti"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>Anagrafica Squadra</a>
-
-            <span class="sb-grp">Attività</span>
-            <a data-section="sessioni"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 7h-2v2h2V7zm0 4h-2v6h2v-6zm4-9.99L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2.01-2-2.01zM17 19H7V5h10v14z"/></svg>Gestione Sessioni</a>
-
-
-
-<script>
-/**
- * Funzione principale richiamata dai tasti del menu
- */
-function preparePartite(sezione) {
-    console.log("Avvio sezione:", sezione); 
-    // Correzione: Il tuo div principale nel file index.html ha id="content"
-    const main = document.getElementById('content'); 
-    
-    if (main) {
-        // 1. Inserisce la struttura della pagina
-        main.innerHTML = templatePartite();
-        
-        setTimeout(() => {
-            // 2. Aggiorna il titolo visibile
-            const title = document.getElementById('match-title-display');
-            if (title) {
-                const nomi = { 
-                    'sintesi': 'RIEPILOGO GARE', 
-                    'convocazioni': 'GESTIONE CONVOCAZIONI', 
-                    'risultati': 'TABELLINI E RISULTATI' 
-                };
-                title.innerText = nomi[sezione] || 'GESTIONE GARE';
-            }
-
-            // 3. Carica i dati dal database
-            initPartite(sezione);
-        }, 50);
-    }
-}
-
-function templatePartite() {
-    return `
-    <div class="card">
-        <div class="header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 id="match-title-display" style="margin:0; color:white; text-transform:uppercase;">GESTIONE GARE</h2>
-            <button class="btn" onclick="openSessionModal()" style="background:#2563eb; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">+ Nuova Gara</button>
-        </div>
-        
-        <div id="gare-filters-container" style="display:none; background:#13151e; padding:15px; border-radius:12px; border:1px solid #2d303e; margin-bottom:20px;">
-            <label style="display:block; font-size:11px; color:#94a3b8; margin-bottom:5px; font-weight:bold;">FILTRO SOCIETÀ (ADMIN)</label>
-            <select id="f-match-soc" onchange="initPartite()" style="width:100%; max-width:300px; background:#1c1f2e; color:white; border:1px solid #333; padding:10px; border-radius:8px;"></select>
+            <div class="sidebar-user-pill" id="user-info">👤 Utente</div>
         </div>
 
-        <div id="match-main-content" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:20px;">
-            <div style="grid-column:1/-1; text-align:center; padding:50px; color:#64748b;">
-                <i class="fas fa-spinner fa-spin"></i> Caricamento gare...
-            </div>
+        <div class="sidebar-nav">
+            <div class="sidebar-group-label">Panoramica</div>
+            <a data-section="dashboard">🏠 Dashboard</a>
+
+            <div class="sidebar-group-label" id="nav-group-admin">Configurazione</div>
+            <a data-section="stagioni" id="nav-stagioni">📅 Stagioni</a>
+            <a data-section="sport" id="nav-sport">⚽ Sport</a>
+            <a data-section="societa" id="nav-societa">🏢 Società</a>
+            <a data-section="categoria" id="nav-categoria">📂 Categoria</a>
+            <a data-section="squadra" id="nav-squadra">🛡️ Squadra</a>
+            <a data-section="staff" id="nav-staff">👥 Anagrafica Staff</a>
+
+            <div class="sidebar-group-label">Atleti</div>
+            <a data-section="anagrafica-pura" id="nav-anagrafica-pura">👤 Anagrafica Atleti</a>
+            <a data-section="assegnazioni" id="nav-assegnazioni">📋 Assegnazioni Tecniche</a>
+            <a data-section="atleti" id="nav-atleti">🔗 Anagrafica Squadra</a>
+
+            <div class="sidebar-group-label">Attività</div>
+            <a data-section="sessioni" id="nav-sessioni">📅 Gestione Sessioni</a>
+            <a data-section="partite" id="nav-partite">🏆 Gestione Partite</a>
+
+            <a data-section="import-atleti" id="nav-import">📥 Importa Atleti</a>
         </div>
-    </div>`;
-}
 
-async function initPartite(sub = 'sintesi') {
-    const container = document.getElementById('match-main-content');
-    if (!container) return;
-
-    const myRole = (window._userRole || '').toLowerCase();
-    const isAdminOrManager = ['admin', 'manager'].includes(myRole);
-    const userSocId = window._currentSocietyId;
-
-    // Se Admin, mostra il selettore società
-    if (isAdminOrManager) {
-        const fContainer = document.getElementById('gare-filters-container');
-        if (fContainer) fContainer.style.display = 'block';
-        const selSoc = document.getElementById('f-match-soc');
-        if (selSoc && selSoc.options.length === 0) {
-            const { data: socs } = await client.from('societies').select('id, name').order('name');
-            selSoc.innerHTML = '<option value="">Tutte le Società (Vedi Tutto)</option>' + 
-                               (socs || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-        }
-    }
-
-    try {
-        const { data: typeData } = await client.from('session_types').select('id').ilike('name', 'Partita').single();
-        if (!typeData) return container.innerHTML = "Errore: Tipo sessione 'Partita' non trovato.";
-
-        let query = client.from('sessions').select(`*, teams(name), attendances(id, status)`).eq('type_id', typeData.id);
-
-        // LOGICA VISIBILITÀ: L'admin vede tutto (anche i record senza società) a meno che non ne selezioni una
-        if (!isAdminOrManager) {
-            query = query.eq('society_id', userSocId);
-        } else {
-            const selectedSoc = document.getElementById('f-match-soc')?.value;
-            if (selectedSoc) query = query.eq('society_id', selectedSoc);
-        }
-
-        const { data: matches, error } = await query.order('session_date', { ascending: false });
-        if (error) throw error;
-
-        if (!matches || matches.length === 0) {
-            container.innerHTML = "<div style='grid-column:1/-1; text-align:center; padding:40px; color:#64748b;'>Nessuna gara programmata trovata.</div>";
-            return;
-        }
-
-        container.innerHTML = matches.map(m => `
-            <div style="background:#13151e; border:1px solid #2d303e; border-radius:15px; padding:20px; border-top:4px solid ${sub === 'risultati' ? '#10b981' : '#2563eb'};">
-                <div style="color:#94a3b8; font-size:11px; text-transform:uppercase; font-weight:bold; margin-bottom:10px;">${m.teams?.name || 'SQUADRA DA ASSEGNARE'}</div>
-                <h3 style="color:white; margin:0 0 15px 0; font-size:18px;">${m.title}</h3>
-                <div style="color:#64748b; font-size:13px; margin-bottom:20px;"><i class="far fa-calendar-alt"></i> ${new Date(m.session_date).toLocaleDateString()}</div>
-                <button class="btn" style="width:100%; background:${sub === 'risultati' ? '#10b981' : '#2563eb'}; color:white; border:none; padding:12px; border-radius:10px; cursor:pointer; font-weight:bold;" 
-                    onclick="openAttendanceModal('${m.id}')">
-                    ${sub === 'risultati' ? '⚽ TABELLINO E VOTI' : '📋 GESTISCI CONVOCATI'}
-                </button>
-            </div>
-        `).join('');
-
-    } catch (e) {
-        container.innerHTML = `<div style="grid-column:1/-1; color:#ef4444;">Errore nel caricamento: ${e.message}</div>`;
-    }
-}
-
-function toggleSubmenu(id) {
-    const sub = document.getElementById(id);
-    if(sub) sub.style.display = sub.style.display === 'none' ? 'block' : 'none';
-}
-</script>
-
-
-
-
-
-
-
-
-
-
-<a data-section="sessioni">
-    <svg viewBox="0 0 24 24" fill="currentColor" width="20"><path d="M13 7h-2v2h2V7zm0 4h-2v6h2v-6zm4-9.99L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2.01-2-2.01zM17 19H7V5h10v14z"/></svg>
-    Gestione Sessioni
-</a>
-
-
-
-
-
-<div class="nav-item-group">
-    <div class="nav-item" onclick="window.toggleSubmenu('menu-gare')" style="background: rgba(37,99,235,0.1); border-left: 4px solid #2563eb; cursor: pointer; padding: 12px;">
-        <span style="display: flex; align-items: center; gap: 10px;">
-            <i class="fas fa-trophy" style="color: #2563eb;"></i>
-            <b style="color: white; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Gestione Gare</b>
-        </span>
-    </div>
-    
-    <div id="menu-gare" class="nav-submenu" style="padding-left: 20px; display: none; background: rgba(0,0,0,0.2);">
-        <div class="nav-submenu-item" onclick="window.preparePartite('sintesi')" style="padding: 10px; cursor: pointer; color: #94a3b8; font-size: 12px; transition: 0.2s;">
-            <i class="fas fa-chart-line" style="margin-right: 8px; font-size: 10px;"></i> Riepilogo
-        </div>
-        <div class="nav-submenu-item" onclick="window.preparePartite('convocazioni')" style="padding: 10px; cursor: pointer; color: #94a3b8; font-size: 12px; transition: 0.2s;">
-            <i class="fas fa-clipboard-list" style="margin-right: 8px; font-size: 10px;"></i> Convocazioni
-        </div>
-    </div>
-</div>
-
-
-
-
-
-        </div>
-        <div class="sb-foot">
-            <span id="user-info"></span>
-            <button id="btn-logout">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
-                Esci
-            </button>
+        <div class="sidebar-footer">
+            <button id="btn-logout" class="btn-logout">↩ Esci</button>
         </div>
     </nav>
 
-    <div id="topbar"><div id="topbar-title">Dashboard</div></div>
-
-    <main id="content"></main>
+    <main id="content">
+    </main>
 </div>
 
-<!-- MODAL -->
 <div id="modal-overlay" class="modal-overlay">
     <div class="modal-content">
-        <h3 id="modal-title">Titolo Modal</h3>
+        <h3 id="modal-title" style="margin-top:0">Titolo Modal</h3>
         <div id="modal-body"></div>
-        <div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
             <button class="btn" id="btn-modal-save">Salva</button>
-            <button id="btn-modal-close">Annulla</button>
+            <button class="btn" id="btn-modal-close" style="background:#64748b">Annulla</button>
         </div>
     </div>
 </div>
@@ -563,6 +589,128 @@ function toggleSubmenu(id) {
         close() { this.el.classList.remove('modal-active'); }
     };
     document.getElementById('btn-modal-close').onclick = () => modal.close();
+
+    /* ============================================================
+       GESTIONE VISIBILITÀ SIDEBAR PER RUOLO
+       ============================================================ */
+    window.applyRoleVisibility = function() {
+        // Il DB usa role='admin'|'manager'|'user' + management_role='Dirigente'|'Allenatore'|'Presidente'|'Segretario'|'Responsabile'|'Genitore'
+        // La logica effettiva di accesso si basa sulla management_role per gli 'user' normali
+        const dbRole = (window._userRole || '').toLowerCase();
+        const mgmtRole = ((window.CURRENT_USER?.management_role) || '').toLowerCase();
+
+        // Determina il ruolo funzionale effettivo
+        let effectiveRole;
+        if (dbRole === 'admin') {
+            effectiveRole = 'admin';
+        } else if (dbRole === 'manager') {
+            effectiveRole = 'manager';
+        } else {
+            // Per gli 'user' usa la management_role
+            effectiveRole = mgmtRole || 'user';
+        }
+
+        // Salva il ruolo effettivo globalmente (utile per la dashboard e altri moduli)
+        window._effectiveRole = effectiveRole;
+
+        const allNavIds = ['nav-stagioni','nav-sport','nav-societa','nav-categoria','nav-squadra',
+                           'nav-staff','nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
+                           'nav-sessioni','nav-partite','nav-import','nav-group-admin'];
+
+        // GERARCHIA VISIBILITÀ MENU:
+        // admin/manager      → tutto
+        // presidente/segretario → dati società propria, può modificare legami
+        // responsabile       → categorie proprie, solo lettura
+        // dirigente/allenatore → squadre proprie, sessioni e partite
+        // genitore           → solo anagrafica atleta, solo lettura
+        const visibility = {
+            admin:        allNavIds,
+            manager:      allNavIds,
+            presidente:   ['nav-societa','nav-categoria','nav-squadra','nav-staff',
+                           'nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
+                           'nav-sessioni','nav-partite','nav-import','nav-group-admin'],
+            segretario:   ['nav-societa','nav-categoria','nav-squadra','nav-staff',
+                           'nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
+                           'nav-sessioni','nav-partite','nav-import','nav-group-admin'],
+            responsabile: ['nav-anagrafica-pura','nav-atleti','nav-group-admin'],
+            dirigente:    ['nav-anagrafica-pura','nav-atleti','nav-sessioni','nav-partite','nav-import'],
+            allenatore:   ['nav-anagrafica-pura','nav-atleti','nav-sessioni','nav-partite','nav-import'],
+            genitore:     ['nav-atleti'],
+        };
+
+        const allowed = visibility[effectiveRole] || ['nav-atleti'];
+
+        // Nascondi tutto
+        allNavIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+
+        // Mostra solo quelli permessi
+        allowed.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = '';
+        });
+
+        // Badge ruolo nella pill (mostra management_role se presente, altrimenti dbRole)
+        const userPill = document.getElementById('user-info');
+        if (userPill && window.CURRENT_USER) {
+            const displayRole = window.CURRENT_USER.management_role || dbRole;
+            userPill.innerHTML = `👤 <span>${window.CURRENT_USER.name || 'Utente'}</span> &nbsp;<em style="font-size:0.65rem; opacity:0.6; text-transform:uppercase;">${displayRole}</em>`;
+        }
+    };
+/* ============================================================
+       CONTROLLO SESSIONE ATTIVA (Anti-Logout al Refresh)
+       ============================================================ */
+    async function checkActiveSession() {
+        // Recuperiamo la sessione corrente da Supabase Auth (token salvato nel browser)
+        const { data: { session } } = await client.auth.getSession();
+
+        if (session) {
+            try {
+                // Recuperiamo i dati dell'utente dalla tabella 'users' usando l'email della sessione
+                const { data: userRow, error: userErr } = await client
+                    .from('users')
+                    .select('*')
+                    .eq('email', session.user.email)
+                    .maybeSingle();
+
+                if (userRow) {
+                    // Ripopoliamo lo Stato Globale
+                    window._userRole = userRow.role;
+                    window._currentSocietyId = userRow.society_id;
+                    window._currentUserId = userRow.id;
+                    window.CURRENT_USER = userRow;
+
+                    // Prepariamo la UI (mostriamo l'app, nascondiamo il login)
+                    document.getElementById('login-wrap').style.display = 'none';
+                    document.getElementById('app').style.display = 'flex';
+
+                    // Applica visibilità sidebar in base al ruolo
+                    window.applyRoleVisibility();
+                    // Carichiamo la dashboard (o l'ultima pagina salvata)
+                    loadPage('dashboard');
+                    console.log("✅ Sessione ripristinata correttamente.");
+                }
+            } catch (err) {
+                console.error("Errore nel ripristino sessione:", err);
+            }
+        }
+    }
+
+    // ESECUZIONE IMMEDIATA AL CARICAMENTO
+    checkActiveSession();
+
+
+
+
+
+
+
+
+
+
+
 
     /* ============================================================
        LOGICA DI AUTENTICAZIONE E LOGIN
@@ -602,11 +750,10 @@ function toggleSubmenu(id) {
 
             // 4. UI Setup
             document.getElementById('login-wrap').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
-            const userInfo = document.getElementById('user-info');
-            if(userInfo) userInfo.innerText = `👤 ${userRow.name} — ${userRow.role.toUpperCase()}`;
+            document.getElementById('app').style.display = 'flex';
 
             // 5. Navigazione iniziale
+            window.applyRoleVisibility();
             loadPage('dashboard');
 
         } catch (err) {
@@ -619,25 +766,18 @@ function toggleSubmenu(id) {
        NAVIGAZIONE (LOADER PAGINE)
        ============================================================ */
     window.loadPage = (section) => {
+        // Gestione classi active nel sidebar
         document.querySelectorAll('#sidebar a').forEach(a => a.classList.remove('active'));
         const link = document.querySelector(`#sidebar a[data-section="${section}"]`);
         if (link) link.classList.add('active');
-        const titles = { dashboard:'Dashboard', stagioni:'Stagioni', sport:'Sport', societa:'Società', categoria:'Categorie', squadra:'Squadre', staff:'Anagrafica Staff', 'anagrafica-pura':'Anagrafica Atleti', assegnazioni:'Assegnazioni Tecniche', atleti:'Anagrafica Squadra', sessioni:'Gestione Sessioni', partite:'Gestione Partite' };
-        const tb = document.getElementById('topbar-title');
-        if (tb) tb.textContent = titles[section] || section;
 
         const content = document.getElementById('content');
         if (!content) return;
 
         switch(section) {
-            case 'dashboard': 
-                // Fix: usiamo window.CURRENT_USER con fallback per evitare errori undefined
-                const userName = window.CURRENT_USER ? window.CURRENT_USER.name : "Utente";
-                content.innerHTML = `
-                    <div class="card">
-                        <h2>Benvenuto, ${userName}</h2>
-                        <p>Seleziona una voce dal menu laterale per gestire l'attività sportiva.</p>
-                    </div>`; 
+            case 'dashboard':
+                content.innerHTML = window.templateDashboard ? window.templateDashboard() : '<div class="card"><p>Caricamento...</p></div>';
+                if (window.initDashboard) window.initDashboard();
                 break;
             
             case 'stagioni': 
@@ -694,7 +834,10 @@ function toggleSubmenu(id) {
                 content.innerHTML = templatePartite();
                 initPartite();
                 break;
-
+             case 'import-atleti':
+                content.innerHTML = templateImportAtleti();
+                initImportAtleti();
+                break;
             default: 
                 content.innerHTML = `<div class="card"><h2>Sezione ${section}</h2><p>Modulo in fase di configurazione.</p></div>`;
         }
@@ -763,11 +906,11 @@ async function initStagioni() {
                 </span>
             </td>
             <td style="text-align:right">
-                <button class="btn-sm btn-action-activate" data-id="${s.id}" data-active="${s.is_active}" class="${s.is_active ? 'btn-neutral' : 'btn-safe'} wide">
+                <button class="btn-sm btn-action-activate" data-id="${s.id}" data-active="${s.is_active}" style="background:${s.is_active ? '#64748b' : '#16a34a'}">
                     ${s.is_active ? 'Spegni' : 'Attiva'}
                 </button>
-                <button class="btn-sm btn-warning btn-action-edit" data-id="${s.id}" data-name="${s.name}" title="Modifica">✏️</button>
-                <button class="btn-sm btn-danger btn-action-delete" data-id="${s.id}" title="Elimina">🗑️</button>
+                <button class="btn-sm btn-action-edit" data-id="${s.id}" data-name="${s.name}" style="background:orange">✏️</button>
+                <button class="btn-sm btn-action-delete" data-id="${s.id}" style="background:red">🗑️</button>
             </td>
         </tr>
     `).join('') || '<tr><td colspan="4" style="text-align:center">Nessuna stagione trovata.</td></tr>';
@@ -877,8 +1020,8 @@ async function initSport() {
             <td style="font-size:1.5rem">${s.icon || '🏐'}</td>
             <td><strong>${s.name}</strong></td>
             <td style="text-align:right">
-                <button class="btn-sm btn-warning btn-sport-edit" data-id="${s.id}" data-name="${s.name}" data-icon="${s.icon}" title="Modifica">✏️</button>
-                <button class="btn-sm btn-danger btn-sport-delete" data-id="${s.id}" title="Elimina">🗑️</button>
+                <button class="btn-sm btn-sport-edit" data-id="${s.id}" data-name="${s.name}" data-icon="${s.icon}" style="background:var(--warning)">✏️</button>
+                <button class="btn-sm btn-sport-delete" data-id="${s.id}" style="background:var(--danger)">🗑️</button>
             </td>
         </tr>
     `).join('') || '<tr><td colspan="3">Nessun dato.</td></tr>';
@@ -1396,7 +1539,7 @@ async function initStaff() {
     const tbody = document.getElementById('list-staff');
     if (!tbody) return;
 
-    const myRole = window._userRole;
+    const myRole = window._effectiveRole || window._userRole;
     const mySociety = window._currentSocietyId;
 
     // 1. Query base (esclude l'admin supremo e ordina per nome)
@@ -1455,7 +1598,7 @@ async function initStaff() {
  */
 async function openStaffModal(editData = null) {
     const isEdit = !!editData;
-    const myRole = window._userRole;
+    const myRole = window._effectiveRole || window._userRole;
 
     let societies = [];
     if (myRole === 'admin' || myRole === 'manager') {
@@ -1572,9 +1715,9 @@ window.handleDeleteStaff = async function(id) {
     const style = document.createElement('style');
     style.innerHTML = `
         .btn-icon-atleta { border: none; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer; transition: 0.2s; margin-left: 4px; }
-        .btn-icon-atleta.edit { background-color: rgba(245,158,11,.15); color: #fbbf24; background-color: #eff6ff; color: #2563eb; }
-        .btn-icon-atleta.delete { background-color: rgba(239,68,68,.15); color: #f87171; }
-        .btn-icon-atleta.link { background-color: rgba(34,197,94,.12); color: #4ade80; }
+        .btn-icon-atleta.edit { background-color: #eff6ff; color: #2563eb; }
+        .btn-icon-atleta.delete { background-color: #fef2f2; color: #ef4444; }
+        .btn-icon-atleta.link { background-color: #f0fdf4; color: #16a34a; }
         .btn-icon-atleta:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
     `;
     document.head.appendChild(style);
@@ -1848,158 +1991,6 @@ window.handleDeleteStaff = async function(id) {
         }
     };
 })(); // Chiusura IIFE corretta
-/* ============================================================
-   EXCEL FUNZIONE IMPORT ATLETI: MAPPATURA UUID E CREAZIONE ANAGRAFICA
-   ============================================================ */
-window.importAtleti = async function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        console.group("🚀 Debug Importazione Atleti");
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
-            console.log("Righe rilevate nell'Excel:", jsonData.length);
-
-            // 1. Scarichiamo i riferimenti dal DB per trasformare i NOMI in ID
-            const [socs, seas, cats, teams, existingAths] = await Promise.all([
-                client.from('societies').select('id, name'),
-                client.from('seasons').select('id, name'),
-                client.from('categories').select('id, name'),
-                client.from('teams').select('id, name'),
-                client.from('athletes').select('id, name, surname')
-            ]);
-
-            const findId = (list, name, context) => {
-                if (!name) return null;
-                const match = list.find(i => i.name?.toString().trim().toLowerCase() === name.toString().trim().toLowerCase());
-                if (!match) console.warn(`⚠️ "${name}" non trovato nel DB (${context})`);
-                return match?.id;
-            };
-
-            const finalAssignments = [];
-            let newAthletesCreated = 0;
-
-            // 2. Elaborazione righe
-            for (let i = 0; i < jsonData.length; i++) {
-                const row = jsonData[i];
-                const nRiga = i + 2;
-
-                // Il campo Atleta contiene solo il cognome (anche composto es. "Trimboli Maciste")
-                let surname = row.Atleta?.toString().trim() || "";
-                if (!surname) continue;
-                let name = null;
-
-                // A. Cerchiamo l'atleta nell'anagrafica
-                let athleteId = existingAths.data.find(a =>
-                    a.surname?.trim().toLowerCase() === surname.toLowerCase()
-                )?.id;
-
-                if (!athleteId) {
-                    console.log(`👤 Riga ${nRiga}: Atleta nuovo (${surname}). Creazione in corso...`);
-                    const { data: newA, error: errA } = await client.from('athletes')
-                        .insert([{ name, surname }]).select('id').single();
-
-                    if (errA) {
-                        console.error(`❌ Errore creazione atleta riga ${nRiga}:`, errA.message);
-                        continue;
-                    }
-                    athleteId = newA.id;
-                    newAthletesCreated++;
-                    existingAths.data.push({ id: athleteId, name, surname });
-                }
-
-                // B. Trasformazione Nomi -> ID (UUID)
-                const sId = findId(socs.data, row.Società, "Società");
-                const seaId = findId(seas.data, row.Stagione, "Stagioni");
-                const cId = findId(cats.data, row.Categoria, "Categorie");
-                const tId = findId(teams.data, row.Squadra, "Squadre");
-
-                if (athleteId && sId && seaId) {
-                    finalAssignments.push({
-                        athlete_id: athleteId,
-                        society_id: sId,
-                        season_id: seaId,
-                        category_id: cId || null,
-                        team_id: tId || null,
-                        role: row.Ruolo || 'Atleta',
-                        jersey_number: row['N°'] || row.Numero || null,
-                        nickname: row.Nickname || null
-                    });
-                } else {
-                    console.error(`❌ Riga ${nRiga}: Impossibile procedere. Società o Stagione mancanti o errate.`);
-                }
-            }
-
-            // 3. Inserimento massivo finale
-            if (finalAssignments.length > 0) {
-                console.log(`📤 Invio di ${finalAssignments.length} record a Supabase...`);
-                const { error: errIns } = await client.from('athlete_team_seasons').insert(finalAssignments);
-
-                if (errIns) {
-                    console.error("❌ ERRORE DATABASE:", errIns.message);
-                    alert("Errore Database: " + errIns.message);
-                } else {
-                    console.log("✅ Importazione completata con successo!");
-                    alert(`Import riuscito!\n- Nuovi atleti creati: ${newAthletesCreated}\n- Totale righe inserite: ${finalAssignments.length}`);
-                }
-            } else {
-                alert("Nessun dato valido da importare. Controlla la console (F12) per i dettagli.");
-            }
-
-        } catch (err) {
-            console.error("🔥 Errore critico script:", err);
-        }
-        console.groupEnd();
-        if (window.loadAtletiData) await window.loadAtletiData();
-        event.target.value = "";
-    };
-    reader.readAsArrayBuffer(file);
-};
-// 4. EXPORT EXCEL REALE (Richiede libreria SheetJS)
-window.exportAtleti = function() {
-    const table = document.querySelector("table");
-    if (!table || table.rows.length <= 1) return alert("Tabella vuota!");
-
-    // Esportiamo tutte le colonne tranne l'ultima ("Azioni")
-    const rows = Array.from(table.querySelectorAll("tr"));
-    const dataForExcel = rows.map(tr => {
-        const cells = Array.from(tr.querySelectorAll("th, td"));
-        return cells.slice(0, -1).map(c => c.innerText.trim());
-    });
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(dataForExcel);
-    
-    // Impostazione larghezza colonne per leggibilità
-    ws['!cols'] = [{wch:25}, {wch:20}, {wch:15}, {wch:20}, {wch:20}, {wch:15}, {wch:8}];
-
-    XLSX.utils.book_append_sheet(wb, ws, "Atleti_SportTrackPro");
-    XLSX.writeFile(wb, "Export_Atleti_Completo.xlsx");
-};
-window.importAtleti = async function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet);
-
-        if (confirm(`Vuoi importare ${json.length} atleti?`)) {
-            // Qui andrà la logica di loop per salvare gli atleti nel DB
-            console.log("Dati pronti per import:", json);
-            alert("Logica di salvataggio in fase di implementazione...");
-        }
-    };
-    reader.readAsArrayBuffer(file);
-};
 
 /* ============================================================
    MODULO ASSEGNAZIONI TECNICHE - FILTRI PROGRESSIVI
@@ -2571,7 +2562,7 @@ async function initSessioni() {
     const tbody = document.getElementById('list-sessioni-body');
     if (!tbody) return;
 
-    const myRole = (window._userRole || '').toLowerCase();
+    const myRole = (window._effectiveRole || window._userRole || '').toLowerCase();
     const isAdmin = ['admin', 'manager', 'presidente', 'segretario'].includes(myRole);
     let targetSociety = window._currentSocietyId;
 
@@ -2582,7 +2573,7 @@ async function initSessioni() {
             const { data: socs } = await client.from('societies').select('id, name').order('name');
             if (socs) {
                 selSoc.innerHTML = socs.map(s => `<option value="${s.id}" ${s.id === targetSociety ? 'selected' : ''}>${s.name}</option>`).join('');
-                if (myRole === 'admin' || myRole === 'manager') document.getElementById('wrapper-soc-filter').style.display = 'block';
+                if (['admin','manager'].includes(myRole)) document.getElementById('wrapper-soc-filter').style.display = 'block';
                 await reloadSubFilters();
                 return;
             }
@@ -2630,9 +2621,9 @@ async function initSessioni() {
             <td style="padding:10px; text-align:center; font-weight:bold; color:#8b5cf6;">${stats.i}</td>
             <td style="padding:10px; text-align:center;"><strong>${perc}%</strong></td>
             <td style="padding:10px; text-align:right;">
-                <button class="btn-sm btn-info wide" onclick="openAttendanceModal('${s.id}')">👥 Presenze</button>
-                <button class="btn-sm btn-warning" onclick="openSessionModal('${s.id}')" title="Modifica">✏️</button>
-                <button class="btn-sm btn-danger" onclick="deleteSession('${s.id}', '${s.title.replace(/'/g, "\\'")}')">🗑️</button>
+                <button class="btn-sm" style="background:#8b5cf6; color:white; border:none;" onclick="openAttendanceModal('${s.id}')">👥 Presenze</button>
+                <button class="btn-sm" onclick="openSessionModal('${s.id}')">✏️</button>
+                <button class="btn-sm" style="background:#ef4444; color:white; border:none;" onclick="deleteSession('${s.id}', '${s.title.replace(/'/g, "\\'")}')">🗑️</button>
             </td>
         </tr>`;
     }).join('') || '<tr><td colspan="9" style="text-align:center; padding:20px;">Nessuna sessione trovata.</td></tr>';
@@ -2873,151 +2864,1509 @@ window.saveSessionNotes = saveSessionNotes;
 
 
 
+/* ============================================================
+   MODULO: GARE & MATCH CENTER - VERSION 3.2.2 (TABELLA USERS)
+   ============================================================ */
 
+/**
+ * 1. TEMPLATE HTML
+ */
+function templatePartite() {
+    return `
+    <div class="card" id="main-match-card">
+        <div class="header" style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="margin:0; color:#1e293b;">🏆 MATCH CENTER</h2>
+        </div>
+        
+        <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:15px; display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px;">
+            <div id="soc-filter-container">
+                <label style="font-size:11px; color:#64748b; font-weight:bold;">SOCIETÀ</label>
+                <select id="f-match-soc" style="width:100%; padding:8px; margin-top:4px;" onchange="reloadMatchSubFilters()">
+                    <option value="">Caricamento...</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px; color:#64748b; font-weight:bold;">CATEGORIA</label>
+                <select id="f-match-cat" style="width:100%; padding:8px; margin-top:4px;" onchange="reloadMatchTeamsOnly()">
+                    <option value="">Tutte</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px; color:#64748b; font-weight:bold;">SQUADRA</label>
+                <select id="f-match-team" style="width:100%; padding:8px; margin-top:4px;" onchange="initPartite()">
+                    <option value="">Tutte</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px; color:#64748b; font-weight:bold;">DA DATA</label>
+                <input type="date" id="f-match-from" style="width:100%; padding:8px; margin-top:4px;" onchange="initPartite()">
+            </div>
+            <div>
+                <label style="font-size:11px; color:#64748b; font-weight:bold;">A DATA</label>
+                <input type="date" id="f-match-to" style="width:100%; padding:8px; margin-top:4px;" onchange="initPartite()">
+            </div>
+        </div>
 
-
-
-
-
-/* ──────────────────────────────────────────────────────────────────────────
-   MODULO INTEGRALE: GARE E CONVOCAZIONI (CON GESTIONE ERRORI AUTH)
-   ────────────────────────────────────────────────────────────────────────── */
-
-// 1. RECUPERO CLIENT E CONTROLLO SESSIONE
-function getDb() {
-    const db = (typeof supabase !== 'undefined' && typeof supabase.from === 'function') ? supabase : 
-               (typeof client !== 'undefined' && typeof client.from === 'function') ? client : null;
-    return db;
+        <div class="table-container" style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:850px;">
+                <thead>
+                    <tr style="text-align:left; background:#f1f5f9; color:#475569; border-bottom:2px solid #e2e8f0;">
+                        <th style="padding:12px; width:100px;">DATA</th>
+                        <th style="padding:12px;">PARTITA</th>
+                        <th style="padding:12px;">SQUADRA</th>
+                        <th style="padding:12px; text-align:center; background:rgba(37,99,235,0.03);">GESTIONE MATCH</th>
+                    </tr>
+                </thead>
+                <tbody id="list-partite-body"></tbody>
+            </table>
+        </div>
+    </div>
+    <div id="sub-section-container" style="margin-top:20px;"></div>`;
 }
 
-// 2. PREPARAZIONE DASHBOARD
-window.preparePartite = function(sezione) {
-    const main = document.getElementById('content'); 
-    if (!main) return;
+/**
+ * 2. LOGICA INIZIALIZZAZIONE (Puntando alla tabella 'users')
+ */
+async function initPartite() {
+    const tbody = document.getElementById('list-partite-body');
+    if (!tbody) return;
 
-    main.innerHTML = `
-    <div class="card" style="width: 100%; border-radius: 15px; background: #13151e; border: 1px solid #2d303e; padding: 25px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
-            <h2 id="match-title-display" style="margin:0; color:white; font-size: 18px; font-weight:700;"></h2>
-        </div>
-        <div id="match-main-content">
-            <div style="text-align:center; padding:50px; color:#64748b;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
-        </div>
-    </div>`;
+    const selSoc = document.getElementById('f-match-soc');
     
-    const nomi = { 'sintesi': '📊 RIEPILOGO GARE', 'convocazioni': '📋 GESTIONE CONVOCAZIONI' };
-    document.getElementById('match-title-display').innerText = nomi[sezione] || 'GARE';
-    window.initPartite(sezione);
+    if (selSoc && (selSoc.value === "" || selSoc.options[0].text.includes("Caricamento"))) {
+        try {
+            const { data: { user: authUser } } = await client.auth.getUser();
+            if (!authUser) throw new Error("Utente non autenticato");
+
+            // --- LETTURA DALLA TABELLA USERS ---
+            const { data: userData, error: userError } = await client.from('users')
+                .select('role, society_id')
+                .eq('id', authUser.id)
+                .single();
+
+            const role = userData?.role || 'manager';
+            const societyId = userData?.society_id;
+
+            if (role === 'admin') {
+                // ADMIN: Carica tutte le società in ordine alfabetico
+                const { data: socs } = await client.from('societies').select('id, name').order('name', { ascending: true });
+                if (socs && socs.length > 0) {
+                    selSoc.innerHTML = socs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+                    // Se l'admin ha una society_id specifica la usa, altrimenti la prima della lista
+                    window._currentSocietyId = societyId || socs[0].id;
+                    selSoc.value = window._currentSocietyId;
+                }
+            } else {
+                // MANAGER: Nasconde filtro e forza società
+                const container = document.getElementById('soc-filter-container');
+                if (container) container.style.display = 'none';
+
+                if (societyId) {
+                    selSoc.innerHTML = `<option value="${societyId}" selected>Società corrente</option>`;
+                    window._currentSocietyId = societyId;
+                } else {
+                    selSoc.innerHTML = `<option value="">Nessuna società</option>`;
+                    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">Utente senza società assegnata.</td></tr>';
+                    return;
+                }
+            }
+            return reloadMatchSubFilters();
+        } catch (err) {
+            console.error("Errore initPartite:", err);
+            // Fallback estremo se la tabella users fallisce: prova a caricare come admin se possibile
+            const { data: socs } = await client.from('societies').select('id, name').order('name');
+            if (socs?.length > 0) {
+                selSoc.innerHTML = socs.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+                window._currentSocietyId = socs[0].id;
+                return reloadMatchSubFilters();
+            }
+        }
+    }
+
+    const socId = selSoc?.value || window._currentSocietyId;
+    if (!socId) return;
+
+    // --- FILTRI E QUERY SESSIONS ---
+    const dateFrom = document.getElementById('f-match-from')?.value;
+    const dateTo = document.getElementById('f-match-to')?.value;
+    const teamFilter = document.getElementById('f-match-team')?.value;
+
+    const { data: types } = await client.from('session_types').select('id, name');
+    const validIds = (types || []).filter(t => 
+        t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')
+    ).map(t => t.id);
+
+    let query = client.from('sessions')
+        .select('id, title, session_date, team_id, teams(name)')
+        .eq('society_id', socId)
+        .in('type_id', validIds);
+
+    if (teamFilter) query = query.eq('team_id', teamFilter);
+    if (dateFrom) query = query.gte('session_date', dateFrom);
+    if (dateTo) query = query.lte('session_date', dateTo);
+
+    const { data: matches } = await query.order('session_date', { ascending: false });
+
+    tbody.innerHTML = (matches || []).map(m => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:12px;">${new Date(m.session_date).toLocaleDateString()}</td>
+            <td style="padding:12px;"><strong>${m.title || 'Gara'}</strong></td>
+            <td style="padding:12px;"><span style="color:#64748b;">${m.teams?.name || '---'}</span></td>
+            <td style="padding:12px; text-align:center; display:flex; gap:6px; justify-content:center;">
+                <button class="btn-sm" onclick="window.openConvocazioni('${m.id}')" style="background:#2563eb; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:600;">📋 CONVOCA</button>
+                <button class="btn-sm" onclick="window.openTabellino('${m.id}')" style="background:#f59e0b; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:600;">⚽ TABELLINO</button>
+                <button class="btn-sm" onclick="window.openStatistiche('${m.id}')" style="background:#6366f1; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:600;">📊 STATS</button>
+				<button onclick="window.exportConvocazioniIMG('${m.id}')"style="background:#10b981; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600;">🖼️ IMMAGINE</button>
+			</td>
+        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94a3b8;">Nessun match trovato.</td></tr>';
+}
+
+/**
+ * 3. LOGICA FILTRI SECONDARI
+ */
+async function reloadMatchSubFilters() {
+    const socId = document.getElementById('f-match-soc')?.value || window._currentSocietyId;
+    if (!socId) return;
+
+    const { data: cats } = await client.from('categories').select('id, name').eq('society_id', socId).order('name');
+    const catSelect = document.getElementById('f-match-cat');
+    if (catSelect) catSelect.innerHTML = '<option value="">Tutte Categorie</option>' + (cats?.map(c => `<option value="${c.id}">${c.name}</option>`).join('') || '');
+
+    const { data: teams } = await client.from('teams').select('id, name, category_id').eq('society_id', socId).order('name');
+    window._matchTeams = teams || [];
+    reloadMatchTeamsOnly();
+}
+
+function reloadMatchTeamsOnly() {
+    const catId = document.getElementById('f-match-cat')?.value;
+    let filtered = window._matchTeams || [];
+    if (catId) filtered = filtered.filter(t => String(t.category_id) === String(catId));
+    
+    const teamSelect = document.getElementById('f-match-team');
+    if (teamSelect) teamSelect.innerHTML = '<option value="">Tutte Squadre</option>' + filtered.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    initPartite();
+}
+
+// Global Wrappers
+window.openConvocazioni = function(id) { if (typeof window.testConvocazioni === 'function') window.testConvocazioni(id); else alert("ID: " + id); };
+window.openTabellino = function(id) { alert("Tabellino ID: " + id); };
+window.openStatistiche = function(id) { alert("Stats ID: " + id); };
+
+window.templatePartite = templatePartite;
+window.initPartite = initPartite;
+window.reloadMatchSubFilters = reloadMatchSubFilters;
+window.reloadMatchTeamsOnly = reloadMatchTeamsOnly;
+
+/**
+ * ============================================================
+ * SPORTTRACKPRO - MATCH CENTER COMPLETE MODULE (v2.1)
+ * Integrato: Stato Squalificato & Gestione Tabellino Avanzata
+ * ============================================================
+ */
+
+// --- 1. FUNZIONI DI SISTEMA (MOTORE) ---
+window.prepareSubSection = function(sessionId) {
+    const container = document.getElementById('sub-section-container');
+    if (!container) return null;
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:#64748b;">Caricamento...</div>`;
+    container.scrollIntoView({ behavior: 'smooth' });
+    return container;
 };
 
-// 3. CARICAMENTO GARE CON ALERT ERRORE TOKEN
-window.initPartite = async function(sub) {
-    const container = document.getElementById('match-main-content');
-    const db = getDb();
+window.safeGetSession = async function(sessionId) {
+    try {
+        const { data, error } = await client.from('sessions').select('id, team_id, title, session_date').eq('id', sessionId).maybeSingle();
+        if (error) throw error;
+        return data;
+    } catch (e) { return null; }
+};
 
-    if (!db) {
-        container.innerHTML = "<div style='color:#ef4444;'>Database non configurato correttamente.</div>";
+// --- 2. GESTIONE MARCATORI DINAMICA ---
+window.addEventRow = async function(sessionId, existingData = null) {
+    const list = document.getElementById('events-list');
+    if (!list) return;
+    
+    const rowId = 'event-' + Math.random().toString(36).substr(2, 9);
+    const session = await window.safeGetSession(sessionId);
+    const { data: athletes } = await client.from('athlete_team_seasons')
+        .select('athlete_id, athletes(name, surname)')
+        .eq('team_id', session.team_id);
+
+    const div = document.createElement('div');
+    div.id = rowId;
+    div.className = 'event-row';
+    div.style = "display:flex; gap:5px; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; padding:8px; border-radius:8px; margin-bottom:5px;";
+
+    div.innerHTML = `
+        <select class="ev-athlete" style="flex:2; padding:5px; border:1px solid #cbd5e1; border-radius:4px; font-size:13px;">
+            <option value="">Scegli Atleta...</option>
+            ${athletes?.map(a => `<option value="${a.athlete_id}" ${existingData?.athlete_id === a.athlete_id ? 'selected' : ''}>${a.athletes.surname} ${a.athletes.name}</option>`).join('')}
+        </select>
+        <select class="ev-type" style="flex:1; padding:5px; border:1px solid #cbd5e1; border-radius:4px; font-size:13px; font-weight:bold;">
+            <option value="⚽ Goal" ${existingData?.type === '⚽ Goal' ? 'selected' : ''}>⚽ GOL</option>
+            <option value="🟨 Amm." ${existingData?.type === '🟨 Amm.' ? 'selected' : ''}>🟨 AMM</option>
+            <option value="🟥 Esp." ${existingData?.type === '🟥 Esp.' ? 'selected' : ''}>🟥 ESP</option>
+        </select>
+        <button onclick="document.getElementById('${rowId}').remove()" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:16px;">&times;</button>
+    `;
+    list.appendChild(div);
+};
+
+// --- 3. GESTIONE CONVOCAZIONI (UI UNIFICATA) ---
+window.openConvocazioni = async function(sessionId) {
+    const container = window.prepareSubSection(sessionId);
+    if (!container) return;
+
+    const session = await window.safeGetSession(sessionId);
+    
+    // Recupero Atleti del Team
+    const { data: athletes } = await client.from('athlete_team_seasons')
+        .select('athlete_id, jersey_number, athletes(name, surname)')
+        .eq('team_id', session.team_id);
+
+    // Recupero presenze attuali
+    const { data: attendances } = await client.from('attendances')
+        .select('*').eq('session_id', sessionId);
+
+    const attendanceMap = {};
+    attendances?.forEach(att => { attendanceMap[att.athlete_id] = att; });
+
+    container.innerHTML = `
+    <div style="background:#111827; padding:20px; border-radius:12px; border:1px solid #374151; font-family:sans-serif; color:white;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; background:#1f2937; padding:15px; border-radius:10px; border:1px solid #374151;">
+            <div>
+                <h3 style="margin:0; font-size:16px;">📋 Convocazioni: ${session.title}</h3>
+                <div style="margin-top:8px; display:flex; gap:10px;">
+                    <button onclick="window.exportConvocazioniIMG('${sessionId}')" 
+                        style="background:#6366f1; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:5px;">
+                        🖼️ ESPORTA IMMAGINE
+                    </button>
+                </div> 
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button onclick="window.selezionaTuttiConvocati()" 
+                    style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
+                    ✅ CONVOCA TUTTI
+                </button>
+                <button onclick="document.getElementById('sub-section-container').innerHTML=''" 
+                    style="background:#4b5563; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
+                    ANNULLA
+                </button>
+                <button onclick="window.saveConvocazioni('${sessionId}')" 
+                    style="background:#3b82f6; color:white; border:none; padding:8px 20px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
+                    SALVA
+                </button>
+            </div>
+        </div>
+
+        <div style="display:grid; gap:8px;">
+            ${athletes?.sort((a,b) => a.athletes?.surname.localeCompare(b.athletes?.surname)).map(a => {
+                const current = attendanceMap[a.athlete_id] || {};
+                const isConv = current.is_called_up === true && current.status !== 'squalificato';
+                const isExcl = (current.is_called_up === false || !current.status) && current.status !== 'squalificato';
+                const isSq = current.status === 'squalificato';
+
+                return `
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:#1f2937; border:1px solid #374151; border-radius:8px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span style="color:#3b82f6; font-weight:bold; width:25px; font-size:14px;">${a.jersey_number || '--'}</span>
+                        <span style="font-weight:600; text-transform:uppercase; font-size:13px;">${a.athletes?.surname} ${a.athletes?.name}</span>
+                    </div>
+                    <div style="display:flex; gap:12px; align-items:center; background:#111827; padding:6px 12px; border-radius:20px; border:1px solid #374151;">
+                        <label style="color:#10b981; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                            CONV. <input type="radio" name="status-${a.athlete_id}" class="conv-radio" data-id="${a.athlete_id}" value="presente" ${isConv ? 'checked' : ''}>
+                        </label>
+                        <label style="color:#94a3b8; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                            ESCLUSO <input type="radio" name="status-${a.athlete_id}" class="conv-radio" data-id="${a.athlete_id}" value="assente" ${isExcl ? 'checked' : ''}>
+                        </label>
+                        <label style="color:#f59e0b; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px; border-left:1px solid #374151; padding-left:8px;">
+                            SQUALIF. <input type="radio" name="status-${a.athlete_id}" class="conv-radio" data-id="${a.athlete_id}" value="squalificato" ${isSq ? 'checked' : ''}>
+                        </label>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+    </div>`;
+};
+
+window.selezionaTuttiConvocati = function() {
+    const radios = document.querySelectorAll('.conv-radio[value="presente"]');
+    radios.forEach(r => {
+        const row = r.closest('div');
+        const isSqualificato = row.querySelector('input[value="squalificato"]').checked;
+        if (!isSqualificato) r.checked = true;
+    });
+};
+// --- 3.1 LOGICA SALVATAGGIO CONVOCAZIONI (Versione Ottimizzata) ---
+window.saveConvocazioni = async function(sessionId) {
+    // 1. Recuperiamo tutti i radio button selezionati (class "conv-radio")
+    const radios = document.querySelectorAll('.conv-radio:checked');
+    const attendanceData = [];
+
+    radios.forEach(radio => {
+        const athleteId = radio.getAttribute('data-id');
+        const statusValue = radio.value; // 'presente', 'assente', 'squalificato'
+
+        attendanceData.push({
+            session_id: sessionId,
+            athlete_id: athleteId,
+            status: statusValue,
+            // Per la tua tabella: true se presente, altrimenti false
+            is_called_up: statusValue === 'presente',
+            // Impostiamo valori di default per evitare problemi di cache se necessario
+            is_justified: statusValue === 'assente' 
+        });
+    });
+
+    if (attendanceData.length === 0) {
+        alert("Nessun dato da salvare.");
         return;
     }
 
     try {
-        const { data: typeData, error: typeError } = await db.from('session_types').select('id').ilike('name', 'Partita').single();
-        
-        if (typeError) throw typeError;
+        // Feedback visivo sul pulsante di invio
+        const btn = event?.target || document.querySelector('button[onclick*="saveConvocazioni"]');
+        const originalText = btn ? btn.innerText : "SALVA";
+        if (btn) {
+            btn.innerText = "⏳ SALVATAGGIO...";
+            btn.disabled = true;
+        }
 
-        const { data: matches, error: mError } = await db.from('sessions')
-            .select(`*, teams(name)`)
-            .eq('type_id', typeData.id)
+        // 2. Sincronizzazione con Supabase
+        // Utilizziamo l'identificatore unico (session_id, athlete_id) definito nel tuo DDL
+        const { error } = await client
+            .from('attendances')
+            .upsert(attendanceData, { 
+                onConflict: 'session_id, athlete_id' 
+            });
+
+        if (error) throw error;
+
+        alert("✅ Convocazioni salvate con successo!");
+        
+        // 3. Pulizia interfaccia
+        const subContainer = document.getElementById('sub-section-container');
+        if (subContainer) subContainer.innerHTML = '';
+        
+        // Ricarica la lista principale se la funzione esiste
+        if (typeof initPartite === 'function') initPartite(); 
+
+    } catch (err) {
+        console.error("Errore salvataggio convocazioni:", err);
+        alert("Errore durante il salvataggio: " + (err.message || "Problema di connessione"));
+    } finally {
+        // Ripristino pulsante
+        const btn = document.querySelector('button[onclick*="saveConvocazioni"]');
+        if (btn) {
+            btn.innerText = "SALVA";
+            btn.disabled = false;
+        }
+    }
+};
+// --- 4. TABELLINO (MATCH DETAILS) ---
+window.openTabellino = async function(sessionId) {
+    const container = window.prepareSubSection(sessionId);
+    if (!container) return;
+
+    let { data: d } = await client.from('match_details').select('*').eq('session_id', sessionId).maybeSingle();
+    
+    if (!d) {
+        const { data: newD } = await client.from('match_details').insert([{ 
+            session_id: sessionId, goals_for:0, goals_against:0, match_status: 'da disputare', is_home: true, is_friendly: false 
+        }]).select().single();
+        d = newD;
+    }
+
+    container.innerHTML = `
+    <div style="max-width:600px; margin:auto; background:white; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2); color:#333; font-family:sans-serif; overflow:hidden;">
+        <div style="background:#f8fafc; padding:20px; border-bottom:1px solid #e2e8f0;">
+            <h2 style="margin:0; font-size:18px; color:#1e293b;">⚽ Tabellino & Report Match</h2>
+        </div>
+
+        <div style="padding:20px; display:grid; gap:15px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div>
+                    <label style="display:block; font-size:11px; font-weight:bold; color:#64748b; margin-bottom:4px;">LOCATION</label>
+                    <select id="tab-is-home" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+                        <option value="true" ${d.is_home ? 'selected' : ''}>🏠 Casa</option>
+                        <option value="false" ${!d.is_home ? 'selected' : ''}>🚌 Trasferta</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block; font-size:11px; font-weight:bold; color:#64748b; margin-bottom:4px;">TIPO GARA</label>
+                    <select id="tab-is-friendly" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+                        <option value="false" ${!d.is_friendly ? 'selected' : ''}>🏆 Ufficiale</option>
+                        <option value="true" ${d.is_friendly ? 'selected' : ''}>🤝 Amichevole</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:10px;">
+                <input type="text" id="tab-opponent" value="${d.opponent_name || ''}" placeholder="Squadra Avversaria" style="padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+                <select id="tab-status" style="padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+                    <option value="da disputare" ${d.match_status === 'da disputare' ? 'selected' : ''}>Da disputare</option>
+                    <option value="vittoria" ${d.match_status === 'vittoria' ? 'selected' : ''}>Vittoria</option>
+                    <option value="sconfitta" ${d.match_status === 'sconfitta' ? 'selected' : ''}>Sconfitta</option>
+                    <option value="pareggio" ${d.match_status === 'pareggio' ? 'selected' : ''}>Pareggio</option>
+                </select>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <input type="time" id="tab-meet-time" value="${d.meet_time || ''}" title="Ora Ritrovo" style="padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+                <input type="time" id="tab-match-start" value="${d.match_start_time || ''}" title="Ora Inizio" style="padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+            </div>
+            <input type="text" id="tab-address" value="${d.address || ''}" placeholder="Indirizzo del campo" style="padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background:#f1f5f9; padding:15px; border-radius:10px; text-align:center;">
+                <div>
+                    <label style="font-size:11px; font-weight:800; color:#10b981;">GOL FATTI</label>
+                    <input type="number" id="tab-gf" value="${d.goals_for || 0}" style="width:100%; text-align:center; font-size:24px; font-weight:bold; border:none; background:transparent; color:#065f46;">
+                </div>
+                <div>
+                    <label style="font-size:11px; font-weight:800; color:#ef4444;">GOL SUBITI</label>
+                    <input type="number" id="tab-gs" value="${d.goals_against || 0}" style="width:100%; text-align:center; font-size:24px; font-weight:bold; border:none; background:transparent; color:#991b1b;">
+                </div>
+            </div>
+
+            <div style="border-top:1px solid #e2e8f0; padding-top:15px;">
+                <h3 style="font-size:14px; margin:0 0 10px 0; color:#475569;">📊 Marcatori & Sanzioni</h3>
+                <div id="events-list"></div>
+                <button onclick="window.addEventRow('${sessionId}')" style="width:100%; margin-top:10px; padding:10px; background:#fff; border:1px dashed #cbd5e1; border-radius:8px; cursor:pointer; font-size:13px; color:#3b82f6; font-weight:600;">+ Aggiungi Marcatore/Evento</button>
+            </div>
+        </div>
+
+        <div style="padding:15px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:10px;">
+            <button onclick="document.getElementById('sub-section-container').innerHTML=''" style="padding:10px 20px; background:#cbd5e1; color:#1e293b; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Annulla</button>
+            <button onclick="window.saveFullTabellino('${sessionId}', '${d.id}')" style="padding:10px 30px; background:#3b82f6; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">SALVA REPORT</button>
+        </div>
+    </div>`;
+
+    if (d.scorers) {
+        try { JSON.parse(d.scorers).forEach(ev => window.addEventRow(sessionId, ev)); } catch(e) {}
+    }
+};
+
+window.saveFullTabellino = async function(sessionId, detailId) {
+    const eventRows = document.querySelectorAll('.event-row');
+    const events = Array.from(eventRows).map(row => ({
+        athlete_id: row.querySelector('.ev-athlete').value,
+        type: row.querySelector('.ev-type').value
+    })).filter(ev => ev.athlete_id !== "");
+
+    const updateData = {
+        opponent_name: document.getElementById('tab-opponent').value,
+        match_status: document.getElementById('tab-status').value,
+        meet_time: document.getElementById('tab-meet-time').value,
+        match_start_time: document.getElementById('tab-match-start').value,
+        address: document.getElementById('tab-address').value,
+        goals_for: parseInt(document.getElementById('tab-gf').value) || 0,
+        goals_against: parseInt(document.getElementById('tab-gs').value) || 0,
+        is_home: document.getElementById('tab-is-home').value === 'true',
+        is_friendly: document.getElementById('tab-is-friendly').value === 'true',
+        scorers: JSON.stringify(events)
+    };
+
+    const statsMap = {};
+    events.forEach(ev => {
+        if (!statsMap[ev.athlete_id]) {
+            statsMap[ev.athlete_id] = { session_id: sessionId, athlete_id: ev.athlete_id, goals: 0, yellow_cards: 0, red_cards: 0 };
+        }
+        if (ev.type.includes('⚽')) statsMap[ev.athlete_id].goals++;
+        if (ev.type.includes('🟨')) statsMap[ev.athlete_id].yellow_cards++;
+        if (ev.type.includes('🟥')) statsMap[ev.athlete_id].red_cards++;
+    });
+    const statsToInsert = Object.values(statsMap);
+
+    try {
+        await client.from('match_details').update(updateData).eq('id', detailId);
+        await client.from('match_stats').delete().eq('session_id', sessionId);
+        if (statsToInsert.length > 0) {
+            await client.from('match_stats').insert(statsToInsert);
+        }
+        alert("✅ Tabellino e Statistiche sincronizzati!");
+        document.getElementById('sub-section-container').innerHTML = '';
+        if (typeof initPartite === 'function') initPartite();
+    } catch (err) { 
+        console.error(err);
+        alert("Errore durante il salvataggio."); 
+    }
+};
+
+// --- 5. EXPORT IMMAGINE ---
+// --- INIZIO BLOCCO DA SOSTITUIRE ---
+window.exportConvocazioniIMG = async function(sessionId) {
+    try {
+        // 1. RECUPERO SESSIONE (Società, Categoria, Squadra)
+        const { data: session, error: sessError } = await client
+            .from('sessions')
+            .select(`
+                team_id,
+                societies:society_id ( name ),
+                categories:category_id ( name ),
+                teams:team_id ( name )
+            `)
+            .eq('id', sessionId)
+            .maybeSingle();
+
+        if (sessError || !session) throw new Error("Sessione non trovata");
+
+        const nomeSocieta = session.societies?.name || "SOCIETÀ";
+        const nomeSquadra = session.teams?.name || "Squadra";
+        const nomeCategoria = session.categories?.name || "";
+
+        // 2. RECUPERO STAFF - NUOVA LOGICA DIRETTA (No Join complessa)
+        const fetchStaffNames = async () => {
+            let staff = { allenatore: "Da definire", dirigente: "Da definire" };
+            
+            // Prendiamo tutti i membri dello staff per questo team_id
+            const { data: staffRoles } = await client
+                .from('user_category_seasons')
+                .select('user_id, role')
+                .eq('team_id', session.team_id);
+
+            if (staffRoles && staffRoles.length > 0) {
+                for (const entry of staffRoles) {
+                    // Per ogni ID trovato, facciamo una query secca sulla tabella users
+                    const { data: userData } = await client
+                        .from('users')
+                        .select('name')
+                        .eq('id', entry.user_id)
+                        .maybeSingle();
+
+                    if (userData?.name) {
+                        if (entry.role === 'Allenatore') staff.allenatore = userData.name;
+                        if (entry.role === 'Dirigente') staff.dirigente = userData.name;
+                    }
+                }
+            }
+            return staff;
+        };
+
+        const staffData = await fetchStaffNames();
+        const nomeAllenatore = staffData.allenatore;
+        const nomeDirigente = staffData.dirigente;
+
+        // 3. RECUPERO MATCH DETAILS (Avversario, Luogo, Orari)
+        const { data: detail } = await client
+            .from('match_details')
+            .select('*')
+            .eq('session_id', sessionId)
+            .maybeSingle();
+
+        // 4. RECUPERO ATLETI E RUOLI
+        const { data: conv } = await client.from('attendances')
+            .select('athlete_id, athletes(name, surname)')
+            .eq('session_id', sessionId).eq('is_called_up', true);
+
+        const { data: athleteDetails } = await client.from('athlete_team_seasons')
+            .select('athlete_id, jersey_number, role')
+            .eq('team_id', session.team_id);
+            
+        const detailMap = {};
+        athleteDetails?.forEach(d => { 
+            detailMap[d.athlete_id] = { num: d.jersey_number || '', role: d.role || 'Altro' }; 
+        });
+
+        const ordineRuoli = ["Portiere", "Difensore", "Centrocampista", "Attaccante"];
+        const atletiRaggruppati = (conv || []).reduce((acc, c) => {
+            const info = detailMap[c.athlete_id] || { num: '', role: 'Altro' };
+            const r = info.role;
+            if (!acc[r]) acc[r] = [];
+            acc[r].push({ fullname: `${c.athletes.surname} ${c.athletes.name}`.toUpperCase(), num: info.num });
+            return acc;
+        }, {});
+
+        // 5. GENERAZIONE HTML
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute'; tempContainer.style.left = '-9999px';
+        tempContainer.innerHTML = `
+            <div id="export-final-card" style="width: 550px; background: #1a472a; color: white; font-family: 'Arial Black', sans-serif; border: 6px solid #fff;">
+                <div style="padding: 30px; background: linear-gradient(135deg, #1a472a 0%, #2d5a27 100%);">
+                    <div style="text-align: center; border-bottom: 2px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 20px;">
+                        <h1 style="margin: 0; font-size: 28px; text-transform: uppercase;">${nomeSocieta}</h1>
+                        <div style="display: inline-block; background: #fbbf24; color: #1a472a; padding: 4px 20px; font-weight: 900; border-radius: 50px; margin-top: 10px; font-size: 15px;">
+                            ${nomeSquadra} ${nomeCategoria ? `- ${nomeCategoria}` : ''}
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin-bottom: 20px; font-size: 13px;">
+                        <div>⚽ <strong>GARA:</strong> VS ${detail?.opponent_name || '---'}</div>
+                        <div>📍 <strong>LUOGO:</strong> ${detail?.address || '---'}</div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 8px; color: #fbbf24; font-weight: bold; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
+                            <span>🕒 RITROVO: Ore ${detail?.meet_time?.substring(0,5) || '--:--'}</span>
+                            <span>⚽ INIZIO: Ore ${detail?.match_start_time?.substring(0,5) || '--:--'}</span>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                        <div style="border-left: 4px solid #fbbf24; padding-left: 10px;">
+                            <small style="display:block; opacity: 0.7; text-transform: uppercase; font-size: 9px;">Allenatore</small>
+                            <strong>${nomeAllenatore}</strong>
+                        </div>
+                        <div style="border-left: 4px solid #fbbf24; padding-left: 10px;">
+                            <small style="display:block; opacity: 0.7; text-transform: uppercase; font-size: 9px;">Dirigente</small>
+                            <strong>${nomeDirigente}</strong>
+                        </div>
+                    </div>
+
+                    <div>
+                        ${ordineRuoli.map(ruolo => {
+                            const lista = atletiRaggruppati[ruolo] || [];
+                            if (lista.length === 0) return '';
+                            return `
+                                <div style="background: white; color: #1a472a; padding: 4px 12px; font-weight: 900; text-transform: uppercase; font-size: 11px; margin-top: 12px;">
+                                    ${ruolo}S (${lista.length})
+                                </div>
+                                ${lista.map(a => `
+                                    <div style="display: flex; justify-content: space-between; padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 14px;">
+                                        <span>${a.fullname}</span>
+                                        <span style="color: #fbbf24; font-weight: 900;">${a.num}</span>
+                                    </div>
+                                `).join('')}
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(tempContainer);
+        const canvas = await html2canvas(document.getElementById('export-final-card'), { scale: 2, useCORS: true });
+        const link = document.createElement('a');
+        link.download = `Convocazioni_${nomeSquadra.replace(/\s+/g, '_')}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        document.body.removeChild(tempContainer);
+
+    } catch (err) {
+        console.error("Errore:", err);
+        alert("Errore nell'esportazione: " + err.message);
+    }
+};
+// --- FINE BLOCCO (Assicurati che non ci siano CANCELLAZIONI dopo questa riga!) ---
+// --- 6. ANALYTICS ---
+window.openStatistiche = async function(sessionId) {
+    const container = window.prepareSubSection(sessionId);
+    if (!container) return;
+
+    const currentSession = await window.safeGetSession(sessionId);
+    const teamId = currentSession.team_id;
+
+    const { data: types } = await client.from('session_types').select('id, name');
+    const validTypeIds = (types || []).filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')).map(t => t.id);
+
+    const { data: allMatches } = await client.from('match_details').select(`*, sessions!inner(team_id, type_id)`).eq('sessions.team_id', teamId).in('sessions.type_id', validTypeIds);
+    const { data: allAttendances } = await client.from('attendances').select(`athlete_id, status, is_called_up, athletes(name, surname), sessions!inner(type_id)`).eq('sessions.team_id', teamId).in('sessions.type_id', validTypeIds);
+    const { data: performanceStats } = await client.from('match_stats').select(`*, sessions!inner(type_id)`).eq('sessions.team_id', teamId).in('sessions.type_id', validTypeIds);
+
+    const athleteMap = {};
+    allAttendances?.forEach(att => {
+        if (!athleteMap[att.athlete_id]) athleteMap[att.athlete_id] = { name: `${att.athletes.surname} ${att.athletes.name}`, presenze: 0, totali: 0, gol: 0, amm: 0, esp: 0, squal: 0, min: 0 };
+        athleteMap[att.athlete_id].totali++; 
+        if (att.is_called_up && att.status !== 'squalificato') athleteMap[att.athlete_id].presenze++;
+        if (att.status === 'squalificato') athleteMap[att.athlete_id].squal++;
+    });
+
+    performanceStats?.forEach(st => {
+        const a = athleteMap[st.athlete_id];
+        if (a) { a.gol += (st.goals || 0); a.amm += (st.yellow_cards || 0); a.esp += (st.red_cards || 0); a.min += (st.minutes_played || 0); }
+    });
+
+    container.innerHTML = `
+    <div style="background:#f1f5f9; border-radius:12px; padding:20px; font-family:sans-serif;">
+        <h2 style="margin-bottom:20px; color:#1e293b;">📊 Performance Analysis</h2>
+        <div style="background:white; border-radius:10px; overflow:hidden;">
+            <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead>
+                    <tr style="background:#f8fafc; text-align:left; border-bottom:1px solid #e2e8f0;">
+                        <th style="padding:12px;">ATLETA</th>
+                        <th style="padding:12px; text-align:center;">GOL</th>
+                        <th style="padding:12px; text-align:center;">SQUAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${Object.values(athleteMap).sort((a,b) => b.gol - a.gol).map(a => `
+                        <tr style="border-bottom:1px solid #f1f5f9;">
+                            <td style="padding:12px; font-weight:bold;">${a.name}</td>
+                            <td style="padding:12px; text-align:center; color:#10b981; font-weight:bold;">${a.gol}</td>
+                            <td style="padding:12px; text-align:center; color:#ef4444;">${a.squal} gg</td>
+                        </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>
+        <button onclick="document.getElementById('sub-section-container').innerHTML=''" style="margin-top:20px; padding:10px 20px; background:#cbd5e1; border:none; border-radius:8px; cursor:pointer;">Chiudi</button>
+    </div>`;
+};
+
+
+// 1. IL TEMPLATE (Genera l'HTML)
+
+
+function templateImportAtleti() {
+    return `
+        <div class="header-box" style="background: #1e3a8a; color: white; padding: 25px; border-radius: 12px; margin-bottom: 25px;">
+            <h2 style="margin:0; font-size: 24px; font-weight: 800;">📥 IMPORTAZIONE MASSIVA ATLETI</h2>
+            <p style="margin:5px 0 0 0; opacity: 0.8; font-size: 14px;">Configura i filtri e carica il file Excel</p>
+        </div>
+
+        <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+            <h4 style="margin:0 0 10px 0; color: #92400e; font-size: 14px; font-weight: 800;">⚠️ ISTRUZIONI FILE EXCEL</h4>
+            <p style="margin:0; font-size: 13px; color: #b45309; line-height: 1.5;">
+                Il file deve essere in formato <b>.xlsx</b> e contenere nella prima riga queste colonne: <br>
+                <b>nome</b> | <b>cognome</b> | <b>data_nascita</b> <br>
+                <span style="display:inline-block; margin-top:5px; background:#fef3c7; padding:2px 5px; border-radius:4px;">
+                    💡 La data deve essere nel formato: <b>AAAA-MM-GG</b> (es: 2012-05-24)
+                </span>
+            </p>
+        </div>
+
+        <div class="grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
+            <div class="card" style="background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <label style="display:block; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px;">1. Stagione</label>
+                <select id="import-sel-season" style="width:100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600;"></select>
+            </div>
+            <div class="card" style="background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <label style="display:block; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px;">2. Società</label>
+                <select id="import-sel-society" style="width:100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600;" disabled></select>
+            </div>
+            <div class="card" style="background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <label style="display:block; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px;">3. Squadra</label>
+                <select id="import-sel-team" style="width:100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600;" disabled></select>
+            </div>
+        </div>
+
+        <div id="import-upload-zone" style="background: #f8fafc; border: 3px dashed #cbd5e1; padding: 50px; border-radius: 15px; text-align: center;">
+            <div id="import-msg-init">
+                <p style="color: #64748b; font-weight: 600;">Seleziona i filtri sopra per caricare il file.</p>
+            </div>
+            <div id="import-action-zone" style="display: none;">
+                <p id="cat-display-label" style="margin-bottom: 15px; font-weight: 800; color: #1e3a8a;"></p>
+                <input type="file" id="import-excel-input" accept=".xlsx" style="display: none;">
+                <button id="btn-trigger-file" style="background: #1e3a8a; color: white; border: none; padding: 15px 40px; border-radius: 50px; font-weight: 800; cursor: pointer; text-transform: uppercase;">
+                    Seleziona File Excel
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function initImportAtleti() {
+    const selSeason = document.getElementById('import-sel-season');
+    const selSoc = document.getElementById('import-sel-society');
+    const selTeam = document.getElementById('import-sel-team');
+
+    try {
+        // 1. Caricamento Iniziale Stagioni
+        const { data: seasons } = await client.from('seasons').select('id, name').order('name', { ascending: false });
+        if (selSeason) {
+            selSeason.innerHTML = '<option value="">Scegli Stagione...</option>' + 
+                (seasons || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
+
+        // 2. Evento Cambio Stagione -> Carica Società
+        selSeason.onchange = async () => {
+            if (!selSeason.value) return;
+            const { data: societies } = await client.from('societies').select('*').order('name');
+            selSoc.innerHTML = '<option value="">Scegli Società...</option>' + 
+                (societies || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            selSoc.disabled = false;
+            selTeam.disabled = true;
+        };
+
+        // 3. Evento Cambio Società -> Carica Squadre
+        selSoc.onchange = async () => {
+            if (!selSoc.value) return;
+            const { data: teams } = await client.from('teams')
+                .select('id, name, category_id, categories(name)')
+                .eq('society_id', selSoc.value);
+            
+            selTeam.innerHTML = '<option value="">Scegli Squadra...</option>' + 
+                (teams || []).map(t => `
+                    <option value="${t.id}" data-catid="${t.category_id}" data-catname="${t.categories?.name}">
+                        ${t.name} (${t.categories?.name || 'No Cat'})
+                    </option>
+                `).join('');
+            selTeam.disabled = false;
+        };
+
+        // 4. Evento Cambio Squadra -> Sblocca Zona Upload
+        selTeam.onchange = () => {
+            const opt = selTeam.selectedOptions[0];
+            if (selTeam.value) {
+                document.getElementById('cat-display-label').innerText = "Categoria: " + opt.getAttribute('data-catname');
+                document.getElementById('import-msg-init').style.display = 'none';
+                document.getElementById('import-action-zone').style.display = 'block';
+            }
+        };
+
+        // 5. Gestione Caricamento File
+        document.getElementById('btn-trigger-file').onclick = () => document.getElementById('import-excel-input').click();
+
+        document.getElementById('import-excel-input').onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                const workbook = XLSX.read(evt.target.result, { type: 'binary' });
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                
+                const sID = selSeason.value;
+                const socID = selSoc.value;
+                const tID = selTeam.value;
+                const cID = selTeam.selectedOptions[0].getAttribute('data-catid');
+
+                let count = 0;
+
+                for (let row of rows) {
+                    try {
+                        const getVal = (obj, aliases) => {
+                            const key = Object.keys(obj).find(k => aliases.includes(k.toLowerCase().trim()));
+                            return key ? obj[key] : null;
+                        };
+
+                        const nome = getVal(row, ['nome', 'name']);
+                        const cognome = getVal(row, ['cognome', 'surname']);
+                        const dataNascita = getVal(row, ['data_nascita', 'nascita', 'data', 'born_date', 'birth_date']);
+
+                        if (!nome || !cognome) continue;
+
+                        // A. Inserimento Anagrafica (Usando BORN_DATE)
+                        const { data: ath, error: aErr } = await client.from('athletes').insert({
+                            name: nome, 
+                            surname: cognome, 
+                            born_date: dataNascita // <--- CORRETTO DA birth_date A born_date
+                        }).select().single();
+
+                        if (aErr) {
+                            console.error("Errore Atleti:", aErr.message);
+                            continue;
+                        }
+
+                        // B. Inserimento Legame Stagionale
+                        if (ath) {
+                            const { error: sErr } = await client.from('athlete_team_seasons').insert({
+                                athlete_id: ath.id,
+                                season_id: sID,
+                                society_id: socID,
+                                team_id: tID,
+                                category_id: cID
+                            });
+
+                            if (!sErr) count++;
+                            else console.error("Errore Legame:", sErr.message);
+                        }
+                    } catch (err) {
+                        console.error("Errore riga:", err);
+                    }
+                }
+
+                alert(`✅ Importazione completata!\nAtleti registrati correttamente: ${count}`);
+                
+                // Reset UI
+                document.getElementById('import-excel-input').value = "";
+                selTeam.value = "";
+                document.getElementById('import-msg-init').style.display = 'block';
+                document.getElementById('import-action-zone').style.display = 'none';
+            };
+            reader.readAsBinaryString(file);
+        };
+
+    } catch (err) {
+        console.error("Errore initImport:", err);
+    }
+}
+
+
+
+
+/* ============================================================
+   MODULO: DASHBOARD AMMINISTRATORE
+   ============================================================ */
+
+window.templateDashboard = function() {
+    const userName = window.CURRENT_USER ? window.CURRENT_USER.name : "Utente";
+    const userRole = (window._userRole || '').toLowerCase();
+    const roleLabels = {
+        admin: 'Amministratore', manager: 'Manager', presidente: 'Presidente',
+        segretario: 'Segretario', responsabile: 'Responsabile',
+        dirigente: 'Dirigente', allenatore: 'Allenatore', genitore: 'Genitore'
+    };
+    const roleName = roleLabels[userRole] || userRole;
+    const today = new Date().toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+    return `
+    <div id="dashboard-wrap" style="width:100%;">
+
+        <!-- HEADER DASHBOARD -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; flex-wrap:wrap; gap:12px;">
+            <div>
+                <h2 style="font-family:'Space Grotesk',sans-serif; font-size:1.4rem; font-weight:700; margin-bottom:4px;">Dashboard ${roleName}</h2>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span style="color:#64748b; font-size:0.82rem;">Panoramica globale ·</span>
+                    <span id="dash-season-label" style="color:#2563eb; font-size:0.82rem; font-weight:600;">⏳ Caricamento...</span>
+                    <span style="color:#64748b; font-size:0.82rem;">· ${today}</span>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <select id="dash-season-filter" onchange="window.refreshDashboard()" style="padding:7px 12px; border:1.5px solid #2563eb; border-radius:8px; font-weight:600; color:#2563eb; background:white; font-size:0.82rem; cursor:pointer; width:auto; margin:0;">
+                    <option value="all">Tutte le stagioni</option>
+                </select>
+                <select id="dash-soc-filter" onchange="window.refreshDashboard()" style="padding:7px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-weight:500; color:#475569; background:white; font-size:0.82rem; cursor:pointer; width:auto; margin:0;">
+                    <option value="all">Tutte le società</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- KPI CARDS -->
+        <div id="dash-kpi-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:12px; margin-bottom:1.5rem;">
+            <div class="kpi-card-skeleton" style="height:90px; background:#f1f5f9; border-radius:12px; animation:pulse 1.5s infinite;"></div>
+            <div class="kpi-card-skeleton" style="height:90px; background:#f1f5f9; border-radius:12px; animation:pulse 1.5s infinite;"></div>
+            <div class="kpi-card-skeleton" style="height:90px; background:#f1f5f9; border-radius:12px; animation:pulse 1.5s infinite;"></div>
+            <div class="kpi-card-skeleton" style="height:90px; background:#f1f5f9; border-radius:12px; animation:pulse 1.5s infinite;"></div>
+            <div class="kpi-card-skeleton" style="height:90px; background:#f1f5f9; border-radius:12px; animation:pulse 1.5s infinite;"></div>
+        </div>
+
+        <!-- GRID TABELLE -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.25rem;">
+
+            <!-- PARTITE ULTIMO MESE -->
+            <div class="card" style="grid-column: span 2;">
+                <div class="header" style="margin-bottom:1rem;">
+                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">🏆 Partite ultimo mese</h3>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <select id="dash-match-soc" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le società</option>
+                        </select>
+                        <select id="dash-match-team" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le squadre</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#64748b;">
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Data</th>
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Partita</th>
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Squadra</th>
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">Risultato</th>
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">Esito</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-matches-body">
+                            <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.25rem;">
+
+            <!-- PRESENZE SESSIONI -->
+            <div class="card">
+                <div class="header" style="margin-bottom:1rem;">
+                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">📅 Presenze Sessioni</h3>
+                    <select id="dash-pres-team" onchange="window.renderDashPresenze()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                        <option value="">Tutte le squadre</option>
+                    </select>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#64748b;">
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Sessione</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#10b981;">P</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#ef4444;">A</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#f59e0b;">G</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">%</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-pres-body">
+                            <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- STATISTICHE GARE -->
+            <div class="card">
+                <div class="header" style="margin-bottom:1rem;">
+                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">⚽ Statistiche Gare per Squadra</h3>
+                    <select id="dash-stats-soc" onchange="window.renderDashStats()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                        <option value="">Tutte le società</option>
+                    </select>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#64748b;">
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Squadra</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">P</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#10b981;">GF</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#ef4444;">GS</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#f59e0b;">🟨</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#ef4444;">🟥</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">W/D/L</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-stats-body">
+                            <tr><td colspan="7" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <style>
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        .kpi-card { background:white; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; border-top:3px solid var(--kpi-color,#2563eb); }
+        .kpi-card .kpi-label { font-size:0.68rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#94a3b8; margin-bottom:6px; }
+        .kpi-card .kpi-value { font-family:'Space Grotesk',sans-serif; font-size:1.8rem; font-weight:700; color:var(--kpi-color,#2563eb); line-height:1; }
+        .kpi-card .kpi-sub { font-size:0.72rem; color:#94a3b8; margin-top:4px; }
+    </style>
+    `;
+};
+
+/* ── DATI GLOBALI DASHBOARD ── */
+window._dashData = {};
+
+window.initDashboard = async function() {
+    try {
+        const effectiveRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const isGlobalUser = ['admin','manager'].includes(effectiveRole);
+        const isSocietyScoped = ['presidente','segretario','responsabile','dirigente','allenatore'].includes(effectiveRole);
+        const userSocietyId = window._currentSocietyId;
+
+        // Carica stagioni
+        const { data: seasons } = await client.from('seasons').select('id, name, is_active').order('name', { ascending: false });
+        const selSeason = document.getElementById('dash-season-filter');
+        if (selSeason) {
+            (seasons || []).forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name + (s.is_active ? ' ✓' : '');
+                if (s.is_active) opt.selected = true;
+                selSeason.appendChild(opt);
+            });
+        }
+
+        window._dashData._seasons = seasons || [];
+
+        // Gestione filtro società in base al ruolo
+        const selSoc = document.getElementById('dash-soc-filter');
+        const socFilterWrapper = selSoc?.parentElement;
+
+        if (isGlobalUser) {
+            // Admin/Manager: mostra tutte le società selezionabili
+            const { data: societies } = await client.from('societies').select('id, name').order('name');
+            window._dashData._societies = societies || [];
+            if (selSoc) {
+                (societies || []).forEach(s => {
+                    selSoc.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                });
+            }
+        } else if (isSocietyScoped && userSocietyId) {
+            // Ruoli societari: nasconde il filtro società, forza la propria
+            if (socFilterWrapper) socFilterWrapper.style.display = 'none';
+            window._dashData._forcedSocietyId = userSocietyId;
+            // Recupera nome società per mostrarlo
+            const { data: mySoc } = await client.from('societies').select('id, name').eq('id', userSocietyId).maybeSingle();
+            window._dashData._societies = mySoc ? [mySoc] : [];
+        } else {
+            // Genitore o ruolo sconosciuto: nasconde il filtro
+            if (socFilterWrapper) socFilterWrapper.style.display = 'none';
+            window._dashData._forcedSocietyId = userSocietyId;
+        }
+
+        // Label stagione attiva
+        const activeSeason = (seasons || []).find(s => s.is_active);
+        const labelEl = document.getElementById('dash-season-label');
+        if (labelEl) labelEl.textContent = '🌐 Stagione: ' + (activeSeason?.name || 'Tutte');
+
+        await window.refreshDashboard();
+
+    } catch(err) { console.error('initDashboard error:', err); }
+};
+
+window.refreshDashboard = async function() {
+    const seasonId = document.getElementById('dash-season-filter')?.value;
+    // Se l'utente ha una società forzata la usa, altrimenti legge il select
+    const socId = window._dashData._forcedSocietyId ||
+                  document.getElementById('dash-soc-filter')?.value || 'all';
+
+    // Aggiorna label stagione
+    const labelEl = document.getElementById('dash-season-label');
+    if (labelEl) {
+        if (!seasonId || seasonId === 'all') {
+            labelEl.textContent = '🌐 Tutte le stagioni';
+        } else {
+            const s = (window._dashData._seasons || []).find(x => x.id === seasonId);
+            labelEl.textContent = '🌐 Stagione: ' + (s?.name || '');
+        }
+    }
+
+    await Promise.all([
+        window.loadDashKPIs(seasonId, socId),
+        window.loadDashMatches(seasonId, socId),
+        window.loadDashPresenze(seasonId, socId),
+        window.loadDashStats(seasonId, socId),
+    ]);
+};
+
+/* ── KPI ── */
+window.loadDashKPIs = async function(seasonId, socId) {
+    const grid = document.getElementById('dash-kpi-grid');
+    if (!grid) return;
+
+    try {
+        // Base queries
+        let athQ = client.from('athlete_team_seasons').select('id, society_id, season_id', { count: 'exact', head: false });
+        let sessQ = client.from('sessions').select('id, society_id, season_id', { count: 'exact', head: false });
+        let socQ = client.from('societies').select('id', { count: 'exact', head: false });
+        let catQ = client.from('categories').select('id, society_id', { count: 'exact', head: false });
+        let staffQ = client.from('users').select('id, society_id, management_role', { count: 'exact', head: false }).neq('username', 'admin');
+        let attQ = client.from('attendances').select('status');
+
+        // Filters
+        if (seasonId && seasonId !== 'all') {
+            athQ = athQ.eq('season_id', seasonId);
+            sessQ = sessQ.eq('season_id', seasonId);
+        }
+        if (socId && socId !== 'all') {
+            athQ = athQ.eq('society_id', socId);
+            sessQ = sessQ.eq('society_id', socId);
+            catQ = catQ.eq('society_id', socId);
+            staffQ = staffQ.eq('society_id', socId);
+        }
+
+        const [athRes, sessRes, socRes, catRes, staffRes, attRes] = await Promise.all([
+            athQ, sessQ, socQ, catQ, staffQ, attQ
+        ]);
+
+        const athletes = athRes.data || [];
+        const sessions = sessRes.data || [];
+        const categories = catRes.data || [];
+        const staff = staffRes.data || [];
+        const attendances = attRes.data || [];
+
+        // KPI calculations
+        const totalAtleti = athletes.length;
+        const totalSessioni = sessions.length;
+        const totalSocieta = (socId && socId !== 'all') ? 1 : (socRes.data || []).length;
+        const totalCategorie = categories.length;
+        const totalStaff = staff.length;
+
+        const staffByRole = staff.reduce((acc, u) => {
+            const r = (u.management_role || 'Altro').toLowerCase();
+            if (r.includes('president')) acc.presidenti++;
+            else if (r.includes('allenator') || r.includes('coach')) acc.allenatori++;
+            else if (r.includes('dirigent')) acc.dirigenti++;
+            else if (r.includes('responsabil')) acc.responsabili++;
+            return acc;
+        }, { presidenti:0, allenatori:0, dirigenti:0, responsabili:0 });
+
+        // Calcolo % presenze globale
+        const tot = attendances.length;
+        const pres = attendances.filter(a => (a.status||'').toLowerCase() === 'presente').length;
+        const percPres = tot > 0 ? Math.round((pres/tot)*100) : 0;
+
+        // Calcolo categorie uniche
+        const uniqueCats = new Set(athletes.map(a => a.society_id)).size;
+
+        const kpis = [
+            { label:'Atleti Totali',      value: totalAtleti,   sub: `in ${uniqueCats || totalCategorie} categorie`, color:'#2563eb' },
+            { label:'Sessioni Registrate', value: totalSessioni,  sub: 'tutte le categorie',              color:'#10b981' },
+            { label:'% Presenze Globali',  value: percPres+'%',   sub: `${pres}/${tot} totali`,            color:'#f59e0b' },
+            { label:'Società',             value: totalSocieta,   sub: '1 sport',                          color:'#06b6d4' },
+            { label:'Categorie',           value: totalCategorie, sub: 'attive',                           color:'#8b5cf6' },
+            { label:'Staff Totale',        value: totalStaff,     sub: 'utenti registrati',                color:'#64748b' },
+            { label:'Allenatori',          value: staffByRole.allenatori, sub:'registrati',               color:'#f59e0b' },
+            { label:'Dirigenti',           value: staffByRole.dirigenti,  sub:'registrati',               color:'#ef4444' },
+            { label:'Presidenti',          value: staffByRole.presidenti, sub:'registrati',               color:'#2563eb' },
+        ];
+
+        grid.innerHTML = kpis.map(k => `
+            <div class="kpi-card" style="--kpi-color:${k.color}">
+                <div class="kpi-label">${k.label}</div>
+                <div class="kpi-value">${k.value}</div>
+                <div class="kpi-sub">${k.sub}</div>
+            </div>
+        `).join('');
+
+    } catch(err) { console.error('KPI error:', err); }
+};
+
+/* ── PARTITE ULTIMO MESE ── */
+window._dashMatches = [];
+window._dashMatchTeams = [];
+
+window.loadDashMatches = async function(seasonId, socId) {
+    try {
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        const fromDate = oneMonthAgo.toISOString().split('T')[0];
+
+        // Ottieni i tipi "gara/partita"
+        const { data: types } = await client.from('session_types').select('id, name');
+        const validIds = (types||[]).filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')).map(t => t.id);
+
+        let q = client.from('sessions')
+            .select('id, title, session_date, society_id, team_id, teams(name), societies(name)')
+            .gte('session_date', fromDate)
             .order('session_date', { ascending: false });
 
-        if (mError) throw mError;
+        if (validIds.length > 0) q = q.in('type_id', validIds);
+        if (seasonId && seasonId !== 'all') q = q.eq('season_id', seasonId);
+        if (socId && socId !== 'all') q = q.eq('society_id', socId);
 
-        if (sub === 'sintesi') {
-            container.innerHTML = `<table style="width:100%; color:white; border-collapse:collapse;">
-                ${matches.map(m => `
-                <tr style="border-bottom:1px solid #2d303e;">
-                    <td style="padding:15px; color:#94a3b8;">${new Date(m.session_date).toLocaleDateString()}</td>
-                    <td style="font-weight:600; color:#2563eb;">${m.teams?.name || '-'}</td>
-                    <td>${m.title}</td>
-                    <td style="text-align:right;"><button class="btn-sm" onclick="window.openAttendanceModal('${m.id}')" style="background:#1e293b; color:white; padding:6px 12px; border-radius:6px; cursor:pointer; border:1px solid #334155;">Dettagli</button></td>
-                </tr>`).join('')}
-            </table>`;
-        } else {
-            container.innerHTML = `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">
-                ${matches.map(m => `
-                <div style="background:#1a1d29; border:1px solid #2d303e; padding:18px; border-radius:12px; border-top:4px solid #2563eb;">
-                    <div style="font-size:10px; color:#64748b; margin-bottom:5px;">${new Date(m.session_date).toLocaleDateString()}</div>
-                    <h4 style="margin:0 0 15px 0; color:white; font-size:15px;">${m.title}</h4>
-                    <button class="btn" onclick="window.openAttendanceModal('${m.id}')" style="width:100%; background:#2563eb; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">📋 GESTISCI CONVOCATI</button>
-                </div>`).join('')}
-            </div>`;
+        const { data: sessions } = await q;
+
+        // Recupera i match_details
+        const sessionIds = (sessions || []).map(s => s.id);
+        let details = [];
+        if (sessionIds.length > 0) {
+            const { data: d } = await client.from('match_details').select('*').in('session_id', sessionIds);
+            details = d || [];
         }
-    } catch (e) { 
-        console.error("Errore Database:", e);
-        // Messaggio specifico per l'errore di Refresh Token
-        if (e.message && e.message.includes("JWN") || e.status === 400) {
-            container.innerHTML = "<div style='color:#ef4444; text-align:center; padding:20px;'><b>Sessione Scaduta!</b><br>Ricarica la pagina o rifai il Login.</div>";
-        } else {
-            container.innerHTML = "<div style='color:#64748b; padding:20px;'>Nessuna gara trovata o errore di connessione.</div>";
+        const detailMap = {};
+        details.forEach(d => detailMap[d.session_id] = d);
+
+        window._dashMatches = (sessions || []).map(s => ({ ...s, detail: detailMap[s.id] }));
+        window._dashMatchTeams = [...new Map((sessions||[]).filter(s=>s.teams).map(s => [s.team_id, { id:s.team_id, name:s.teams.name }])).values()];
+
+        // Popola filtro squadra
+        const selTeam = document.getElementById('dash-match-team');
+        const selSoc = document.getElementById('dash-match-soc');
+        if (selTeam) {
+            selTeam.innerHTML = '<option value="">Tutte le squadre</option>' +
+                window._dashMatchTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
         }
-    }
+        if (selSoc) {
+            const matchSocs = [...new Map((sessions||[]).filter(s=>s.societies).map(s=>[s.society_id,{id:s.society_id,name:s.societies.name}])).values()];
+            selSoc.innerHTML = '<option value="">Tutte le società</option>' +
+                matchSocs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+        }
+
+        window.renderDashMatches();
+    } catch(err) { console.error('loadDashMatches error:', err); }
 };
 
-// 4. MODALE CONVOCATI (SPUNTA ATLETA PER ATLETA)
-window.openAttendanceModal = async function(sessionId) {
-    const modal = document.getElementById('modal-attendance');
-    const list = document.getElementById('attendance-list');
-    const db = getDb();
-    
-    if (!modal || !list || !db) return;
-    modal.style.display = 'flex';
-    list.innerHTML = 'Caricamento...';
+window.renderDashMatches = function() {
+    const tbody = document.getElementById('dash-matches-body');
+    if (!tbody) return;
+    const filterTeam = document.getElementById('dash-match-team')?.value;
+    const filterSoc = document.getElementById('dash-match-soc')?.value;
 
+    const filtered = window._dashMatches.filter(m =>
+        (!filterTeam || m.team_id === filterTeam) &&
+        (!filterSoc || m.society_id === filterSoc)
+    );
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = "<tr><td colspan=\"5\" style=\"text-align:center; padding:20px; color:#94a3b8;\">Nessuna partita nell'ultimo mese.</td></tr>";
+        return;
+    }
+
+    const esitoBadge = (status) => {
+        if (!status || status === 'da disputare') return '<span style="background:#f1f5f9; color:#64748b; padding:2px 8px; border-radius:99px; font-size:0.7rem; font-weight:700;">DA GIOCARE</span>';
+        if (status === 'vittoria') return '<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:99px; font-size:0.7rem; font-weight:700;">VITTORIA</span>';
+        if (status === 'sconfitta') return '<span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:99px; font-size:0.7rem; font-weight:700;">SCONFITTA</span>';
+        if (status === 'pareggio') return '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:99px; font-size:0.7rem; font-weight:700;">PAREGGIO</span>';
+        return '<span style="background:#f1f5f9; color:#64748b; padding:2px 8px; border-radius:99px; font-size:0.7rem; font-weight:700;">' + status.toUpperCase() + '</span>';
+    };
+
+    tbody.innerHTML = filtered.map(m => {
+        const d = m.detail;
+        const risultato = d ? `${d.goals_for ?? '-'} - ${d.goals_against ?? '-'}` : '- -';
+        const vs = d?.opponent_name ? `vs ${d.opponent_name}` : (m.title || 'Gara');
+        return `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:9px 12px; color:#64748b; white-space:nowrap;">${new Date(m.session_date).toLocaleDateString('it-IT')}</td>
+            <td style="padding:9px 12px; font-weight:600;">${vs}</td>
+            <td style="padding:9px 12px; color:#2563eb;">${m.teams?.name || '-'}</td>
+            <td style="padding:9px 12px; text-align:center; font-weight:700; font-family:'Space Grotesk',sans-serif;">${risultato}</td>
+            <td style="padding:9px 12px; text-align:center;">${esitoBadge(d?.match_status)}</td>
+        </tr>`;
+    }).join('');
+};
+
+/* ── PRESENZE SESSIONI ── */
+window._dashSessions = [];
+
+window.loadDashPresenze = async function(seasonId, socId) {
     try {
-        const { data: session } = await db.from('sessions').select('team_id, title').eq('id', sessionId).single();
-        const { data: players } = await db.from('players').select('*').eq('team_id', session.team_id).order('last_name');
-        const { data: currentAtt } = await db.from('attendances').select('player_id, status').eq('session_id', sessionId);
+        let q = client.from('sessions')
+            .select('id, title, session_date, team_id, type_id, teams(name), attendances(status)')
+            .order('session_date', { ascending: false })
+            .limit(50);
 
-        list.innerHTML = `
-            <div style="background:rgba(37,99,235,0.1); padding:10px; border-radius:8px; color:#2563eb; font-weight:bold; margin-bottom:15px; text-align:center; font-size:12px;">
-                CONVOCAZIONI: ${session.title}
-            </div>
-            ${players.map(p => {
-                const isConvocato = currentAtt?.find(a => a.player_id === p.id)?.status === 'Convocato';
-                return `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:${isConvocato ? 'rgba(37,99,235,0.08)' : 'transparent'}; border:1px solid ${isConvocato ? '#2563eb' : '#2d303e'}; border-radius:10px; margin-bottom:8px;">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <div style="width:25px; color:${isConvocato ? '#2563eb' : '#444'}; font-weight:bold; font-size:12px;">${p.shirt_number || '-'}</div>
-                        <div style="color:white; font-size:14px; font-weight:600;">${p.last_name} ${p.first_name}</div>
-                    </div>
-                    <button onclick="window.salvaStatoGara('${p.id}', '${sessionId}', '${isConvocato ? 'Escluso' : 'Convocato'}')" 
-                        style="padding:7px 12px; border-radius:6px; border:none; cursor:pointer; font-weight:bold; font-size:10px; background:${isConvocato ? '#2563eb' : '#1c202e'}; color:white; transition: 0.2s;">
-                        ${isConvocato ? '✓ SELEZIONATO' : 'CONVOCA'}
-                    </button>
-                </div>`;
-            }).join('')}`;
-    } catch (e) { 
-        console.error(e);
-        list.innerHTML = "Errore nel caricamento. Assicurati di essere loggato.";
-    }
+        if (seasonId && seasonId !== 'all') q = q.eq('season_id', seasonId);
+        if (socId && socId !== 'all') q = q.eq('society_id', socId);
+
+        const { data } = await q;
+
+        // Escludi sessioni di tipo gara/partita
+        const { data: types } = await client.from('session_types').select('id, name');
+        const garaIds = new Set((types||[]).filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')).map(t=>t.id));
+
+        window._dashSessions = (data||[]).filter(s => !garaIds.has(s.type_id));
+
+        // Popola filtro squadra
+        const selTeam = document.getElementById('dash-pres-team');
+        if (selTeam) {
+            const teams = [...new Map(window._dashSessions.filter(s=>s.teams).map(s=>[s.team_id,{id:s.team_id,name:s.teams.name}])).values()];
+            selTeam.innerHTML = '<option value="">Tutte le squadre</option>' + teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+        }
+
+        window.renderDashPresenze();
+    } catch(err) { console.error('loadDashPresenze error:', err); }
 };
 
-// 5. SALVATAGGIO
-window.salvaStatoGara = async function(playerId, sessionId, nuovoStato) {
-    const db = getDb();
+window.renderDashPresenze = function() {
+    const tbody = document.getElementById('dash-pres-body');
+    if (!tbody) return;
+    const filterTeam = document.getElementById('dash-pres-team')?.value;
+
+    const filtered = window._dashSessions
+        .filter(s => !filterTeam || s.team_id === filterTeam)
+        .slice(0, 15);
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Nessuna sessione trovata.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(s => {
+        const att = s.attendances || [];
+        const p = att.filter(a => (a.status||'').toLowerCase()==='presente').length;
+        const a = att.filter(x => (x.status||'').toLowerCase()==='assente').length;
+        const g = att.filter(x => (x.status||'').toLowerCase()==='giustificato').length;
+        const tot = att.length;
+        const perc = tot > 0 ? Math.round((p/tot)*100) : 0;
+        const percColor = perc >= 75 ? '#10b981' : perc >= 50 ? '#f59e0b' : '#ef4444';
+        return `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:8px 10px;">
+                <div style="font-weight:600; font-size:0.8rem;">${s.title || 'Sessione'}</div>
+                <div style="font-size:0.7rem; color:#94a3b8;">${new Date(s.session_date).toLocaleDateString('it-IT')} · ${s.teams?.name||''}</div>
+            </td>
+            <td style="padding:8px 10px; text-align:center; color:#10b981; font-weight:700;">${p}</td>
+            <td style="padding:8px 10px; text-align:center; color:#ef4444; font-weight:700;">${a}</td>
+            <td style="padding:8px 10px; text-align:center; color:#f59e0b; font-weight:700;">${g}</td>
+            <td style="padding:8px 10px; text-align:center; font-weight:700; color:${percColor};">${perc}%</td>
+        </tr>`;
+    }).join('');
+};
+
+/* ── STATISTICHE GARE PER SQUADRA ── */
+window._dashMatchStats = [];
+
+window.loadDashStats = async function(seasonId, socId) {
     try {
-        await db.from('attendances').upsert({
-            player_id: playerId,
-            session_id: sessionId,
-            status: nuovoStato,
-            updated_at: new Date()
-        }, { onConflict: 'player_id, session_id' });
+        let q = client.from('sessions')
+            .select('id, team_id, society_id, season_id, teams(name), societies(name)');
 
-        window.openAttendanceModal(sessionId); 
-    } catch (e) {
-        alert("Sessione scaduta. Ricarica la pagina.");
-    }
+        const { data: types } = await client.from('session_types').select('id, name');
+        const validIds = (types||[]).filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')).map(t=>t.id);
+        if (validIds.length > 0) q = q.in('type_id', validIds);
+        if (seasonId && seasonId !== 'all') q = q.eq('season_id', seasonId);
+        if (socId && socId !== 'all') q = q.eq('society_id', socId);
+
+        const { data: sessions } = await q;
+        const sessionIds = (sessions||[]).map(s=>s.id);
+
+        if (sessionIds.length === 0) {
+            window._dashMatchStats = [];
+            // Popola filtro soc
+            const selSoc = document.getElementById('dash-stats-soc');
+            if (selSoc) selSoc.innerHTML = '<option value="">Tutte le società</option>';
+            window.renderDashStats();
+            return;
+        }
+
+        const [detailsRes, statsRes] = await Promise.all([
+            client.from('match_details').select('session_id, goals_for, goals_against, match_status').in('session_id', sessionIds),
+            client.from('match_stats').select('session_id, yellow_cards, red_cards').in('session_id', sessionIds)
+        ]);
+
+        const detailMap = {};
+        (detailsRes.data||[]).forEach(d => detailMap[d.session_id] = d);
+
+        // Aggrega per squadra
+        const teamMap = {};
+        (sessions||[]).forEach(s => {
+            if (!s.team_id) return;
+            if (!teamMap[s.team_id]) teamMap[s.team_id] = {
+                name: s.teams?.name || '-',
+                soc: s.societies?.name || '-',
+                society_id: s.society_id,
+                partite:0, gf:0, gs:0, amm:0, esp:0, w:0, d:0, l:0
+            };
+            const t = teamMap[s.team_id];
+            const det = detailMap[s.id];
+            t.partite++;
+            if (det) {
+                t.gf += det.goals_for || 0;
+                t.gs += det.goals_against || 0;
+                if (det.match_status === 'vittoria') t.w++;
+                else if (det.match_status === 'pareggio') t.d++;
+                else if (det.match_status === 'sconfitta') t.l++;
+            }
+        });
+
+        (statsRes.data||[]).forEach(st => {
+            const sess = (sessions||[]).find(s=>s.id===st.session_id);
+            if (sess && teamMap[sess.team_id]) {
+                teamMap[sess.team_id].amm += st.yellow_cards || 0;
+                teamMap[sess.team_id].esp += st.red_cards || 0;
+            }
+        });
+
+        window._dashMatchStats = Object.values(teamMap);
+
+        // Filtro soc
+        const selSoc = document.getElementById('dash-stats-soc');
+        if (selSoc) {
+            const socs = [...new Map(window._dashMatchStats.map(t=>[t.society_id, t.soc])).entries()];
+            selSoc.innerHTML = '<option value="">Tutte le società</option>' + socs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
+        }
+
+        window.renderDashStats();
+    } catch(err) { console.error('loadDashStats error:', err); }
 };
+
+window.renderDashStats = function() {
+    const tbody = document.getElementById('dash-stats-body');
+    if (!tbody) return;
+    const filterSoc = document.getElementById('dash-stats-soc')?.value;
+
+    const filtered = window._dashMatchStats
+        .filter(t => !filterSoc || t.society_id === filterSoc)
+        .sort((a,b) => b.gf - a.gf);
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#94a3b8;">Nessun dato gare disponibile.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(t => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:8px 10px; font-weight:600; font-size:0.82rem;">${t.name}<br><span style="font-size:0.7rem; color:#94a3b8;">${t.soc}</span></td>
+            <td style="padding:8px 10px; text-align:center; color:#64748b; font-weight:700;">${t.partite}</td>
+            <td style="padding:8px 10px; text-align:center; color:#10b981; font-weight:700;">${t.gf}</td>
+            <td style="padding:8px 10px; text-align:center; color:#ef4444; font-weight:700;">${t.gs}</td>
+            <td style="padding:8px 10px; text-align:center; color:#f59e0b; font-weight:700;">${t.amm}</td>
+            <td style="padding:8px 10px; text-align:center; color:#ef4444; font-weight:700;">${t.esp}</td>
+            <td style="padding:8px 10px; text-align:center; font-size:0.78rem; white-space:nowrap;">
+                <span style="color:#10b981;">${t.w}V</span> · <span style="color:#64748b;">${t.d}P</span> · <span style="color:#ef4444;">${t.l}S</span>
+            </td>
+        </tr>`).join('');
+};
+
 /* [QUI AGGIUNGEREMO LE FUNZIONI PER SPORT, SOCIETÀ, ECC. UNA ALLA VOLTA] */
 </script>
 </body>
