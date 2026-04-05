@@ -4099,8 +4099,8 @@ window.initDashboard = async function() {
         window._dashData._seasons = seasons || [];
 
         // Gestione filtro società in base al ruolo
+        // IMPORTANTE: nascondere solo il SELECT società, non il wrapper (che contiene anche il filtro stagione)
         const selSoc = document.getElementById('dash-soc-filter');
-        const socFilterWrapper = selSoc?.parentElement;
 
         if (isGlobalUser) {
             // Admin/Manager: mostra tutte le società selezionabili
@@ -4112,15 +4112,15 @@ window.initDashboard = async function() {
                 });
             }
         } else if (isSocietyScoped && userSocietyId) {
-            // Ruoli societari: nasconde il filtro società, forza la propria
-            if (socFilterWrapper) socFilterWrapper.style.display = 'none';
+            // Ruoli societari: nasconde SOLO il select società (non il wrapper), forza la propria
+            if (selSoc) selSoc.style.display = 'none';
             window._dashData._forcedSocietyId = userSocietyId;
             // Recupera nome società per mostrarlo
             const { data: mySoc } = await client.from('societies').select('id, name').eq('id', userSocietyId).maybeSingle();
             window._dashData._societies = mySoc ? [mySoc] : [];
         } else {
-            // Genitore o ruolo sconosciuto: nasconde il filtro
-            if (socFilterWrapper) socFilterWrapper.style.display = 'none';
+            // Genitore o ruolo sconosciuto: nasconde solo il select società
+            if (selSoc) selSoc.style.display = 'none';
             window._dashData._forcedSocietyId = userSocietyId;
         }
 
