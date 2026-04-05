@@ -2787,40 +2787,53 @@ function _sessGetRange() {
  * Poi preseleziona automaticamente se c'è una sola opzione disponibile.
  */
 async function _sessFillScopedFilters() {
-    const userId  = window._currentUserId;
-    const seaId   = document.getElementById('filter-season-sess')?.value;
+    const userId = window._currentUserId;
+    const seaId  = document.getElementById('filter-season-sess')?.value;
 
-    /* Leggi i legami dell'utente (season + team + category) */
+    /* Leggi direttamente da user_category_seasons — contiene già society_id, category_id, team_id, season_id */
     let q = client.from('user_category_seasons')
-        .select('season_id, team_id, category_id, teams(id, name, category_id), categories(id, name)')
+        .select('society_id, season_id, team_id, category_id')
         .eq('user_id', userId);
     if (seaId) q = q.eq('season_id', seaId);
     const { data: links } = await q;
 
-    /* Deduplica squadre */
-    const teamMap = new Map();
-    (links || []).forEach(r => {
-        if (r.teams && !teamMap.has(r.teams.id)) teamMap.set(r.teams.id, r.teams);
-    });
-    window._sessState.scopedTeams = [...teamMap.values()];
+    if (!links || links.length === 0) {
+        /* Nessun legame trovato per questa stagione */
+        window._sessState.scopedTeams = [];
+        const selCat  = document.getElementById('filter-category-sess');
+        const selTeam = document.getElementById('filter-team-sess');
+        if (selCat)  selCat.innerHTML  = '<option value="">Tutte le categorie</option>';
+        if (selTeam) selTeam.innerHTML = '<option value="">Tutte le squadre</option>';
+        initSessioni();
+        return;
+    }
 
-    /* Deduplica categorie */
-    const catMap = new Map();
-    (links || []).forEach(r => {
-        if (r.categories && !catMap.has(r.categories.id)) catMap.set(r.categories.id, r.categories);
-    });
-    const cats = [...catMap.values()].sort((a,b) => a.name.localeCompare(b.name));
+    /* Raccogli ID univoci di team e categorie */
+    const teamIds = [...new Set(links.map(r => r.team_id).filter(Boolean))];
+    const catIds  = [...new Set(links.map(r => r.category_id).filter(Boolean))];
+
+    /* Carica nomi team e categorie in parallelo */
+    const [{ data: teamsData }, { data: catsData }] = await Promise.all([
+        teamIds.length > 0
+            ? client.from('teams').select('id, name, category_id').in('id', teamIds).order('name')
+            : Promise.resolve({ data: [] }),
+        catIds.length > 0
+            ? client.from('categories').select('id, name').in('id', catIds).order('name')
+            : Promise.resolve({ data: [] }),
+    ]);
+
+    window._sessState.scopedTeams = teamsData || [];
 
     /* Popola select Categoria */
     const selCat = document.getElementById('filter-category-sess');
+    const cats = catsData || [];
     if (selCat) {
         selCat.innerHTML = '<option value="">Tutte le categorie</option>' +
             cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        /* Auto-seleziona se una sola categoria */
         if (cats.length === 1) selCat.value = cats[0].id;
     }
 
-    /* Popola select Squadra (filtrata per la categoria già selezionata) */
+    /* Popola select Squadra (filtrata per categoria già selezionata) */
     const selTeam = document.getElementById('filter-team-sess');
     const activeCat = selCat?.value;
     const teamsForCat = activeCat
@@ -2829,7 +2842,6 @@ async function _sessFillScopedFilters() {
     if (selTeam) {
         selTeam.innerHTML = '<option value="">Tutte le squadre</option>' +
             teamsForCat.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-        /* Auto-seleziona se una sola squadra */
         if (teamsForCat.length === 1) selTeam.value = teamsForCat[0].id;
     }
 
@@ -2910,6 +2922,7 @@ async function initSessioni() {
     if (isGlobalAdmin) {
         const selSoc = document.getElementById('filter-society-sess');
         if (selSoc && selSoc.options.length === 0) {
+            // Prima volta: carica società e sub-filtri, poi rientra tramite la catena
             const { data: socs } = await client.from('societies').select('id, name').order('name');
             if (socs) {
                 selSoc.innerHTML = socs.map(s =>
@@ -2920,7 +2933,10 @@ async function initSessioni() {
                 return; // reloadSubFilters -> reloadTeamsOnly -> initSessioni
             }
         }
+        // Già inizializzato: leggi il valore corrente
         targetSociety = selSoc?.value || targetSociety;
+        const wrapper = document.getElementById('wrapper-soc-filter');
+        if (wrapper) wrapper.style.display = 'block';
 
     } else if (isSocAdmin) {
         // Presidente/segretario: popola i filtri per la loro società (senza mostrare filtro società)
@@ -2965,7 +2981,18 @@ async function initSessioni() {
         query = query.eq('society_id', targetSociety);
     }
 
-    if (fCat)  query = query.eq('category_id', fCat);
+    // Il filtro categoria agisce sui team_id (la colonna category_id non è su sessions ma su teams)
+    if (fCat) {
+        // Per scoped usa scopedTeams; per admin/socAdmin usa _currentSocTeams
+        const teamPool = isScoped ? (window._sessState.scopedTeams || []) : (window._currentSocTeams || []);
+        const teamsForCat = teamPool.filter(t => String(t.category_id) === String(fCat)).map(t => t.id);
+        if (teamsForCat.length > 0) {
+            query = query.in('team_id', teamsForCat);
+        } else {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#94a3b8;">Nessuna sessione trovata per questa categoria.</td></tr>';
+            return;
+        }
+    }
     if (fType) query = query.eq('type_id', fType);
 
     /* Filtro stagione per date */
