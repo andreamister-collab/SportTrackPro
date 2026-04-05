@@ -2723,6 +2723,14 @@ function templateSessioni() {
                     <label style="display:block; font-size:0.68rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">Tipo</label>
                     <select id="filter-type-sess" onchange="initSessioni()" style="width:100%; padding:7px 10px; border:1px solid #e2e8f0; border-radius:7px; font-size:0.82rem; color:#1e293b; background:white;"><option value="">Tutti i tipi</option></select>
                 </div>
+                <div>
+                    <label style="display:block; font-size:0.68rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">Da Data</label>
+                    <input type="date" id="filter-date-from-sess" onchange="initSessioni()" style="width:100%; padding:7px 10px; border:1px solid #e2e8f0; border-radius:7px; font-size:0.82rem; color:#1e293b; background:white;">
+                </div>
+                <div>
+                    <label style="display:block; font-size:0.68rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">A Data</label>
+                    <input type="date" id="filter-date-to-sess" onchange="initSessioni()" style="width:100%; padding:7px 10px; border:1px solid #e2e8f0; border-radius:7px; font-size:0.82rem; color:#1e293b; background:white;">
+                </div>
             </div>
         </div>
         <div class="table-container">
@@ -2882,6 +2890,13 @@ window.sessOnCatChange = function() {
 
 /* Quando cambia la stagione: ricarica i sub-filtri poi aggiorna la lista */
 window.sessOnSeasonChange = async function() {
+    // Abilita/disabilita campi data manuali in base alla stagione selezionata
+    const hasSeason = !!document.getElementById('filter-season-sess')?.value;
+    const fromEl = document.getElementById('filter-date-from-sess');
+    const toEl   = document.getElementById('filter-date-to-sess');
+    if (fromEl) { fromEl.disabled = hasSeason; fromEl.style.opacity = hasSeason ? '0.4' : '1'; if (hasSeason) fromEl.value = ''; }
+    if (toEl)   { toEl.disabled   = hasSeason; toEl.style.opacity   = hasSeason ? '0.4' : '1'; if (hasSeason) toEl.value   = ''; }
+
     const myRole = (window._effectiveRole || window._userRole || '').toLowerCase();
     const isScoped = ['dirigente','allenatore','responsabile'].includes(myRole);
     const isSocAdmin = ['presidente','segretario'].includes(myRole);
@@ -2968,10 +2983,15 @@ async function initSessioni() {
     }
 
     /* Leggi valori filtri */
-    const fCat    = document.getElementById('filter-category-sess')?.value;
-    const fTeam   = document.getElementById('filter-team-sess')?.value;
-    const fType   = document.getElementById('filter-type-sess')?.value;
-    const range   = _sessGetRange();
+    const fCat      = document.getElementById('filter-category-sess')?.value;
+    const fTeam     = document.getElementById('filter-team-sess')?.value;
+    const fType     = document.getElementById('filter-type-sess')?.value;
+    const range     = _sessGetRange();
+    // Da/A Data manuali: prevalgono sulla stagione se compilati; altrimenti usa range stagione
+    const manualFrom = document.getElementById('filter-date-from-sess')?.value;
+    const manualTo   = document.getElementById('filter-date-to-sess')?.value;
+    const dateFrom   = manualFrom || (range ? range.from : null);
+    const dateTo     = manualTo   || (range ? range.to   : null);
 
     /* Costruzione query — per scoped NON usiamo society_id ma i team assegnati */
     let query = client.from('sessions')
@@ -2996,8 +3016,9 @@ async function initSessioni() {
     }
     if (fType) query = query.eq('type_id', fType);
 
-    /* Filtro stagione per date */
-    if (range) query = query.gte('session_date', range.from).lte('session_date', range.to);
+    /* Filtro per data: stagione o date manuali (o entrambi) */
+    if (dateFrom) query = query.gte('session_date', dateFrom);
+    if (dateTo)   query = query.lte('session_date', dateTo);
 
     /* Ruoli scoped: filtra per i team assegnati, con eventuale affinamento da fTeam */
     if (isScoped) {
@@ -4036,8 +4057,8 @@ window.exportConvocazioniIMG = async function(sessionId) {
                             <div style="font-size:11px; font-weight:700; letter-spacing:0.15em; color:#60a5fa; text-transform:uppercase; margin-bottom:4px;">Lista Convocati</div>
                             <div style="font-size:26px; font-weight:900; text-transform:uppercase; letter-spacing:-0.5px; line-height:1.1;">${nomeSocieta}</div>
                             <div style="margin-top:8px; display:inline-flex; align-items:center; gap:8px;">
+                                ${nomeCategoria ? `<span style="background:#2563eb; color:white; padding:3px 12px; border-radius:4px; font-size:12px; font-weight:700; text-transform:uppercase;">${nomeCategoria}</span>` : ''}
                                 <span style="background:#2563eb; color:white; padding:3px 12px; border-radius:4px; font-size:12px; font-weight:700; text-transform:uppercase;">${nomeSquadra}</span>
-                                ${nomeCategoria ? `<span style="background:rgba(255,255,255,0.1); color:#94a3b8; padding:3px 10px; border-radius:4px; font-size:12px;">${nomeCategoria}</span>` : ''}
                             </div>
                         </div>
                         <div style="background:rgba(37,99,235,0.2); border:1px solid rgba(37,99,235,0.4); border-radius:10px; padding:10px 16px; text-align:center; min-width:60px;">
