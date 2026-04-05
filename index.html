@@ -2933,11 +2933,14 @@ async function initSessioni() {
         }
 
     } else if (isScoped) {
-        /* Prima apertura: carica e auto-seleziona i filtri */
-        if (!window._sessState.initialized) {
+        /* Carica filtri se non ancora inizializzati O se i select sono stati resettati (cambio pagina) */
+        const catSel = document.getElementById('filter-category-sess');
+        const needsInit = !window._sessState.initialized || 
+                          (window._sessState.scopedTeams.length > 0 && catSel && catSel.options.length <= 1);
+        if (needsInit) {
             window._sessState.initialized = true;
             await _sessFillScopedFilters();
-            /* Dopo aver popolato, leggi i valori (potrebbero essere auto-selezionati) */
+            /* _sessFillScopedFilters auto-seleziona se c'è 1 sola categoria/squadra */
         }
     }
 
@@ -2952,16 +2955,24 @@ async function initSessioni() {
         .eq('society_id', targetSociety);
 
     if (fCat)  query = query.eq('category_id', fCat);
-    if (fTeam) query = query.eq('team_id', fTeam);
     if (fType) query = query.eq('type_id', fType);
 
-    /* Filtro stagione per date (session_date compreso tra start_date e end_date) */
+    /* Filtro stagione per date */
     if (range) query = query.gte('session_date', range.from).lte('session_date', range.to);
 
-    /* Ruoli scoped senza filtro squadra esplicito: limita alle sole squadre assegnate */
-    if (isScoped && !fTeam) {
+    /* Ruoli scoped: limita SEMPRE alle squadre assegnate (fTeam affina ulteriormente) */
+    if (isScoped) {
         const ids = window._sessState.scopedTeams.map(t => t.id).filter(Boolean);
-        if (ids.length > 0) query = query.in('team_id', ids);
+        if (ids.length > 0) {
+            // Se l'utente ha scelto una squadra specifica, usa quella (se appartiene alle sue)
+            if (fTeam && ids.includes(fTeam)) {
+                query = query.eq('team_id', fTeam);
+            } else {
+                query = query.in('team_id', ids);
+            }
+        }
+    } else if (fTeam) {
+        query = query.eq('team_id', fTeam);
     }
 
     const { data } = await query.order('session_date', { ascending: false });
@@ -4622,11 +4633,9 @@ window.initDashboard = async function() {
 
 window.refreshDashboard = async function() {
     const seasonId = document.getElementById('dash-season-filter')?.value;
-    // Se l'utente ha una società forzata la usa, altrimenti legge il select
     const socId = window._dashData._forcedSocietyId ||
                   document.getElementById('dash-soc-filter')?.value || 'all';
 
-    // Aggiorna label stagione
     const labelEl = document.getElementById('dash-season-label');
     if (labelEl) {
         if (!seasonId || seasonId === 'all') {
@@ -4637,39 +4646,54 @@ window.refreshDashboard = async function() {
         }
     }
 
+    // Calcola team IDs per ruoli scoped (dirigente/allenatore/responsabile)
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isTeamScoped = ['dirigente','allenatore','responsabile'].includes(effRole);
+    const scopedTeamIds = isTeamScoped ? await window.loadUserAssignedTeams() : null;
+
     await Promise.all([
-        window.loadDashKPIs(seasonId, socId),
-        window.loadDashMatches(seasonId, socId),
-        window.loadDashPresenze(seasonId, socId),
-        window.loadDashStats(seasonId, socId),
-        window.loadDashAthletes(seasonId, socId),
+        window.loadDashKPIs(seasonId, socId, scopedTeamIds),
+        window.loadDashMatches(seasonId, socId, scopedTeamIds),
+        window.loadDashPresenze(seasonId, socId, scopedTeamIds),
+        window.loadDashStats(seasonId, socId, scopedTeamIds),
+        window.loadDashAthletes(seasonId, socId, scopedTeamIds),
     ]);
 };
 
 /* ── KPI ── */
-window.loadDashKPIs = async function(seasonId, socId) {
+window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
     const grid = document.getElementById('dash-kpi-grid');
     if (!grid) return;
 
     try {
+        const hasTeamScope = scopedTeamIds && scopedTeamIds.length > 0;
+
         // Base queries
-        let athQ = client.from('athlete_team_seasons').select('id, society_id, season_id', { count: 'exact', head: false });
-        let sessQ = client.from('sessions').select('id, society_id, season_id', { count: 'exact', head: false });
+        let athQ = client.from('athlete_team_seasons').select('id, society_id, season_id, team_id', { count: 'exact', head: false });
+        let sessQ = client.from('sessions').select('id, society_id, season_id, team_id', { count: 'exact', head: false });
         let socQ = client.from('societies').select('id', { count: 'exact', head: false });
         let catQ = client.from('categories').select('id, society_id', { count: 'exact', head: false });
         let staffQ = client.from('users').select('id, society_id, management_role', { count: 'exact', head: false }).neq('username', 'admin');
-        let attQ = client.from('attendances').select('status');
+        let attQ = client.from('attendances').select('status, sessions!inner(team_id, society_id, season_id)');
 
         // Filters
         if (seasonId && seasonId !== 'all') {
             athQ = athQ.eq('season_id', seasonId);
             sessQ = sessQ.eq('season_id', seasonId);
+            attQ = attQ.eq('sessions.season_id', seasonId);
         }
         if (socId && socId !== 'all') {
             athQ = athQ.eq('society_id', socId);
             sessQ = sessQ.eq('society_id', socId);
             catQ = catQ.eq('society_id', socId);
             staffQ = staffQ.eq('society_id', socId);
+            attQ = attQ.eq('sessions.society_id', socId);
+        }
+        // Filtro team per ruoli scoped
+        if (hasTeamScope) {
+            athQ = athQ.in('team_id', scopedTeamIds);
+            sessQ = sessQ.in('team_id', scopedTeamIds);
+            attQ = attQ.in('sessions.team_id', scopedTeamIds);
         }
 
         const [athRes, sessRes, socRes, catRes, staffRes, attRes] = await Promise.all([
@@ -4733,13 +4757,12 @@ window.loadDashKPIs = async function(seasonId, socId) {
 window._dashMatches = [];
 window._dashMatchTeams = [];
 
-window.loadDashMatches = async function(seasonId, socId) {
+window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
     try {
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
         const fromDate = oneMonthAgo.toISOString().split('T')[0];
 
-        // Ottieni i tipi "gara/partita"
         const { data: types } = await client.from('session_types').select('id, name');
         const validIds = (types||[]).filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')).map(t => t.id);
 
@@ -4751,6 +4774,7 @@ window.loadDashMatches = async function(seasonId, socId) {
         if (validIds.length > 0) q = q.in('type_id', validIds);
         if (seasonId && seasonId !== 'all') q = q.eq('season_id', seasonId);
         if (socId && socId !== 'all') q = q.eq('society_id', socId);
+        if (scopedTeamIds && scopedTeamIds.length > 0) q = q.in('team_id', scopedTeamIds);
 
         const { data: sessions } = await q;
 
@@ -4826,7 +4850,7 @@ window.renderDashMatches = function() {
 /* ── PRESENZE SESSIONI ── */
 window._dashSessions = [];
 
-window.loadDashPresenze = async function(seasonId, socId) {
+window.loadDashPresenze = async function(seasonId, socId, scopedTeamIds) {
     try {
         let q = client.from('sessions')
             .select('id, title, session_date, team_id, type_id, teams(name), attendances(status)')
@@ -4835,6 +4859,7 @@ window.loadDashPresenze = async function(seasonId, socId) {
 
         if (seasonId && seasonId !== 'all') q = q.eq('season_id', seasonId);
         if (socId && socId !== 'all') q = q.eq('society_id', socId);
+        if (scopedTeamIds && scopedTeamIds.length > 0) q = q.in('team_id', scopedTeamIds);
 
         const { data } = await q;
 
@@ -4894,7 +4919,7 @@ window.renderDashPresenze = function() {
 /* ── STATISTICHE GARE PER SQUADRA ── */
 window._dashMatchStats = [];
 
-window.loadDashStats = async function(seasonId, socId) {
+window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
     try {
         let q = client.from('sessions')
             .select('id, team_id, society_id, season_id, teams(name), societies(name)');
@@ -4904,6 +4929,7 @@ window.loadDashStats = async function(seasonId, socId) {
         if (validIds.length > 0) q = q.in('type_id', validIds);
         if (seasonId && seasonId !== 'all') q = q.eq('season_id', seasonId);
         if (socId && socId !== 'all') q = q.eq('society_id', socId);
+        if (scopedTeamIds && scopedTeamIds.length > 0) q = q.in('team_id', scopedTeamIds);
 
         const { data: sessions } = await q;
         const sessionIds = (sessions||[]).map(s=>s.id);
@@ -5021,7 +5047,7 @@ window.toggleDashAthSort = function() {
     window.renderDashAthletes();
 };
 
-window.loadDashAthletes = async function(seasonId, socId) {
+window.loadDashAthletes = async function(seasonId, socId, scopedTeamIds) {
     try {
         // 1. Recupera tutti gli atleti assegnati a squadre
         let athQ = client.from('athlete_team_seasons')
@@ -5029,6 +5055,7 @@ window.loadDashAthletes = async function(seasonId, socId) {
 
         if (seasonId && seasonId !== 'all') athQ = athQ.eq('season_id', seasonId);
         if (socId && socId !== 'all') athQ = athQ.eq('society_id', socId);
+        if (scopedTeamIds && scopedTeamIds.length > 0) athQ = athQ.in('team_id', scopedTeamIds);
 
         const { data: assignments } = await athQ;
         if (!assignments || assignments.length === 0) {
