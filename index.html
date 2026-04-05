@@ -4124,10 +4124,13 @@ window.initDashboard = async function() {
             window._dashData._forcedSocietyId = userSocietyId;
         }
 
-        // Label stagione attiva
-        const activeSeason = (seasons || []).find(s => s.is_active);
+        // Label stagione: mostra quella selezionata nel filtro (di default quella attiva)
+        const selectedSeasonId = document.getElementById('dash-season-filter')?.value;
+        const displaySeason = selectedSeasonId && selectedSeasonId !== 'all'
+            ? (seasons || []).find(s => s.id === selectedSeasonId)
+            : (seasons || []).find(s => s.is_active);
         const labelEl = document.getElementById('dash-season-label');
-        if (labelEl) labelEl.textContent = '🌐 Stagione: ' + (activeSeason?.name || 'Tutte');
+        if (labelEl) labelEl.textContent = '🌐 Stagione: ' + (displaySeason?.name || 'Tutte');
 
         await window.refreshDashboard();
 
@@ -4172,18 +4175,20 @@ window.loadDashKPIs = async function(seasonId, socId) {
         let socQ = client.from('societies').select('id', { count: 'exact', head: false });
         let catQ = client.from('categories').select('id, society_id', { count: 'exact', head: false });
         let staffQ = client.from('users').select('id, society_id, management_role', { count: 'exact', head: false }).neq('username', 'admin');
-        let attQ = client.from('attendances').select('status');
+        let attQ = client.from('attendances').select('status, sessions!inner(season_id, society_id)');
 
         // Filters
         if (seasonId && seasonId !== 'all') {
             athQ = athQ.eq('season_id', seasonId);
             sessQ = sessQ.eq('season_id', seasonId);
+            attQ = attQ.eq('sessions.season_id', seasonId);
         }
         if (socId && socId !== 'all') {
             athQ = athQ.eq('society_id', socId);
             sessQ = sessQ.eq('society_id', socId);
             catQ = catQ.eq('society_id', socId);
             staffQ = staffQ.eq('society_id', socId);
+            attQ = attQ.eq('sessions.society_id', socId);
         }
 
         const [athRes, sessRes, socRes, catRes, staffRes, attRes] = await Promise.all([
