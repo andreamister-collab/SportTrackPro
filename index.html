@@ -2611,7 +2611,7 @@ function templateSessioni() {
                 </div>
                 <div>
                     <label style="display:block; font-size:0.7rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px;">Stagione</label>
-                    <select id="filter-season-sess" onchange="initSessioni()" style="width:100%; padding:7px 10px; border:1px solid #e2e8f0; border-radius:7px; font-size:0.82rem; color:#1e293b; background:white;">
+                    <select id="filter-season-sess" onchange="onSessSeasonChange()" style="width:100%; padding:7px 10px; border:1px solid #e2e8f0; border-radius:7px; font-size:0.82rem; color:#1e293b; background:white;">
                         <option value="">Tutte le stagioni</option>
                     </select>
                 </div>
@@ -2653,32 +2653,111 @@ function templateSessioni() {
 /**
  * 2. INIZIALIZZAZIONE E LOGICA TABELLA
  */
+/* ── helper: carica stagioni nel select (una sola volta) ── */
+async function _loadSessSeasons() {
+    const sel = document.getElementById('filter-season-sess');
+    if (!sel || sel.options.length > 1) return; // già popolato
+    const { data: seasons } = await client.from('seasons')
+        .select('id, name, start_date, end_date, is_active')
+        .order('name', { ascending: false });
+    window._sessSeasons = seasons || [];
+    (seasons || []).forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name + (s.is_active ? ' \u2713' : '');
+        if (s.is_active) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+/* ── helper: ottieni range date dalla stagione selezionata ── */
+function _getSessSeasonRange() {
+    const fSeasonId = document.getElementById('filter-season-sess')?.value;
+    if (!fSeasonId) return null;
+    const season = (window._sessSeasons || []).find(s => s.id === fSeasonId);
+    if (season?.start_date && season?.end_date) return { from: season.start_date, to: season.end_date };
+    return null;
+}
+
+/* ── quando cambia la stagione: ricarica categorie/squadre per i ruoli scoped ── */
+window.onSessSeasonChange = async function() {
+    const myRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isAdmin = ['admin', 'manager', 'presidente', 'segretario'].includes(myRole);
+    if (!isAdmin) {
+        // Per ruoli scoped ricalcola i filtri in base alla nuova stagione
+        await _reloadScopedFilters();
+    }
+    initSessioni();
+};
+
+/* ── carica categorie e squadre per un ruolo scoped (dirigente/allenatore) ── */
+async function _reloadScopedFilters() {
+    const myRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isScopedStaff = ['dirigente','allenatore','responsabile'].includes(myRole);
+    const userId = window._currentUserId;
+    const socId = window._currentSocietyId;
+    const fSeasonId = document.getElementById('filter-season-sess')?.value;
+
+    let teamIds = null; // null = nessun filtro per team_id
+
+    if (isScopedStaff && userId) {
+        // Recupera i team_id assegnati all'utente, filtrati per stagione se selezionata
+        let ucsQ = client.from('user_category_seasons')
+            .select('team_id, season_id, teams(id, name, category_id, categories(id, name))')
+            .eq('user_id', userId);
+        if (fSeasonId) ucsQ = ucsQ.eq('season_id', fSeasonId);
+        const { data: ucs } = await ucsQ;
+        teamIds = (ucs || []).map(r => r.team_id).filter(Boolean);
+        window._currentSocTeams = (ucs || [])
+            .map(r => r.teams).filter(Boolean)
+            .filter((t, i, arr) => arr.findIndex(x => x.id === t.id) === i); // deduplica
+    } else {
+        // Presidente/segretario: tutte le squadre della società (filtrate per stagione se selezionata)
+        let tQ = client.from('teams')
+            .select('id, name, category_id, categories(id, name)')
+            .eq('society_id', socId)
+            .order('name');
+        if (fSeasonId) tQ = tQ.eq('season_id', fSeasonId);
+        const { data: teams } = await tQ;
+        window._currentSocTeams = teams || [];
+    }
+
+    // Popola categorie uniche
+    const catMap = new Map();
+    (window._currentSocTeams || []).forEach(t => {
+        if (t.categories && !catMap.has(t.categories.id))
+            catMap.set(t.categories.id, t.categories);
+    });
+    const uniqueCats = [...catMap.values()].sort((a,b) => a.name.localeCompare(b.name));
+
+    const selCat = document.getElementById('filter-category-sess');
+    if (selCat) selCat.innerHTML = '<option value="">Tutte le categorie</option>' +
+        uniqueCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+    // Resetta il filtro squadra
+    const selTeam = document.getElementById('filter-team-sess');
+    if (selTeam) selTeam.innerHTML = '<option value="">Tutte le squadre</option>' +
+        (window._currentSocTeams || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+
 async function initSessioni() {
     const tbody = document.getElementById('list-sessioni-body');
     if (!tbody) return;
 
     const myRole = (window._effectiveRole || window._userRole || '').toLowerCase();
     const isAdmin = ['admin', 'manager', 'presidente', 'segretario'].includes(myRole);
+    const isScopedStaff = ['dirigente','allenatore','responsabile'].includes(myRole);
     let targetSociety = window._currentSocietyId;
 
-    if (isAdmin && document.getElementById('sess-filters-container')) {
-        document.getElementById('sess-filters-container').style.display = 'block';
+    // Mostra sempre la barra filtri
+    const filterBar = document.getElementById('sess-filters-container');
+    if (filterBar) filterBar.style.display = 'block';
+
+    // Carica stagioni (una sola volta per tutti i ruoli)
+    await _loadSessSeasons();
+
+    if (isAdmin) {
         const selSoc = document.getElementById('filter-society-sess');
-        // Carica stagioni nel filtro (una sola volta)
-        const selSeason = document.getElementById('filter-season-sess');
-        if (selSeason && selSeason.options.length <= 1) {
-            const { data: seasons } = await client.from('seasons').select('id, name, start_date, end_date, is_active').order('name', { ascending: false });
-            if (seasons) {
-                window._sessSeasons = seasons;
-                seasons.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s.id;
-                    opt.textContent = s.name + (s.is_active ? ' ✓' : '');
-                    if (s.is_active) opt.selected = true;
-                    selSeason.appendChild(opt);
-                });
-            }
-        }
         if (selSoc && selSoc.options.length === 0) {
             const { data: socs } = await client.from('societies').select('id, name').order('name');
             if (socs) {
@@ -2689,65 +2768,44 @@ async function initSessioni() {
             }
         }
         targetSociety = selSoc?.value || targetSociety;
-    } else {
-        // Non-admin: mostra comunque il filtro stagione
-        const filterBar = document.getElementById('sess-filters-container');
-        if (filterBar) filterBar.style.display = 'block';
-        const selSeason = document.getElementById('filter-season-sess');
-        if (selSeason && selSeason.options.length <= 1) {
-            const { data: seasons } = await client.from('seasons').select('id, name, start_date, end_date, is_active').order('name', { ascending: false });
-            if (seasons) {
-                window._sessSeasons = seasons;
-                seasons.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s.id;
-                    opt.textContent = s.name + (s.is_active ? ' ✓' : '');
-                    if (s.is_active) opt.selected = true;
-                    selSeason.appendChild(opt);
-                });
-            }
+    } else if (isScopedStaff) {
+        // Ruolo scoped: popola i filtri basandosi sui legami in user_category_seasons
+        // Solo al primo caricamento (o se non ancora popolato)
+        const selCat = document.getElementById('filter-category-sess');
+        if (selCat && selCat.options.length <= 1) {
+            await _reloadScopedFilters();
         }
-        // Carica squadre per filtro categoria/team in base alla societa dell'utente
-        if (targetSociety && !(window._currentSocTeams && window._currentSocTeams.length > 0)) {
-            const { data: teamsInSoc } = await client.from('teams').select('id, name, category_id, categories(id, name)').eq('society_id', targetSociety).order('name');
-            window._currentSocTeams = teamsInSoc || [];
-            // Popola categorie
-            const uniqueCats = [];
-            const catMap = new Map();
-            (teamsInSoc||[]).forEach(t => {
-                if (t.categories && !catMap.has(t.categories.id)) { catMap.set(t.categories.id, true); uniqueCats.push(t.categories); }
-            });
-            const selCat = document.getElementById('filter-category-sess');
-            if (selCat && selCat.options.length <= 1) {
-                selCat.innerHTML = '<option value="">Tutte le categorie</option>' + uniqueCats.sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-            }
-            // Popola tipi
-            const selType = document.getElementById('filter-type-sess');
-            if (selType && selType.options.length <= 1) {
-                const { data: types } = await client.from('session_types').select('id, name').order('name');
-                selType.innerHTML = '<option value="">Tutti i tipi</option>' + (types||[]).map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
-            }
+        // Carica tipi sessione (una sola volta)
+        const selType = document.getElementById('filter-type-sess');
+        if (selType && selType.options.length <= 1) {
+            const { data: types } = await client.from('session_types').select('id, name').order('name');
+            selType.innerHTML = '<option value="">Tutti i tipi</option>' +
+                (types || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
         }
     }
 
-    let query = client.from('sessions').select(`*, session_types(name), teams(id, name, categories(name)), attendances(status)`).eq('society_id', targetSociety);
-    
+    let query = client.from('sessions')
+        .select('*, session_types(name), teams(id, name, categories(name)), attendances(status)')
+        .eq('society_id', targetSociety);
+
     const fCat = document.getElementById('filter-category-sess')?.value;
     const fTeam = document.getElementById('filter-team-sess')?.value;
     const fType = document.getElementById('filter-type-sess')?.value;
-    const fSeasonId = document.getElementById('filter-season-sess')?.value;
+    const seasonRange = _getSessSeasonRange();
 
     if (fCat) query = query.eq('category_id', fCat);
     if (fTeam) query = query.eq('team_id', fTeam);
     if (fType) query = query.eq('type_id', fType);
 
-    // Filtro stagione: usa le date start_date/end_date della stagione selezionata
-    if (fSeasonId) {
-        const seasons = window._sessSeasons || [];
-        const selectedSeason = seasons.find(s => s.id === fSeasonId);
-        if (selectedSeason?.start_date && selectedSeason?.end_date) {
-            query = query.gte('session_date', selectedSeason.start_date).lte('session_date', selectedSeason.end_date);
-        }
+    // Filtro stagione per data (session_date compreso tra start_date e end_date)
+    if (seasonRange) {
+        query = query.gte('session_date', seasonRange.from).lte('session_date', seasonRange.to);
+    }
+
+    // Per ruoli scoped: limita alle sole squadre assegnate (se presenti)
+    if (isScopedStaff && !fTeam) {
+        const assignedIds = (window._currentSocTeams || []).map(t => t.id).filter(Boolean);
+        if (assignedIds.length > 0) query = query.in('team_id', assignedIds);
     }
 
     const { data } = await query.order('session_date', { ascending: false });
@@ -2795,17 +2853,21 @@ async function reloadSubFilters() {
     const socId = document.getElementById('filter-society-sess').value;
     if (!socId) return;
 
-    const { data: teamsInSoc } = await client
-        .from('teams')
+    const fSeasonId = document.getElementById('filter-season-sess')?.value;
+
+    // Per admin: carica squadre della società scelta, filtrate per stagione se selezionata
+    let tQ = client.from('teams')
         .select('id, name, category_id, categories(id, name)')
         .eq('society_id', socId)
         .order('name');
+    if (fSeasonId) tQ = tQ.eq('season_id', fSeasonId);
 
+    const { data: teamsInSoc } = await tQ;
     window._currentSocTeams = teamsInSoc || [];
 
     const uniqueCats = [];
     const catMap = new Map();
-    teamsInSoc?.forEach(t => {
+    (teamsInSoc || []).forEach(t => {
         if (t.categories && !catMap.has(t.categories.id)) {
             catMap.set(t.categories.id, true);
             uniqueCats.push(t.categories);
@@ -2816,14 +2878,14 @@ async function reloadSubFilters() {
 
     const selCat = document.getElementById('filter-category-sess');
     if (selCat) {
-        selCat.innerHTML = '<option value="">Tutte Categorie</option>' + 
+        selCat.innerHTML = '<option value="">Tutte le categorie</option>' +
             uniqueCats.sort((a,b) => a.name.localeCompare(b.name))
                       .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     }
 
     const selType = document.getElementById('filter-type-sess');
     if (selType) {
-        selType.innerHTML = '<option value="">Tutti i Tipi</option>' + 
+        selType.innerHTML = '<option value="">Tutti i tipi</option>' +
             (types || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     }
 
