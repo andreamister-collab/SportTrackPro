@@ -1768,15 +1768,31 @@ window.handleDeleteStaff = async function(id) {
 
     // 3. CARICAMENTO DATI
     window.initAnagraficaPura = async function() {
-        const [socs, atleti] = await Promise.all([
-            client.from('societies').select('id, name').order('name'),
-            client.from('athletes').select('*').order('surname')
-        ]);
-        _socLook = Object.fromEntries(socs.data.map(s => [s.id, s.name]));
+        const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const mySocId = window._currentSocietyId;
+        const isGlobal = ['admin','manager'].includes(effRole);
+        const isSocScoped = ['presidente','segretario'].includes(effRole);
+        const isTeamScoped = ['dirigente','allenatore','responsabile'].includes(effRole);
+
+        let socQuery = isGlobal
+            ? client.from('societies').select('id, name').order('name')
+            : client.from('societies').select('id, name').eq('id', mySocId);
+
+        let atletiQuery = client.from('athletes').select('*').order('surname');
+        if (!isGlobal && mySocId) atletiQuery = atletiQuery.eq('society_id', mySocId);
+
+        const [socs, atleti] = await Promise.all([socQuery, atletiQuery]);
+        _socLook = Object.fromEntries((socs.data||[]).map(s => [s.id, s.name]));
         _atletiBase = atleti.data || [];
         
         const fSoc = document.getElementById('f-bp-soc');
-        if(fSoc) fSoc.innerHTML = '<option value="">Tutte le Società</option>' + socs.data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        if(fSoc) {
+            if (isGlobal) {
+                fSoc.innerHTML = '<option value="">Tutte le Società</option>' + (socs.data||[]).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            } else {
+                fSoc.closest('div').style.display = 'none';
+            }
+        }
         
         renderAnagraficaTable(_atletiBase);
     };
@@ -1914,16 +1930,25 @@ window.handleDeleteStaff = async function(id) {
     };
 
     window.openAtletaBaseModal = function(id = null) {
-        let atleta = id ? _atletiBase.find(a => a.id === id) : { name: '', surname: '', born_date: '', society_id: '' };
+        const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const isGlobal = ['admin','manager'].includes(effRole);
+        const mySocId = window._currentSocietyId;
+        let atleta = id ? _atletiBase.find(a => a.id === id) : { name: '', surname: '', born_date: '', society_id: mySocId || '' };
         modal.open(id ? 'Modifica Atleta' : 'Nuovo Atleta', `
             <div style="display:grid; gap:15px;">
-                <input type="text" id="m-bp-surname" value="${atleta.surname}" placeholder="COGNOME" style="padding:10px; border-radius:8px; border:1px solid #ddd; text-transform:uppercase;">
-                <input type="text" id="m-bp-name" value="${atleta.name}" placeholder="NOME" style="padding:10px; border-radius:8px; border:1px solid #ddd;">
+                <input type="text" id="m-bp-surname" value="${atleta.surname || ''}" placeholder="COGNOME" style="padding:10px; border-radius:8px; border:1px solid #ddd; text-transform:uppercase;">
+                <input type="text" id="m-bp-name" value="${atleta.name || ''}" placeholder="NOME" style="padding:10px; border-radius:8px; border:1px solid #ddd;">
                 <input type="date" id="m-bp-date" value="${atleta.born_date || ''}" style="padding:10px; border-radius:8px; border:1px solid #ddd;">
-                <select id="m-bp-soc" style="padding:10px; border-radius:8px; border:1px solid #ddd;">
-                    <option value="">-- Seleziona Società --</option>
-                    ${Object.entries(_socLook).map(([sid, name]) => `<option value="${sid}" ${atleta.society_id === sid ? 'selected' : ''}>${name}</option>`).join('')}
-                </select>
+                ${isGlobal
+                    ? `<select id="m-bp-soc" style="padding:10px; border-radius:8px; border:1px solid #ddd;">
+                        <option value="">-- Seleziona Società --</option>
+                        ${Object.entries(_socLook).map(([sid, name]) => `<option value="${sid}" ${atleta.society_id === sid ? 'selected' : ''}>${name}</option>`).join('')}
+                       </select>`
+                    : `<input type="hidden" id="m-bp-soc" value="${atleta.society_id || mySocId}">
+                       <div style="padding:10px; background:#f0f9ff; border-radius:8px; border:1px solid #bae6fd; font-size:13px; color:#0369a1;">
+                           🏛️ Società: <strong>${_socLook[atleta.society_id || mySocId] || 'N.D.'}</strong>
+                       </div>`
+                }
             </div>
         `);
         document.getElementById('btn-modal-save').onclick = async () => {
@@ -2287,29 +2312,34 @@ window.handleDeleteStaff = async function(id) {
     window.initAtleti = async function() {
         try {
             const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
-            const isScopedUser = ['dirigente','allenatore','responsabile','genitore'].includes(effRole);
+            const isGlobal = ['admin','manager'].includes(effRole);
+            const isSocScoped = ['presidente','segretario'].includes(effRole);
+            const isTeamScoped = ['dirigente','allenatore','responsabile'].includes(effRole);
+            const isGenitore = effRole === 'genitore';
+            const isScopedUser = isSocScoped || isTeamScoped || isGenitore;
             const userSocId = window._currentSocietyId;
 
-            // Query base — se utente è scopato, filtra per la sua società
-            const socQuery = isScopedUser && userSocId
-                ? client.from('societies').select('*').eq('id', userSocId)
-                : client.from('societies').select('*').order('name');
+            // Query società
+            const socQuery = isGlobal
+                ? client.from('societies').select('*').order('name')
+                : client.from('societies').select('*').eq('id', userSocId);
 
-            const catQuery = isScopedUser && userSocId
-                ? client.from('categories').select('*').eq('society_id', userSocId).order('name')
-                : client.from('categories').select('*').order('name');
+            // Query categorie: tutti per global, solo società propria per gli altri
+            const catQuery = isGlobal
+                ? client.from('categories').select('*').order('name')
+                : client.from('categories').select('*').eq('society_id', userSocId).order('name');
 
-            // Per dirigente/allenatore: carica solo i team a lui assegnati
-            const assignedTeamIds = isScopedUser ? await window.loadUserAssignedTeams() : null;
+            // Query teams: team-scoped vedono solo i team assegnati, gli altri vedono la società
+            const assignedTeamIds = isTeamScoped ? await window.loadUserAssignedTeams() : null;
             const hasTeamFilter = assignedTeamIds && assignedTeamIds.length > 0;
 
             let teamQuery;
-            if (hasTeamFilter) {
-                teamQuery = client.from('teams').select('*').in('id', assignedTeamIds).order('name');
-            } else if (isScopedUser && userSocId) {
-                teamQuery = client.from('teams').select('*').eq('society_id', userSocId).order('name');
-            } else {
+            if (isGlobal) {
                 teamQuery = client.from('teams').select('*').order('name');
+            } else if (hasTeamFilter) {
+                teamQuery = client.from('teams').select('*').in('id', assignedTeamIds).order('name');
+            } else {
+                teamQuery = client.from('teams').select('*').eq('society_id', userSocId).order('name');
             }
 
             const [socs, seas, cats, teams] = await Promise.all([
@@ -2466,7 +2496,9 @@ window.handleDeleteStaff = async function(id) {
 
     async function _fetchAtletiData() {
         const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
-        const isScopedUser = ['dirigente','allenatore','responsabile','genitore'].includes(effRole);
+        const isGlobal = ['admin','manager'].includes(effRole);
+        const isSocScoped = ['presidente','segretario'].includes(effRole);
+        const isTeamScoped = ['dirigente','allenatore','responsabile'].includes(effRole);
         const userSocId = window._currentSocietyId;
 
         let q = client.from('athlete_team_seasons').select(`
@@ -2474,8 +2506,11 @@ window.handleDeleteStaff = async function(id) {
             athletes!inner (name, surname, born_date), teams (name), categories (name)
         `);
 
-        if (isScopedUser) {
-            // Prova a filtrare per team assegnati (più preciso)
+        if (isSocScoped && userSocId) {
+            // Presidente/segretario: tutti gli atleti della loro società
+            q = q.eq('society_id', userSocId);
+        } else if (isTeamScoped) {
+            // Dirigente/allenatore/responsabile: solo i team assegnati
             const assignedTeamIds = await window.loadUserAssignedTeams();
             if (assignedTeamIds && assignedTeamIds.length > 0) {
                 q = q.in('team_id', assignedTeamIds);
@@ -2483,6 +2518,7 @@ window.handleDeleteStaff = async function(id) {
                 q = q.eq('society_id', userSocId);
             }
         }
+        // isGlobal: nessun filtro, vede tutto
 
         const { data, error } = await q;
         if(error) return console.error(error);
@@ -2538,9 +2574,48 @@ window.handleDeleteStaff = async function(id) {
             </div>
         `);
 
-        const { data: socs } = await client.from('societies').select('id, name').order('name');
+        const effRole2 = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const isGlobal2 = ['admin','manager'].includes(effRole2);
+        const mySocId2 = window._currentSocietyId;
+
+        let socsData = [];
+        if (isGlobal2) {
+            const { data } = await client.from('societies').select('id, name').order('name');
+            socsData = data || [];
+        } else {
+            const { data } = await client.from('societies').select('id, name').eq('id', mySocId2);
+            socsData = data || [];
+        }
+
         const mSoc = document.getElementById('m-atleta-soc');
-        socs.forEach(s => mSoc.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+        if (isGlobal2) {
+            socsData.forEach(s => mSoc.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+        } else {
+            // Non-global: blocca la società
+            mSoc.outerHTML; // noop, lo sostituiamo
+            mSoc.innerHTML = socsData.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            mSoc.value = mySocId2;
+            mSoc.disabled = true;
+            mSoc.style.cssText = 'background:#f1f5f9; color:#64748b; cursor:not-allowed; padding:10px; border-radius:8px; border:1px solid #ddd; width:100%;';
+        }
+
+        // Calcola team ID assegnati per utenti scoped (dirigente/allenatore)
+        const isTeamScoped2 = ['dirigente','allenatore','responsabile'].includes(effRole2);
+        const assignedIds2 = isTeamScoped2 ? await window.loadUserAssignedTeams() : null;
+
+        // Override updateModalTeams per filtrare se scoped
+        window.updateModalTeams = async (catId, seaId) => {
+            const mTea = document.getElementById('m-atleta-team'); 
+            mTea.innerHTML = '<option value="">Intera Categoria</option>';
+            if(!catId) return;
+            let q = client.from('teams').select('id, name').eq('category_id', catId).eq('season_id', seaId).order('name');
+            const { data } = await q;
+            let teams = data || [];
+            if (assignedIds2 && assignedIds2.length > 0) {
+                teams = teams.filter(t => assignedIds2.includes(t.id));
+            }
+            teams.forEach(t => mTea.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+        };
 
         if(isEdit) {
             mSoc.value = editData.society_id;
@@ -2548,6 +2623,8 @@ window.handleDeleteStaff = async function(id) {
             document.getElementById('m-atleta-cat').value = editData.category_id || "";
             await window.updateModalTeams(editData.category_id, activeSea);
             document.getElementById('m-atleta-team').value = editData.team_id || "";
+        } else if (!isGlobal2 && mySocId2) {
+            await window.updateModalCategories(mySocId2);
         }
 
         document.getElementById('btn-modal-save').onclick = async () => {
@@ -2786,8 +2863,13 @@ window.sessOnCatChange = function() {
 window.sessOnSeasonChange = async function() {
     const myRole = (window._effectiveRole || window._userRole || '').toLowerCase();
     const isScoped = ['dirigente','allenatore','responsabile'].includes(myRole);
+    const isSocAdmin = ['presidente','segretario'].includes(myRole);
+    window._sessState.initialized = false; // forza reload
     if (isScoped) {
         await _sessFillScopedFilters();
+    } else if (isSocAdmin) {
+        await reloadSubFilters(); // usa i filtri della società
+        return;
     } else {
         await reloadSubFilters();
         return; // reloadSubFilters -> reloadTeamsOnly -> initSessioni
@@ -2805,7 +2887,8 @@ async function initSessioni() {
     if (!tbody) return;
 
     const myRole  = (window._effectiveRole || window._userRole || '').toLowerCase();
-    const isAdmin  = ['admin', 'manager', 'presidente', 'segretario'].includes(myRole);
+    const isGlobalAdmin = ['admin', 'manager'].includes(myRole);
+    const isSocAdmin = ['presidente', 'segretario'].includes(myRole); // vedono solo la propria società
     const isScoped = ['dirigente','allenatore','responsabile'].includes(myRole);
     let targetSociety = window._currentSocietyId;
 
@@ -2816,7 +2899,7 @@ async function initSessioni() {
     /* Carica stagioni una sola volta */
     await _sessFillSeasons();
 
-    if (isAdmin) {
+    if (isGlobalAdmin) {
         const selSoc = document.getElementById('filter-society-sess');
         if (selSoc && selSoc.options.length === 0) {
             const { data: socs } = await client.from('societies').select('id, name').order('name');
@@ -2824,13 +2907,30 @@ async function initSessioni() {
                 selSoc.innerHTML = socs.map(s =>
                     `<option value="${s.id}" ${s.id === targetSociety ? 'selected' : ''}>${s.name}</option>`
                 ).join('');
-                if (['admin','manager'].includes(myRole))
-                    document.getElementById('wrapper-soc-filter').style.display = 'block';
+                document.getElementById('wrapper-soc-filter').style.display = 'block';
                 await reloadSubFilters();
                 return; // reloadSubFilters -> reloadTeamsOnly -> initSessioni
             }
         }
         targetSociety = selSoc?.value || targetSociety;
+
+    } else if (isSocAdmin) {
+        // Presidente/segretario: popola i filtri per la loro società (senza mostrare filtro società)
+        if (!window._sessState.initialized) {
+            window._sessState.initialized = true;
+            // Popola categorie e squadre della propria società
+            const seaId = document.getElementById('filter-season-sess')?.value;
+            let tQ = client.from('teams').select('id, name, category_id, categories(id, name)').eq('society_id', targetSociety).order('name');
+            if (seaId) tQ = tQ.eq('season_id', seaId);
+            const { data: teamsInSoc } = await tQ;
+            window._currentSocTeams = teamsInSoc || [];
+            const catMap = new Map();
+            (teamsInSoc || []).forEach(t => { if (t.categories && !catMap.has(t.categories.id)) catMap.set(t.categories.id, t.categories); });
+            const selCat = document.getElementById('filter-category-sess');
+            if (selCat) selCat.innerHTML = '<option value="">Tutte le categorie</option>' + [...catMap.values()].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+            await reloadTeamsOnly();
+            return;
+        }
 
     } else if (isScoped) {
         /* Prima apertura: carica e auto-seleziona i filtri */
