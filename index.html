@@ -5788,6 +5788,7 @@ window.saveGenitore = async function(genitoreId) {
             }
 
             const { data: newUser, error: userErr } = await client.from('users').insert({
+                id: authUid,
                 name: `${surname} ${name}`.trim(), email, username,
                 role: 'user',
                 management_role: 'Genitore',
@@ -5795,7 +5796,7 @@ window.saveGenitore = async function(genitoreId) {
             }).select().single();
 
             if (userErr) throw new Error('Errore salvataggio utente: ' + userErr.message);
-            userId = newUser.id;
+            userId = authUid;
         } else {
             // Modifica: aggiorna solo nome/cognome
             await client.from('users').update({ name: `${surname} ${name}`.trim() }).eq('id', genitoreId);
