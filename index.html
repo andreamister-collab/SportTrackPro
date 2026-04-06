@@ -5878,38 +5878,31 @@ window.initGenitoreView = async function() {
             .select('athlete_id, status, is_called_up, sessions!inner(season_id, type_id, team_id, teams(name))')
             .in('athlete_id', athIds);
 
-        // 6. Statistiche squadra: tutte le sessioni gara delle squadre dell'atleta
+        // 6. Statistiche squadra via match_details
         const teamIds = [...new Set((teamSeasons||[]).map(ts => ts.team_id).filter(Boolean))];
-        const { data: teamMatchStats } = teamIds.length > 0
-            ? await client.from('match_stats')
-                .select('goals, yellow_cards, red_cards, sessions!inner(season_id, type_id, team_id, result_home, result_away, is_home)')
+        const { data: teamMatchDetails } = teamIds.length > 0
+            ? await client.from('match_details')
+                .select('session_id, goals_for, goals_against, is_home, match_status, is_friendly, sessions!inner(team_id, season_id, type_id)')
                 .in('sessions.team_id', teamIds)
-            : { data: [] };
-
-        const { data: teamSessions } = teamIds.length > 0
-            ? await client.from('sessions')
-                .select('id, team_id, season_id, type_id, result_home, result_away, is_home, title, session_date')
-                .in('team_id', teamIds)
-                .in('type_id', [...garaTypeIds])
+                .neq('match_status', 'da giocare')
             : { data: [] };
 
         // Aggrega stats squadra per team_id+season_id
-        const teamStatsBy = {}; // [teamId][seasonId] = { p, v, n, s, gf, gs, yc, rc }
-        (teamSessions||[]).forEach(s => {
-            const key = s.team_id;
-            const sid = s.season_id;
-            if (!teamStatsBy[key]) teamStatsBy[key] = {};
-            if (!teamStatsBy[key][sid]) teamStatsBy[key][sid] = { p:0, v:0, n:0, s:0, gf:0, gs:0, yc:0, rc:0 };
-            const t = teamStatsBy[key][sid];
-            const rh = s.result_home ?? null, ra = s.result_away ?? null;
-            if (rh !== null && ra !== null) {
-                const myG = s.is_home ? rh : ra;
-                const oppG = s.is_home ? ra : rh;
-                t.p++; t.gf += myG; t.gs += oppG;
-                if (myG > oppG) t.v++;
-                else if (myG === oppG) t.n++;
-                else t.s++;
-            }
+        const teamStatsBy = {}; // [teamId][seasonId] = { p, v, n, s, gf, gs }
+        (teamMatchDetails||[]).forEach(md => {
+            const teamId = md.sessions?.team_id;
+            const sid    = md.sessions?.season_id;
+            if (!teamId || !sid) return;
+            if (!garaTypeIds.has(md.sessions?.type_id)) return;
+            if (md.is_friendly) return;
+            if (!teamStatsBy[teamId]) teamStatsBy[teamId] = {};
+            if (!teamStatsBy[teamId][sid]) teamStatsBy[teamId][sid] = { p:0, v:0, n:0, s:0, gf:0, gs:0 };
+            const t = teamStatsBy[teamId][sid];
+            const gf = md.goals_for ?? 0, gs = md.goals_against ?? 0;
+            t.p++; t.gf += gf; t.gs += gs;
+            if (gf > gs) t.v++;
+            else if (gf === gs) t.n++;
+            else t.s++;
         });
 
         // Aggrega match_stats per atleta
