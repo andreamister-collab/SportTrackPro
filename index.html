@@ -5840,7 +5840,7 @@ window.initGenitoreView = async function() {
     content.innerHTML = `<div class="card"><p style="color:#94a3b8; text-align:center; padding:20px;">⏳ Caricamento dati...</p></div>`;
 
     try {
-        // 1. Trova gli atleti associati a questo genitore
+        // 1. Atleti associati al genitore
         const { data: links } = await client.from('parent_athletes')
             .select('athlete_id, athletes(id, name, surname, born_date)')
             .eq('parent_id', userId);
@@ -5855,172 +5855,222 @@ window.initGenitoreView = async function() {
         }
 
         const athletes = links.map(l => l.athletes).filter(Boolean);
-
-        // 2. Per ogni atleta, carica le stagioni in cui è iscritto
         const athIds = athletes.map(a => a.id);
 
+        // 2. Stagioni atleti
         const { data: teamSeasons } = await client.from('athlete_team_seasons')
             .select('athlete_id, season_id, team_id, seasons(id, name, is_active), teams(id, name, categories(name))')
             .in('athlete_id', athIds);
 
-        // 3. Per ogni atleta, carica match_stats
-        const { data: matchStats } = await client.from('match_stats')
-            .select('athlete_id, goals, yellow_cards, red_cards, minutes_played, sessions!inner(season_id, type_id, session_date, title, society_id)')
-            .in('athlete_id', athIds);
-
+        // 3. Tipi sessione
         const { data: sessionTypes } = await client.from('session_types').select('id, name');
         const garaTypeIds = new Set((sessionTypes||[])
             .filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara'))
             .map(t => t.id));
 
-        // 4. Per ogni atleta, carica presenze alle partite
+        // 4. Match stats atleta
+        const { data: matchStats } = await client.from('match_stats')
+            .select('athlete_id, goals, yellow_cards, red_cards, minutes_played, sessions!inner(season_id, type_id, team_id)')
+            .in('athlete_id', athIds);
+
+        // 5. Presenze atleta
         const { data: attendances } = await client.from('attendances')
             .select('athlete_id, status, is_called_up, sessions!inner(season_id, type_id, team_id, teams(name))')
             .in('athlete_id', athIds);
 
-        // Raggruppa match_stats per (athlete_id, season_id)
-        const statsBy = {}; // statsBy[athleteId][seasonId] = { goals, yc, rc, min, games }
+        // 6. Statistiche squadra: tutte le sessioni gara delle squadre dell'atleta
+        const teamIds = [...new Set((teamSeasons||[]).map(ts => ts.team_id).filter(Boolean))];
+        const { data: teamMatchStats } = teamIds.length > 0
+            ? await client.from('match_stats')
+                .select('goals, yellow_cards, red_cards, sessions!inner(season_id, type_id, team_id, result_home, result_away, is_home)')
+                .in('sessions.team_id', teamIds)
+            : { data: [] };
+
+        const { data: teamSessions } = teamIds.length > 0
+            ? await client.from('sessions')
+                .select('id, team_id, season_id, type_id, result_home, result_away, is_home, title, session_date')
+                .in('team_id', teamIds)
+                .in('type_id', [...garaTypeIds])
+            : { data: [] };
+
+        // Aggrega stats squadra per team_id+season_id
+        const teamStatsBy = {}; // [teamId][seasonId] = { p, v, n, s, gf, gs, yc, rc }
+        (teamSessions||[]).forEach(s => {
+            const key = s.team_id;
+            const sid = s.season_id;
+            if (!teamStatsBy[key]) teamStatsBy[key] = {};
+            if (!teamStatsBy[key][sid]) teamStatsBy[key][sid] = { p:0, v:0, n:0, s:0, gf:0, gs:0, yc:0, rc:0 };
+            const t = teamStatsBy[key][sid];
+            const rh = s.result_home ?? null, ra = s.result_away ?? null;
+            if (rh !== null && ra !== null) {
+                const myG = s.is_home ? rh : ra;
+                const oppG = s.is_home ? ra : rh;
+                t.p++; t.gf += myG; t.gs += oppG;
+                if (myG > oppG) t.v++;
+                else if (myG === oppG) t.n++;
+                else t.s++;
+            }
+        });
+
+        // Aggrega match_stats per atleta
+        const statsBy = {};
         (matchStats || []).forEach(st => {
             const sid = st.sessions?.season_id;
             if (!garaTypeIds.has(st.sessions?.type_id)) return;
             if (!statsBy[st.athlete_id]) statsBy[st.athlete_id] = {};
-            if (!statsBy[st.athlete_id][sid]) statsBy[st.athlete_id][sid] = { goals:0, yc:0, rc:0, min:0, games:0 };
+            if (!statsBy[st.athlete_id][sid]) statsBy[st.athlete_id][sid] = { goals:0, yc:0, rc:0, min:0 };
             statsBy[st.athlete_id][sid].goals += st.goals || 0;
             statsBy[st.athlete_id][sid].yc    += st.yellow_cards || 0;
             statsBy[st.athlete_id][sid].rc    += st.red_cards || 0;
             statsBy[st.athlete_id][sid].min   += st.minutes_played || 0;
-            statsBy[st.athlete_id][sid].games++;
         });
 
-        // Raggruppa presenze per (athlete_id, season_id)
-        const presBy = {}; // presBy[athleteId][seasonId] = { pres, tot, conv }
+        // Aggrega presenze per atleta
+        const presBy = {};
         (attendances || []).forEach(att => {
             const sid = att.sessions?.season_id;
-            if (!sid) return;
-            const isGara = garaTypeIds.has(att.sessions?.type_id);
+            if (!sid || !garaTypeIds.has(att.sessions?.type_id)) return;
             const aid = att.athlete_id;
             if (!presBy[aid]) presBy[aid] = {};
-            if (!presBy[aid][sid]) presBy[aid][sid] = { pres:0, tot:0, conv:0, team: att.sessions?.teams?.name };
-            if (isGara) {
-                presBy[aid][sid].tot++;
-                if (att.is_called_up) presBy[aid][sid].conv++;
-                if ((att.status||'').toLowerCase() === 'presente') presBy[aid][sid].pres++;
-            }
+            if (!presBy[aid][sid]) presBy[aid][sid] = { pres:0, tot:0, conv:0 };
+            presBy[aid][sid].tot++;
+            if (att.is_called_up) presBy[aid][sid].conv++;
+            if ((att.status||'').toLowerCase() === 'presente') presBy[aid][sid].pres++;
         });
 
-        // Costruisci HTML
-        const statPill = (val, label, color) =>
-            `<div style="text-align:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; min-width:70px;">
-                <div style="font-family:'Space Grotesk',sans-serif; font-size:1.5rem; font-weight:800; color:${color}; line-height:1;">${val}</div>
-                <div style="font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-top:3px;">${label}</div>
+        // Helper UI
+        const statPill = (val, label, color, bg='#f8fafc', border='#e2e8f0') =>
+            `<div style="text-align:center; background:${bg}; border:1px solid ${border}; border-radius:10px; padding:10px 14px; min-width:68px;">
+                <div style="font-family:'Space Grotesk',sans-serif; font-size:1.4rem; font-weight:800; color:${color}; line-height:1;">${val}</div>
+                <div style="font-size:0.62rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-top:3px;">${label}</div>
             </div>`;
 
+        const badge = (txt, bg, color) =>
+            `<span style="background:${bg}; color:${color}; font-size:0.68rem; font-weight:700; padding:2px 8px; border-radius:99px;">${txt}</span>`;
+
+        // Costruisci sezioni per atleta
         const sectionsHTML = athletes.map(ath => {
-            // Stagioni per questo atleta
             const mySeasons = (teamSeasons || [])
                 .filter(ts => ts.athlete_id === ath.id && ts.seasons)
                 .sort((a, b) => (b.seasons?.is_active ? 1 : 0) - (a.seasons?.is_active ? 1 : 0));
-
             const uniqueSeasons = [...new Map(mySeasons.map(ts => [ts.season_id, ts])).values()];
 
+            const totGoals = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.goals||0), 0);
+            const totMin   = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.min||0), 0);
+            const totYC    = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.yc||0), 0);
+            const totConv  = Object.values(presBy[ath.id] || {}).reduce((s, x) => s + (x.conv||0), 0);
+
             const seasonsHTML = uniqueSeasons.length === 0
-                ? `<p style="color:#94a3b8; padding:12px 0;">Nessuna stagione registrata.</p>`
+                ? `<p style="color:#94a3b8; padding:12px 0; text-align:center;">Nessuna stagione registrata.</p>`
                 : uniqueSeasons.map(ts => {
                     const sId = ts.season_id;
                     const sName = ts.seasons?.name || 'Stagione';
                     const teamName = ts.teams?.name || '';
                     const catName = ts.teams?.categories?.name || '';
+                    const teamId = ts.team_id;
                     const st = statsBy[ath.id]?.[sId] || {};
                     const pr = presBy[ath.id]?.[sId] || {};
                     const convPerc = pr.tot > 0 ? Math.round(pr.conv / pr.tot * 100) : null;
                     const percColor = convPerc === null ? '#94a3b8' : convPerc >= 75 ? '#10b981' : convPerc >= 50 ? '#f59e0b' : '#ef4444';
 
-                    return `
-                    <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:12px; border-left:4px solid ${ts.seasons?.is_active ? '#2563eb' : '#e2e8f0'};">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:6px;">
-                            <div>
-                                <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:0.95rem; color:#1e293b;">${sName}</span>
-                                ${ts.seasons?.is_active ? '<span style="background:#dbeafe; color:#1d4ed8; font-size:0.68rem; font-weight:700; padding:2px 8px; border-radius:99px; margin-left:8px;">ATTIVA</span>' : ''}
+                    // Statistiche squadra per questa stagione
+                    const tst = teamStatsBy[teamId]?.[sId] || null;
+                    const teamStatsHTML = tst && tst.p > 0 ? `
+                        <div style="background:#fafafa; border-radius:10px; padding:14px 16px; border:1px solid #e2e8f0; margin-top:10px;">
+                            <div style="font-size:0.68rem; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">🏆 Statistiche Squadra — ${teamName}</div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                ${statPill(tst.p, 'Partite', '#334155')}
+                                ${statPill(tst.v, 'Vittorie', '#10b981', '#f0fdf4', '#bbf7d0')}
+                                ${statPill(tst.n, 'Pareggi', '#f59e0b', '#fffbeb', '#fde68a')}
+                                ${statPill(tst.s, 'Sconfitte', '#ef4444', '#fef2f2', '#fecaca')}
+                                ${statPill(tst.gf, 'Gol F', '#2563eb', '#eff6ff', '#bfdbfe')}
+                                ${statPill(tst.gs, 'Gol S', '#64748b')}
+                                <div style="margin-left:auto; text-align:center; background:linear-gradient(135deg,#1e3a5f,#2563eb); border-radius:10px; padding:10px 18px;">
+                                    <div style="font-family:'Space Grotesk',sans-serif; font-size:1.1rem; font-weight:800; color:white; line-height:1;">${tst.v > 0 ? Math.round(tst.v/tst.p*100) : 0}%</div>
+                                    <div style="font-size:0.6rem; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.06em; margin-top:3px;">% Vittorie</div>
+                                </div>
                             </div>
-                            <div style="font-size:0.78rem; color:#64748b;">${teamName}${catName ? ' · ' + catName : ''}</div>
-                        </div>
+                        </div>` : '';
 
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
-                            <!-- Statistiche partite -->
-                            <div style="background:#f0fdf4; border-radius:8px; padding:12px; border:1px solid #bbf7d0;">
-                                <div style="font-size:0.68rem; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:8px;">📊 Statistiche Partite</div>
+                    return `
+                    <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; margin-bottom:12px; border-left:4px solid ${ts.seasons?.is_active ? '#2563eb' : '#cbd5e1'};">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:6px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1rem; color:#1e293b;">${sName}</span>
+                                ${ts.seasons?.is_active ? badge('ATTIVA','#dbeafe','#1d4ed8') : ''}
+                            </div>
+                            <div style="font-size:0.78rem; color:#64748b; font-weight:500;">${teamName}${catName ? ' · '+catName : ''}</div>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div style="background:#f0fdf4; border-radius:10px; padding:14px; border:1px solid #bbf7d0;">
+                                <div style="font-size:0.68rem; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">📊 Il tuo atleta</div>
                                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                    ${statPill(st.goals || 0, '⚽ Gol', '#10b981')}
-                                    ${statPill(st.min || 0, '⏱ Min', '#2563eb')}
-                                    ${statPill(st.yc || 0, '🟨 Amm', '#f59e0b')}
-                                    ${statPill(st.rc || 0, '🟥 Esp', '#ef4444')}
+                                    ${statPill(st.goals||0,'⚽ Gol','#10b981','#f0fdf4','#bbf7d0')}
+                                    ${statPill(st.min||0,'⏱ Min','#2563eb','#eff6ff','#bfdbfe')}
+                                    ${statPill(st.yc||0,'🟨 Amm','#f59e0b','#fffbeb','#fde68a')}
+                                    ${statPill(st.rc||0,'🟥 Esp','#ef4444','#fef2f2','#fecaca')}
                                 </div>
                             </div>
-                            <!-- Presenze -->
-                            <div style="background:#eff6ff; border-radius:8px; padding:12px; border:1px solid #bfdbfe;">
-                                <div style="font-size:0.68rem; font-weight:800; color:#1d4ed8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:8px;">📅 Presenze Partite</div>
+                            <div style="background:#eff6ff; border-radius:10px; padding:14px; border:1px solid #bfdbfe;">
+                                <div style="font-size:0.68rem; font-weight:800; color:#1d4ed8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">📅 Presenze Partite</div>
                                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                    ${statPill(pr.pres || 0, 'Presenze', '#10b981')}
-                                    ${statPill(pr.conv || 0, 'Convoc.', '#2563eb')}
-                                    ${statPill(pr.tot || 0, 'Totali', '#64748b')}
-                                    ${convPerc !== null ? statPill(convPerc + '%', 'Conv%', percColor) : ''}
+                                    ${statPill(pr.pres||0,'Presenze','#10b981','#f0fdf4','#bbf7d0')}
+                                    ${statPill(pr.conv||0,'Convoc.','#2563eb','#eff6ff','#bfdbfe')}
+                                    ${statPill(pr.tot||0,'Totali','#64748b')}
+                                    ${convPerc !== null ? statPill(convPerc+'%','Conv%',percColor) : ''}
                                 </div>
                             </div>
                         </div>
+                        ${teamStatsHTML}
                     </div>`;
                 }).join('');
 
-            // Totali cumulativi su tutte le stagioni
-            const totGoals = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.goals||0), 0);
-            const totMin   = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.min||0), 0);
-            const totYC    = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.yc||0), 0);
-            const totRC    = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.rc||0), 0);
-            const totConv  = Object.values(presBy[ath.id] || {}).reduce((s, x) => s + (x.conv||0), 0);
-            const totPres  = Object.values(presBy[ath.id] || {}).reduce((s, x) => s + (x.pres||0), 0);
-
             return `
-            <div style="margin-bottom:2rem;">
-                <!-- Intestazione atleta -->
-                <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb); border-radius:14px 14px 0 0; padding:18px 22px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="margin-bottom:2rem; background:white; border-radius:16px; box-shadow:0 2px 12px rgba(0,0,0,0.07); overflow:hidden;">
+                <!-- Header atleta -->
+                <div style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%); padding:20px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                     <div>
-                        <div style="font-size:0.65rem; font-weight:700; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px;">👤 Atleta</div>
-                        <div style="font-family:'Space Grotesk',sans-serif; font-size:1.2rem; font-weight:800; color:white;">${ath.surname} ${ath.name}</div>
-                        ${ath.born_date ? `<div style="font-size:0.75rem; color:rgba(255,255,255,0.6); margin-top:2px;">Nato il ${new Date(ath.born_date).toLocaleDateString('it-IT')}</div>` : ''}
+                        <div style="font-size:0.62rem; font-weight:700; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:0.12em; margin-bottom:4px;">👤 Atleta</div>
+                        <div style="font-family:'Space Grotesk',sans-serif; font-size:1.4rem; font-weight:800; color:white; letter-spacing:-0.3px;">${ath.surname} ${ath.name}</div>
+                        ${ath.born_date ? `<div style="font-size:0.75rem; color:rgba(255,255,255,0.55); margin-top:3px;">🎂 Nato il ${new Date(ath.born_date).toLocaleDateString('it-IT')}</div>` : ''}
                     </div>
-                    <!-- Riepilogo totale carriera -->
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <div style="background:rgba(255,255,255,0.12); border-radius:10px; padding:8px 14px; text-align:center;">
-                            <div style="font-size:1.3rem; font-weight:800; color:#6ee7b7;">${totGoals}</div>
-                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.6); text-transform:uppercase;">⚽ Gol</div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <div style="background:rgba(255,255,255,0.13); border-radius:12px; padding:10px 18px; text-align:center; border:1px solid rgba(255,255,255,0.1);">
+                            <div style="font-size:1.5rem; font-weight:800; color:#6ee7b7; line-height:1;">${totGoals}</div>
+                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.55); text-transform:uppercase; margin-top:3px;">⚽ Gol</div>
                         </div>
-                        <div style="background:rgba(255,255,255,0.12); border-radius:10px; padding:8px 14px; text-align:center;">
-                            <div style="font-size:1.3rem; font-weight:800; color:#93c5fd;">${totMin}'</div>
-                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.6); text-transform:uppercase;">⏱ Min</div>
+                        <div style="background:rgba(255,255,255,0.13); border-radius:12px; padding:10px 18px; text-align:center; border:1px solid rgba(255,255,255,0.1);">
+                            <div style="font-size:1.5rem; font-weight:800; color:#93c5fd; line-height:1;">${totMin}'</div>
+                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.55); text-transform:uppercase; margin-top:3px;">⏱ Min</div>
                         </div>
-                        <div style="background:rgba(255,255,255,0.12); border-radius:10px; padding:8px 14px; text-align:center;">
-                            <div style="font-size:1.3rem; font-weight:800; color:#fde68a;">${totConv}</div>
-                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.6); text-transform:uppercase;">Convoc.</div>
+                        <div style="background:rgba(255,255,255,0.13); border-radius:12px; padding:10px 18px; text-align:center; border:1px solid rgba(255,255,255,0.1);">
+                            <div style="font-size:1.5rem; font-weight:800; color:#fde68a; line-height:1;">${totConv}</div>
+                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.55); text-transform:uppercase; margin-top:3px;">Convoc.</div>
                         </div>
-                        ${totYC > 0 ? `<div style="background:rgba(255,255,255,0.12); border-radius:10px; padding:8px 14px; text-align:center;">
-                            <div style="font-size:1.3rem; font-weight:800; color:#fcd34d;">${totYC}</div>
-                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.6); text-transform:uppercase;">🟨</div>
+                        ${totYC > 0 ? `<div style="background:rgba(255,255,255,0.13); border-radius:12px; padding:10px 18px; text-align:center; border:1px solid rgba(255,255,255,0.1);">
+                            <div style="font-size:1.5rem; font-weight:800; color:#fcd34d; line-height:1;">${totYC}</div>
+                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.55); text-transform:uppercase; margin-top:3px;">🟨 Amm</div>
                         </div>` : ''}
                     </div>
                 </div>
-
                 <!-- Body stagioni -->
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-top:none; border-radius:0 0 14px 14px; padding:16px 18px;">
-                    <div style="font-size:0.72rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:12px;">📆 Stagioni</div>
+                <div style="padding:18px 20px; background:#f8fafc;">
+                    <div style="font-size:0.72rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">📆 Dettaglio per Stagione</div>
                     ${seasonsHTML}
                 </div>
             </div>`;
         }).join('');
 
         content.innerHTML = `
-        <div style="font-family:'DM Sans',sans-serif; max-width:900px; margin:0 auto;">
-            <div style="margin-bottom:1.5rem;">
-                <h2 style="font-family:'Space Grotesk',sans-serif; font-size:1.3rem; font-weight:800; color:#1e293b; margin:0;">👨‍👩‍👧 Benvenuto, ${window.CURRENT_USER?.name || 'Genitore'}</h2>
-                <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">Statistiche e presenze dei tuoi figli · ${new Date().toLocaleDateString('it-IT', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</div>
+        <div style="font-family:'DM Sans',sans-serif; padding:0;">
+            <div style="margin-bottom:1.8rem; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:8px;">
+                <div>
+                    <h2 style="font-family:'Space Grotesk',sans-serif; font-size:1.5rem; font-weight:800; color:#1e293b; margin:0;">👨‍👩‍👧 Benvenuto, ${window.CURRENT_USER?.name || 'Genitore'}</h2>
+                    <div style="font-size:0.82rem; color:#94a3b8; margin-top:4px;">Statistiche e presenze dei tuoi figli · ${new Date().toLocaleDateString('it-IT', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</div>
+                </div>
+                <div style="font-size:0.78rem; color:#64748b; background:white; border:1px solid #e2e8f0; border-radius:8px; padding:6px 14px;">
+                    ${athletes.length} atleta${athletes.length > 1 ? 'i' : ''} associat${athletes.length > 1 ? 'i' : 'o'}
+                </div>
             </div>
             ${sectionsHTML}
         </div>`;
