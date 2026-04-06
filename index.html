@@ -4951,7 +4951,7 @@ window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
         const hasTeamScope = scopedTeamIds && scopedTeamIds.length > 0;
 
         // Base queries
-        let athQ = client.from('athlete_team_seasons').select('id, society_id, season_id, team_id', { count: 'exact', head: false });
+        let athQ = client.from('athlete_team_seasons').select('id, society_id, season_id, team_id, teams(category_id)', { count: 'exact', head: false });
         let sessQ = client.from('sessions').select('id, society_id, season_id, team_id', { count: 'exact', head: false });
         let socQ = client.from('societies').select('id', { count: 'exact', head: false });
         let catQ = client.from('categories').select('id, society_id', { count: 'exact', head: false });
@@ -4971,7 +4971,7 @@ window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
             staffQ = staffQ.eq('society_id', socId);
             attQ = attQ.eq('sessions.society_id', socId);
         }
-        // Filtro team per ruoli scoped
+        // Filtro team per ruoli scoped (dirigente/allenatore vedono solo i propri team)
         if (hasTeamScope) {
             athQ = athQ.in('team_id', scopedTeamIds);
             sessQ = sessQ.in('team_id', scopedTeamIds);
@@ -4984,7 +4984,6 @@ window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
 
         const athletes = athRes.data || [];
         const sessions = sessRes.data || [];
-        const categories = catRes.data || [];
         const staff = staffRes.data || [];
         const attendances = attRes.data || [];
 
@@ -4992,10 +4991,34 @@ window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
         const totalAtleti = athletes.length;
         const totalSessioni = sessions.length;
         const totalSocieta = (socId && socId !== 'all') ? 1 : (socRes.data || []).length;
-        const totalCategorie = categories.length;
-        const totalStaff = staff.length;
 
-        const staffByRole = staff.reduce((acc, u) => {
+        // Per ruoli scoped (dirigente/allenatore): conta solo le categorie dei propri team
+        // Per gli altri: usa il conteggio diretto da catQ
+        let totalCategorie;
+        if (hasTeamScope) {
+            // Recupera i team assegnati con la loro category_id per contare le categorie uniche
+            const { data: scopedTeams } = await client
+                .from('teams')
+                .select('category_id')
+                .in('id', scopedTeamIds);
+            const uniqueCatIds = new Set((scopedTeams || []).map(t => t.category_id).filter(Boolean));
+            totalCategorie = uniqueCatIds.size;
+        } else {
+            totalCategorie = (catRes.data || []).length;
+        }
+        // Staff: per ruoli scoped mostra solo lo staff dei propri team
+        let staffFiltered = staff;
+        if (hasTeamScope) {
+            const { data: scopedStaff } = await client
+                .from('user_category_seasons')
+                .select('user_id')
+                .in('team_id', scopedTeamIds);
+            const scopedUserIds = new Set((scopedStaff || []).map(r => r.user_id).filter(Boolean));
+            staffFiltered = staff.filter(u => scopedUserIds.has(u.id));
+        }
+        const totalStaff = staffFiltered.length;
+
+        const staffByRole = staffFiltered.reduce((acc, u) => {
             const r = (u.management_role || 'Altro').toLowerCase();
             if (r.includes('president')) acc.presidenti++;
             else if (r.includes('allenator') || r.includes('coach')) acc.allenatori++;
@@ -5009,11 +5032,8 @@ window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
         const pres = attendances.filter(a => (a.status||'').toLowerCase() === 'presente').length;
         const percPres = tot > 0 ? Math.round((pres/tot)*100) : 0;
 
-        // Calcolo categorie uniche
-        const uniqueCats = new Set(athletes.map(a => a.society_id)).size;
-
         const kpis = [
-            { label:'Atleti Totali',      value: totalAtleti,   sub: `in ${uniqueCats || totalCategorie} categorie`, color:'#2563eb' },
+            { label:'Atleti Totali',      value: totalAtleti,   sub: `in ${totalCategorie} categor${totalCategorie === 1 ? 'ia' : 'ie'}`, color:'#2563eb' },
             { label:'Sessioni Registrate', value: totalSessioni,  sub: 'tutte le categorie',              color:'#10b981' },
             { label:'% Presenze Globali',  value: percPres+'%',   sub: `${pres}/${tot} totali`,            color:'#f59e0b' },
             { label:'Società',             value: totalSocieta,   sub: '1 sport',                          color:'#06b6d4' },
