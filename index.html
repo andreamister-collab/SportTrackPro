@@ -3818,62 +3818,93 @@ window.openTabellino = async function(sessionId) {
     const container = window.prepareSubSection(sessionId);
     if (!container) return;
 
+    // Expand to full width
+    container.style.width = '100%';
+    container.style.maxWidth = '100%';
+
     let { data: d } = await client.from('match_details').select('*').eq('session_id', sessionId).maybeSingle();
-    
     if (!d) {
-        const { data: newD } = await client.from('match_details').insert([{ 
-            session_id: sessionId, goals_for:0, goals_against:0, match_status: 'da disputare', is_home: true, is_friendly: false 
+        const { data: newD } = await client.from('match_details').insert([{
+            session_id: sessionId, goals_for:0, goals_against:0, match_status: 'da disputare', is_home: true, is_friendly: false
         }]).select().single();
         d = newD;
     }
+
+    const session = await window.safeGetSession(sessionId);
+
+    // Load called-up athletes
+    const { data: convAttendances } = await client.from('attendances')
+        .select('athlete_id, athletes(name, surname)')
+        .eq('session_id', sessionId)
+        .eq('is_called_up', true);
+
+    // Load jersey numbers
+    const { data: teamAthletes } = await client.from('athlete_team_seasons')
+        .select('athlete_id, jersey_number, role')
+        .eq('team_id', session.team_id);
+    const jerseyMap = {};
+    (teamAthletes || []).forEach(a => { jerseyMap[a.athlete_id] = { num: a.jersey_number, role: a.role }; });
+
+    // Load existing match_stats for this session
+    const { data: existingStats } = await client.from('match_stats')
+        .select('*').eq('session_id', sessionId);
+    const statsMap = {};
+    (existingStats || []).forEach(s => { statsMap[s.athlete_id] = s; });
 
     const esitoBadge = d.match_status === 'vittoria' ? '#dcfce7|#166534|V' : d.match_status === 'sconfitta' ? '#fee2e2|#991b1b|S' : d.match_status === 'pareggio' ? '#fef3c7|#92400e|P' : '#f1f5f9|#64748b|-';
     const [ebg, efg, elbl] = esitoBadge.split('|');
     const scoreDisplay = d.goals_for !== undefined ? `${d.goals_for} - ${d.goals_against}` : '- -';
 
+    const sortedConv = (convAttendances || []).sort((a,b) => {
+        const na = (jerseyMap[a.athlete_id]?.num || 99);
+        const nb = (jerseyMap[b.athlete_id]?.num || 99);
+        return na - nb || (a.athletes?.surname||'').localeCompare(b.athletes?.surname||'');
+    });
+
     container.innerHTML = `
-    <div style="max-width:680px; margin:auto; background:white; border-radius:14px; box-shadow:0 4px 24px rgba(0,0,0,0.12); color:#1e293b; font-family:'DM Sans',sans-serif; overflow:hidden; border:1px solid #e2e8f0;">
+    <div style="background:white; border-radius:14px; box-shadow:0 4px 24px rgba(0,0,0,0.10); color:#1e293b; font-family:'DM Sans',sans-serif; overflow:hidden; border:1px solid #e2e8f0;">
 
         <!-- HEADER -->
-        <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb); padding:18px 20px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb); padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
             <div>
-                <div style="font-size:0.68rem; font-weight:700; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.08em;">Tabellino &amp; Report Match</div>
-                <div style="font-size:1.1rem; font-weight:700; color:white; margin-top:2px;">⚽ ${d.opponent_name ? 'vs ' + d.opponent_name : 'Avversario da impostare'}</div>
+                <div style="font-size:0.68rem; font-weight:700; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.08em;">⚽ Tabellino &amp; Report Match</div>
+                <div style="font-size:1.15rem; font-weight:700; color:white; margin-top:3px;">${d.opponent_name ? 'vs ' + d.opponent_name : 'Avversario da impostare'}</div>
             </div>
-            <div style="background:${ebg}; color:${efg}; font-size:1.4rem; font-weight:900; padding:8px 16px; border-radius:8px; font-family:'Space Grotesk',sans-serif;">${scoreDisplay}</div>
+            <div style="background:${ebg}; color:${efg}; font-size:1.6rem; font-weight:900; padding:10px 20px; border-radius:10px; font-family:'Space Grotesk',sans-serif; min-width:90px; text-align:center;">${scoreDisplay}</div>
         </div>
 
         <!-- BADGES ROW -->
-        <div style="display:flex; gap:8px; padding:12px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0; flex-wrap:wrap;">
+        <div style="display:flex; gap:8px; padding:10px 24px; background:#f8fafc; border-bottom:1px solid #e2e8f0; flex-wrap:wrap;">
             <span style="background:${d.is_home !== false ? '#dbeafe' : '#f3e8ff'}; color:${d.is_home !== false ? '#1d4ed8' : '#7c3aed'}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${d.is_home !== false ? '🏠 Casa' : '🚌 Trasferta'}</span>
             <span style="background:${!d.is_friendly ? '#dcfce7' : '#fef3c7'}; color:${!d.is_friendly ? '#166534' : '#92400e'}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${!d.is_friendly ? '🏆 Ufficiale' : '🤝 Amichevole'}</span>
             <span style="background:${ebg}; color:${efg}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${elbl === 'V' ? '✅ Vittoria' : elbl === 'S' ? '❌ Sconfitta' : elbl === 'P' ? '🤝 Pareggio' : '⏳ Da giocare'}</span>
+            <span style="background:#f1f5f9; color:#475569; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">👥 ${sortedConv.length} convocati</span>
         </div>
 
-        <div style="padding:18px 20px; display:grid; gap:14px;">
+        <div style="padding:20px 24px; display:grid; gap:16px;">
 
             <!-- ROW 1: Location + Tipo + Avversario + Esito -->
-            <div style="display:grid; grid-template-columns:1fr 1fr 1.6fr 1fr; gap:10px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr 2fr 1fr; gap:10px;">
                 <div>
-                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">Location</label>
+                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">📍 Location</label>
                     <select id="tab-is-home" style="width:100%; padding:8px 10px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.82rem; color:#1e293b; font-family:inherit;">
                         <option value="true" ${d.is_home !== false ? 'selected' : ''}>🏠 Casa</option>
                         <option value="false" ${d.is_home === false ? 'selected' : ''}>🚌 Trasferta</option>
                     </select>
                 </div>
                 <div>
-                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">Tipo Gara</label>
+                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">🏆 Tipo Gara</label>
                     <select id="tab-is-friendly" style="width:100%; padding:8px 10px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.82rem; color:#1e293b; font-family:inherit;">
                         <option value="false" ${!d.is_friendly ? 'selected' : ''}>🏆 Ufficiale</option>
                         <option value="true" ${d.is_friendly ? 'selected' : ''}>🤝 Amichevole</option>
                     </select>
                 </div>
                 <div>
-                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">Squadra Avversaria</label>
+                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">⚔️ Squadra Avversaria</label>
                     <input type="text" id="tab-opponent" value="${d.opponent_name || ''}" placeholder="es. FC Torino" style="width:100%; padding:8px 10px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.82rem; color:#1e293b; font-family:inherit; box-sizing:border-box;">
                 </div>
                 <div>
-                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">Esito</label>
+                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">🏁 Esito</label>
                     <select id="tab-status" style="width:100%; padding:8px 10px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.82rem; color:#1e293b; font-family:inherit;">
                         <option value="da disputare" ${d.match_status === 'da disputare' ? 'selected' : ''}>⏳ Da giocare</option>
                         <option value="vittoria" ${d.match_status === 'vittoria' ? 'selected' : ''}>✅ Vittoria</option>
@@ -3884,13 +3915,13 @@ window.openTabellino = async function(sessionId) {
             </div>
 
             <!-- ROW 2: Orari + Indirizzo -->
-            <div style="display:grid; grid-template-columns:1fr 1fr 2fr; gap:10px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr 3fr; gap:10px;">
                 <div>
                     <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">⏰ Ora Ritrovo</label>
                     <input type="time" id="tab-meet-time" value="${d.meet_time || ''}" style="width:100%; padding:8px 10px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.82rem; font-family:inherit; box-sizing:border-box;">
                 </div>
                 <div>
-                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">🏁 Ora Inizio</label>
+                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">⚡ Ora Inizio</label>
                     <input type="time" id="tab-match-start" value="${d.match_start_time || ''}" style="width:100%; padding:8px 10px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.82rem; font-family:inherit; box-sizing:border-box;">
                 </div>
                 <div>
@@ -3900,45 +3931,118 @@ window.openTabellino = async function(sessionId) {
             </div>
 
             <!-- ROW 3: Score -->
-            <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:0; background:linear-gradient(135deg,#f0fdf4,#fef2f2); border-radius:12px; overflow:hidden; border:1px solid #e2e8f0;">
+            <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:0; background:linear-gradient(135deg,#f0fdf4,#fef2f2); border-radius:12px; overflow:hidden; border:1px solid #e2e8f0; max-width:400px; margin:0 auto; width:100%;">
                 <div style="padding:16px; text-align:center;">
                     <div style="font-size:0.65rem; font-weight:800; color:#10b981; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">GOL FATTI</div>
-                    <input type="number" id="tab-gf" value="${d.goals_for ?? 0}" min="0" style="width:80px; text-align:center; font-size:2.2rem; font-weight:900; border:none; background:transparent; color:#065f46; font-family:'Space Grotesk',sans-serif;">
+                    <input type="number" id="tab-gf" value="${d.goals_for ?? 0}" min="0" style="width:80px; text-align:center; font-size:2.4rem; font-weight:900; border:none; background:transparent; color:#065f46; font-family:'Space Grotesk',sans-serif;">
                 </div>
-                <div style="display:flex; align-items:center; padding:0 12px; font-size:1.4rem; font-weight:900; color:#94a3b8; font-family:'Space Grotesk',sans-serif;">—</div>
+                <div style="display:flex; align-items:center; padding:0 16px; font-size:1.6rem; font-weight:900; color:#94a3b8; font-family:'Space Grotesk',sans-serif;">—</div>
                 <div style="padding:16px; text-align:center;">
                     <div style="font-size:0.65rem; font-weight:800; color:#ef4444; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">GOL SUBITI</div>
-                    <input type="number" id="tab-gs" value="${d.goals_against ?? 0}" min="0" style="width:80px; text-align:center; font-size:2.2rem; font-weight:900; border:none; background:transparent; color:#991b1b; font-family:'Space Grotesk',sans-serif;">
+                    <input type="number" id="tab-gs" value="${d.goals_against ?? 0}" min="0" style="width:80px; text-align:center; font-size:2.4rem; font-weight:900; border:none; background:transparent; color:#991b1b; font-family:'Space Grotesk',sans-serif;">
                 </div>
             </div>
 
-            <!-- ROW 4: Marcatori -->
-            <div style="background:#f8fafc; border-radius:10px; padding:14px; border:1px solid #e2e8f0;">
-                <div style="font-size:0.75rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">📊 Marcatori &amp; Sanzioni</div>
-                <div id="events-list"></div>
-                <button onclick="window.addEventRow('${sessionId}')" style="width:100%; margin-top:8px; padding:9px; background:white; border:1.5px dashed #cbd5e1; border-radius:8px; cursor:pointer; font-size:0.8rem; color:#3b82f6; font-weight:700; transition:all 0.15s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#cbd5e1'">+ Aggiungi Marcatore / Evento</button>
+            <!-- ROW 4: Griglia convocati con statistiche individuali -->
+            <div style="background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0; overflow:hidden;">
+                <div style="padding:12px 16px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:white;">
+                    <div style="font-size:0.82rem; font-weight:700; color:#1e293b;">📋 Statistiche Giocatori Convocati</div>
+                    <div style="font-size:0.7rem; color:#94a3b8;">Compila gol, cartellini e minuti per ogni giocatore</div>
+                </div>
+                ${sortedConv.length === 0 ? `
+                <div style="padding:24px; text-align:center; color:#94a3b8; font-size:0.85rem;">
+                    ⚠️ Nessun giocatore convocato. Prima salva le convocazioni dalla sezione apposita.
+                </div>` : `
+                <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                    <thead>
+                        <tr style="background:#f1f5f9;">
+                            <th style="padding:10px 12px; text-align:left; font-size:0.68rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">#</th>
+                            <th style="padding:10px 12px; text-align:left; font-size:0.68rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Giocatore</th>
+                            <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:#10b981; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">⚽ Gol</th>
+                            <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:#f59e0b; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">🟨 Amm.</th>
+                            <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:#ef4444; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">🟥 Esp.</th>
+                            <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:#2563eb; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">⏱ Minuti</th>
+                            <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">Titolare</th>
+                        </tr>
+                    </thead>
+                    <tbody id="players-stats-body">
+                        ${sortedConv.map((att, i) => {
+                            const aid = att.athlete_id;
+                            const fullName = `${att.athletes?.surname || ''} ${att.athletes?.name || ''}`.trim();
+                            const jersey = jerseyMap[aid]?.num || '—';
+                            const st = statsMap[aid] || {};
+                            const goals = st.goals || 0;
+                            const yc = st.yellow_cards || 0;
+                            const rc = st.red_cards || 0;
+                            const mins = st.minutes_played || 0;
+                            const isStarter = st.is_starter !== false;
+                            return `
+                            <tr style="border-bottom:1px solid #f1f5f9;" onmouseover="this.style.background='#fafbff'" onmouseout="this.style.background=''">
+                                <td style="padding:9px 12px; font-weight:700; color:#2563eb; font-size:0.85rem;">${jersey}</td>
+                                <td style="padding:9px 12px; font-weight:600; white-space:nowrap;">
+                                    <span style="font-size:0.85rem; color:#1e293b;">${fullName}</span>
+                                    ${jerseyMap[aid]?.role ? `<span style="font-size:0.68rem; color:#94a3b8; margin-left:6px;">${jerseyMap[aid].role}</span>` : ''}
+                                </td>
+                                <td style="padding:6px 8px; text-align:center;">
+                                    <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                                        <button onclick="window._adjustStat(this, -1)" data-field="goals" data-id="${aid}" style="width:22px; height:22px; border-radius:50%; border:1px solid #e2e8f0; background:white; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; color:#64748b;">−</button>
+                                        <span class="stat-val" data-field="goals" data-id="${aid}" style="font-weight:800; font-size:1rem; color:#10b981; min-width:20px; text-align:center;">${goals}</span>
+                                        <button onclick="window._adjustStat(this, 1)" data-field="goals" data-id="${aid}" style="width:22px; height:22px; border-radius:50%; border:1px solid #e2e8f0; background:white; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; color:#64748b;">+</button>
+                                    </div>
+                                </td>
+                                <td style="padding:6px 8px; text-align:center;">
+                                    <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                                        <button onclick="window._adjustStat(this, -1)" data-field="yellow_cards" data-id="${aid}" style="width:22px; height:22px; border-radius:50%; border:1px solid #e2e8f0; background:white; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; color:#64748b;">−</button>
+                                        <span class="stat-val" data-field="yellow_cards" data-id="${aid}" style="font-weight:800; font-size:1rem; color:#f59e0b; min-width:20px; text-align:center;">${yc}</span>
+                                        <button onclick="window._adjustStat(this, 1)" data-field="yellow_cards" data-id="${aid}" style="width:22px; height:22px; border-radius:50%; border:1px solid #e2e8f0; background:white; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; color:#64748b;">+</button>
+                                    </div>
+                                </td>
+                                <td style="padding:6px 8px; text-align:center;">
+                                    <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                                        <button onclick="window._adjustStat(this, -1)" data-field="red_cards" data-id="${aid}" style="width:22px; height:22px; border-radius:50%; border:1px solid #e2e8f0; background:white; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; color:#64748b;">−</button>
+                                        <span class="stat-val" data-field="red_cards" data-id="${aid}" style="font-weight:800; font-size:1rem; color:#ef4444; min-width:20px; text-align:center;">${rc}</span>
+                                        <button onclick="window._adjustStat(this, 1)" data-field="red_cards" data-id="${aid}" style="width:22px; height:22px; border-radius:50%; border:1px solid #e2e8f0; background:white; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; color:#64748b;">+</button>
+                                    </div>
+                                </td>
+                                <td style="padding:6px 10px; text-align:center;">
+                                    <input type="number" class="stat-mins" data-id="${aid}" value="${mins}" min="0" max="999"
+                                        style="width:65px; text-align:center; padding:5px 6px; border:1.5px solid #e2e8f0; border-radius:7px; font-size:0.88rem; font-weight:700; color:#2563eb; font-family:inherit; background:#f8fafc;">
+                                </td>
+                                <td style="padding:6px 8px; text-align:center;">
+                                    <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:0.72rem; font-weight:600; color:#6366f1;">
+                                        <input type="checkbox" class="stat-starter" data-id="${aid}" ${isStarter ? 'checked' : ''} style="width:15px; height:15px; accent-color:#6366f1; cursor:pointer;">
+                                        TIT
+                                    </label>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+                </div>`}
             </div>
         </div>
 
         <!-- FOOTER -->
-        <div style="padding:14px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+        <div style="padding:14px 24px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
             <button onclick="document.getElementById('sub-section-container').innerHTML=''" style="padding:9px 18px; background:white; color:#64748b; border:1.5px solid #e2e8f0; border-radius:8px; font-weight:600; font-size:0.82rem; cursor:pointer; font-family:inherit;">✕ Annulla</button>
             <button onclick="window.saveFullTabellino('${sessionId}', '${d.id}')" style="padding:10px 28px; background:linear-gradient(135deg,#2563eb,#1d4ed8); color:white; border:none; border-radius:8px; font-weight:700; font-size:0.88rem; cursor:pointer; font-family:inherit; box-shadow:0 4px 12px rgba(37,99,235,0.3);">💾 Salva Report</button>
         </div>
     </div>`;
+};
 
-    if (d.scorers) {
-        try { JSON.parse(d.scorers).forEach(ev => window.addEventRow(sessionId, ev)); } catch(e) {}
-    }
+// Helper: incrementa/decrementa stat con pulsanti +/-
+window._adjustStat = function(btn, delta) {
+    const field = btn.getAttribute('data-field');
+    const id = btn.getAttribute('data-id');
+    const span = document.querySelector(`.stat-val[data-field="${field}"][data-id="${id}"]`);
+    if (!span) return;
+    let val = parseInt(span.textContent) + delta;
+    if (val < 0) val = 0;
+    span.textContent = val;
 };
 
 window.saveFullTabellino = async function(sessionId, detailId) {
-    const eventRows = document.querySelectorAll('.event-row');
-    const events = Array.from(eventRows).map(row => ({
-        athlete_id: row.querySelector('.ev-athlete').value,
-        type: row.querySelector('.ev-type').value
-    })).filter(ev => ev.athlete_id !== "");
-
     const updateData = {
         opponent_name: document.getElementById('tab-opponent').value,
         match_status: document.getElementById('tab-status').value,
@@ -3949,19 +4053,44 @@ window.saveFullTabellino = async function(sessionId, detailId) {
         goals_against: parseInt(document.getElementById('tab-gs').value) || 0,
         is_home: document.getElementById('tab-is-home').value === 'true',
         is_friendly: document.getElementById('tab-is-friendly').value === 'true',
-        scorers: JSON.stringify(events)
     };
 
-    const statsMap = {};
-    events.forEach(ev => {
-        if (!statsMap[ev.athlete_id]) {
-            statsMap[ev.athlete_id] = { session_id: sessionId, athlete_id: ev.athlete_id, goals: 0, yellow_cards: 0, red_cards: 0 };
-        }
-        if (ev.type.includes('⚽')) statsMap[ev.athlete_id].goals++;
-        if (ev.type.includes('🟨')) statsMap[ev.athlete_id].yellow_cards++;
-        if (ev.type.includes('🟥')) statsMap[ev.athlete_id].red_cards++;
+    // Build stats from the player grid (new format)
+    const statsToInsert = [];
+
+    // Collect all unique athlete IDs from stat controls
+    const athleteIds = new Set();
+    document.querySelectorAll('.stat-val[data-id], .stat-mins[data-id], .stat-starter[data-id]').forEach(el => {
+        athleteIds.add(el.getAttribute('data-id'));
     });
-    const statsToInsert = Object.values(statsMap);
+
+    athleteIds.forEach(aid => {
+        const goals = parseInt(document.querySelector(`.stat-val[data-field="goals"][data-id="${aid}"]`)?.textContent || '0') || 0;
+        const yc    = parseInt(document.querySelector(`.stat-val[data-field="yellow_cards"][data-id="${aid}"]`)?.textContent || '0') || 0;
+        const rc    = parseInt(document.querySelector(`.stat-val[data-field="red_cards"][data-id="${aid}"]`)?.textContent || '0') || 0;
+        const mins  = parseInt(document.querySelector(`.stat-mins[data-id="${aid}"]`)?.value || '0') || 0;
+        const isStarter = document.querySelector(`.stat-starter[data-id="${aid}"]`)?.checked ?? true;
+
+        statsToInsert.push({
+            session_id: sessionId,
+            athlete_id: aid,
+            goals,
+            yellow_cards: yc,
+            red_cards: rc,
+            minutes_played: mins,
+            is_starter: isStarter
+        });
+    });
+
+    // Also keep scorers JSON for backward compatibility (events-list may be absent now)
+    const legacyEvents = statsToInsert.flatMap(s => {
+        const arr = [];
+        for (let i = 0; i < s.goals; i++) arr.push({ athlete_id: s.athlete_id, type: '⚽ Goal' });
+        for (let i = 0; i < s.yellow_cards; i++) arr.push({ athlete_id: s.athlete_id, type: '🟨 Amm.' });
+        for (let i = 0; i < s.red_cards; i++) arr.push({ athlete_id: s.athlete_id, type: '🟥 Esp.' });
+        return arr;
+    });
+    updateData.scorers = JSON.stringify(legacyEvents);
 
     try {
         await client.from('match_details').update(updateData).eq('id', detailId);
@@ -3972,9 +4101,9 @@ window.saveFullTabellino = async function(sessionId, detailId) {
         alert("✅ Tabellino e Statistiche sincronizzati!");
         document.getElementById('sub-section-container').innerHTML = '';
         if (typeof initPartite === 'function') initPartite();
-    } catch (err) { 
+    } catch (err) {
         console.error(err);
-        alert("Errore durante il salvataggio."); 
+        alert("Errore durante il salvataggio: " + (err.message || "Controlla la console."));
     }
 };
 
@@ -4295,11 +4424,12 @@ window.openStatistiche = async function(sessionId) {
                             <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#10b981;">⚽ Gol</th>
                             <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#f59e0b;">🟨</th>
                             <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#ef4444;">🟥</th>
+                            <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#2563eb;" title="Minuti Giocati">⏱ Min.</th>
                             <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#ef4444;">Squal.</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${athletes.length === 0 ? '<tr><td colspan="7" style="padding:20px; text-align:center; color:#94a3b8;">Nessun dato disponibile.</td></tr>' :
+                        ${athletes.length === 0 ? '<tr><td colspan="8" style="padding:20px; text-align:center; color:#94a3b8;">Nessun dato disponibile.</td></tr>' :
                           athletes.map(a => {
                             const convPerc = a.totali > 0 ? Math.round(a.presenze/a.totali*100) : 0;
                             const percColor = convPerc >= 75 ? '#10b981' : convPerc >= 50 ? '#f59e0b' : '#ef4444';
@@ -4310,6 +4440,7 @@ window.openStatistiche = async function(sessionId) {
                                 <td style="padding:9px 10px; text-align:center; color:#10b981; font-weight:700;">${a.gol}</td>
                                 <td style="padding:9px 10px; text-align:center; color:#f59e0b; font-weight:700;">${a.amm}</td>
                                 <td style="padding:9px 10px; text-align:center; color:#ef4444; font-weight:700;">${a.esp}</td>
+                                <td style="padding:9px 10px; text-align:center; color:#2563eb; font-weight:700;">${a.min > 0 ? a.min + '<span style="font-size:0.65rem; color:#94a3b8; font-weight:400;">\'</span>' : '<span style="color:#e2e8f0;">—</span>'}</td>
                                 <td style="padding:9px 10px; text-align:center; color:#ef4444; font-size:0.78rem;">${a.squal > 0 ? a.squal + ' gg' : '-'}</td>
                             </tr>`;
                           }).join('')}
@@ -4671,7 +4802,7 @@ window.templateDashboard = function() {
                             <!-- Sessioni group -->
                             <th colspan="5" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#10b981; border-left:2px solid #f1f5f9; background:#f0fdf4; border-radius:4px 4px 0 0;">ALLENAMENTI</th>
                             <!-- Gare group -->
-                            <th colspan="5" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#2563eb; border-left:2px solid #f1f5f9; background:#eff6ff; border-radius:4px 4px 0 0;">PARTITE</th>
+                            <th colspan="6" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#2563eb; border-left:2px solid #f1f5f9; background:#eff6ff; border-radius:4px 4px 0 0;">PARTITE</th>
                             <!-- Totale % group -->
                             <th colspan="2" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#f59e0b; border-left:2px solid #f1f5f9; background:#fffbeb; border-radius:4px 4px 0 0;">TOTALE</th>
                             <!-- Performance group -->
@@ -4690,6 +4821,7 @@ window.templateDashboard = function() {
                             <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981;" title="Gol">⚽</th>
                             <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="Ammonizioni">🟨</th>
                             <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#ef4444;" title="Espulsioni">🟥</th>
+                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#2563eb;" title="Minuti Giocati">⏱</th>
                             <!-- Totale sub-cols -->
                             <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#475569; border-left:2px solid #f1f5f9;" title="Presenze Totali (allenamenti+partite)">Pres. Tot.</th>
                             <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="% Presenze Totale">% Tot.</th>
@@ -4702,7 +4834,7 @@ window.templateDashboard = function() {
                         </tr>
                     </thead>
                     <tbody id="dash-athletes-body">
-                        <tr><td colspan="19" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
+                        <tr><td colspan="20" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -5229,7 +5361,7 @@ window.loadDashAthletes = async function(seasonId, socId, scopedTeamIds) {
                     // Sessioni (allenamenti)
                     sess_tot: 0, sess_pres: 0, sess_ass: 0, sess_giust: 0, sess_inf: 0,
                     // Gare (partite)
-                    gara_tot: 0, gara_pres: 0, conv: 0, gol: 0, amm: 0, esp: 0,
+                    gara_tot: 0, gara_pres: 0, conv: 0, gol: 0, amm: 0, esp: 0, min: 0,
                     // Performance (somma valori, poi media)
                     perf_vel: 0, perf_tec: 0, perf_fis: 0, perf_res: 0, perf_com: 0, perf_count: 0,
                 };
@@ -5288,7 +5420,7 @@ window.loadDashAthletes = async function(seasonId, socId, scopedTeamIds) {
 
         // 4. Recupera statistiche gare (gol, ammonizioni, espulsioni)
         let statsQ = client.from('match_stats')
-            .select('athlete_id, goals, yellow_cards, red_cards, sessions!inner(society_id, season_id, type_id)');
+            .select('athlete_id, goals, yellow_cards, red_cards, minutes_played, sessions!inner(society_id, season_id, type_id)');
 
         if (seasonId && seasonId !== 'all') statsQ = statsQ.eq('sessions.season_id', seasonId);
         if (socId && socId !== 'all') statsQ = statsQ.eq('sessions.society_id', socId);
@@ -5301,6 +5433,7 @@ window.loadDashAthletes = async function(seasonId, socId, scopedTeamIds) {
             a.gol += st.goals || 0;
             a.amm += st.yellow_cards || 0;
             a.esp += st.red_cards || 0;
+            a.min += st.minutes_played || 0;
         });
 
         window._dashAthletes = Object.values(athleteMap);
@@ -5348,7 +5481,7 @@ window.renderDashAthletes = function() {
     filtered.sort((a, b) => sortDir * (b[sortKey] - a[sortKey]));
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="19" style="text-align:center; padding:24px; color:#94a3b8;">Nessun atleta trovato.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="20" style="text-align:center; padding:24px; color:#94a3b8;">Nessun atleta trovato.</td></tr>';
         return;
     }
 
@@ -5385,6 +5518,7 @@ window.renderDashAthletes = function() {
             <td style="padding:9px 12px; text-align:center; color:#10b981; font-weight:700;">${a.gol || 0}</td>
             <td style="padding:9px 12px; text-align:center; color:#f59e0b; font-weight:700;">${a.amm || 0}</td>
             <td style="padding:9px 12px; text-align:center; color:#ef4444; font-weight:700;">${a.esp || 0}</td>
+            <td style="padding:9px 12px; text-align:center; color:#2563eb; font-weight:600; font-size:0.8rem;">${a.min > 0 ? a.min + '\'' : '<span style="color:#e2e8f0;">—</span>'}</td>
             <!-- Totale -->
             <td style="padding:9px 12px; text-align:center; font-weight:700; color:#475569; border-left:2px solid #fffbeb;">${totPres}/${totTot}</td>
             <td style="padding:9px 12px; text-align:center; font-weight:700; color:${cTot};">${tTot}</td>
