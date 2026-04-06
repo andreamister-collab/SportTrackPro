@@ -530,6 +530,7 @@
             <a data-section="categoria" id="nav-categoria">📂 Categoria</a>
             <a data-section="squadra" id="nav-squadra">🛡️ Squadra</a>
             <a data-section="staff" id="nav-staff">👥 Anagrafica Staff</a>
+            <a data-section="genitori" id="nav-genitori">👨‍👩‍👧 Anagrafica Genitori</a>
 
             <div class="sidebar-group-label">Atleti</div>
             <a data-section="anagrafica-pura" id="nav-anagrafica-pura">👤 Anagrafica Atleti</a>
@@ -614,7 +615,7 @@
         window._effectiveRole = effectiveRole;
 
         const allNavIds = ['nav-stagioni','nav-sport','nav-societa','nav-categoria','nav-squadra',
-                           'nav-staff','nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
+                           'nav-staff','nav-genitori','nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
                            'nav-sessioni','nav-partite','nav-import','nav-group-admin'];
 
         // GERARCHIA VISIBILITÀ MENU:
@@ -622,7 +623,7 @@
         // presidente/segretario → dati società propria, può modificare legami
         // responsabile       → categorie proprie, solo lettura
         // dirigente/allenatore → squadre proprie, sessioni e partite
-        // genitore           → solo anagrafica atleta, solo lettura
+        // genitore           → solo dashboard figlio
         const visibility = {
             admin:        allNavIds,
             manager:      allNavIds,
@@ -635,7 +636,7 @@
             responsabile: ['nav-anagrafica-pura','nav-atleti','nav-group-admin'],
             dirigente:    ['nav-atleti','nav-sessioni','nav-partite','nav-import'],
             allenatore:   ['nav-atleti','nav-sessioni','nav-partite','nav-import'],
-            genitore:     ['nav-atleti'],
+            genitore:     [],
         };
 
         const allowed = visibility[effectiveRole] || ['nav-atleti'];
@@ -776,6 +777,12 @@
 
         switch(section) {
             case 'dashboard':
+                // Il genitore ha una dashboard dedicata
+                if ((window._effectiveRole || window._userRole || '').toLowerCase() === 'genitore') {
+                    content.innerHTML = '<div class="card"><p style="color:#94a3b8;">⏳ Caricamento dashboard...</p></div>';
+                    if (window.initGenitoreView) window.initGenitoreView();
+                    break;
+                }
                 content.innerHTML = window.templateDashboard ? window.templateDashboard() : '<div class="card"><p>Caricamento...</p></div>';
                 if (window.initDashboard) window.initDashboard();
                 break;
@@ -808,6 +815,11 @@
             case 'staff':
                 content.innerHTML = templateStaff();
                 initStaff();
+                break;
+
+            case 'genitori':
+                content.innerHTML = templateGenitori();
+                initGenitori();
                 break;
 
             case 'anagrafica-pura':
@@ -5041,7 +5053,7 @@ window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
             { label:'Staff Totale',        value: totalStaff,     sub: 'utenti registrati',                color:'#64748b' },
             { label:'Allenatori',          value: staffByRole.allenatori, sub:'registrati',               color:'#f59e0b' },
             { label:'Dirigenti',           value: staffByRole.dirigenti,  sub:'registrati',               color:'#ef4444' },
-            { label:'Presidenti',          value: staffByRole.presidenti, sub:'registrati',               color:'#2563eb' },
+            ...(!hasTeamScope ? [{ label:'Presidenti', value: staffByRole.presidenti, sub:'registrati', color:'#2563eb' }] : []),
         ];
 
         grid.innerHTML = kpis.map(k => `
@@ -5580,6 +5592,434 @@ window.loadUserAssignedTeams = async function() {
 };
 
 /* [QUI AGGIUNGEREMO LE FUNZIONI PER SPORT, SOCIETÀ, ECC. UNA ALLA VOLTA] */
+
+/* ============================================================
+   MODULO ANAGRAFICA GENITORI (solo admin/manager)
+   ============================================================ */
+window.templateGenitori = function() {
+    return `
+    <div class="card">
+        <div class="header">
+            <div>
+                <h2>👨‍👩‍👧 Anagrafica Genitori</h2>
+                <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">Gestione genitori e associazione atleti</div>
+            </div>
+            <button class="btn" onclick="window.openGenitoreModal()">+ Nuovo Genitore</button>
+        </div>
+
+        <!-- Filtro ricerca -->
+        <div style="display:flex; gap:10px; margin-bottom:1rem; flex-wrap:wrap;">
+            <input type="text" id="gen-search" placeholder="🔍 Cerca per nome o cognome..." oninput="window.renderGenitori()"
+                style="flex:1; min-width:220px; padding:8px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.85rem; font-family:inherit;">
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Genitore</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th style="text-align:center;">Atleti associati</th>
+                        <th style="text-align:right;">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="genitori-tbody">
+                    <tr><td colspan="5" style="text-align:center; padding:24px; color:#94a3b8;">Caricamento...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>`;
+};
+
+window._genitoriList = [];
+window._genitoreAthletes = {};   // map genitore_user_id → [athlete]
+window._allAthletes = [];        // tutti gli atleti per il select
+
+window.initGenitori = async function() {
+    try {
+        // Carica tutti gli utenti con management_role = 'Genitore'
+        const { data: genitori } = await client.from('users')
+            .select('id, name, surname, email, username, society_id')
+            .eq('management_role', 'Genitore')
+            .order('surname');
+
+        // Carica tutte le associazioni genitore→atleta
+        const { data: links } = await client.from('parent_athletes')
+            .select('parent_id, athlete_id, athletes(id, name, surname)');
+
+        // Carica tutti gli atleti per il modal
+        const { data: allAth } = await client.from('athletes')
+            .select('id, name, surname')
+            .order('surname');
+
+        window._genitoriList = genitori || [];
+        window._allAthletes = allAth || [];
+
+        // Costruisci mappa parent_id → array di atleti
+        window._genitoreAthletes = {};
+        (links || []).forEach(l => {
+            if (!window._genitoreAthletes[l.parent_id]) window._genitoreAthletes[l.parent_id] = [];
+            if (l.athletes) window._genitoreAthletes[l.parent_id].push(l.athletes);
+        });
+
+        window.renderGenitori();
+    } catch(err) { console.error('initGenitori error:', err); }
+};
+
+window.renderGenitori = function() {
+    const tbody = document.getElementById('genitori-tbody');
+    if (!tbody) return;
+    const search = (document.getElementById('gen-search')?.value || '').toLowerCase();
+
+    let list = window._genitoriList.filter(g => {
+        const full = `${g.name} ${g.surname} ${g.username} ${g.email}`.toLowerCase();
+        return !search || full.includes(search);
+    });
+
+    if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:24px; color:#94a3b8;">Nessun genitore trovato.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = list.map(g => {
+        const athletes = window._genitoreAthletes[g.id] || [];
+        const athBadges = athletes.length > 0
+            ? athletes.map(a => `<span style="background:#dbeafe; color:#1d4ed8; padding:2px 8px; border-radius:99px; font-size:0.72rem; font-weight:700; white-space:nowrap;">${a.surname} ${a.name}</span>`).join(' ')
+            : '<span style="color:#94a3b8; font-size:0.78rem;">— nessun atleta —</span>';
+
+        return `<tr>
+            <td style="font-weight:600;">${g.surname || ''} ${g.name || ''}</td>
+            <td style="color:#64748b; font-size:0.82rem;">${g.username || '—'}</td>
+            <td style="color:#64748b; font-size:0.82rem;">${g.email || '—'}</td>
+            <td style="text-align:center;"><div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">${athBadges}</div></td>
+            <td style="text-align:right;">
+                <button class="btn-sm btn-warning" onclick="window.openGenitoreModal('${g.id}')">✏️ Modifica</button>
+                <button class="btn-sm btn-danger" onclick="window.deleteGenitore('${g.id}')">🗑️</button>
+            </td>
+        </tr>`;
+    }).join('');
+};
+
+window.openGenitoreModal = async function(genitoreId = null) {
+    const g = genitoreId ? window._genitoriList.find(x => x.id === genitoreId) : null;
+    const linked = genitoreId ? (window._genitoreAthletes[genitoreId] || []).map(a => a.id) : [];
+
+    const athleteOptions = window._allAthletes.map(a =>
+        `<option value="${a.id}" ${linked.includes(a.id) ? 'selected' : ''}>${a.surname} ${a.name}</option>`
+    ).join('');
+
+    modal.open(g ? '✏️ Modifica Genitore' : '+ Nuovo Genitore', `
+        <div style="display:grid; gap:12px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                    <label class="modal-label">Nome</label>
+                    <input class="modal-input" id="gen-name" value="${g?.name || ''}" placeholder="Nome">
+                </div>
+                <div>
+                    <label class="modal-label">Cognome</label>
+                    <input class="modal-input" id="gen-surname" value="${g?.surname || ''}" placeholder="Cognome">
+                </div>
+            </div>
+            <div>
+                <label class="modal-label">Email (usata per il login)</label>
+                <input class="modal-input" id="gen-email" type="email" value="${g?.email || ''}" placeholder="email@esempio.it" ${g ? 'readonly style="background:#f8fafc;color:#94a3b8;"' : ''}>
+            </div>
+            <div>
+                <label class="modal-label">Username</label>
+                <input class="modal-input" id="gen-username" value="${g?.username || ''}" placeholder="username" ${g ? 'readonly style="background:#f8fafc;color:#94a3b8;"' : ''}>
+            </div>
+            ${!g ? `<div>
+                <label class="modal-label">Password iniziale</label>
+                <input class="modal-input" id="gen-password" type="password" placeholder="Min. 6 caratteri">
+            </div>` : ''}
+            <div>
+                <label class="modal-label">🔗 Atleti associati (tieni CTRL/CMD per selezionare più atleti)</label>
+                <select id="gen-athletes" multiple style="width:100%; height:140px; padding:8px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.85rem; font-family:inherit;">
+                    ${athleteOptions}
+                </select>
+            </div>
+        </div>
+    `);
+
+    document.getElementById('btn-modal-save').onclick = () => window.saveGenitore(genitoreId);
+};
+
+window.saveGenitore = async function(genitoreId) {
+    const name     = document.getElementById('gen-name')?.value.trim();
+    const surname  = document.getElementById('gen-surname')?.value.trim();
+    const email    = document.getElementById('gen-email')?.value.trim();
+    const username = document.getElementById('gen-username')?.value.trim();
+    const password = document.getElementById('gen-password')?.value;
+    const selEl    = document.getElementById('gen-athletes');
+    const selectedAthletes = Array.from(selEl?.selectedOptions || []).map(o => o.value);
+
+    if (!name || !surname) return alert('Nome e cognome sono obbligatori.');
+
+    try {
+        let userId = genitoreId;
+
+        if (!genitoreId) {
+            // Nuovo genitore: crea l'utente Auth + riga in users
+            if (!email || !password) return alert('Email e password sono obbligatorie per il nuovo genitore.');
+            if (password.length < 6) return alert('La password deve essere di almeno 6 caratteri.');
+
+            const { data: authData, error: authErr } = await client.auth.admin
+                ? client.auth.admin.createUser({ email, password, email_confirm: true })
+                : { data: null, error: { message: 'Usa la funzione Supabase Admin per creare utenti.' } };
+
+            // Fallback: usa signUp se admin API non disponibile lato client
+            let authUid;
+            if (authErr || !authData?.user) {
+                const { data: su, error: suErr } = await client.auth.signUp({ email, password });
+                if (suErr) throw new Error('Errore creazione account: ' + suErr.message);
+                authUid = su?.user?.id;
+            } else {
+                authUid = authData.user.id;
+            }
+
+            const { data: newUser, error: userErr } = await client.from('users').insert({
+                name, surname, email, username,
+                role: 'user',
+                management_role: 'Genitore',
+                society_id: window._currentSocietyId || null,
+            }).select().single();
+
+            if (userErr) throw new Error('Errore salvataggio utente: ' + userErr.message);
+            userId = newUser.id;
+        } else {
+            // Modifica: aggiorna solo nome/cognome
+            await client.from('users').update({ name, surname }).eq('id', genitoreId);
+        }
+
+        // Sincronizza associazioni atleti
+        await client.from('parent_athletes').delete().eq('parent_id', userId);
+        if (selectedAthletes.length > 0) {
+            await client.from('parent_athletes').insert(
+                selectedAthletes.map(aid => ({ parent_id: userId, athlete_id: aid }))
+            );
+        }
+
+        modal.close();
+        alert('✅ Genitore salvato con successo!');
+        window._userAssignedTeamIds = null; // reset cache
+        await window.initGenitori();
+    } catch(err) {
+        console.error(err);
+        alert('Errore: ' + err.message);
+    }
+};
+
+window.deleteGenitore = async function(genitoreId) {
+    if (!confirm('Eliminare questo genitore e tutte le sue associazioni?')) return;
+    try {
+        await client.from('parent_athletes').delete().eq('parent_id', genitoreId);
+        await client.from('users').delete().eq('id', genitoreId);
+        await window.initGenitori();
+    } catch(err) { alert('Errore eliminazione: ' + err.message); }
+};
+
+/* ============================================================
+   VISTA GENITORE — Dashboard personale figlio/i
+   ============================================================ */
+window.initGenitoreView = async function() {
+    const content = document.getElementById('content');
+    if (!content) return;
+
+    const userId = window._currentUserId;
+    content.innerHTML = `<div class="card"><p style="color:#94a3b8; text-align:center; padding:20px;">⏳ Caricamento dati...</p></div>`;
+
+    try {
+        // 1. Trova gli atleti associati a questo genitore
+        const { data: links } = await client.from('parent_athletes')
+            .select('athlete_id, athletes(id, name, surname, born_date)')
+            .eq('parent_id', userId);
+
+        if (!links || links.length === 0) {
+            content.innerHTML = `<div class="card" style="text-align:center; padding:40px;">
+                <div style="font-size:3rem; margin-bottom:12px;">👶</div>
+                <h2 style="font-family:'Space Grotesk',sans-serif;">Nessun atleta associato</h2>
+                <p style="color:#94a3b8;">Contatta l'amministratore per associare il tuo figlio all'account.</p>
+            </div>`;
+            return;
+        }
+
+        const athletes = links.map(l => l.athletes).filter(Boolean);
+
+        // 2. Per ogni atleta, carica le stagioni in cui è iscritto
+        const athIds = athletes.map(a => a.id);
+
+        const { data: teamSeasons } = await client.from('athlete_team_seasons')
+            .select('athlete_id, season_id, team_id, seasons(id, name, is_active), teams(id, name, categories(name))')
+            .in('athlete_id', athIds);
+
+        // 3. Per ogni atleta, carica match_stats
+        const { data: matchStats } = await client.from('match_stats')
+            .select('athlete_id, goals, yellow_cards, red_cards, minutes_played, sessions!inner(season_id, type_id, session_date, title, society_id)')
+            .in('athlete_id', athIds);
+
+        const { data: sessionTypes } = await client.from('session_types').select('id, name');
+        const garaTypeIds = new Set((sessionTypes||[])
+            .filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara'))
+            .map(t => t.id));
+
+        // 4. Per ogni atleta, carica presenze alle partite
+        const { data: attendances } = await client.from('attendances')
+            .select('athlete_id, status, is_called_up, sessions!inner(season_id, type_id, team_id, teams(name))')
+            .in('athlete_id', athIds);
+
+        // Raggruppa match_stats per (athlete_id, season_id)
+        const statsBy = {}; // statsBy[athleteId][seasonId] = { goals, yc, rc, min, games }
+        (matchStats || []).forEach(st => {
+            const sid = st.sessions?.season_id;
+            if (!garaTypeIds.has(st.sessions?.type_id)) return;
+            if (!statsBy[st.athlete_id]) statsBy[st.athlete_id] = {};
+            if (!statsBy[st.athlete_id][sid]) statsBy[st.athlete_id][sid] = { goals:0, yc:0, rc:0, min:0, games:0 };
+            statsBy[st.athlete_id][sid].goals += st.goals || 0;
+            statsBy[st.athlete_id][sid].yc    += st.yellow_cards || 0;
+            statsBy[st.athlete_id][sid].rc    += st.red_cards || 0;
+            statsBy[st.athlete_id][sid].min   += st.minutes_played || 0;
+            statsBy[st.athlete_id][sid].games++;
+        });
+
+        // Raggruppa presenze per (athlete_id, season_id)
+        const presBy = {}; // presBy[athleteId][seasonId] = { pres, tot, conv }
+        (attendances || []).forEach(att => {
+            const sid = att.sessions?.season_id;
+            if (!sid) return;
+            const isGara = garaTypeIds.has(att.sessions?.type_id);
+            const aid = att.athlete_id;
+            if (!presBy[aid]) presBy[aid] = {};
+            if (!presBy[aid][sid]) presBy[aid][sid] = { pres:0, tot:0, conv:0, team: att.sessions?.teams?.name };
+            if (isGara) {
+                presBy[aid][sid].tot++;
+                if (att.is_called_up) presBy[aid][sid].conv++;
+                if ((att.status||'').toLowerCase() === 'presente') presBy[aid][sid].pres++;
+            }
+        });
+
+        // Costruisci HTML
+        const statPill = (val, label, color) =>
+            `<div style="text-align:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; min-width:70px;">
+                <div style="font-family:'Space Grotesk',sans-serif; font-size:1.5rem; font-weight:800; color:${color}; line-height:1;">${val}</div>
+                <div style="font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-top:3px;">${label}</div>
+            </div>`;
+
+        const sectionsHTML = athletes.map(ath => {
+            // Stagioni per questo atleta
+            const mySeasons = (teamSeasons || [])
+                .filter(ts => ts.athlete_id === ath.id && ts.seasons)
+                .sort((a, b) => (b.seasons?.is_active ? 1 : 0) - (a.seasons?.is_active ? 1 : 0));
+
+            const uniqueSeasons = [...new Map(mySeasons.map(ts => [ts.season_id, ts])).values()];
+
+            const seasonsHTML = uniqueSeasons.length === 0
+                ? `<p style="color:#94a3b8; padding:12px 0;">Nessuna stagione registrata.</p>`
+                : uniqueSeasons.map(ts => {
+                    const sId = ts.season_id;
+                    const sName = ts.seasons?.name || 'Stagione';
+                    const teamName = ts.teams?.name || '';
+                    const catName = ts.teams?.categories?.name || '';
+                    const st = statsBy[ath.id]?.[sId] || {};
+                    const pr = presBy[ath.id]?.[sId] || {};
+                    const convPerc = pr.tot > 0 ? Math.round(pr.conv / pr.tot * 100) : null;
+                    const percColor = convPerc === null ? '#94a3b8' : convPerc >= 75 ? '#10b981' : convPerc >= 50 ? '#f59e0b' : '#ef4444';
+
+                    return `
+                    <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:12px; border-left:4px solid ${ts.seasons?.is_active ? '#2563eb' : '#e2e8f0'};">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:6px;">
+                            <div>
+                                <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:0.95rem; color:#1e293b;">${sName}</span>
+                                ${ts.seasons?.is_active ? '<span style="background:#dbeafe; color:#1d4ed8; font-size:0.68rem; font-weight:700; padding:2px 8px; border-radius:99px; margin-left:8px;">ATTIVA</span>' : ''}
+                            </div>
+                            <div style="font-size:0.78rem; color:#64748b;">${teamName}${catName ? ' · ' + catName : ''}</div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
+                            <!-- Statistiche partite -->
+                            <div style="background:#f0fdf4; border-radius:8px; padding:12px; border:1px solid #bbf7d0;">
+                                <div style="font-size:0.68rem; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:8px;">📊 Statistiche Partite</div>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                    ${statPill(st.goals || 0, '⚽ Gol', '#10b981')}
+                                    ${statPill(st.min || 0, '⏱ Min', '#2563eb')}
+                                    ${statPill(st.yc || 0, '🟨 Amm', '#f59e0b')}
+                                    ${statPill(st.rc || 0, '🟥 Esp', '#ef4444')}
+                                </div>
+                            </div>
+                            <!-- Presenze -->
+                            <div style="background:#eff6ff; border-radius:8px; padding:12px; border:1px solid #bfdbfe;">
+                                <div style="font-size:0.68rem; font-weight:800; color:#1d4ed8; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:8px;">📅 Presenze Partite</div>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                    ${statPill(pr.pres || 0, 'Presenze', '#10b981')}
+                                    ${statPill(pr.conv || 0, 'Convoc.', '#2563eb')}
+                                    ${statPill(pr.tot || 0, 'Totali', '#64748b')}
+                                    ${convPerc !== null ? statPill(convPerc + '%', 'Conv%', percColor) : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+
+            // Totali cumulativi su tutte le stagioni
+            const totGoals = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.goals||0), 0);
+            const totMin   = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.min||0), 0);
+            const totYC    = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.yc||0), 0);
+            const totRC    = Object.values(statsBy[ath.id] || {}).reduce((s, x) => s + (x.rc||0), 0);
+            const totConv  = Object.values(presBy[ath.id] || {}).reduce((s, x) => s + (x.conv||0), 0);
+            const totPres  = Object.values(presBy[ath.id] || {}).reduce((s, x) => s + (x.pres||0), 0);
+
+            return `
+            <div style="margin-bottom:2rem;">
+                <!-- Intestazione atleta -->
+                <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb); border-radius:14px 14px 0 0; padding:18px 22px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <div style="font-size:0.65rem; font-weight:700; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px;">👤 Atleta</div>
+                        <div style="font-family:'Space Grotesk',sans-serif; font-size:1.2rem; font-weight:800; color:white;">${ath.surname} ${ath.name}</div>
+                        ${ath.born_date ? `<div style="font-size:0.75rem; color:rgba(255,255,255,0.6); margin-top:2px;">Nato il ${new Date(ath.born_date).toLocaleDateString('it-IT')}</div>` : ''}
+                    </div>
+                    <!-- Riepilogo totale carriera -->
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <div style="background:rgba(255,255,255,0.12); border-radius:10px; padding:8px 14px; text-align:center;">
+                            <div style="font-size:1.3rem; font-weight:800; color:#6ee7b7;">${totGoals}</div>
+                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.6); text-transform:uppercase;">⚽ Gol</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.12); border-radius:10px; padding:8px 14px; text-align:center;">
+                            <div style="font-size:1.3rem; font-weight:800; color:#93c5fd;">${totMin}'</div>
+                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.6); text-transform:uppercase;">⏱ Min</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.12); border-radius:10px; padding:8px 14px; text-align:center;">
+                            <div style="font-size:1.3rem; font-weight:800; color:#fde68a;">${totConv}</div>
+                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.6); text-transform:uppercase;">Convoc.</div>
+                        </div>
+                        ${totYC > 0 ? `<div style="background:rgba(255,255,255,0.12); border-radius:10px; padding:8px 14px; text-align:center;">
+                            <div style="font-size:1.3rem; font-weight:800; color:#fcd34d;">${totYC}</div>
+                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.6); text-transform:uppercase;">🟨</div>
+                        </div>` : ''}
+                    </div>
+                </div>
+
+                <!-- Body stagioni -->
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-top:none; border-radius:0 0 14px 14px; padding:16px 18px;">
+                    <div style="font-size:0.72rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:12px;">📆 Stagioni</div>
+                    ${seasonsHTML}
+                </div>
+            </div>`;
+        }).join('');
+
+        content.innerHTML = `
+        <div style="font-family:'DM Sans',sans-serif; max-width:900px; margin:0 auto;">
+            <div style="margin-bottom:1.5rem;">
+                <h2 style="font-family:'Space Grotesk',sans-serif; font-size:1.3rem; font-weight:800; color:#1e293b; margin:0;">👨‍👩‍👧 Benvenuto, ${window.CURRENT_USER?.name || 'Genitore'}</h2>
+                <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">Statistiche e presenze dei tuoi figli · ${new Date().toLocaleDateString('it-IT', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</div>
+            </div>
+            ${sectionsHTML}
+        </div>`;
+
+    } catch(err) {
+        console.error('initGenitoreView error:', err);
+        content.innerHTML = `<div class="card"><p style="color:#ef4444;">Errore caricamento dati: ${err.message}</p></div>`;
+    }
+};
 </script>
 </body>
 </html>
