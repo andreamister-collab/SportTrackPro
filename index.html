@@ -6054,19 +6054,128 @@ window.initGenitoreView = async function() {
             </div>`;
         }).join('');
 
+        // Carica la dashboard squadra per il genitore
+        // Usa le stesse funzioni del dirigente ma filtrate sui team dell'atleta
+        const activeSeason = (await client.from('seasons').select('id,name').eq('is_active', true).maybeSingle()).data;
+
         content.innerHTML = `
         <div style="font-family:'DM Sans',sans-serif; padding:0;">
-            <div style="margin-bottom:1.8rem; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:8px;">
+            <!-- Header -->
+            <div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:8px;">
                 <div>
                     <h2 style="font-family:'Space Grotesk',sans-serif; font-size:1.5rem; font-weight:800; color:#1e293b; margin:0;">👨‍👩‍👧 Benvenuto, ${window.CURRENT_USER?.name || 'Genitore'}</h2>
-                    <div style="font-size:0.82rem; color:#94a3b8; margin-top:4px;">Statistiche e presenze dei tuoi figli · ${new Date().toLocaleDateString('it-IT', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</div>
+                    <div style="font-size:0.82rem; color:#94a3b8; margin-top:4px;">🌐 Stagione: ${activeSeason?.name || '—'} · ${new Date().toLocaleDateString('it-IT', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</div>
                 </div>
                 <div style="font-size:0.78rem; color:#64748b; background:white; border:1px solid #e2e8f0; border-radius:8px; padding:6px 14px;">
                     ${athletes.length} atleta${athletes.length > 1 ? 'i' : ''} associat${athletes.length > 1 ? 'i' : 'o'}
                 </div>
             </div>
-            ${sectionsHTML}
+
+            <!-- TAB switcher -->
+            <div style="display:flex; gap:4px; margin-bottom:1.5rem; background:white; border:1px solid #e2e8f0; border-radius:12px; padding:5px; width:fit-content;">
+                <button id="tab-btn-squadra" onclick="window._genitoreTab('squadra')"
+                    style="padding:8px 20px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.85rem; font-weight:600; background:#2563eb; color:white; transition:all 0.15s;">
+                    🏆 Squadra
+                </button>
+                <button id="tab-btn-atleta" onclick="window._genitoreTab('atleta')"
+                    style="padding:8px 20px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.85rem; font-weight:600; background:transparent; color:#64748b; transition:all 0.15s;">
+                    👤 Il tuo atleta
+                </button>
+            </div>
+
+            <!-- TAB: Squadra (stessa struttura dashboard dirigente) -->
+            <div id="tab-squadra">
+                <!-- Partite ultimo mese -->
+                <div class="card" style="margin-bottom:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:8px;">
+                        <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">🏆 Partite recenti</h3>
+                    </div>
+                    <div id="dash-matches-body"><p style="color:#94a3b8; text-align:center; padding:12px;">⏳ Caricamento...</p></div>
+                </div>
+
+                <!-- Presenze + Statistiche gare -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">📅 Presenze Sessioni</h3>
+                            <select id="dash-team-filter-gen" onchange="window._genRefreshPresenze()" style="padding:4px 10px; border-radius:8px; border:1px solid #e2e8f0; font-size:0.78rem; font-family:inherit;">
+                                <option value="all">Tutte le squadre</option>
+                            </select>
+                        </div>
+                        <div id="dash-presenze-body"><p style="color:#94a3b8; text-align:center; padding:12px;">⏳</p></div>
+                    </div>
+                    <div class="card">
+                        <div style="margin-bottom:1rem;">
+                            <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">⚽ Statistiche Gare per Squadra</h3>
+                            <span style="font-size:0.68rem; color:#94a3b8;">Solo partite ufficiali · Amichevoli escluse</span>
+                        </div>
+                        <div id="dash-stats-body"><p style="color:#94a3b8; text-align:center; padding:12px;">⏳</p></div>
+                    </div>
+                </div>
+
+                <!-- Statistiche atleti squadra -->
+                <div class="card" style="margin-bottom:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:8px;">
+                        <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">👤 Statistiche per Atleta</h3>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                            <select id="dash-soc-filter" style="display:none;"></select>
+                            <select id="dash-team-filter" onchange="window.filterDashAthletes()" style="padding:4px 10px; border-radius:8px; border:1px solid #e2e8f0; font-size:0.78rem; font-family:inherit;">
+                                <option value="all">Tutte le squadre</option>
+                            </select>
+                            <input id="dash-search" oninput="window.filterDashAthletes()" placeholder="Cerca atleta..." style="padding:4px 10px; border-radius:8px; border:1px solid #e2e8f0; font-size:0.78rem; font-family:inherit; width:160px;">
+                            <button onclick="window.sortDashAthletes()" style="padding:4px 12px; border-radius:8px; border:1px solid #e2e8f0; font-size:0.78rem; font-family:inherit; cursor:pointer; background:white;" id="dash-sort-btn">Ordina: Presenze ↓</button>
+                        </div>
+                    </div>
+                    <div id="dash-athletes-body" style="overflow-x:auto;"><p style="color:#94a3b8; text-align:center; padding:12px;">⏳</p></div>
+                </div>
+            </div>
+
+            <!-- TAB: Atleta (statistiche individuali) -->
+            <div id="tab-atleta" style="display:none;">
+                ${sectionsHTML}
+            </div>
         </div>`;
+
+        // Tab switcher
+        window._genitoreTab = function(tab) {
+            document.getElementById('tab-squadra').style.display = tab === 'squadra' ? '' : 'none';
+            document.getElementById('tab-atleta').style.display  = tab === 'atleta'  ? '' : 'none';
+            document.getElementById('tab-btn-squadra').style.background = tab === 'squadra' ? '#2563eb' : 'transparent';
+            document.getElementById('tab-btn-squadra').style.color      = tab === 'squadra' ? 'white'   : '#64748b';
+            document.getElementById('tab-btn-atleta').style.background  = tab === 'atleta'  ? '#2563eb' : 'transparent';
+            document.getElementById('tab-btn-atleta').style.color       = tab === 'atleta'  ? 'white'   : '#64748b';
+        };
+
+        // Popola dropdown squadre nel filtro presenze
+        const teamFilter = document.getElementById('dash-team-filter-gen');
+        if (teamFilter) {
+            teamIds.forEach(tid => {
+                const ts = (teamSeasons||[]).find(x => x.team_id === tid);
+                if (ts?.teams?.name) {
+                    teamFilter.innerHTML += `<option value="${tid}">${ts.teams.name}</option>`;
+                }
+            });
+        }
+
+        // Inizializza i dati dashboard per la squadra dell'atleta
+        window._dashData = window._dashData || {};
+        window._dashData._forcedSocietyId = null;
+        window._dashData._seasons = [];
+
+        // Usa le stesse funzioni della dashboard dirigente, filtrate sui team dell'atleta
+        const sid = activeSeason?.id || null;
+        await Promise.all([
+            window.loadDashMatches(sid, 'all', teamIds),
+            window.loadDashPresenze(sid, 'all', teamIds),
+            window.loadDashStats(sid, 'all', teamIds),
+            window.loadDashAthletes(sid, 'all', teamIds),
+        ]);
+
+        window._genRefreshPresenze = async function() {
+            const filterVal = document.getElementById('dash-team-filter-gen')?.value;
+            const filtered = filterVal === 'all' ? teamIds : [filterVal];
+            await window.loadDashPresenze(sid, 'all', filtered);
+        };
 
     } catch(err) {
         console.error('initGenitoreView error:', err);
