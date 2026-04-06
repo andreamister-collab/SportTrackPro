@@ -5640,9 +5640,9 @@ window.initGenitori = async function() {
     try {
         // Carica tutti gli utenti con management_role = 'Genitore'
         const { data: genitori } = await client.from('users')
-            .select('id, name, surname, email, username, society_id')
+            .select('id, name, email, username, society_id')
             .eq('management_role', 'Genitore')
-            .order('surname');
+            .order('name');
 
         // Carica tutte le associazioni genitore→atleta
         const { data: links } = await client.from('parent_athletes')
@@ -5653,7 +5653,15 @@ window.initGenitori = async function() {
             .select('id, name, surname')
             .order('surname');
 
-        window._genitoriList = genitori || [];
+        // Split "name" column (cognome + nome) into surname/name for rendering
+        window._genitoriList = (genitori || []).map(g => {
+            const parts = (g.name || '').trim().split(' ');
+            return {
+                ...g,
+                surname: parts[0] || '',
+                name: parts.slice(1).join(' ') || ''
+            };
+        });
         window._allAthletes = allAth || [];
 
         // Costruisci mappa parent_id → array di atleti
@@ -5703,6 +5711,7 @@ window.renderGenitori = function() {
 
 window.openGenitoreModal = async function(genitoreId = null) {
     const g = genitoreId ? window._genitoriList.find(x => x.id === genitoreId) : null;
+    // g.surname e g.name sono già splittati da _genitoriList map
     const linked = genitoreId ? (window._genitoreAthletes[genitoreId] || []).map(a => a.id) : [];
 
     const athleteOptions = window._allAthletes.map(a =>
@@ -5779,7 +5788,7 @@ window.saveGenitore = async function(genitoreId) {
             }
 
             const { data: newUser, error: userErr } = await client.from('users').insert({
-                name, surname, email, username,
+                name: `${surname} ${name}`.trim(), email, username,
                 role: 'user',
                 management_role: 'Genitore',
                 society_id: window._currentSocietyId || null,
@@ -5789,7 +5798,7 @@ window.saveGenitore = async function(genitoreId) {
             userId = newUser.id;
         } else {
             // Modifica: aggiorna solo nome/cognome
-            await client.from('users').update({ name, surname }).eq('id', genitoreId);
+            await client.from('users').update({ name: `${surname} ${name}`.trim() }).eq('id', genitoreId);
         }
 
         // Sincronizza associazioni atleti
