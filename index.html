@@ -3247,49 +3247,63 @@ async function saveSession(id) {
 
 async function openAttendanceModal(sessionId) {
     const m = getModal();
+    // Expand modal width for the attendance register
+    const modalContent = document.querySelector('.modal-content');
+    if (modalContent) { modalContent.style.maxWidth = '780px'; modalContent.style.width = '95%'; }
     const { data: session } = await client.from('sessions').select('*, session_types(name), teams(id, name, season_id)').eq('id', sessionId).single();
     if(!session) return;
+    // Restore modal size when closed
+    const origClose = m.close.bind(m);
+    m.close = function() { origClose(); if (modalContent) { modalContent.style.maxWidth = ''; modalContent.style.width = ''; } m.close = origClose; };
     const isGara = session.session_types?.name.toLowerCase().includes('gara');
     const { data: relations } = await client.from('athlete_team_seasons').select(`jersey_number, athletes(id, name, surname)`).eq('team_id', session.team_id).eq('season_id', session.season_id);
     const { data: existing } = await client.from('attendances').select('*').eq('session_id', sessionId);
     const attMap = {}; existing?.forEach(a => attMap[a.athlete_id] = a);
 
     m.open(isGara ? "Convocazioni" : "Registro Presenze", `
-        <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:15px; font-size:12px; border:1px solid #e2e8f0;">
-            <strong>${session.title}</strong> (${new Date(session.session_date).toLocaleDateString()})
+        <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:12px; font-size:12px; border:1px solid #e2e8f0;">
+            <strong>${session.title}</strong> &nbsp;·&nbsp; ${new Date(session.session_date).toLocaleDateString('it-IT')}
         </div>
-        <div style="max-height:450px; overflow-y:auto; padding-right:5px;">
-            ${(relations || []).map(r => {
+        <div style="max-height:500px; overflow-y:auto; padding-right:2px;">
+            ${!isGara ? `
+            <div style="display:grid; grid-template-columns:28px 1fr 130px repeat(5,56px); gap:0; align-items:center; padding:5px 8px; background:#f1f5f9; border-radius:6px; margin-bottom:4px; font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8; letter-spacing:0.06em;">
+                <div>#</div><div>Atleta</div><div>Presenza</div>
+                <div style="text-align:center;">VEL</div><div style="text-align:center;">TEC</div><div style="text-align:center;">FIS</div><div style="text-align:center;">RES</div><div style="text-align:center;">COM</div>
+            </div>` : `
+            <div style="display:grid; grid-template-columns:28px 1fr 130px; gap:0; align-items:center; padding:5px 8px; background:#f1f5f9; border-radius:6px; margin-bottom:4px; font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8; letter-spacing:0.06em;">
+                <div>#</div><div>Atleta</div><div>Stato</div>
+            </div>`}
+            ${(relations || []).map((r, idx) => {
                 const ath = r.athletes;
                 const reg = attMap[ath.id] || {};
-                // UNIFORMATO A MAIUSCOLO PER COERENZA DB
                 const p = reg.performance_data || {VEL:0, TEC:0, FIS:0, RES:0, COM:0};
+                const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc';
+                const stars = (k) => [1,2,3,4,5].map(s =>
+                    `<span onclick="setRating(this,${s})" style="cursor:pointer;color:${s<=(p[k]||0)?'#f59e0b':'#cbd5e1'};font-size:14px;line-height:1;">★</span>`
+                ).join('');
                 return `
-                <div style="border:1px solid #eee; border-radius:8px; padding:12px; margin-bottom:10px; background:#fff;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <strong>${ath.surname} ${ath.name} <small style="color:#64748b;">${r.jersey_number ? '#'+r.jersey_number : ''}</small></strong>
-                        <select class="att-status" data-ath="${ath.id}" style="padding:6px; border-radius:4px; border:1px solid #ccc;">
-                            <option value="presente" ${reg.status==='presente'?'selected':''}>Presente</option>
-                            <option value="assente" ${reg.status==='assente'?'selected':''}>Assente</option>
-                            <option value="giustificato" ${reg.status==='giustificato'?'selected':''}>Giustificato</option>
-                            <option value="infortunato" ${reg.status==='infortunato'?'selected':''}>Infortunato</option>
+                <div style="display:grid; grid-template-columns:28px 1fr 130px${!isGara?' repeat(5,56px)':''}; gap:0; align-items:center; padding:6px 8px; background:${rowBg}; border-bottom:1px solid #f1f5f9; border-radius:4px;">
+                    <div style="font-size:11px; font-weight:700; color:#2563eb;">${r.jersey_number || '—'}</div>
+                    <div style="font-size:12px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ath.surname} ${ath.name}</div>
+                    <div>
+                        <select class="att-status" data-ath="${ath.id}" style="padding:3px 5px; border-radius:4px; border:1px solid #cbd5e1; font-size:11px; width:100%; background:white; color:#334155;">
+                            <option value="presente" ${reg.status==='presente'?'selected':''}>✅ Presente</option>
+                            <option value="assente" ${reg.status==='assente'?'selected':''}>❌ Assente</option>
+                            <option value="giustificato" ${reg.status==='giustificato'?'selected':''}>📋 Giustificato</option>
+                            <option value="infortunato" ${reg.status==='infortunato'?'selected':''}>🩹 Infortunato</option>
                         </select>
                     </div>
                     ${!isGara ? `
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; border-top:1px solid #f1f5f9; padding-top:10px;">
-                        ${Object.entries({VEL:'VEL', TEC:'TEC', FIS:'FIS', RES:'RES', COM:'COM'}).map(([k, label]) => `
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-size:11px; color:#64748b;">${label}</span>
-                                <div class="star-rating" data-ath="${ath.id}" data-key="${k}" data-value="${p[k]||0}">
-                                    ${[1,2,3,4,5].map(s => `<span onclick="setRating(this, ${s})" style="cursor:pointer; color:${s<=(p[k]||0)?'#f59e0b':'#cbd5e1'}; font-size:16px;">★</span>`).join('')}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>` : ''}
+                    <div style="display:flex;flex-direction:column;align-items:center;" class="star-rating" data-ath="${ath.id}" data-key="VEL" data-value="${p.VEL||0}">${stars('VEL')}</div>
+                    <div style="display:flex;flex-direction:column;align-items:center;" class="star-rating" data-ath="${ath.id}" data-key="TEC" data-value="${p.TEC||0}">${stars('TEC')}</div>
+                    <div style="display:flex;flex-direction:column;align-items:center;" class="star-rating" data-ath="${ath.id}" data-key="FIS" data-value="${p.FIS||0}">${stars('FIS')}</div>
+                    <div style="display:flex;flex-direction:column;align-items:center;" class="star-rating" data-ath="${ath.id}" data-key="RES" data-value="${p.RES||0}">${stars('RES')}</div>
+                    <div style="display:flex;flex-direction:column;align-items:center;" class="star-rating" data-ath="${ath.id}" data-key="COM" data-value="${p.COM||0}">${stars('COM')}</div>
+                    ` : ''}
                 </div>`;
             }).join('')}
         </div>
-        <button onclick="saveAttendances('${sessionId}', ${isGara})" style="background:#10b981; color:white; width:100%; padding:15px; border:none; border-radius:8px; font-weight:bold; margin-top:15px; cursor:pointer;">SALVA REGISTRO</button>
+        <button onclick="saveAttendances('${sessionId}', ${isGara})" style="background:#10b981; color:white; width:100%; padding:13px; border:none; border-radius:8px; font-weight:bold; margin-top:12px; cursor:pointer; font-size:13px;">SALVA REGISTRO</button>
     `);
 }
 
@@ -4692,70 +4706,28 @@ window.templateDashboard = function() {
             <div class="kpi-card-skeleton" style="height:90px; background:#f1f5f9; border-radius:12px; animation:pulse 1.5s infinite;"></div>
         </div>
 
-        <!-- GRID TABELLE -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.25rem;">
-
-            <!-- PARTITE ULTIMO MESE -->
-            <div class="card" style="grid-column: span 2;">
-                <div class="header" style="margin-bottom:1rem;">
-                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">🏆 Partite ultimo mese</h3>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <select id="dash-match-soc" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
-                            <option value="">Tutte le società</option>
-                        </select>
-                        <select id="dash-match-team" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
-                            <option value="">Tutte le squadre</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="overflow-x:auto;">
-                    <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-                        <thead>
-                            <tr style="background:#f8fafc; color:#64748b;">
-                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Data</th>
-                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Partita</th>
-                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Squadra</th>
-                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">Risultato</th>
-                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">Esito</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dash-matches-body">
-                            <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+        <!-- TAB NAV -->
+        <div style="display:flex; gap:4px; margin-bottom:1.25rem; background:white; border:1px solid #e2e8f0; border-radius:12px; padding:5px; width:fit-content;">
+            <button id="dash-tab-btn-0" onclick="window.switchDashTab(0)"
+                style="padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.83rem; font-weight:600; background:#2563eb; color:white; transition:all 0.15s; white-space:nowrap;">
+                ⚽ Statistiche Gare
+            </button>
+            <button id="dash-tab-btn-1" onclick="window.switchDashTab(1)"
+                style="padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.83rem; font-weight:600; background:transparent; color:#64748b; transition:all 0.15s; white-space:nowrap;">
+                🏆 Partite ultimo mese
+            </button>
+            <button id="dash-tab-btn-2" onclick="window.switchDashTab(2)"
+                style="padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.83rem; font-weight:600; background:transparent; color:#64748b; transition:all 0.15s; white-space:nowrap;">
+                📅 Presenze Sessioni
+            </button>
+            <button id="dash-tab-btn-3" onclick="window.switchDashTab(3)"
+                style="padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.83rem; font-weight:600; background:transparent; color:#64748b; transition:all 0.15s; white-space:nowrap;">
+                👤 Statistiche per Atleta
+            </button>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.25rem;">
-
-            <!-- PRESENZE SESSIONI -->
-            <div class="card">
-                <div class="header" style="margin-bottom:1rem;">
-                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">📅 Presenze Sessioni</h3>
-                    <select id="dash-pres-team" onchange="window.renderDashPresenze()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
-                        <option value="">Tutte le squadre</option>
-                    </select>
-                </div>
-                <div style="overflow-x:auto;">
-                    <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-                        <thead>
-                            <tr style="background:#f8fafc; color:#64748b;">
-                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Sessione</th>
-                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#10b981;">P</th>
-                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#ef4444;">A</th>
-                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#f59e0b;">G</th>
-                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">%</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dash-pres-body">
-                            <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- STATISTICHE GARE -->
+        <!-- TAB 0: STATISTICHE GARE PER SQUADRA -->
+        <div id="dash-tab-0" style="">
             <div class="card">
                 <div class="header" style="margin-bottom:1rem;">
                     <div><h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">⚽ Statistiche Gare per Squadra</h3><span style="font-size:0.68rem; color:#94a3b8;">Solo partite ufficiali &middot; Amichevoli escluse</span></div>
@@ -4786,69 +4758,124 @@ window.templateDashboard = function() {
             </div>
         </div>
 
-        <!-- STATISTICHE PER ATLETA -->
-        <div class="card" style="margin-top:1.25rem;">
-            <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
-                <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">👤 Statistiche per Atleta</h3>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                    <select id="dash-ath-soc" onchange="window.renderDashAthletes()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
-                        <option value="">Tutte le società</option>
-                    </select>
-                    <select id="dash-ath-team" onchange="window.renderDashAthletes()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
-                        <option value="">Tutte le squadre</option>
-                    </select>
-                    <input type="text" id="dash-ath-search" placeholder="Cerca atleta..." oninput="window.renderDashAthletes()"
-                        style="padding:5px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:160px; margin:0; color:#475569;">
-                    <button onclick="window.toggleDashAthSort()" id="dash-ath-sort-btn"
-                        style="padding:5px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; cursor:pointer; font-weight:600; color:#475569; white-space:nowrap;">
-                        Ordina: Presenze ↓
-                    </button>
+        <!-- TAB 1: PARTITE ULTIMO MESE -->
+        <div id="dash-tab-1" style="display:none;">
+            <div class="card">
+                <div class="header" style="margin-bottom:1rem;">
+                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">🏆 Partite ultimo mese</h3>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <select id="dash-match-soc" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le società</option>
+                        </select>
+                        <select id="dash-match-team" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le squadre</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#64748b;">
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Data</th>
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Partita</th>
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Squadra</th>
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">Risultato</th>
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">Esito</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-matches-body">
+                            <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            <div style="overflow-x:auto;">
-                <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-                    <thead>
-                        <tr style="background:#f8fafc; color:#64748b;">
-                            <th style="padding:9px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left; white-space:nowrap;" rowspan="2">Atleta</th>
-                            <th style="padding:9px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left; white-space:nowrap;" rowspan="2">Squadra</th>
-                            <!-- Sessioni group -->
-                            <th colspan="5" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#10b981; border-left:2px solid #f1f5f9; background:#f0fdf4; border-radius:4px 4px 0 0;">ALLENAMENTI</th>
-                            <!-- Gare group -->
-                            <th colspan="6" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#2563eb; border-left:2px solid #f1f5f9; background:#eff6ff; border-radius:4px 4px 0 0;">PARTITE</th>
-                            <!-- Totale % group -->
-                            <th colspan="2" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#f59e0b; border-left:2px solid #f1f5f9; background:#fffbeb; border-radius:4px 4px 0 0;">TOTALE</th>
-                            <!-- Performance group -->
-                            <th colspan="5" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#6366f1; border-left:2px solid #f1f5f9; background:#eef2ff; border-radius:4px 4px 0 0;">PERFORMANCE ★</th>
-                        </tr>
-                        <tr style="background:#f8fafc; color:#64748b;">
-                            <!-- Allenamenti sub-cols -->
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981; border-left:2px solid #f1f5f9;" title="Presenze">P</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#ef4444;" title="Assenze">A</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="Giustificati">G</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#8b5cf6;" title="Infortunati">I</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981;" title="% Presenze Allenamenti">%</th>
-                            <!-- Partite sub-cols -->
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981; border-left:2px solid #f1f5f9;" title="Presenze partite">P</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#2563eb;" title="Convocazioni">Conv.</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981;" title="Gol">⚽</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="Ammonizioni">🟨</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#ef4444;" title="Espulsioni">🟥</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#2563eb;" title="Minuti Giocati">⏱</th>
-                            <!-- Totale sub-cols -->
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#475569; border-left:2px solid #f1f5f9;" title="Presenze Totali (allenamenti+partite)">Pres. Tot.</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="% Presenze Totale">% Tot.</th>
-                            <!-- Performance sub-cols -->
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1; border-left:2px solid #f1f5f9;">VEL</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1;">TEC</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1;">FIS</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1;">RES</th>
-                            <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1;">COM</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dash-athletes-body">
-                        <tr><td colspan="20" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
-                    </tbody>
-                </table>
+        </div>
+
+        <!-- TAB 2: PRESENZE SESSIONI -->
+        <div id="dash-tab-2" style="display:none;">
+            <div class="card">
+                <div class="header" style="margin-bottom:1rem;">
+                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">📅 Presenze Sessioni</h3>
+                    <select id="dash-pres-team" onchange="window.renderDashPresenze()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                        <option value="">Tutte le squadre</option>
+                    </select>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#64748b;">
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Sessione</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#10b981;">P</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#ef4444;">A</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#f59e0b;">G</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">%</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-pres-body">
+                            <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: STATISTICHE PER ATLETA -->
+        <div id="dash-tab-3" style="display:none;">
+            <div class="card">
+                <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
+                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">👤 Statistiche per Atleta</h3>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                        <select id="dash-ath-soc" onchange="window.renderDashAthletes()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le società</option>
+                        </select>
+                        <select id="dash-ath-team" onchange="window.renderDashAthletes()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le squadre</option>
+                        </select>
+                        <input type="text" id="dash-ath-search" placeholder="Cerca atleta..." oninput="window.renderDashAthletes()"
+                            style="padding:5px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:160px; margin:0; color:#475569;">
+                        <button onclick="window.toggleDashAthSort()" id="dash-ath-sort-btn"
+                            style="padding:5px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; cursor:pointer; font-weight:600; color:#475569; white-space:nowrap;">
+                            Ordina: Presenze ↓
+                        </button>
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#64748b;">
+                                <th style="padding:9px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left; white-space:nowrap;" rowspan="2">Atleta</th>
+                                <th style="padding:9px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left; white-space:nowrap;" rowspan="2">Squadra</th>
+                                <th colspan="5" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#10b981; border-left:2px solid #f1f5f9; background:#f0fdf4; border-radius:4px 4px 0 0;">ALLENAMENTI</th>
+                                <th colspan="6" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#2563eb; border-left:2px solid #f1f5f9; background:#eff6ff; border-radius:4px 4px 0 0;">PARTITE</th>
+                                <th colspan="2" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#f59e0b; border-left:2px solid #f1f5f9; background:#fffbeb; border-radius:4px 4px 0 0;">TOTALE</th>
+                                <th colspan="5" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#6366f1; border-left:2px solid #f1f5f9; background:#eef2ff; border-radius:4px 4px 0 0;">PERFORMANCE ★</th>
+                            </tr>
+                            <tr style="background:#f8fafc; color:#64748b;">
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981; border-left:2px solid #f1f5f9;" title="Presenze">P</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#ef4444;" title="Assenze">A</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="Giustificati">G</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#8b5cf6;" title="Infortunati">I</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981;" title="% Presenze Allenamenti">%</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981; border-left:2px solid #f1f5f9;" title="Presenze partite">P</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#2563eb;" title="Convocazioni">Conv.</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981;" title="Gol">⚽</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="Ammonizioni">🟨</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#ef4444;" title="Espulsioni">🟥</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#2563eb;" title="Minuti Giocati">⏱</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#475569; border-left:2px solid #f1f5f9;" title="Presenze Totali">Pres. Tot.</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="% Presenze Totale">% Tot.</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1; border-left:2px solid #f1f5f9;">VEL</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1;">TEC</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1;">FIS</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1;">RES</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1;">COM</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-athletes-body">
+                            <tr><td colspan="20" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -4862,6 +4889,19 @@ window.templateDashboard = function() {
         .kpi-card .kpi-sub { font-size:0.72rem; color:#94a3b8; margin-top:4px; }
     </style>
     `;
+};
+
+/* ── TAB SWITCHER DASHBOARD ── */
+window.switchDashTab = function(idx) {
+    for (let i = 0; i < 4; i++) {
+        const panel = document.getElementById('dash-tab-' + i);
+        const btn   = document.getElementById('dash-tab-btn-' + i);
+        if (panel) panel.style.display = i === idx ? '' : 'none';
+        if (btn) {
+            btn.style.background = i === idx ? '#2563eb' : 'transparent';
+            btn.style.color      = i === idx ? 'white'   : '#64748b';
+        }
+    }
 };
 
 /* ── DATI GLOBALI DASHBOARD ── */
