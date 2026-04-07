@@ -4729,11 +4729,19 @@ window.templateDashboard = function() {
         <!-- TAB 0: STATISTICHE GARE PER SQUADRA -->
         <div id="dash-tab-0" style="">
             <div class="card">
-                <div class="header" style="margin-bottom:1rem;">
+                <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
                     <div><h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">⚽ Statistiche Gare per Squadra</h3><span style="font-size:0.68rem; color:#94a3b8;">Solo partite ufficiali &middot; Amichevoli escluse</span></div>
-                    <select id="dash-stats-soc" onchange="window.renderDashStats()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
-                        <option value="">Tutte le società</option>
-                    </select>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <select id="dash-stats-soc" onchange="window.onDashStatsSocChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le società</option>
+                        </select>
+                        <select id="dash-stats-cat" onchange="window.onDashStatsCatChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le categorie</option>
+                        </select>
+                        <select id="dash-stats-team" onchange="window.renderDashStats()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le squadre</option>
+                        </select>
+                    </div>
                 </div>
                 <div style="overflow-x:auto;">
                     <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
@@ -4764,8 +4772,11 @@ window.templateDashboard = function() {
                 <div class="header" style="margin-bottom:1rem;">
                     <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">🏆 Partite ultimo mese</h3>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <select id="dash-match-soc" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                        <select id="dash-match-soc" onchange="window.onDashMatchSocChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
                             <option value="">Tutte le società</option>
+                        </select>
+                        <select id="dash-match-cat" onchange="window.onDashMatchCatChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le categorie</option>
                         </select>
                         <select id="dash-match-team" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
                             <option value="">Tutte le squadre</option>
@@ -4794,11 +4805,19 @@ window.templateDashboard = function() {
         <!-- TAB 2: PRESENZE SESSIONI -->
         <div id="dash-tab-2" style="display:none;">
             <div class="card">
-                <div class="header" style="margin-bottom:1rem;">
+                <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
                     <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">📅 Presenze Sessioni</h3>
-                    <select id="dash-pres-team" onchange="window.renderDashPresenze()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
-                        <option value="">Tutte le squadre</option>
-                    </select>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <select id="dash-pres-soc" onchange="window.onDashPresSocChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le società</option>
+                        </select>
+                        <select id="dash-pres-cat" onchange="window.onDashPresCatChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le categorie</option>
+                        </select>
+                        <select id="dash-pres-team" onchange="window.renderDashPresenze()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le squadre</option>
+                        </select>
+                    </div>
                 </div>
                 <div style="overflow-x:auto;">
                     <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
@@ -4825,8 +4844,11 @@ window.templateDashboard = function() {
                 <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
                     <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">👤 Statistiche per Atleta</h3>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                        <select id="dash-ath-soc" onchange="window.renderDashAthletes()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                        <select id="dash-ath-soc" onchange="window.onDashAthSocChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
                             <option value="">Tutte le società</option>
+                        </select>
+                        <select id="dash-ath-cat" onchange="window.onDashAthCatChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                            <option value="">Tutte le categorie</option>
                         </select>
                         <select id="dash-ath-team" onchange="window.renderDashAthletes()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
                             <option value="">Tutte le squadre</option>
@@ -4887,6 +4909,31 @@ window.templateDashboard = function() {
         .kpi-card .kpi-label { font-size:0.68rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#94a3b8; margin-bottom:6px; }
         .kpi-card .kpi-value { font-family:'Space Grotesk',sans-serif; font-size:1.8rem; font-weight:700; color:var(--kpi-color,#2563eb); line-height:1; }
         .kpi-card .kpi-sub { font-size:0.72rem; color:#94a3b8; margin-top:4px; }
+        /* Stile filtri tab dashboard */
+        #dash-stats-soc, #dash-stats-cat, #dash-stats-team,
+        #dash-match-soc, #dash-match-cat, #dash-match-team,
+        #dash-pres-soc,  #dash-pres-cat,  #dash-pres-team,
+        #dash-ath-soc,   #dash-ath-cat,   #dash-ath-team {
+            padding: 5px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            width: auto;
+            margin: 0;
+            color: #475569;
+            background: white;
+            cursor: pointer;
+            font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        #dash-stats-soc:focus, #dash-stats-cat:focus, #dash-stats-team:focus,
+        #dash-match-soc:focus, #dash-match-cat:focus, #dash-match-team:focus,
+        #dash-pres-soc:focus,  #dash-pres-cat:focus,  #dash-pres-team:focus,
+        #dash-ath-soc:focus,   #dash-ath-cat:focus,   #dash-ath-team:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
+        }
     </style>
     `;
 };
@@ -4961,6 +5008,8 @@ window.initDashboard = async function() {
         if (labelEl) labelEl.textContent = '🌐 Stagione: ' + (activeSeason?.name || 'Tutte');
 
         await window.refreshDashboard();
+        // Applica visibilità filtri tab in base al ruolo
+        _applyTabFilterVisibility();
 
     } catch(err) { console.error('initDashboard error:', err); }
 };
@@ -5121,7 +5170,7 @@ window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
         const validIds = (types||[]).filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')).map(t => t.id);
 
         let q = client.from('sessions')
-            .select('id, title, session_date, society_id, team_id, teams(name), societies(name)')
+            .select('id, title, session_date, society_id, team_id, teams(name, category_id, categories(id, name)), societies(name)')
             .gte('session_date', fromDate)
             .order('session_date', { ascending: false });
 
@@ -5142,21 +5191,23 @@ window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
         const detailMap = {};
         details.forEach(d => detailMap[d.session_id] = d);
 
-        window._dashMatches = (sessions || []).map(s => ({ ...s, detail: detailMap[s.id] }));
-        window._dashMatchTeams = [...new Map((sessions||[]).filter(s=>s.teams).map(s => [s.team_id, { id:s.team_id, name:s.teams.name }])).values()];
+        window._dashMatches = (sessions || []).map(s => ({
+            ...s,
+            category_id: s.teams?.category_id || null,
+            category_name: s.teams?.categories?.name || '-',
+            detail: detailMap[s.id]
+        }));
+        window._dashMatchTeams = [...new Map((sessions||[]).filter(s=>s.teams).map(s => [s.team_id, { id:s.team_id, name:s.teams.name, category_id: s.teams?.category_id }])).values()];
 
-        // Popola filtro squadra
-        const selTeam = document.getElementById('dash-match-team');
+        // Popola filtri soc → cat → team in cascata
         const selSoc = document.getElementById('dash-match-soc');
-        if (selTeam) {
-            selTeam.innerHTML = '<option value="">Tutte le squadre</option>' +
-                window._dashMatchTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-        }
         if (selSoc) {
             const matchSocs = [...new Map((sessions||[]).filter(s=>s.societies).map(s=>[s.society_id,{id:s.society_id,name:s.societies.name}])).values()];
             selSoc.innerHTML = '<option value="">Tutte le società</option>' +
                 matchSocs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
         }
+        _populateTabCatFilter('dash-match-cat', window._dashMatches, null);
+        _populateTabTeamFilter('dash-match-team', window._dashMatches, null, null);
 
         window.renderDashMatches();
     } catch(err) { console.error('loadDashMatches error:', err); }
@@ -5166,11 +5217,13 @@ window.renderDashMatches = function() {
     const tbody = document.getElementById('dash-matches-body');
     if (!tbody) return;
     const filterTeam = document.getElementById('dash-match-team')?.value;
-    const filterSoc = document.getElementById('dash-match-soc')?.value;
+    const filterSoc  = document.getElementById('dash-match-soc')?.value;
+    const filterCat  = document.getElementById('dash-match-cat')?.value;
 
     const filtered = window._dashMatches.filter(m =>
-        (!filterTeam || m.team_id === filterTeam) &&
-        (!filterSoc || m.society_id === filterSoc)
+        (!filterTeam || m.team_id   === filterTeam) &&
+        (!filterSoc  || m.society_id === filterSoc) &&
+        (!filterCat  || m.category_id === filterCat)
     );
 
     if (filtered.length === 0) {
@@ -5207,7 +5260,7 @@ window._dashSessions = [];
 window.loadDashPresenze = async function(seasonId, socId, scopedTeamIds) {
     try {
         let q = client.from('sessions')
-            .select('id, title, session_date, team_id, type_id, teams(name), attendances(status)')
+            .select('id, title, session_date, team_id, society_id, type_id, teams(name, category_id, categories(id, name)), societies(name), attendances(status)')
             .order('session_date', { ascending: false })
             .limit(50);
 
@@ -5221,14 +5274,20 @@ window.loadDashPresenze = async function(seasonId, socId, scopedTeamIds) {
         const { data: types } = await client.from('session_types').select('id, name');
         const garaIds = new Set((types||[]).filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')).map(t=>t.id));
 
-        window._dashSessions = (data||[]).filter(s => !garaIds.has(s.type_id));
+        window._dashSessions = (data||[]).filter(s => !garaIds.has(s.type_id)).map(s => ({
+            ...s,
+            category_id: s.teams?.category_id || null,
+            category_name: s.teams?.categories?.name || '-',
+        }));
 
-        // Popola filtro squadra
-        const selTeam = document.getElementById('dash-pres-team');
-        if (selTeam) {
-            const teams = [...new Map(window._dashSessions.filter(s=>s.teams).map(s=>[s.team_id,{id:s.team_id,name:s.teams.name}])).values()];
-            selTeam.innerHTML = '<option value="">Tutte le squadre</option>' + teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+        // Popola filtri soc → cat → team in cascata
+        const selSoc = document.getElementById('dash-pres-soc');
+        if (selSoc) {
+            const pressSocs = [...new Map(window._dashSessions.filter(s=>s.society_id).map(s=>[s.society_id, s.societies?.name || '—'])).entries()];
+            selSoc.innerHTML = '<option value="">Tutte le società</option>' + pressSocs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
         }
+        _populateTabCatFilter('dash-pres-cat', window._dashSessions, null);
+        _populateTabTeamFilter('dash-pres-team', window._dashSessions, null, null);
 
         window.renderDashPresenze();
     } catch(err) { console.error('loadDashPresenze error:', err); }
@@ -5238,9 +5297,15 @@ window.renderDashPresenze = function() {
     const tbody = document.getElementById('dash-pres-body');
     if (!tbody) return;
     const filterTeam = document.getElementById('dash-pres-team')?.value;
+    const filterSoc  = document.getElementById('dash-pres-soc')?.value;
+    const filterCat  = document.getElementById('dash-pres-cat')?.value;
 
     const filtered = window._dashSessions
-        .filter(s => !filterTeam || s.team_id === filterTeam)
+        .filter(s =>
+            (!filterTeam || s.team_id     === filterTeam) &&
+            (!filterSoc  || s.society_id  === filterSoc)  &&
+            (!filterCat  || s.category_id === filterCat)
+        )
         .slice(0, 15);
 
     if (filtered.length === 0) {
@@ -5260,7 +5325,7 @@ window.renderDashPresenze = function() {
         <tr style="border-bottom:1px solid #f1f5f9;">
             <td style="padding:8px 10px;">
                 <div style="font-weight:600; font-size:0.8rem;">${s.title || 'Sessione'}</div>
-                <div style="font-size:0.7rem; color:#94a3b8;">${new Date(s.session_date).toLocaleDateString('it-IT')} · ${s.teams?.name||''}</div>
+                <div style="font-size:0.7rem; color:#94a3b8;">${new Date(s.session_date).toLocaleDateString('it-IT')} · ${s.teams?.name||''} ${s.category_name && s.category_name !== '-' ? '· ' + s.category_name : ''}</div>
             </td>
             <td style="padding:8px 10px; text-align:center; color:#10b981; font-weight:700;">${p}</td>
             <td style="padding:8px 10px; text-align:center; color:#ef4444; font-weight:700;">${a}</td>
@@ -5276,7 +5341,7 @@ window._dashMatchStats = [];
 window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
     try {
         let q = client.from('sessions')
-            .select('id, team_id, society_id, season_id, teams(name), societies(name)');
+            .select('id, team_id, society_id, season_id, teams(name, category_id, categories(id, name)), societies(name)');
 
         const { data: types } = await client.from('session_types').select('id, name');
         const validIds = (types||[]).filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')).map(t=>t.id);
@@ -5312,9 +5377,12 @@ window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
             const det = detailMap[s.id];
             if (det && det.is_friendly === true) return; // salta amichevoli
             if (!teamMap[s.team_id]) teamMap[s.team_id] = {
+                team_id: s.team_id,
                 name: s.teams?.name || '-',
                 soc: s.societies?.name || '-',
                 society_id: s.society_id,
+                category_id: s.teams?.category_id || null,
+                category_name: s.teams?.categories?.name || '-',
                 partite:0, casa:0, trasferta:0, gf:0, gs:0, amm:0, esp:0, w:0, d:0, l:0
             };
             const t = teamMap[s.team_id];
@@ -5340,12 +5408,14 @@ window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
 
         window._dashMatchStats = Object.values(teamMap);
 
-        // Filtro soc
+        // Popola filtri soc → cat → team in cascata
         const selSoc = document.getElementById('dash-stats-soc');
         if (selSoc) {
             const socs = [...new Map(window._dashMatchStats.map(t=>[t.society_id, t.soc])).entries()];
             selSoc.innerHTML = '<option value="">Tutte le società</option>' + socs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
         }
+        _populateTabCatFilter('dash-stats-cat', window._dashMatchStats, null);
+        _populateTabTeamFilter('dash-stats-team', window._dashMatchStats, null, null);
 
         window.renderDashStats();
     } catch(err) { console.error('loadDashStats error:', err); }
@@ -5354,10 +5424,16 @@ window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
 window.renderDashStats = function() {
     const tbody = document.getElementById('dash-stats-body');
     if (!tbody) return;
-    const filterSoc = document.getElementById('dash-stats-soc')?.value;
+    const filterSoc  = document.getElementById('dash-stats-soc')?.value;
+    const filterCat  = document.getElementById('dash-stats-cat')?.value;
+    const filterTeam = document.getElementById('dash-stats-team')?.value;
 
     const filtered = window._dashMatchStats
-        .filter(t => !filterSoc || t.society_id === filterSoc)
+        .filter(t =>
+            (!filterSoc  || t.society_id  === filterSoc) &&
+            (!filterCat  || t.category_id === filterCat) &&
+            (!filterTeam || t.team_id     === filterTeam)
+        )
         .sort((a,b) => b.gf - a.gf);
 
     if (filtered.length === 0) {
@@ -5367,7 +5443,7 @@ window.renderDashStats = function() {
 
     tbody.innerHTML = filtered.map(t => `
         <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:8px 10px; font-weight:600; font-size:0.82rem;">${t.name}<br><span style="font-size:0.7rem; color:#94a3b8;">${t.soc}</span></td>
+            <td style="padding:8px 10px; font-weight:600; font-size:0.82rem;">${t.name}<br><span style="font-size:0.7rem; color:#94a3b8;">${t.category_name !== '-' ? t.category_name + ' · ' : ''}${t.soc}</span></td>
             <td style="padding:8px 10px; text-align:center; color:#64748b; font-weight:700;">${t.partite}</td>
             <td style="padding:8px 10px; text-align:center; color:#2563eb; font-weight:700;" title="In casa">${t.casa}</td>
             <td style="padding:8px 10px; text-align:center; color:#8b5cf6; font-weight:700;" title="In trasferta">${t.trasferta}</td>
@@ -5405,7 +5481,7 @@ window.loadDashAthletes = async function(seasonId, socId, scopedTeamIds) {
     try {
         // 1. Recupera tutti gli atleti assegnati a squadre
         let athQ = client.from('athlete_team_seasons')
-            .select('athlete_id, team_id, society_id, season_id, athletes(name, surname), teams(name), societies(name)');
+            .select('athlete_id, team_id, society_id, season_id, category_id, athletes(name, surname), teams(name), societies(name), categories(id, name)');
 
         if (seasonId && seasonId !== 'all') athQ = athQ.eq('season_id', seasonId);
         if (socId && socId !== 'all') athQ = athQ.eq('society_id', socId);
@@ -5419,7 +5495,7 @@ window.loadDashAthletes = async function(seasonId, socId, scopedTeamIds) {
             return;
         }
 
-        // Mappa athlete_id -> info base (nome, squadra, società)
+        // Mappa athlete_id -> info base (nome, squadra, società, categoria)
         const athleteMap = {};
         assignments.forEach(a => {
             if (!athleteMap[a.athlete_id]) {
@@ -5430,6 +5506,8 @@ window.loadDashAthletes = async function(seasonId, socId, scopedTeamIds) {
                     team_id: a.team_id,
                     society: a.societies?.name || '-',
                     society_id: a.society_id,
+                    category_id: a.category_id || null,
+                    category_name: a.categories?.name || '-',
                     // Sessioni (allenamenti)
                     sess_tot: 0, sess_pres: 0, sess_ass: 0, sess_giust: 0, sess_inf: 0,
                     // Gare (partite)
@@ -5518,15 +5596,20 @@ window.loadDashAthletes = async function(seasonId, socId, scopedTeamIds) {
 };
 
 function _populateAthFilters(athletes) {
-    const selSoc = document.getElementById('dash-ath-soc');
+    const selSoc  = document.getElementById('dash-ath-soc');
+    const selCat  = document.getElementById('dash-ath-cat');
     const selTeam = document.getElementById('dash-ath-team');
     if (!selSoc || !selTeam) return;
 
-    const socs = [...new Map(athletes.filter(a=>a.society_id).map(a=>[a.society_id, a.society])).entries()];
+    const socs  = [...new Map(athletes.filter(a=>a.society_id).map(a=>[a.society_id, a.society])).entries()];
+    const cats  = [...new Map(athletes.filter(a=>a.category_id).map(a=>[a.category_id, a.category_name])).entries()];
     const teams = [...new Map(athletes.filter(a=>a.team_id).map(a=>[a.team_id, a.team])).entries()];
 
     selSoc.innerHTML = '<option value="">Tutte le società</option>' +
         socs.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+
+    if (selCat) selCat.innerHTML = '<option value="">Tutte le categorie</option>' +
+        cats.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
 
     selTeam.innerHTML = '<option value="">Tutte le squadre</option>' +
         teams.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
@@ -5536,15 +5619,17 @@ window.renderDashAthletes = function() {
     const tbody = document.getElementById('dash-athletes-body');
     if (!tbody) return;
 
-    const filterSoc = document.getElementById('dash-ath-soc')?.value;
+    const filterSoc  = document.getElementById('dash-ath-soc')?.value;
+    const filterCat  = document.getElementById('dash-ath-cat')?.value;
     const filterTeam = document.getElementById('dash-ath-team')?.value;
     const search = (document.getElementById('dash-ath-search')?.value || '').toLowerCase();
     const sortField = window._dashAthSortField || 'presenze';
     const sortDir = window._dashAthSortDir || -1;
 
     let filtered = window._dashAthletes.filter(a =>
-        (!filterSoc || a.society_id === filterSoc) &&
-        (!filterTeam || a.team_id === filterTeam) &&
+        (!filterSoc  || a.society_id  === filterSoc)  &&
+        (!filterCat  || a.category_id === filterCat)  &&
+        (!filterTeam || a.team_id     === filterTeam) &&
         (!search || a.name.toLowerCase().includes(search))
     );
 
@@ -5577,7 +5662,10 @@ window.renderDashAthletes = function() {
                 <div style="font-weight:700; font-size:0.82rem; color:#1e293b;">${a.name}</div>
                 <div style="font-size:0.7rem; color:#94a3b8;">${a.society}</div>
             </td>
-            <td style="padding:9px 12px; font-size:0.8rem; color:#2563eb; font-weight:500;">${a.team}</td>
+            <td style="padding:9px 12px; font-size:0.8rem; color:#2563eb; font-weight:500;">
+                ${a.team}
+                ${a.category_name && a.category_name !== '-' ? `<br><span style="font-size:0.68rem; color:#94a3b8; font-weight:400;">${a.category_name}</span>` : ''}
+            </td>
             <!-- Allenamenti -->
             <td style="padding:9px 12px; text-align:center; color:#10b981; font-weight:700; border-left:2px solid #f0fdf4;">${a.sess_pres || 0}</td>
             <td style="padding:9px 12px; text-align:center; color:#ef4444; font-weight:700;">${a.sess_ass || 0}</td>
@@ -5632,6 +5720,135 @@ window.loadUserAssignedTeams = async function() {
 };
 
 /* [QUI AGGIUNGEREMO LE FUNZIONI PER SPORT, SOCIETÀ, ECC. UNA ALLA VOLTA] */
+
+/* ══════════════════════════════════════════════════════════
+   HELPER: FILTRI CASCATA NEI TAB DELLA DASHBOARD
+   Logica: soc → cat → team, applicata per ogni tab
+   Visibilità per ruolo:
+     admin/manager      → soc + cat + team visibili
+     presidente/segretario → soc nascosto (forzato), cat + team visibili
+     responsabile/dirigente/allenatore → soc + cat nascosti (forzati), team visibile
+   ══════════════════════════════════════════════════════════ */
+
+/* Popola il select categoria in base a un array di oggetti con {category_id, category_name}
+   e opzionalmente filtrando per socId.
+   Il selId è l'id dell'elemento HTML select. */
+function _populateTabCatFilter(selId, items, socId) {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    const filtered = socId ? items.filter(i => i.society_id === socId) : items;
+    const cats = [...new Map(
+        filtered.filter(i => i.category_id)
+                .map(i => [i.category_id, i.category_name || i.category_id])
+    ).entries()].sort((a,b) => (a[1]||'').localeCompare(b[1]||''));
+    sel.innerHTML = '<option value="">Tutte le categorie</option>' +
+        cats.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+}
+
+/* Popola il select squadra in base a socId e/o catId */
+function _populateTabTeamFilter(selId, items, socId, catId) {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    let filtered = items;
+    if (socId) filtered = filtered.filter(i => i.society_id === socId);
+    if (catId) filtered = filtered.filter(i => i.category_id === catId);
+    // Deduplica per team_id — supporta sia {team_id, name} (stats) sia {team_id, team} (atleti) sia {team_id, teams{name}} (sessioni)
+    const teams = [...new Map(
+        filtered.filter(i => i.team_id)
+                .map(i => [i.team_id, i.name || i.team || i.teams?.name || i.team_id])
+    ).entries()].sort((a,b) => (a[1]||'').localeCompare(b[1]||''));
+    sel.innerHTML = '<option value="">Tutte le squadre</option>' +
+        teams.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+}
+
+/* Applica la visibilità dei filtri nei tab in base al ruolo effettivo */
+function _applyTabFilterVisibility() {
+    const role = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isGlobal    = ['admin','manager'].includes(role);
+    const isSocScoped = ['presidente','segretario'].includes(role);
+    const isTeamScoped = ['responsabile','dirigente','allenatore'].includes(role);
+
+    // ID dei selects per ogni tipo di filtro in ogni tab
+    const socSelects  = ['dash-stats-soc','dash-match-soc','dash-pres-soc','dash-ath-soc'];
+    const catSelects  = ['dash-stats-cat','dash-match-cat','dash-pres-cat','dash-ath-cat'];
+    const teamSelects = ['dash-stats-team','dash-match-team','dash-pres-team','dash-ath-team'];
+
+    socSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = isGlobal ? '' : 'none';
+    });
+
+    catSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        // Nascosto solo per team-scoped (dirigente/allenatore vedono solo le proprie squadre, inutile filtrare per cat)
+        el.style.display = isTeamScoped ? 'none' : '';
+    });
+
+    teamSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        // Visibile sempre (ma per team-scoped contiene solo le proprie squadre)
+        el.style.display = '';
+    });
+}
+
+/* ── Handlers cascata Tab 0: Stats Gare ── */
+window.onDashStatsSocChange = function() {
+    const socId = document.getElementById('dash-stats-soc')?.value || null;
+    _populateTabCatFilter('dash-stats-cat', window._dashMatchStats, socId);
+    _populateTabTeamFilter('dash-stats-team', window._dashMatchStats, socId, null);
+    window.renderDashStats();
+};
+window.onDashStatsCatChange = function() {
+    const socId = document.getElementById('dash-stats-soc')?.value || null;
+    const catId = document.getElementById('dash-stats-cat')?.value || null;
+    _populateTabTeamFilter('dash-stats-team', window._dashMatchStats, socId, catId);
+    window.renderDashStats();
+};
+
+/* ── Handlers cascata Tab 1: Partite ── */
+window.onDashMatchSocChange = function() {
+    const socId = document.getElementById('dash-match-soc')?.value || null;
+    _populateTabCatFilter('dash-match-cat', window._dashMatches, socId);
+    _populateTabTeamFilter('dash-match-team', window._dashMatches, socId, null);
+    window.renderDashMatches();
+};
+window.onDashMatchCatChange = function() {
+    const socId = document.getElementById('dash-match-soc')?.value || null;
+    const catId = document.getElementById('dash-match-cat')?.value || null;
+    _populateTabTeamFilter('dash-match-team', window._dashMatches, socId, catId);
+    window.renderDashMatches();
+};
+
+/* ── Handlers cascata Tab 2: Presenze ── */
+window.onDashPresSocChange = function() {
+    const socId = document.getElementById('dash-pres-soc')?.value || null;
+    _populateTabCatFilter('dash-pres-cat', window._dashSessions, socId);
+    _populateTabTeamFilter('dash-pres-team', window._dashSessions, socId, null);
+    window.renderDashPresenze();
+};
+window.onDashPresCatChange = function() {
+    const socId = document.getElementById('dash-pres-soc')?.value || null;
+    const catId = document.getElementById('dash-pres-cat')?.value || null;
+    _populateTabTeamFilter('dash-pres-team', window._dashSessions, socId, catId);
+    window.renderDashPresenze();
+};
+
+/* ── Handlers cascata Tab 3: Atleti ── */
+window.onDashAthSocChange = function() {
+    const socId = document.getElementById('dash-ath-soc')?.value || null;
+    _populateTabCatFilter('dash-ath-cat', window._dashAthletes, socId);
+    _populateTabTeamFilter('dash-ath-team', window._dashAthletes, socId, null);
+    window.renderDashAthletes();
+};
+window.onDashAthCatChange = function() {
+    const socId = document.getElementById('dash-ath-soc')?.value || null;
+    const catId = document.getElementById('dash-ath-cat')?.value || null;
+    _populateTabTeamFilter('dash-ath-team', window._dashAthletes, socId, catId);
+    window.renderDashAthletes();
+};
 
 /* ============================================================
    MODULO ANAGRAFICA GENITORI (solo admin/manager)
