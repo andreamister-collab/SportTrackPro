@@ -4767,6 +4767,7 @@ window.openStatistiche = async function(sessionId) {
     const wins   = officialMatches.filter(m => m.match_status === 'vittoria').length;
     const draws  = officialMatches.filter(m => m.match_status === 'pareggio').length;
     const losses = officialMatches.filter(m => m.match_status === 'sconfitta').length;
+    const totalPts = wins * 3 + draws * 1;
     const homeMatches  = officialMatches.filter(m => m.is_home === true).length;
     const awayMatches  = officialMatches.filter(m => m.is_home === false).length;
     const totalGF = officialMatches.reduce((s,m) => s + (m.goals_for||0), 0);
@@ -4797,6 +4798,7 @@ window.openStatistiche = async function(sessionId) {
 
         <!-- KPI GRID -->
         <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; margin-bottom:1.25rem;">
+            ${kpiCard('🏆 Punti', totalPts, wins+'V · '+draws+'P · '+losses+'S', '#f59e0b')}
             ${kpiCard('Partite', totalMatches, 'ufficiali giocate', '#2563eb')}
             ${kpiCard('🏠 Casa', homeMatches, 'partite in casa', '#2563eb')}
             ${kpiCard('🚌 Trasferta', awayMatches, 'partite fuori', '#8b5cf6')}
@@ -5565,7 +5567,22 @@ window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
         const pres = attendances.filter(a => (a.status||'').toLowerCase() === 'presente').length;
         const percPres = tot > 0 ? Math.round((pres/tot)*100) : 0;
 
+        // Calcolo punti totali (partite ufficiali)
+        let totalPts = 0, totalWins = 0, totalDraws = 0;
+        try {
+            let mdQ = client.from('match_details').select('session_id, match_status, is_friendly, sessions!inner(team_id, society_id, season_id)').eq('is_friendly', false);
+            if (seasonId && seasonId !== 'all') mdQ = mdQ.eq('sessions.season_id', seasonId);
+            if (socId && socId !== 'all') mdQ = mdQ.eq('sessions.society_id', socId);
+            if (hasTeamScope) mdQ = mdQ.in('sessions.team_id', scopedTeamIds);
+            const { data: mdData } = await mdQ;
+            (mdData||[]).forEach(d => {
+                if (d.match_status === 'vittoria') { totalPts += 3; totalWins++; }
+                else if (d.match_status === 'pareggio') { totalPts += 1; totalDraws++; }
+            });
+        } catch(e) { /* ignora errori pts */ }
+
         const kpis = [
+            { label:'🏆 Punti Totali',     value: totalPts,       sub: `${totalWins}V · ${totalDraws}P`,   color:'#f59e0b' },
             { label:'Atleti Totali',      value: totalAtleti,   sub: `in ${totalCategorie} categor${totalCategorie === 1 ? 'ia' : 'ie'}`, color:'#2563eb' },
             { label:'Sessioni Registrate', value: totalSessioni,  sub: 'tutte le categorie',              color:'#10b981' },
             { label:'% Presenze Globali',  value: percPres+'%',   sub: `${pres}/${tot} totali`,            color:'#f59e0b' },
@@ -6711,6 +6728,7 @@ window.initGenitoreView = async function() {
             const totYC    = Object.values(statsBy[ath.id]||{}).reduce((s,x)=>s+(x.yc||0),0);
             const totConv  = Object.values(presBy[ath.id]||{}).reduce((s,x)=>s+(x.conv||0),0);
             const totPres  = Object.values(presBy[ath.id]||{}).reduce((s,x)=>s+(x.pres||0),0);
+            const totPts   = Object.values(teamGaraStats).reduce((s,t)=>s+(t.pts||0),0);
 
             // HTML partite
             const matchesHTML = matchSessions.length === 0
@@ -6817,6 +6835,10 @@ window.initGenitoreView = async function() {
                         <div style="font-size:1.4rem;font-weight:800;color:#fde68a;line-height:1;">${totConv}</div>
                         <div style="font-size:0.6rem;color:rgba(255,255,255,0.55);text-transform:uppercase;margin-top:3px;">Convoc.</div>
                     </div>
+                    <div style="background:rgba(255,255,255,0.13);border-radius:12px;padding:10px 18px;text-align:center;border:1px solid rgba(255,255,255,0.1);">
+                        <div style="font-size:1.4rem;font-weight:800;color:#fbbf24;line-height:1;">${totPts}</div>
+                        <div style="font-size:0.6rem;color:rgba(255,255,255,0.55);text-transform:uppercase;margin-top:3px;">🏆 Punti</div>
+                    </div>
                     ${totYC>0 ? `<div style="background:rgba(255,255,255,0.13);border-radius:12px;padding:10px 18px;text-align:center;border:1px solid rgba(255,255,255,0.1);">
                         <div style="font-size:1.4rem;font-weight:800;color:#fcd34d;line-height:1;">${totYC}</div>
                         <div style="font-size:0.6rem;color:rgba(255,255,255,0.55);text-transform:uppercase;margin-top:3px;">🟨 Amm</div>
@@ -6832,6 +6854,8 @@ window.initGenitoreView = async function() {
                     ${pill(stAct.min||0,'⏱ Min','#2563eb','#eff6ff','#bfdbfe')}
                     ${pill(stAct.yc||0,'🟨 Amm','#f59e0b','#fffbeb','#fde68a')}
                     ${pill(stAct.rc||0,'🟥 Esp','#ef4444','#fef2f2','#fecaca')}
+                    <div style="width:1px;background:#e2e8f0;margin:0 4px;"></div>
+                    ${pill(totPts,'🏆 Punti','#f59e0b','#fffbeb','#fde68a')}
                     <div style="width:1px;background:#e2e8f0;margin:0 4px;"></div>
                     ${pill(prAct.pres||0,'Presenze','#10b981','#f0fdf4','#bbf7d0')}
                     ${pill(prAct.conv||0,'Convoc.','#2563eb','#eff6ff','#bfdbfe')}
