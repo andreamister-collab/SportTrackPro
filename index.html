@@ -5162,6 +5162,7 @@ window.templateDashboard = function() {
                         <thead>
                             <tr style="background:#f8fafc; color:#64748b;">
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Squadra</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#f59e0b;" title="Punti">Pts</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;" title="Partite ufficiali">P</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#2563eb;" title="In casa">🏠</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#8b5cf6;" title="In trasferta">🚌</th>
@@ -5173,7 +5174,7 @@ window.templateDashboard = function() {
                             </tr>
                         </thead>
                         <tbody id="dash-stats-body">
-                            <tr><td colspan="9" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
+                            <tr><td colspan="10" style="text-align:center; padding:20px; color:#94a3b8;">Caricamento...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -5826,7 +5827,7 @@ window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
                 society_id: s.society_id,
                 category_id: s.teams?.category_id || null,
                 category_name: s.teams?.categories?.name || '-',
-                partite:0, casa:0, trasferta:0, gf:0, gs:0, amm:0, esp:0, w:0, d:0, l:0
+                partite:0, casa:0, trasferta:0, gf:0, gs:0, amm:0, esp:0, w:0, d:0, l:0, pts:0
             };
             const t = teamMap[s.team_id];
             t.partite++;
@@ -5835,8 +5836,8 @@ window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
                 else if (det.is_home === false) t.trasferta++;
                 t.gf += det.goals_for || 0;
                 t.gs += det.goals_against || 0;
-                if (det.match_status === 'vittoria') t.w++;
-                else if (det.match_status === 'pareggio') t.d++;
+                if (det.match_status === 'vittoria') { t.w++; t.pts += 3; }
+                else if (det.match_status === 'pareggio') { t.d++; t.pts += 1; }
                 else if (det.match_status === 'sconfitta') t.l++;
             }
         });
@@ -5877,16 +5878,17 @@ window.renderDashStats = function() {
             (!filterCat  || t.category_id === filterCat) &&
             (!filterTeam || t.team_id     === filterTeam)
         )
-        .sort((a,b) => b.gf - a.gf);
+        .sort((a,b) => b.pts - a.pts);
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#94a3b8;">Nessun dato partite ufficiali disponibile.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px; color:#94a3b8;">Nessun dato partite ufficiali disponibile.</td></tr>';
         return;
     }
 
     tbody.innerHTML = filtered.map(t => `
         <tr style="border-bottom:1px solid #f1f5f9;">
             <td style="padding:8px 10px; font-weight:600; font-size:0.82rem;">${t.name}<br><span style="font-size:0.7rem; color:#94a3b8;">${t.category_name !== '-' ? t.category_name + ' · ' : ''}${t.soc}</span></td>
+            <td style="padding:8px 10px; text-align:center; font-weight:800; font-family:'Space Grotesk',sans-serif; font-size:1rem; color:#f59e0b;">${t.pts}</td>
             <td style="padding:8px 10px; text-align:center; color:#64748b; font-weight:700;">${t.partite}</td>
             <td style="padding:8px 10px; text-align:center; color:#2563eb; font-weight:700;" title="In casa">${t.casa}</td>
             <td style="padding:8px 10px; text-align:center; color:#8b5cf6; font-weight:700;" title="In trasferta">${t.trasferta}</td>
