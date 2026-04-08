@@ -4563,9 +4563,11 @@ window.exportConvocazioniIMG = async function(sessionId) {
         // Costruisce l'ordine dei ruoli: prima quelli presenti nella squadra (in ordine di primo atleta inserito),
         // poi eventuale "Altro" in fondo
         const ruoliPresenti = Object.keys(atletiRaggruppati);
+        const prioritaRuoli = ['Portiere', 'Difensore', 'Centrocampista', 'Altro', 'Attaccante'];
+        const ruoliNoti = new Set(prioritaRuoli);
         const ordineRuoli = [
-            ...ruoliPresenti.filter(r => r !== 'Altro').sort(),
-            ...ruoliPresenti.filter(r => r === 'Altro')
+            ...prioritaRuoli.filter(r => ruoliPresenti.includes(r)),
+            ...ruoliPresenti.filter(r => !ruoliNoti.has(r)).sort()
         ];
 
         // Palette di colori da assegnare ciclicamente ai ruoli dinamici
