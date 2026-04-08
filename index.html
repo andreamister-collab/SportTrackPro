@@ -3518,70 +3518,104 @@ async function saveSession(id) {
 }
 
 async function openAttendanceModal(sessionId) {
-    const m = getModal();
-    // Expand modal width for the attendance register
-    const modalContent = document.querySelector('.modal-content');
-    if (modalContent) {
-        modalContent.style.maxWidth = '98vw';
-        modalContent.style.width = '98vw';
-        modalContent.style.padding = '1.25rem 1.5rem';
-        modalContent.style.maxHeight = '92vh';
-    }
     const { data: session } = await client.from('sessions').select('*, session_types(name), teams(id, name, season_id)').eq('id', sessionId).single();
-    if(!session) return;
-    // Restore modal size when closed
-    const origClose = m.close.bind(m);
-    m.close = function() { origClose(); if (modalContent) { modalContent.style.maxWidth = ''; modalContent.style.width = ''; modalContent.style.padding = ''; modalContent.style.maxHeight = ''; } m.close = origClose; };
+    if (!session) return;
     const isGara = session.session_types?.name.toLowerCase().includes('gara');
     const { data: relations } = await client.from('athlete_team_seasons').select(`jersey_number, athletes(id, name, surname)`).eq('team_id', session.team_id).eq('season_id', session.season_id);
     const { data: existing } = await client.from('attendances').select('*').eq('session_id', sessionId);
     const attMap = {}; existing?.forEach(a => attMap[a.athlete_id] = a);
 
-    m.open(isGara ? "Convocazioni" : "Registro Presenze", `
-        <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:12px; border:1px solid #e2e8f0;">
-            <strong>${session.title}</strong> &nbsp;·&nbsp; ${new Date(session.session_date).toLocaleDateString('it-IT')}
+    // Usa il popup overlay dedicato (come per partite) per sfruttare tutta la larghezza
+    const overlay = document.getElementById('match-popup-overlay');
+    const popupBox = document.getElementById('match-popup-box');
+    const content = document.getElementById('match-popup-content');
+    if (!overlay || !content) return;
+
+    // Stile popup: larghezza generosa, centrato
+    popupBox.style.maxWidth = '900px';
+
+    const stars = (k, p) => [1,2,3,4,5].map(s =>
+        `<span onclick="setRating(this,${s})" style="cursor:pointer;color:${s<=(p[k]||0)?'#f59e0b':'#e2e8f0'};font-size:16px;line-height:1;">★</span>`
+    ).join('');
+
+    content.innerHTML = `
+    <div style="background:white; border-radius:16px; overflow:hidden; font-family:'DM Sans',sans-serif;">
+
+        <!-- HEADER -->
+        <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb); padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="font-size:11px; font-weight:700; letter-spacing:0.12em; color:rgba(255,255,255,0.6); text-transform:uppercase; margin-bottom:4px;">${isGara ? '📋 Convocazioni' : '📋 Registro Presenze'}</div>
+                <div style="font-size:16px; font-weight:800; color:white;">${session.title}</div>
+                <div style="font-size:12px; color:rgba(255,255,255,0.6); margin-top:2px;">${new Date(session.session_date).toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button onclick="saveAttendances('${sessionId}', ${isGara})"
+                    style="background:#10b981; color:white; border:none; padding:10px 24px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit;">
+                    💾 SALVA
+                </button>
+                <button onclick="window.closeMatchPopup()"
+                    style="background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.25); padding:10px 16px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; font-family:inherit;">
+                    ✕
+                </button>
+            </div>
         </div>
-        <div style="max-height:calc(92vh - 150px); overflow-y:auto; overflow-x:hidden;">
+
+        <!-- INTESTAZIONE COLONNE -->
+        <div style="display:grid; grid-template-columns:44px 1fr 150px${!isGara ? ' repeat(5,90px)' : ''}; gap:0; padding:8px 20px; background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8;">#</div>
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8;">Atleta</div>
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8;">Presenza</div>
             ${!isGara ? `
-            <div style="display:grid; grid-template-columns:36px minmax(0,1fr) 130px repeat(5,1fr); gap:4px; align-items:center; padding:6px 10px; background:#f1f5f9; border-radius:6px; margin-bottom:3px; font-size:10px; font-weight:700; text-transform:uppercase; color:#64748b; letter-spacing:0.05em;">
-                <div>#</div><div>Atleta</div><div>Presenza</div>
-                <div style="text-align:center;">VEL</div><div style="text-align:center;">TEC</div><div style="text-align:center;">FIS</div><div style="text-align:center;">RES</div><div style="text-align:center;">COM</div>
-            </div>` : `
-            <div style="display:grid; grid-template-columns:36px minmax(0,1fr) 130px; gap:4px; align-items:center; padding:6px 10px; background:#f1f5f9; border-radius:6px; margin-bottom:3px; font-size:10px; font-weight:700; text-transform:uppercase; color:#64748b; letter-spacing:0.05em;">
-                <div>#</div><div>Atleta</div><div>Stato</div>
-            </div>`}
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8; text-align:center;">VEL</div>
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8; text-align:center;">TEC</div>
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8; text-align:center;">FIS</div>
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8; text-align:center;">RES</div>
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8; text-align:center;">COM</div>` : ''}
+        </div>
+
+        <!-- LISTA ATLETI -->
+        <div style="max-height:calc(85vh - 180px); overflow-y:auto; overflow-x:hidden;">
             ${(relations || []).map((r, idx) => {
                 const ath = r.athletes;
                 const reg = attMap[ath.id] || {};
                 const p = reg.performance_data || {VEL:0, TEC:0, FIS:0, RES:0, COM:0};
-                const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc';
-                const stars = (k) => [1,2,3,4,5].map(s =>
-                    `<span onclick="setRating(this,${s})" style="cursor:pointer;color:${s<=(p[k]||0)?'#f59e0b':'#e2e8f0'};font-size:15px;line-height:1;">★</span>`
-                ).join('');
+                const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
                 return `
-                <div style="display:grid; grid-template-columns:36px minmax(0,1fr) 130px${!isGara?' repeat(5,1fr)':''}; gap:4px; align-items:center; padding:7px 10px; background:${rowBg}; border-bottom:1px solid #f1f5f9;">
-                    <div style="font-size:12px; font-weight:700; color:#2563eb;">${r.jersey_number || '—'}</div>
-                    <div style="font-size:13px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ath.surname} ${ath.name}</div>
+                <div style="display:grid; grid-template-columns:44px 1fr 150px${!isGara ? ' repeat(5,90px)' : ''}; gap:0; align-items:center; padding:10px 20px; background:${rowBg}; border-bottom:1px solid #f1f5f9;">
+                    <div style="font-size:13px; font-weight:800; color:#2563eb;">${r.jersey_number || '—'}</div>
+                    <div style="font-size:14px; font-weight:600; color:#1e293b;">${ath.surname} ${ath.name}</div>
                     <div>
-                        <select class="att-status" data-ath="${ath.id}" style="padding:4px 6px; border-radius:5px; border:1px solid #cbd5e1; font-size:11px; width:100%; background:white; color:#334155; font-weight:600;">
-                            <option value="presente" ${reg.status==='presente'?'selected':''}>✅ Presente</option>
-                            <option value="assente" ${reg.status==='assente'?'selected':''}>❌ Assente</option>
-                            <option value="giustificato" ${reg.status==='giustificato'?'selected':''}>📋 Giustificato</option>
-                            <option value="infortunato" ${reg.status==='infortunato'?'selected':''}>🩹 Infortunato</option>
+                        <select class="att-status" data-ath="${ath.id}" style="padding:5px 8px; border-radius:6px; border:1px solid #e2e8f0; font-size:12px; width:100%; background:white; color:#334155; font-weight:600; cursor:pointer;">
+                            <option value="presente"    ${reg.status==='presente'    ?'selected':''}>✅ Presente</option>
+                            <option value="assente"     ${reg.status==='assente'     ?'selected':''}>❌ Assente</option>
+                            <option value="giustificato"${reg.status==='giustificato'?'selected':''}>📋 Giustificato</option>
+                            <option value="infortunato" ${reg.status==='infortunato' ?'selected':''}>🩹 Infortunato</option>
                         </select>
                     </div>
                     ${!isGara ? `
-                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="VEL" data-value="${p.VEL||0}">${stars('VEL')}</div>
-                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="TEC" data-value="${p.TEC||0}">${stars('TEC')}</div>
-                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="FIS" data-value="${p.FIS||0}">${stars('FIS')}</div>
-                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="RES" data-value="${p.RES||0}">${stars('RES')}</div>
-                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="COM" data-value="${p.COM||0}">${stars('COM')}</div>
+                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="VEL" data-value="${p.VEL||0}">${stars('VEL',p)}</div>
+                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="TEC" data-value="${p.TEC||0}">${stars('TEC',p)}</div>
+                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="FIS" data-value="${p.FIS||0}">${stars('FIS',p)}</div>
+                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="RES" data-value="${p.RES||0}">${stars('RES',p)}</div>
+                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="COM" data-value="${p.COM||0}">${stars('COM',p)}</div>
                     ` : ''}
                 </div>`;
             }).join('')}
         </div>
-        <button onclick="saveAttendances('${sessionId}', ${isGara})" style="background:#10b981; color:white; width:100%; padding:13px; border:none; border-radius:8px; font-weight:bold; margin-top:12px; cursor:pointer; font-size:13px;">SALVA REGISTRO</button>
-    `);
+
+        <!-- FOOTER -->
+        <div style="padding:14px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:12px; color:#94a3b8;">${(relations||[]).length} atleti</span>
+            <button onclick="saveAttendances('${sessionId}', ${isGara})"
+                style="background:#10b981; color:white; border:none; padding:10px 32px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit;">
+                💾 SALVA REGISTRO
+            </button>
+        </div>
+    </div>`;
+
+    // Reset box animation e apri overlay
+    popupBox.style.animation = 'none'; void popupBox.offsetWidth; popupBox.style.animation = '';
+    overlay.classList.add('active');
 }
 
 async function saveAttendances(sessionId, isGara) {
@@ -3605,12 +3639,16 @@ async function saveAttendances(sessionId, isGara) {
     
     // UPSERT gestisce sia creazione che aggiornamento (chiave: session_id + athlete_id)
     const { error } = await client.from('attendances').upsert(records, { onConflict: 'session_id, athlete_id' });
-    if (!error) { 
-        getModal().close(); 
-        initSessioni(); 
-        alert("Registro salvato!"); 
+    if (!error) {
+        window.closeMatchPopup();
+        // Reset maxWidth del popup box
+        const pb = document.getElementById('match-popup-box');
+        if (pb) pb.style.maxWidth = '';
+        initSessioni();
+        alert("Registro salvato!");
     } else {
         console.error("Errore salvataggio:", error);
+        alert("Errore nel salvataggio: " + error.message);
     }
 }
 
@@ -3921,7 +3959,7 @@ window.matchOnSeasonChange = window.matchOnSeasonChange;
 window.closeMatchPopup = function() {
     const overlay = document.getElementById('match-popup-overlay');
     const box = document.getElementById('match-popup-box');
-    if (box) box.style.animation = 'none';
+    if (box) { box.style.animation = 'none'; box.style.maxWidth = ''; }
     if (overlay) overlay.classList.remove('active');
     const content = document.getElementById('match-popup-content');
     if (content) content.innerHTML = '';
