@@ -468,6 +468,8 @@
             border-radius: 16px;
             width: 90%;
             max-width: 450px;
+            max-height: 90vh;
+            overflow-y: auto;
             box-shadow: 0 25px 50px rgba(0,0,0,0.2);
             border: 1px solid var(--border);
         }
@@ -3519,12 +3521,17 @@ async function openAttendanceModal(sessionId) {
     const m = getModal();
     // Expand modal width for the attendance register
     const modalContent = document.querySelector('.modal-content');
-    if (modalContent) { modalContent.style.maxWidth = '780px'; modalContent.style.width = '95%'; }
+    if (modalContent) {
+        modalContent.style.maxWidth = '98vw';
+        modalContent.style.width = '98vw';
+        modalContent.style.padding = '1.25rem 1.5rem';
+        modalContent.style.maxHeight = '92vh';
+    }
     const { data: session } = await client.from('sessions').select('*, session_types(name), teams(id, name, season_id)').eq('id', sessionId).single();
     if(!session) return;
     // Restore modal size when closed
     const origClose = m.close.bind(m);
-    m.close = function() { origClose(); if (modalContent) { modalContent.style.maxWidth = ''; modalContent.style.width = ''; } m.close = origClose; };
+    m.close = function() { origClose(); if (modalContent) { modalContent.style.maxWidth = ''; modalContent.style.width = ''; modalContent.style.padding = ''; modalContent.style.maxHeight = ''; } m.close = origClose; };
     const isGara = session.session_types?.name.toLowerCase().includes('gara');
     const { data: relations } = await client.from('athlete_team_seasons').select(`jersey_number, athletes(id, name, surname)`).eq('team_id', session.team_id).eq('season_id', session.season_id);
     const { data: existing } = await client.from('attendances').select('*').eq('session_id', sessionId);
@@ -3534,9 +3541,9 @@ async function openAttendanceModal(sessionId) {
         <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:12px; font-size:12px; border:1px solid #e2e8f0;">
             <strong>${session.title}</strong> &nbsp;·&nbsp; ${new Date(session.session_date).toLocaleDateString('it-IT')}
         </div>
-        <div style="max-height:500px; overflow-y:auto; padding-right:2px;">
+        <div style="max-height:calc(92vh - 160px); overflow-y:auto; padding-right:4px;">
             ${!isGara ? `
-            <div style="display:grid; grid-template-columns:28px 1fr 130px repeat(5,56px); gap:0; align-items:center; padding:5px 8px; background:#f1f5f9; border-radius:6px; margin-bottom:4px; font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8; letter-spacing:0.06em;">
+            <div style="display:grid; grid-template-columns:40px 1fr 160px repeat(5,80px); gap:0; align-items:center; padding:7px 12px; background:#f1f5f9; border-radius:8px; margin-bottom:4px; font-size:11px; font-weight:700; text-transform:uppercase; color:#64748b; letter-spacing:0.06em; border:1px solid #e2e8f0;">
                 <div>#</div><div>Atleta</div><div>Presenza</div>
                 <div style="text-align:center;">VEL</div><div style="text-align:center;">TEC</div><div style="text-align:center;">FIS</div><div style="text-align:center;">RES</div><div style="text-align:center;">COM</div>
             </div>` : `
@@ -3549,14 +3556,14 @@ async function openAttendanceModal(sessionId) {
                 const p = reg.performance_data || {VEL:0, TEC:0, FIS:0, RES:0, COM:0};
                 const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc';
                 const stars = (k) => [1,2,3,4,5].map(s =>
-                    `<span onclick="setRating(this,${s})" style="cursor:pointer;color:${s<=(p[k]||0)?'#f59e0b':'#cbd5e1'};font-size:14px;line-height:1;">★</span>`
+                    `<span onclick="setRating(this,${s})" style="cursor:pointer;color:${s<=(p[k]||0)?'#f59e0b':'#cbd5e1'};font-size:18px;line-height:1.2;">★</span>`
                 ).join('');
                 return `
-                <div style="display:grid; grid-template-columns:28px 1fr 130px${!isGara?' repeat(5,56px)':''}; gap:0; align-items:center; padding:6px 8px; background:${rowBg}; border-bottom:1px solid #f1f5f9; border-radius:4px;">
-                    <div style="font-size:11px; font-weight:700; color:#2563eb;">${r.jersey_number || '—'}</div>
-                    <div style="font-size:12px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ath.surname} ${ath.name}</div>
+                <div style="display:grid; grid-template-columns:40px 1fr 160px${!isGara?' repeat(5,80px)':''}; gap:0; align-items:center; padding:9px 12px; background:${rowBg}; border-bottom:1px solid #f1f5f9; border-radius:4px;">
+                    <div style="font-size:12px; font-weight:700; color:#2563eb;">${r.jersey_number || '—'}</div>
+                    <div style="font-size:13px; font-weight:600; color:#1e293b;">${ath.surname} ${ath.name}</div>
                     <div>
-                        <select class="att-status" data-ath="${ath.id}" style="padding:3px 5px; border-radius:4px; border:1px solid #cbd5e1; font-size:11px; width:100%; background:white; color:#334155;">
+                        <select class="att-status" data-ath="${ath.id}" style="padding:6px 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; width:100%; background:white; color:#334155; font-weight:600;">
                             <option value="presente" ${reg.status==='presente'?'selected':''}>✅ Presente</option>
                             <option value="assente" ${reg.status==='assente'?'selected':''}>❌ Assente</option>
                             <option value="giustificato" ${reg.status==='giustificato'?'selected':''}>📋 Giustificato</option>
