@@ -1100,6 +1100,16 @@ function templateSocieta() {
             <h2>GESTIONE SOCIETÀ</h2>
             <button class="btn" id="btn-add-societa">+ Nuova Società</button>
         </div>
+        <div class="filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Cerca Società</label>
+                <input type="text" id="f-soc-search" placeholder="Nome..." oninput="applySocietaFilters()" style="width:100%">
+            </div>
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Sport</label>
+                <select id="f-soc-sport" onchange="applySocietaFilters()" style="width:100%"><option value="">Tutti gli Sport</option></select>
+            </div>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -1129,19 +1139,47 @@ const { data, error } = await client
         return; 
     }
 
-    tbody.innerHTML = data?.map(s => {
-        // Protezione per nomi con apostrofi
-        const safeName = s.name.replace(/'/g, "\\'");
-        return `
-        <tr>
-            <td><strong>${s.name}</strong></td>
-            <td>${s.sports ? s.sports.icon + ' ' + s.sports.name : '-'}</td>
-            <td style="text-align:right">
-                <button class="btn-sm btn-warning" onclick="handleSocietaEdit('${s.id}', '${safeName}', '${s.sport_id}')">✏️</button>
-                <button class="btn-sm btn-danger" onclick="handleSocietaDelete('${s.id}')">🗑️</button>
-            </td>
-        </tr>`;
-    }).join('') || '<tr><td colspan="3">Nessuna società.</td></tr>';
+    // Popola filtro sport
+    const fSport = document.getElementById('f-soc-sport');
+    if (fSport && fSport.options.length <= 1) {
+        const sportsMap = {};
+        (data || []).forEach(s => { if (s.sports) sportsMap[s.sport_id] = s.sports; });
+        Object.entries(sportsMap).forEach(([id, sp]) => {
+            fSport.innerHTML += `<option value="${id}">${sp.icon} ${sp.name}</option>`;
+        });
+    }
+
+    // Salva dati globalmente per il filtro
+    window._societaData = data || [];
+    applySocietaFilters();
+
+    function renderSocieta(rows) {
+        tbody.innerHTML = rows?.map(s => {
+            const safeName = s.name.replace(/'/g, "\\'");
+            return `
+            <tr>
+                <td><strong>${s.name}</strong></td>
+                <td>${s.sports ? s.sports.icon + ' ' + s.sports.name : '-'}</td>
+                <td style="text-align:right">
+                    <button class="btn-sm btn-warning" onclick="handleSocietaEdit('${s.id}', '${safeName}', '${s.sport_id}')">✏️</button>
+                    <button class="btn-sm btn-danger" onclick="handleSocietaDelete('${s.id}')">🗑️</button>
+                </td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="3">Nessuna società.</td></tr>';
+    }
+
+    window.applySocietaFilters = function() {
+        const search = (document.getElementById('f-soc-search')?.value || '').toLowerCase();
+        const sport = document.getElementById('f-soc-sport')?.value;
+        const filtered = (window._societaData || []).filter(s => {
+            const matchName = !search || s.name.toLowerCase().includes(search);
+            const matchSport = !sport || s.sport_id === sport;
+            return matchName && matchSport;
+        });
+        renderSocieta(filtered);
+    };
+
+    renderSocieta(data);
 
     document.getElementById('btn-add-societa').onclick = async () => {
         const { data: sportsList } = await client.from('sports').select('*').order('name');
@@ -1207,6 +1245,16 @@ function templateCategoria() {
             <h2>GESTIONE CATEGORIE</h2>
             <button class="btn" id="btn-add-categoria">+ Nuova Categoria</button>
         </div>
+        <div class="filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Cerca Categoria</label>
+                <input type="text" id="f-cat-search" placeholder="Nome..." oninput="applyCategoriaFilters()" style="width:100%">
+            </div>
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Società</label>
+                <select id="f-cat-soc" onchange="applyCategoriaFilters()" style="width:100%"><option value="">Tutte le Società</option></select>
+            </div>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -1238,21 +1286,46 @@ async function initCategoria() {
         return; 
     }
 
-    tbody.innerHTML = data?.map(c => {
-        const safeName = c.name.replace(/'/g, "\\'");
-        // Supabase restituisce l'oggetto società correlato
-        const nomeSocieta = c.societies ? c.societies.name : 'N/A';
-        
-        return `
-        <tr>
-            <td><strong>${c.name}</strong></td>
-            <td>${nomeSocieta}</td>
-            <td style="text-align:right">
-                <button class="btn-sm btn-warning" onclick="handleCategoriaEdit('${c.id}', '${safeName}', '${c.society_id}')">✏️</button>
-                <button class="btn-sm btn-danger" onclick="handleCategoriaDelete('${c.id}')">🗑️</button>
-            </td>
-        </tr>`;
-    }).join('') || '<tr><td colspan="3">Nessuna categoria.</td></tr>';
+    // Popola filtro società
+    const fSoc = document.getElementById('f-cat-soc');
+    if (fSoc && fSoc.options.length <= 1) {
+        const socMap = {};
+        (data || []).forEach(c => { if (c.societies && c.society_id) socMap[c.society_id] = c.societies.name; });
+        Object.entries(socMap).sort((a,b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+            fSoc.innerHTML += `<option value="${id}">${name}</option>`;
+        });
+    }
+
+    window._categoriaData = data || [];
+
+    function renderCategoria(rows) {
+        tbody.innerHTML = rows?.map(c => {
+            const safeName = c.name.replace(/'/g, "\\'");
+            const nomeSocieta = c.societies ? c.societies.name : 'N/A';
+            return `
+            <tr>
+                <td><strong>${c.name}</strong></td>
+                <td>${nomeSocieta}</td>
+                <td style="text-align:right">
+                    <button class="btn-sm btn-warning" onclick="handleCategoriaEdit('${c.id}', '${safeName}', '${c.society_id}')">✏️</button>
+                    <button class="btn-sm btn-danger" onclick="handleCategoriaDelete('${c.id}')">🗑️</button>
+                </td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="3">Nessuna categoria.</td></tr>';
+    }
+
+    window.applyCategoriaFilters = function() {
+        const search = (document.getElementById('f-cat-search')?.value || '').toLowerCase();
+        const soc = document.getElementById('f-cat-soc')?.value;
+        const filtered = (window._categoriaData || []).filter(c => {
+            const matchName = !search || c.name.toLowerCase().includes(search);
+            const matchSoc = !soc || c.society_id === soc;
+            return matchName && matchSoc;
+        });
+        renderCategoria(filtered);
+    };
+
+    renderCategoria(data);
 
     // Gestione tasto Aggiungi
     const btnAdd = document.getElementById('btn-add-categoria');
@@ -1348,8 +1421,27 @@ function templateSquadra() {
             <h2>GESTIONE SQUADRE</h2>
             <button class="btn" id="btn-add-squadra">+ Nuova Squadra</button>
         </div>
-        <div id="team-season-info" style="margin-bottom:1rem; font-weight:bold; color:#059669; padding: 8px; background: #ecfdf5; border-radius: 4px; display: inline-block;">
-            Caricamento stagione...
+        <div class="filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Stagione</label>
+                <select id="f-sq-season" onchange="applySquadraFilters()" style="width:100%"><option value="">Tutte</option></select>
+            </div>
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Società</label>
+                <select id="f-sq-soc" onchange="applySquadraFilters()" style="width:100%"><option value="">Tutte</option></select>
+            </div>
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Categoria</label>
+                <select id="f-sq-cat" onchange="applySquadraFilters()" style="width:100%"><option value="">Tutte</option></select>
+            </div>
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Cerca Squadra</label>
+                <input type="text" id="f-sq-search" placeholder="Nome..." oninput="applySquadraFilters()" style="width:100%">
+            </div>
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Sport</label>
+                <select id="f-sq-sport" onchange="applySquadraFilters()" style="width:100%"><option value="">Tutti</option></select>
+            </div>
         </div>
         <table>
             <thead>
@@ -1369,67 +1461,102 @@ function templateSquadra() {
 }
 
 /**
- * Inizializza la tabella filtrando per la stagione impostata come 'is_active'
+ * Inizializza la tabella con filtri per stagione, società, categoria, squadra, sport
  */
 async function initSquadra() {
     const tbody = document.getElementById('list-squadra');
-    const infoBanner = document.getElementById('team-season-info');
     if (!tbody) return;
 
-    // 1. Recupero la Stagione Attiva
-    const { data: activeSeason, error: sErr } = await client
-        .from('seasons')
-        .select('*')
-        .eq('is_active', true)
-        .maybeSingle();
-    
-    if (!activeSeason) {
-        if (infoBanner) infoBanner.innerHTML = "⚠️ Attenzione: nessuna stagione attiva impostata.";
-        tbody.innerHTML = '<tr><td colspan="5">Seleziona una stagione attiva nelle impostazioni per vedere le squadre.</td></tr>';
-        return;
-    }
-    
-    if (infoBanner) infoBanner.innerText = `📅 Stagione Attiva: ${activeSeason.name}`;
+    // 1. Carica tutte le stagioni, società, categorie, sport
+    const [seasRes, socRes, catRes, sporRes] = await Promise.all([
+        client.from('seasons').select('id, name, is_active').order('name', { ascending: false }),
+        client.from('societies').select('id, name').order('name'),
+        client.from('categories').select('id, name, society_id').order('name'),
+        client.from('sports').select('id, name, icon').order('name')
+    ]);
 
-    // 2. Query con join sulle tabelle collegate e filtro season_id
+    const fSeason = document.getElementById('f-sq-season');
+    const fSoc    = document.getElementById('f-sq-soc');
+    const fCat    = document.getElementById('f-sq-cat');
+    const fSport  = document.getElementById('f-sq-sport');
+
+    if (fSeason && fSeason.options.length <= 1) {
+        (seasRes.data || []).forEach(s => {
+            const o = document.createElement('option');
+            o.value = s.id; o.textContent = s.name + (s.is_active ? ' ✓' : '');
+            if (s.is_active) o.selected = true;
+            fSeason.appendChild(o);
+        });
+    }
+    if (fSoc && fSoc.options.length <= 1) {
+        (socRes.data || []).forEach(s => fSoc.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+    }
+    if (fCat && fCat.options.length <= 1) {
+        (catRes.data || []).forEach(c => fCat.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+    }
+    if (fSport && fSport.options.length <= 1) {
+        (sporRes.data || []).forEach(sp => fSport.innerHTML += `<option value="${sp.id}">${sp.icon} ${sp.name}</option>`);
+    }
+
+    // 2. Carica tutte le squadre senza filtro stagione fisso
     const { data, error } = await client
         .from('teams')
-        .select(`
-            id,
-            name,
-            season_id,
-            society_id,
-            category_id,
-            sport_id,
-            societies (name),
-            categories (name),
-            sports (name, icon)
-        `)
-        .eq('season_id', activeSeason.id)
+        .select(`id, name, season_id, society_id, category_id, sport_id,
+            societies (name), categories (name), sports (name, icon)`)
         .order('name');
 
     if (error) {
-        console.error("Errore query teams:", error);
         tbody.innerHTML = `<tr><td colspan="5">Errore: ${error.message}</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = data?.map(t => {
-        const safeName = t.name.replace(/'/g, "\\'");
-        return `
-        <tr>
-            <td><strong>${t.name}</strong></td>
-            <td>${t.societies?.name || '-'}</td>
-            <td>${t.categories?.name || '-'}</td>
-            <td>${t.sports ? t.sports.icon + ' ' + t.sports.name : '-'}</td>
-            <td style="text-align:right">
-                <button class="btn-sm btn-warning" onclick="handleEditSquadra('${t.id}')">✏️</button>
-                <button class="btn-sm btn-danger" onclick="handleDeleteSquadra('${t.id}')">🗑️</button>
-            </td>
-        </tr>`;
-    }).join('') || '<tr><td colspan="5">Nessuna squadra presente per questa stagione.</td></tr>';
+    window._squadraData = data || [];
 
-    document.getElementById('btn-add-squadra').onclick = () => openSquadraModal(activeSeason.id);
+    function renderSquadra(rows) {
+        tbody.innerHTML = rows?.map(t => {
+            const safeName = t.name.replace(/'/g, "\\'");
+            return `
+            <tr>
+                <td><strong>${t.name}</strong></td>
+                <td>${t.societies?.name || '-'}</td>
+                <td>${t.categories?.name || '-'}</td>
+                <td>${t.sports ? t.sports.icon + ' ' + t.sports.name : '-'}</td>
+                <td style="text-align:right">
+                    <button class="btn-sm btn-warning" onclick="handleEditSquadra('${t.id}')">✏️</button>
+                    <button class="btn-sm btn-danger" onclick="handleDeleteSquadra('${t.id}')">🗑️</button>
+                </td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="5">Nessuna squadra trovata.</td></tr>';
+    }
+
+    window.applySquadraFilters = function() {
+        const sea    = document.getElementById('f-sq-season')?.value;
+        const soc    = document.getElementById('f-sq-soc')?.value;
+        const cat    = document.getElementById('f-sq-cat')?.value;
+        const search = (document.getElementById('f-sq-search')?.value || '').toLowerCase();
+        const sport  = document.getElementById('f-sq-sport')?.value;
+        const filtered = (window._squadraData || []).filter(t =>
+            (!sea    || t.season_id   === sea) &&
+            (!soc    || t.society_id  === soc) &&
+            (!cat    || t.category_id === cat) &&
+            (!sport  || t.sport_id    === sport) &&
+            (!search || t.name.toLowerCase().includes(search))
+        );
+        renderSquadra(filtered);
+    };
+
+    renderSquadra(data);
+
+    // Stagione attiva per il pulsante Nuova Squadra
+    const activeSeason = (seasRes.data || []).find(s => s.is_active);
+    const btnAdd = document.getElementById('btn-add-squadra');
+    if (btnAdd) {
+        btnAdd.onclick = () => {
+            const seaId = document.getElementById('f-sq-season')?.value || activeSeason?.id;
+            if (!seaId) return alert("Seleziona una stagione prima di aggiungere una squadra.");
+            openSquadraModal(seaId);
+        };
+    }
 }
 
 /**
@@ -1533,6 +1660,27 @@ function templateStaff() {
             Gestione centralizzata del personale. I <strong>Manager</strong> hanno accesso globale, 
             mentre gli altri ruoli sono vincolati alla singola società.
         </p>
+        <div class="filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Cerca Staff</label>
+                <input type="text" id="f-staff-search" placeholder="Nome o username..." oninput="applyStaffTableFilters()" style="width:100%">
+            </div>
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Società</label>
+                <select id="f-staff-soc-filter" onchange="applyStaffTableFilters()" style="width:100%"><option value="">Tutte le Società</option></select>
+            </div>
+            <div>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Ruolo / Qualifica</label>
+                <select id="f-staff-role-filter" onchange="applyStaffTableFilters()" style="width:100%">
+                    <option value="">Tutti i Ruoli</option>
+                    <option value="Allenatore">Allenatore</option>
+                    <option value="Dirigente">Dirigente</option>
+                    <option value="Presidente">Presidente</option>
+                    <option value="Medico">Staff Medico</option>
+                    <option value="manager">Manager Sistema</option>
+                </select>
+            </div>
+        </div>
         <div class="table-container">
             <table>
                 <thead>
@@ -1587,23 +1735,51 @@ async function initStaff() {
     }
 
     // 3. Rendering Tabella
-    tbody.innerHTML = data?.map(u => {
-        const roleLabel = u.role === 'manager' ? '<strong>Manager Sistema</strong>' : (u.management_role || 'Staff');
-        const socName = u.societies?.name || '<span style="color:#94a3b8; font-style:italic;">Accesso Globale</span>';
+    window._staffData = data || [];
 
-        return `
-        <tr>
-            <td><strong>${u.name}</strong></td>
-            <td>${u.username}</td>
-            <td>
-                ${roleLabel}<br><small style="color:#64748b">${socName}</small>
-            </td>
-            <td style="text-align:right">
-                <button class="btn-sm btn-warning" onclick="handleEditStaff('${u.id}')">✏️</button>
-                <button class="btn-sm btn-danger" onclick="handleDeleteStaff('${u.id}')">🗑️</button>
-            </td>
-        </tr>`;
-    }).join('') || '<tr><td colspan="4" style="text-align:center; padding:20px;">Nessun utente trovato.</td></tr>';
+    // Popola filtro società (solo per global users)
+    const fSocFilter = document.getElementById('f-staff-soc-filter');
+    if (fSocFilter && fSocFilter.options.length <= 1 && isGlobalUser) {
+        const socMap = {};
+        (data || []).forEach(u => { if (u.societies && u.society_id) socMap[u.society_id] = u.societies.name; });
+        Object.entries(socMap).sort((a,b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+            fSocFilter.innerHTML += `<option value="${id}">${name}</option>`;
+        });
+    }
+
+    function renderStaffTable(rows) {
+        tbody.innerHTML = rows?.map(u => {
+            const roleLabel = u.role === 'manager' ? '<strong>Manager Sistema</strong>' : (u.management_role || 'Staff');
+            const socName = u.societies?.name || '<span style="color:#94a3b8; font-style:italic;">Accesso Globale</span>';
+            return `
+            <tr>
+                <td><strong>${u.name}</strong></td>
+                <td>${u.username}</td>
+                <td>
+                    ${roleLabel}<br><small style="color:#64748b">${socName}</small>
+                </td>
+                <td style="text-align:right">
+                    <button class="btn-sm btn-warning" onclick="handleEditStaff('${u.id}')">✏️</button>
+                    <button class="btn-sm btn-danger" onclick="handleDeleteStaff('${u.id}')">🗑️</button>
+                </td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="4" style="text-align:center; padding:20px;">Nessun utente trovato.</td></tr>';
+    }
+
+    window.applyStaffTableFilters = function() {
+        const search = (document.getElementById('f-staff-search')?.value || '').toLowerCase();
+        const soc    = document.getElementById('f-staff-soc-filter')?.value;
+        const role   = document.getElementById('f-staff-role-filter')?.value;
+        const filtered = (window._staffData || []).filter(u => {
+            const matchSearch = !search || u.name?.toLowerCase().includes(search) || u.username?.toLowerCase().includes(search);
+            const matchSoc    = !soc || u.society_id === soc;
+            const matchRole   = !role || (role === 'manager' ? u.role === 'manager' : u.management_role === role);
+            return matchSearch && matchSoc && matchRole;
+        });
+        renderStaffTable(filtered);
+    };
+
+    renderStaffTable(data);
 
     // 4. Aggancio tasto nuovo utente
     const btnAdd = document.getElementById('btn-add-staff');
@@ -2057,6 +2233,7 @@ window.handleDeleteStaff = async function(id) {
     let _allTeams = []; // Memorizziamo tutte le squadre per il filtro progressivo
     let _lookupSocs = {};
     let _lookupSeas = {};
+    let _lookupCats = {};
 
     window.templateAssignments = function() {
         return `
@@ -2068,7 +2245,7 @@ window.handleDeleteStaff = async function(id) {
                 </div>
             </div>
 
-            <div class="filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
+            <div class="filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
                 <div>
                     <label style="font-size: 11px; color: #64748b; font-weight:bold;">Cerca Staff</label>
                     <input type="text" id="f-staff-name" placeholder="Nome..." oninput="applyStaffFilters()" style="width:100%">
@@ -2082,6 +2259,10 @@ window.handleDeleteStaff = async function(id) {
                     <select id="f-staff-sea" onchange="updateTeamFilter(); applyStaffFilters();" style="width:100%"></select>
                 </div>
                 <div>
+                    <label style="font-size: 11px; color: #64748b; font-weight:bold;">Categoria</label>
+                    <select id="f-staff-cat" onchange="updateTeamFilter(); applyStaffFilters();" style="width:100%"><option value="">Tutte</option></select>
+                </div>
+                <div>
                     <label style="font-size: 11px; color: #64748b; font-weight:bold;">Squadra</label>
                     <select id="f-staff-team" onchange="applyStaffFilters()" style="width:100%"><option value="">Tutte</option></select>
                 </div>
@@ -2093,13 +2274,14 @@ window.handleDeleteStaff = async function(id) {
                         <th>Membro Staff</th>
                         <th>Società</th>
                         <th>Stagione</th>
+                        <th>Categoria</th>
                         <th>Squadra</th>
                         <th>Ruolo</th>
                         <th style="text-align:right">Azioni</th>
                     </tr>
                 </thead>
                 <tbody id="list-assignments">
-                    <tr><td colspan="6">Caricamento in corso...</td></tr>
+                    <tr><td colspan="7">Caricamento in corso...</td></tr>
                 </tbody>
             </table>
         </div>`;
@@ -2107,21 +2289,25 @@ window.handleDeleteStaff = async function(id) {
 
     window.initAssignments = async function() {
         try {
-            const [socs, seas, teams] = await Promise.all([
+            const [socs, seas, teams, cats] = await Promise.all([
                 client.from('societies').select('*').order('name'),
                 client.from('seasons').select('*').order('name'),
-                client.from('teams').select('*').order('name')
+                client.from('teams').select('*').order('name'),
+                client.from('categories').select('id, name').order('name')
             ]);
 
             _lookupSocs = Object.fromEntries(socs.data.map(s => [s.id, s.name]));
             _lookupSeas = Object.fromEntries(seas.data.map(s => [s.id, s.name]));
+            _lookupCats = Object.fromEntries((cats.data || []).map(c => [c.id, c.name]));
             _allTeams = teams.data || [];
 
             const fSoc = document.getElementById('f-staff-soc');
             const fSea = document.getElementById('f-staff-sea');
+            const fCat = document.getElementById('f-staff-cat');
 
             if(fSoc) fSoc.innerHTML = '<option value="">Tutte</option>' + socs.data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
             if(fSea) fSea.innerHTML = seas.data.map(s => `<option value="${s.id}" ${s.is_active ? 'selected' : ''}>${s.name}</option>`).join('');
+            if(fCat) fCat.innerHTML = '<option value="">Tutte</option>' + (cats.data || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 
             // Inizializza il filtro squadre in base alla stagione attiva
             updateTeamFilter();
@@ -2133,15 +2319,17 @@ window.handleDeleteStaff = async function(id) {
     window.updateTeamFilter = function() {
         const selSoc = document.getElementById('f-staff-soc')?.value;
         const selSea = document.getElementById('f-staff-sea')?.value;
+        const selCat = document.getElementById('f-staff-cat')?.value;
         const fTea = document.getElementById('f-staff-team');
 
         if (!fTea) return;
 
-        // Filtriamo l'elenco delle squadre in base a Società e Stagione selezionate
+        // Filtriamo l'elenco delle squadre in base a Società, Stagione e Categoria selezionate
         const filteredTeams = _allTeams.filter(t => {
             const matchSoc = !selSoc || t.society_id == selSoc;
             const matchSea = !selSea || t.season_id == selSea;
-            return matchSoc && matchSea;
+            const matchCat = !selCat || t.category_id == selCat;
+            return matchSoc && matchSea && matchCat;
         });
 
         fTea.innerHTML = '<option value="">Tutte</option>' + 
@@ -2157,9 +2345,10 @@ window.handleDeleteStaff = async function(id) {
         const { data, error } = await client
             .from('user_category_seasons')
             .select(`
-                id, role, season_id, team_id, user_id, society_id,
+                id, role, season_id, team_id, user_id, society_id, category_id,
                 users!fk_staff_user (name),
-                teams!fk_ucs_team (name)
+                teams!fk_ucs_team (name),
+                categories (name)
             `);
         
         if (error) {
@@ -2173,15 +2362,17 @@ window.handleDeleteStaff = async function(id) {
 
     window.applyStaffFilters = function() {
         const name = document.getElementById('f-staff-name')?.value.toLowerCase();
-        const soc = document.getElementById('f-staff-soc')?.value;
-        const sea = document.getElementById('f-staff-sea')?.value;
+        const soc  = document.getElementById('f-staff-soc')?.value;
+        const sea  = document.getElementById('f-staff-sea')?.value;
+        const cat  = document.getElementById('f-staff-cat')?.value;
         const team = document.getElementById('f-staff-team')?.value;
 
         const filtered = _allAssignments.filter(a => {
             return (!name || a.users?.name?.toLowerCase().includes(name)) &&
-                   (!soc || a.society_id == soc) &&
-                   (!sea || a.season_id == sea) &&
-                   (!team || a.team_id == team);
+                   (!soc  || a.society_id  == soc) &&
+                   (!sea  || a.season_id   == sea) &&
+                   (!cat  || a.category_id == cat) &&
+                   (!team || a.team_id     == team);
         });
 
         const tbody = document.getElementById('list-assignments');
@@ -2192,6 +2383,7 @@ window.handleDeleteStaff = async function(id) {
                 <td><strong>${a.users?.name || 'N/D'}</strong></td>
                 <td><span style="color: #2563eb; font-weight:500;">${_lookupSocs[a.society_id] || '-'}</span></td>
                 <td>${_lookupSeas[a.season_id] || '-'}</td>
+                <td><span style="background:#f0fdf4; color:#166534; padding:3px 8px; border-radius:6px; font-size:0.82em; font-weight:600;">${a.categories?.name || _lookupCats[a.category_id] || '-'}</span></td>
                 <td>${a.teams?.name || 'N/D'}</td>
                 <td><span class="badge badge-active" style="background:#e0f2fe; color:#0369a1; padding:4px 8px; border-radius:6px; font-size:0.85em;">${a.role}</span></td>
                 <td style="text-align:right">
@@ -2199,7 +2391,7 @@ window.handleDeleteStaff = async function(id) {
                     <button class="btn-sm btn-danger" onclick="deleteAssignment('${a.id}')">🗑️</button>
                 </td>
             </tr>
-        `).join('') || '<tr><td colspan="6">Nessuna assegnazione trovata.</td></tr>';
+        `).join('') || '<tr><td colspan="7">Nessuna assegnazione trovata.</td></tr>';
     };
 
     // --- LOGICA MODALE (Invariata) ---
@@ -5865,9 +6057,13 @@ window.templateGenitori = function() {
         </div>
 
         <!-- Filtro ricerca -->
-        <div style="display:flex; gap:10px; margin-bottom:1rem; flex-wrap:wrap;">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:1rem;">
             <input type="text" id="gen-search" placeholder="🔍 Cerca per nome o cognome..." oninput="window.renderGenitori()"
-                style="flex:1; min-width:220px; padding:8px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.85rem; font-family:inherit;">
+                style="padding:8px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.85rem; font-family:inherit;">
+            <input type="text" id="gen-search-username" placeholder="🔍 Filtra per username..." oninput="window.renderGenitori()"
+                style="padding:8px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.85rem; font-family:inherit;">
+            <input type="text" id="gen-search-email" placeholder="🔍 Filtra per email..." oninput="window.renderGenitori()"
+                style="padding:8px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:0.85rem; font-family:inherit;">
         </div>
 
         <div style="overflow-x:auto;">
@@ -5935,11 +6131,16 @@ window.initGenitori = async function() {
 window.renderGenitori = function() {
     const tbody = document.getElementById('genitori-tbody');
     if (!tbody) return;
-    const search = (document.getElementById('gen-search')?.value || '').toLowerCase();
+    const search         = (document.getElementById('gen-search')?.value || '').toLowerCase();
+    const searchUsername = (document.getElementById('gen-search-username')?.value || '').toLowerCase();
+    const searchEmail    = (document.getElementById('gen-search-email')?.value || '').toLowerCase();
 
     let list = window._genitoriList.filter(g => {
-        const full = `${g.name} ${g.surname} ${g.username} ${g.email}`.toLowerCase();
-        return !search || full.includes(search);
+        const full = `${g.name} ${g.surname}`.toLowerCase();
+        const matchName     = !search         || full.includes(search);
+        const matchUsername = !searchUsername || (g.username || '').toLowerCase().includes(searchUsername);
+        const matchEmail    = !searchEmail    || (g.email || '').toLowerCase().includes(searchEmail);
+        return matchName && matchUsername && matchEmail;
     });
 
     if (list.length === 0) {
