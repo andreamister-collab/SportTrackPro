@@ -5183,23 +5183,35 @@ window.templateDashboard = function() {
         <!-- TAB 1: PARTITE ULTIMO MESE -->
         <div id="dash-tab-1" style="display:none;">
             <div class="card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:nowrap; gap:12px;">
-                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700; white-space:nowrap; margin:0;">🏆 Partite</h3>
-                    <div style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap; overflow-x:auto;">
-                        <select id="dash-match-soc" onchange="window.onDashMatchSocChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; min-width:0; flex-shrink:1; margin:0; color:#475569;">
+                <div class="header" style="margin-bottom:12px;">
+                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">🏆 Partite</h3>
+                </div>
+                <div style="background:#f8fafc; padding:12px 15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:15px; display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
+                    <div id="dash-match-soc-wrap">
+                        <label style="font-size:11px; color:#64748b; font-weight:700; letter-spacing:0.04em;">SOCIETÀ</label>
+                        <select id="dash-match-soc" onchange="window.onDashMatchSocChange()" style="width:100%; padding:7px 8px; margin-top:4px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.8rem; color:#334155; background:white;">
                             <option value="">Tutte le società</option>
                         </select>
-                        <select id="dash-match-cat" onchange="window.onDashMatchCatChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; min-width:0; flex-shrink:1; margin:0; color:#475569;">
+                    </div>
+                    <div>
+                        <label style="font-size:11px; color:#64748b; font-weight:700; letter-spacing:0.04em;">CATEGORIA</label>
+                        <select id="dash-match-cat" onchange="window.onDashMatchCatChange()" style="width:100%; padding:7px 8px; margin-top:4px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.8rem; color:#334155; background:white;">
                             <option value="">Tutte le categorie</option>
                         </select>
-                        <select id="dash-match-team" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; min-width:0; flex-shrink:1; margin:0; color:#475569;">
+                    </div>
+                    <div>
+                        <label style="font-size:11px; color:#64748b; font-weight:700; letter-spacing:0.04em;">SQUADRA</label>
+                        <select id="dash-match-team" onchange="window.renderDashMatches()" style="width:100%; padding:7px 8px; margin-top:4px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.8rem; color:#334155; background:white;">
                             <option value="">Tutte le squadre</option>
                         </select>
-                        <div style="width:1px; height:22px; background:#e2e8f0; flex-shrink:0;"></div>
-                        <label style="font-size:0.72rem; font-weight:600; color:#64748b; white-space:nowrap; flex-shrink:0;">Da:</label>
-                        <input type="date" id="dash-match-date-from" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; color:#475569; background:white; cursor:pointer; flex-shrink:0;">
-                        <label style="font-size:0.72rem; font-weight:600; color:#64748b; white-space:nowrap; flex-shrink:0;">A:</label>
-                        <input type="date" id="dash-match-date-to" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; color:#475569; background:white; cursor:pointer; flex-shrink:0;">
+                    </div>
+                    <div>
+                        <label style="font-size:11px; color:#64748b; font-weight:700; letter-spacing:0.04em;">DA DATA</label>
+                        <input type="date" id="dash-match-date-from" onchange="window.renderDashMatches()" style="width:100%; padding:7px 8px; margin-top:4px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.8rem; color:#334155; background:white; cursor:pointer;">
+                    </div>
+                    <div>
+                        <label style="font-size:11px; color:#64748b; font-weight:700; letter-spacing:0.04em;">A DATA</label>
+                        <input type="date" id="dash-match-date-to" onchange="window.renderDashMatches()" style="width:100%; padding:7px 8px; margin-top:4px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.8rem; color:#334155; background:white; cursor:pointer;">
                     </div>
                 </div>
                 <div style="overflow-x:auto;">
@@ -6206,7 +6218,9 @@ function _applyTabFilterVisibility() {
     const teamSelects = ['dash-stats-team','dash-match-team','dash-pres-team','dash-ath-team'];
 
     socSelects.forEach(id => {
-        const el = document.getElementById(id);
+        // Per dash-match-soc nascondiamo il wrapper che include anche la label
+        const wrapperId = id === 'dash-match-soc' ? 'dash-match-soc-wrap' : id;
+        const el = document.getElementById(wrapperId);
         if (!el) return;
         el.style.display = isGlobal ? '' : 'none';
     });
