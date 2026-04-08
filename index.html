@@ -42,6 +42,57 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
 
+        /* ── MATCH POPUP OVERLAY ── */
+        #match-popup-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            background: rgba(15,23,42,0.65);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #match-popup-overlay.active {
+            display: flex;
+        }
+        #match-popup-box {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+            width: 100%;
+            max-width: 860px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: matchPopupIn 0.22s cubic-bezier(.4,0,.2,1);
+        }
+        @keyframes matchPopupIn {
+            from { opacity:0; transform: translateY(20px) scale(0.97); }
+            to   { opacity:1; transform: translateY(0)   scale(1); }
+        }
+        #match-popup-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            z-index: 10;
+            background: rgba(100,116,139,0.15);
+            border: 1px solid rgba(100,116,139,0.25);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            line-height: 1;
+            transition: background 0.15s, color 0.15s;
+        }
+        #match-popup-close-btn:hover { background: rgba(239,68,68,0.12); color: #ef4444; border-color: rgba(239,68,68,0.3); }
+
         /* ══════════════════════════════════════
            LOGIN PAGE
         ══════════════════════════════════════ */
@@ -561,6 +612,14 @@
             <button class="btn" id="btn-modal-save">Salva</button>
             <button class="btn" id="btn-modal-close" style="background:#64748b">Annulla</button>
         </div>
+    </div>
+</div>
+
+<!-- MATCH POPUP OVERLAY (Convocazioni / Tabellino / Stats) -->
+<div id="match-popup-overlay">
+    <div id="match-popup-box">
+        <button id="match-popup-close-btn" onclick="window.closeMatchPopup()" title="Chiudi">✕</button>
+        <div id="match-popup-content"></div>
     </div>
 </div>
 
@@ -3842,12 +3901,35 @@ window.matchOnSeasonChange = window.matchOnSeasonChange;
  */
 
 // --- 1. FUNZIONI DI SISTEMA (MOTORE) ---
+window.closeMatchPopup = function() {
+    const overlay = document.getElementById('match-popup-overlay');
+    const box = document.getElementById('match-popup-box');
+    if (box) box.style.animation = 'none';
+    if (overlay) overlay.classList.remove('active');
+    const content = document.getElementById('match-popup-content');
+    if (content) content.innerHTML = '';
+};
+
+// Chiudi popup cliccando fuori dal box
+document.getElementById('match-popup-overlay').addEventListener('click', function(e) {
+    if (e.target === this) window.closeMatchPopup();
+});
+
+// Chiudi con Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') window.closeMatchPopup();
+});
+
 window.prepareSubSection = function(sessionId) {
-    const container = document.getElementById('sub-section-container');
-    if (!container) return null;
-    container.innerHTML = `<div style="text-align:center; padding:30px; color:#64748b;">Caricamento...</div>`;
-    container.scrollIntoView({ behavior: 'smooth' });
-    return container;
+    const overlay = document.getElementById('match-popup-overlay');
+    const content = document.getElementById('match-popup-content');
+    if (!overlay || !content) return null;
+    content.innerHTML = `<div style="text-align:center; padding:40px; color:#64748b; font-family:'DM Sans',sans-serif;">⏳ Caricamento...</div>`;
+    // Reset animation
+    const box = document.getElementById('match-popup-box');
+    if (box) { box.style.animation = 'none'; void box.offsetWidth; box.style.animation = ''; }
+    overlay.classList.add('active');
+    return content;
 };
 
 window.safeGetSession = async function(sessionId) {
@@ -3925,7 +4007,7 @@ window.openConvocazioni = async function(sessionId) {
                     style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
                     ✅ CONVOCA TUTTI
                 </button>
-                <button onclick="document.getElementById('sub-section-container').innerHTML=''" 
+                <button onclick="window.closeMatchPopup()" 
                     style="background:#4b5563; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
                     ANNULLA
                 </button>
@@ -4022,8 +4104,7 @@ window.saveConvocazioni = async function(sessionId) {
         alert("✅ Convocazioni salvate con successo!");
         
         // 3. Pulizia interfaccia
-        const subContainer = document.getElementById('sub-section-container');
-        if (subContainer) subContainer.innerHTML = '';
+        window.closeMatchPopup();
         
         // Ricarica la lista principale se la funzione esiste
         if (typeof initPartite === 'function') initPartite(); 
@@ -4252,7 +4333,7 @@ window.openTabellino = async function(sessionId) {
 
         <!-- FOOTER -->
         <div style="padding:14px 24px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
-            <button onclick="document.getElementById('sub-section-container').innerHTML=''" style="padding:9px 18px; background:white; color:#64748b; border:1.5px solid #e2e8f0; border-radius:8px; font-weight:600; font-size:0.82rem; cursor:pointer; font-family:inherit;">✕ Annulla</button>
+            <button onclick="window.closeMatchPopup()" style="padding:9px 18px; background:white; color:#64748b; border:1.5px solid #e2e8f0; border-radius:8px; font-weight:600; font-size:0.82rem; cursor:pointer; font-family:inherit;">✕ Annulla</button>
             <button onclick="window.saveFullTabellino('${sessionId}', '${d.id}')" style="padding:10px 28px; background:linear-gradient(135deg,#2563eb,#1d4ed8); color:white; border:none; border-radius:8px; font-weight:700; font-size:0.88rem; cursor:pointer; font-family:inherit; box-shadow:0 4px 12px rgba(37,99,235,0.3);">💾 Salva Report</button>
         </div>
     </div>`;
@@ -4326,7 +4407,7 @@ window.saveFullTabellino = async function(sessionId, detailId) {
             await client.from('match_stats').insert(statsToInsert);
         }
         alert("✅ Tabellino e Statistiche sincronizzati!");
-        document.getElementById('sub-section-container').innerHTML = '';
+        window.closeMatchPopup();
         if (typeof initPartite === 'function') initPartite();
     } catch (err) {
         console.error(err);
@@ -4604,7 +4685,7 @@ window.openStatistiche = async function(sessionId) {
                 <h3 style="font-family:'Space Grotesk',sans-serif; font-size:1rem; font-weight:700; margin:0;">📊 Performance Analysis</h3>
                 <div style="font-size:0.7rem; color:#94a3b8; margin-top:2px;">Solo partite ufficiali &middot; Amichevoli escluse</div>
             </div>
-            <button onclick="document.getElementById('sub-section-container').innerHTML=''" style="padding:6px 14px; background:white; color:#64748b; border:1.5px solid #e2e8f0; border-radius:7px; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:inherit;">✕ Chiudi</button>
+            <button onclick="window.closeMatchPopup()" style="padding:6px 14px; background:white; color:#64748b; border:1.5px solid #e2e8f0; border-radius:7px; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:inherit;">✕ Chiudi</button>
         </div>
 
         <!-- KPI GRID -->
