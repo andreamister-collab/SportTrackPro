@@ -1938,10 +1938,19 @@ window.handleDeleteStaff = async function(id) {
                 <button class="btn" onclick="window.openAtletaBaseModal()">+ Nuovo Atleta</button>
             </div>
             
-            <div class="filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #e2e8f0;">
-                <input type="text" id="f-bp-search" placeholder="Cerca Nome/Cognome..." oninput="window.applyAnagraficaFilters()" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
-                <select id="f-bp-soc" onchange="window.applyAnagraficaFilters()" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px;"></select>
-                <input type="number" id="f-bp-year" placeholder="Anno Nascita" oninput="window.applyAnagraficaFilters()" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
+            <div class="filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
+                <div>
+                    <label style="font-size: 11px; color: #64748b; font-weight:bold;">Cerca Nome/Cognome</label>
+                    <input type="text" id="f-bp-search" placeholder="Cognome o Nome..." oninput="window.applyAnagraficaFilters()" style="width:100%">
+                </div>
+                <div>
+                    <label style="font-size: 11px; color: #64748b; font-weight:bold;">Società</label>
+                    <select id="f-bp-soc" onchange="window.applyAnagraficaFilters()" style="width:100%"></select>
+                </div>
+                <div>
+                    <label style="font-size: 11px; color: #64748b; font-weight:bold;">Anno di Nascita</label>
+                    <input type="number" id="f-bp-year" placeholder="es. 2008" oninput="window.applyAnagraficaFilters()" style="width:100%">
+                </div>
             </div>
 
             <div style="overflow-x:auto;">
@@ -4349,7 +4358,7 @@ window.exportConvocazioniIMG = async function(sessionId) {
 
         // 2. RECUPERO STAFF - NUOVA LOGICA DIRETTA (No Join complessa)
         const fetchStaffNames = async () => {
-            let staff = { allenatore: "Da definire", dirigente: "Da definire" };
+            let staff = { allenatori: [], dirigenti: [] };
             
             // Prendiamo tutti i membri dello staff per questo team_id
             const { data: staffRoles } = await client
@@ -4367,8 +4376,8 @@ window.exportConvocazioniIMG = async function(sessionId) {
                         .maybeSingle();
 
                     if (userData?.name) {
-                        if (entry.role === 'Allenatore') staff.allenatore = userData.name;
-                        if (entry.role === 'Dirigente') staff.dirigente = userData.name;
+                        if (entry.role === 'Allenatore') staff.allenatori.push(userData.name);
+                        if (entry.role === 'Dirigente') staff.dirigenti.push(userData.name);
                     }
                 }
             }
@@ -4376,8 +4385,8 @@ window.exportConvocazioniIMG = async function(sessionId) {
         };
 
         const staffData = await fetchStaffNames();
-        const nomeAllenatore = staffData.allenatore;
-        const nomeDirigente = staffData.dirigente;
+        const nomeAllenatore = staffData.allenatori.length > 0 ? staffData.allenatori.join(' · ') : 'Da definire';
+        const nomeDirigente  = staffData.dirigenti.length  > 0 ? staffData.dirigenti.join(' · ')  : 'Da definire';
 
         // 3. RECUPERO MATCH DETAILS (Avversario, Luogo, Orari)
         const { data: detail } = await client
