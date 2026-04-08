@@ -4418,6 +4418,12 @@ window.saveFullTabellino = async function(sessionId, detailId) {
 // --- 5. EXPORT IMMAGINE ---
 // --- INIZIO BLOCCO DA SOSTITUIRE ---
 window.exportConvocazioniIMG = async function(sessionId) {
+    // Feedback visivo sul pulsante
+    const btnExport = document.querySelector(`button[onclick*="exportConvocazioniIMG"]`);
+    const originalBtnText = btnExport ? btnExport.innerHTML : '';
+    if (btnExport) { btnExport.innerHTML = '⏳ Generazione...'; btnExport.disabled = true; }
+    
+    let tempContainer = null;
     try {
         // 1. RECUPERO SESSIONE (Società, Categoria, Squadra)
         const { data: session, error: sessError } = await client
@@ -4519,8 +4525,8 @@ window.exportConvocazioniIMG = async function(sessionId) {
         const totalConvocati = (conv || []).length;
 
         // 5. GENERAZIONE HTML
-        const tempContainer = document.createElement('div');
-        tempContainer.style.position = 'absolute'; tempContainer.style.left = '-9999px';
+        tempContainer = document.createElement('div');
+        tempContainer.style.cssText = 'position:fixed; top:-9999px; left:-9999px; z-index:-1; pointer-events:none;';
         tempContainer.innerHTML = `
             <div id="export-final-card" style="width:580px; background:#0f172a; color:white; font-family:'DM Sans',Arial,sans-serif; border-radius:0; overflow:hidden;">
 
@@ -4613,7 +4619,22 @@ window.exportConvocazioniIMG = async function(sessionId) {
         `;
 
         document.body.appendChild(tempContainer);
-        const canvas = await html2canvas(document.getElementById('export-final-card'), { scale: 2, useCORS: true });
+        
+        // Piccola pausa per permettere al browser di renderizzare il DOM
+        await new Promise(r => setTimeout(r, 100));
+        
+        const exportEl = document.getElementById('export-final-card');
+        if (!exportEl) throw new Error("Elemento di export non trovato nel DOM");
+        
+        const canvas = await html2canvas(exportEl, { 
+            scale: 2, 
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#0f172a',
+            logging: false,
+            width: 580,
+            windowWidth: 580
+        });
         const link = document.createElement('a');
         link.download = `Convocazioni_${nomeSquadra.replace(/\s+/g, '_')}.png`;
         link.href = canvas.toDataURL("image/png");
@@ -4621,8 +4642,11 @@ window.exportConvocazioniIMG = async function(sessionId) {
         document.body.removeChild(tempContainer);
 
     } catch (err) {
-        console.error("Errore:", err);
+        console.error("Errore export immagine:", err);
         alert("Errore nell'esportazione: " + err.message);
+        if (tempContainer && document.body.contains(tempContainer)) document.body.removeChild(tempContainer);
+    } finally {
+        if (btnExport) { btnExport.innerHTML = originalBtnText; btnExport.disabled = false; }
     }
 };
 // --- FINE BLOCCO (Assicurati che non ci siano CANCELLAZIONI dopo questa riga!) ---
