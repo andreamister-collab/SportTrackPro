@@ -5183,23 +5183,23 @@ window.templateDashboard = function() {
         <!-- TAB 1: PARTITE ULTIMO MESE -->
         <div id="dash-tab-1" style="display:none;">
             <div class="card">
-                <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
-                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">🏆 Partite</h3>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                        <select id="dash-match-soc" onchange="window.onDashMatchSocChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:nowrap; gap:12px;">
+                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700; white-space:nowrap; margin:0;">🏆 Partite</h3>
+                    <div style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap; overflow-x:auto;">
+                        <select id="dash-match-soc" onchange="window.onDashMatchSocChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; min-width:0; flex-shrink:1; margin:0; color:#475569;">
                             <option value="">Tutte le società</option>
                         </select>
-                        <select id="dash-match-cat" onchange="window.onDashMatchCatChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                        <select id="dash-match-cat" onchange="window.onDashMatchCatChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; min-width:0; flex-shrink:1; margin:0; color:#475569;">
                             <option value="">Tutte le categorie</option>
                         </select>
-                        <select id="dash-match-team" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
+                        <select id="dash-match-team" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; min-width:0; flex-shrink:1; margin:0; color:#475569;">
                             <option value="">Tutte le squadre</option>
                         </select>
-                        <div style="width:1px; height:22px; background:#e2e8f0; margin:0 2px;"></div>
-                        <label style="font-size:0.72rem; font-weight:600; color:#64748b; white-space:nowrap;">Da:</label>
-                        <input type="date" id="dash-match-date-from" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; color:#475569; background:white; cursor:pointer;">
-                        <label style="font-size:0.72rem; font-weight:600; color:#64748b; white-space:nowrap;">A:</label>
-                        <input type="date" id="dash-match-date-to" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; color:#475569; background:white; cursor:pointer;">
+                        <div style="width:1px; height:22px; background:#e2e8f0; flex-shrink:0;"></div>
+                        <label style="font-size:0.72rem; font-weight:600; color:#64748b; white-space:nowrap; flex-shrink:0;">Da:</label>
+                        <input type="date" id="dash-match-date-from" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; color:#475569; background:white; cursor:pointer; flex-shrink:0;">
+                        <label style="font-size:0.72rem; font-weight:600; color:#64748b; white-space:nowrap; flex-shrink:0;">A:</label>
+                        <input type="date" id="dash-match-date-to" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; color:#475569; background:white; cursor:pointer; flex-shrink:0;">
                     </div>
                 </div>
                 <div style="overflow-x:auto;">
@@ -6184,9 +6184,10 @@ function _populateTabTeamFilter(selId, items, socId, catId) {
     if (socId) filtered = filtered.filter(i => i.society_id === socId);
     if (catId) filtered = filtered.filter(i => i.category_id === catId);
     // Deduplica per team_id — supporta sia {team_id, name} (stats) sia {team_id, team} (atleti) sia {team_id, teams{name}} (sessioni)
+    // NOTA: per gli atleti usiamo .team (nome squadra), non .name (nome atleta)
     const teams = [...new Map(
         filtered.filter(i => i.team_id)
-                .map(i => [i.team_id, i.name || i.team || i.teams?.name || i.team_id])
+                .map(i => [i.team_id, i.team || i.teams?.name || (typeof i.name === 'string' && !i.surname ? i.name : null) || i.team_id])
     ).entries()].sort((a,b) => (a[1]||'').localeCompare(b[1]||''));
     sel.innerHTML = '<option value="">Tutte le squadre</option>' +
         teams.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
