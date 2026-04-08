@@ -6686,13 +6686,13 @@ window.initGenitoreView = async function() {
                         const sess = matchSessions.find(s => s.id === d.session_id);
                         if (!sess) return;
                         const tid = sess.team_id;
-                        if (!teamGaraStats[tid]) teamGaraStats[tid] = {name:sess.teams?.name||'',p:0,w:0,dr:0,l:0,gf:0,gs:0,casa:0,trasf:0};
+                        if (!teamGaraStats[tid]) teamGaraStats[tid] = {name:sess.teams?.name||'',p:0,w:0,dr:0,l:0,gf:0,gs:0,casa:0,trasf:0,pts:0};
                         const t = teamGaraStats[tid];
                         t.p++; t.gf+=d.goals_for||0; t.gs+=d.goals_against||0;
                         if (d.is_home===true) t.casa++; else t.trasf++;
-                        if (d.match_status==='vittoria') t.w++;
-                        else if (d.match_status==='pareggio') t.dr++;
-                        else if (d.match_status==='sconfitta') t.l++;
+                        if (d.match_status==='vittoria') { t.w++; t.pts+=3; }
+                        else if (d.match_status==='pareggio') { t.dr++; t.pts+=1; }
+                        else if (d.match_status==='sconfitta') { t.l++; }
                     });
                 }
             }
@@ -6764,12 +6764,13 @@ window.initGenitoreView = async function() {
                 </table>`;
 
             // HTML stats gara squadra
-            const statsGaraList = Object.values(teamGaraStats);
+            const statsGaraList = Object.values(teamGaraStats).sort((a,b) => b.pts - a.pts);
             const statsGaraHTML = statsGaraList.length === 0
                 ? `<p style="color:#94a3b8;text-align:center;padding:16px 0;">Nessuna partita ufficiale registrata.</p>`
                 : `<table style="width:100%;border-collapse:collapse;">
                     <thead><tr style="border-bottom:2px solid #e2e8f0;">
                         <th style="padding:7px 10px;text-align:left;font-size:0.7rem;font-weight:700;color:#94a3b8;text-transform:uppercase;">Squadra</th>
+                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#f59e0b;" title="Punti">Pts</th>
                         <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#94a3b8;">P</th>
                         <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#2563eb;" title="Casa">🏠</th>
                         <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#8b5cf6;" title="Trasferta">🚌</th>
@@ -6780,6 +6781,7 @@ window.initGenitoreView = async function() {
                     </tr></thead>
                     <tbody>${statsGaraList.map(t => `<tr style="border-bottom:1px solid #f1f5f9;">
                         <td style="padding:8px 10px;font-weight:600;font-size:0.82rem;">${t.name}</td>
+                        <td style="padding:8px 10px;text-align:center;font-weight:800;font-family:'Space Grotesk',sans-serif;font-size:1rem;color:#f59e0b;">${t.pts}</td>
                         <td style="padding:8px 10px;text-align:center;font-weight:700;color:#334155;">${t.p}</td>
                         <td style="padding:8px 10px;text-align:center;font-weight:700;color:#2563eb;">${t.casa}</td>
                         <td style="padding:8px 10px;text-align:center;font-weight:700;color:#8b5cf6;">${t.trasf}</td>
