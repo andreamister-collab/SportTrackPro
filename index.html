@@ -3538,16 +3538,16 @@ async function openAttendanceModal(sessionId) {
     const attMap = {}; existing?.forEach(a => attMap[a.athlete_id] = a);
 
     m.open(isGara ? "Convocazioni" : "Registro Presenze", `
-        <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:12px; font-size:12px; border:1px solid #e2e8f0;">
+        <div style="background:#f8fafc; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:12px; border:1px solid #e2e8f0;">
             <strong>${session.title}</strong> &nbsp;·&nbsp; ${new Date(session.session_date).toLocaleDateString('it-IT')}
         </div>
-        <div style="max-height:calc(92vh - 160px); overflow-y:auto; padding-right:4px;">
+        <div style="max-height:calc(92vh - 150px); overflow-y:auto; overflow-x:hidden;">
             ${!isGara ? `
-            <div style="display:grid; grid-template-columns:40px 1fr 160px repeat(5,80px); gap:0; align-items:center; padding:7px 12px; background:#f1f5f9; border-radius:8px; margin-bottom:4px; font-size:11px; font-weight:700; text-transform:uppercase; color:#64748b; letter-spacing:0.06em; border:1px solid #e2e8f0;">
+            <div style="display:grid; grid-template-columns:36px minmax(0,1fr) 130px repeat(5,1fr); gap:4px; align-items:center; padding:6px 10px; background:#f1f5f9; border-radius:6px; margin-bottom:3px; font-size:10px; font-weight:700; text-transform:uppercase; color:#64748b; letter-spacing:0.05em;">
                 <div>#</div><div>Atleta</div><div>Presenza</div>
                 <div style="text-align:center;">VEL</div><div style="text-align:center;">TEC</div><div style="text-align:center;">FIS</div><div style="text-align:center;">RES</div><div style="text-align:center;">COM</div>
             </div>` : `
-            <div style="display:grid; grid-template-columns:28px 1fr 130px; gap:0; align-items:center; padding:5px 8px; background:#f1f5f9; border-radius:6px; margin-bottom:4px; font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8; letter-spacing:0.06em;">
+            <div style="display:grid; grid-template-columns:36px minmax(0,1fr) 130px; gap:4px; align-items:center; padding:6px 10px; background:#f1f5f9; border-radius:6px; margin-bottom:3px; font-size:10px; font-weight:700; text-transform:uppercase; color:#64748b; letter-spacing:0.05em;">
                 <div>#</div><div>Atleta</div><div>Stato</div>
             </div>`}
             ${(relations || []).map((r, idx) => {
@@ -3556,14 +3556,14 @@ async function openAttendanceModal(sessionId) {
                 const p = reg.performance_data || {VEL:0, TEC:0, FIS:0, RES:0, COM:0};
                 const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc';
                 const stars = (k) => [1,2,3,4,5].map(s =>
-                    `<span onclick="setRating(this,${s})" style="cursor:pointer;color:${s<=(p[k]||0)?'#f59e0b':'#cbd5e1'};font-size:18px;line-height:1.2;">★</span>`
+                    `<span onclick="setRating(this,${s})" style="cursor:pointer;color:${s<=(p[k]||0)?'#f59e0b':'#e2e8f0'};font-size:15px;line-height:1;">★</span>`
                 ).join('');
                 return `
-                <div style="display:grid; grid-template-columns:40px 1fr 160px${!isGara?' repeat(5,80px)':''}; gap:0; align-items:center; padding:9px 12px; background:${rowBg}; border-bottom:1px solid #f1f5f9; border-radius:4px;">
+                <div style="display:grid; grid-template-columns:36px minmax(0,1fr) 130px${!isGara?' repeat(5,1fr)':''}; gap:4px; align-items:center; padding:7px 10px; background:${rowBg}; border-bottom:1px solid #f1f5f9;">
                     <div style="font-size:12px; font-weight:700; color:#2563eb;">${r.jersey_number || '—'}</div>
-                    <div style="font-size:13px; font-weight:600; color:#1e293b;">${ath.surname} ${ath.name}</div>
+                    <div style="font-size:13px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ath.surname} ${ath.name}</div>
                     <div>
-                        <select class="att-status" data-ath="${ath.id}" style="padding:6px 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; width:100%; background:white; color:#334155; font-weight:600;">
+                        <select class="att-status" data-ath="${ath.id}" style="padding:4px 6px; border-radius:5px; border:1px solid #cbd5e1; font-size:11px; width:100%; background:white; color:#334155; font-weight:600;">
                             <option value="presente" ${reg.status==='presente'?'selected':''}>✅ Presente</option>
                             <option value="assente" ${reg.status==='assente'?'selected':''}>❌ Assente</option>
                             <option value="giustificato" ${reg.status==='giustificato'?'selected':''}>📋 Giustificato</option>
@@ -3571,11 +3571,11 @@ async function openAttendanceModal(sessionId) {
                         </select>
                     </div>
                     ${!isGara ? `
-                    <div style="display:flex;flex-direction:column;align-items:center;" class="star-rating" data-ath="${ath.id}" data-key="VEL" data-value="${p.VEL||0}">${stars('VEL')}</div>
-                    <div style="display:flex;flex-direction:column;align-items:center;" class="star-rating" data-ath="${ath.id}" data-key="TEC" data-value="${p.TEC||0}">${stars('TEC')}</div>
-                    <div style="display:flex;flex-direction:column;align-items:center;" class="star-rating" data-ath="${ath.id}" data-key="FIS" data-value="${p.FIS||0}">${stars('FIS')}</div>
-                    <div style="display:flex;flex-direction:column;align-items:center;" class="star-rating" data-ath="${ath.id}" data-key="RES" data-value="${p.RES||0}">${stars('RES')}</div>
-                    <div style="display:flex;flex-direction:column;align-items:center;" class="star-rating" data-ath="${ath.id}" data-key="COM" data-value="${p.COM||0}">${stars('COM')}</div>
+                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="VEL" data-value="${p.VEL||0}">${stars('VEL')}</div>
+                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="TEC" data-value="${p.TEC||0}">${stars('TEC')}</div>
+                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="FIS" data-value="${p.FIS||0}">${stars('FIS')}</div>
+                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="RES" data-value="${p.RES||0}">${stars('RES')}</div>
+                    <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;" class="star-rating" data-ath="${ath.id}" data-key="COM" data-value="${p.COM||0}">${stars('COM')}</div>
                     ` : ''}
                 </div>`;
             }).join('')}
