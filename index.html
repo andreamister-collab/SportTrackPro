@@ -1157,16 +1157,21 @@ function templateSocieta() {
     <div class="card">
         <div class="header">
             <h2>GESTIONE SOCIETÀ</h2>
-            <button class="btn" id="btn-add-societa">+ Nuova Società</button>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span id="soc-results-count" style="font-size:0.75rem; color:#94a3b8; background:#f1f5f9; padding:4px 12px; border-radius:99px;"></span>
+                <button class="btn" id="btn-add-societa">+ Nuova Società</button>
+            </div>
         </div>
-        <div class="filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+        <div class="filter-bar" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
             <div>
-                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Cerca Società</label>
-                <input type="text" id="f-soc-search" placeholder="Nome..." oninput="applySocietaFilters()" style="width:100%">
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">🔍 Cerca Società</label>
+                <input type="text" id="f-soc-search" placeholder="Nome..." oninput="window.applySocietaFilters()" style="width:100%">
             </div>
             <div>
-                <label style="font-size: 11px; color: #64748b; font-weight:bold;">Sport</label>
-                <select id="f-soc-sport" onchange="applySocietaFilters()" style="width:100%"><option value="">Tutti gli Sport</option></select>
+                <label style="font-size: 11px; color: #64748b; font-weight:bold;">🏅 Filtra per Sport</label>
+                <select id="f-soc-sport" onchange="window.applySocietaFilters()" style="width:100%">
+                    <option value="">Tutti gli Sport</option>
+                </select>
             </div>
         </div>
         <table>
@@ -1188,31 +1193,34 @@ async function initSocieta() {
     const tbody = document.getElementById('list-societa');
     if (!tbody) return;
 
-const { data, error } = await client
-    .from('societies')
-    .select('*, sports(name, icon)') // Rimosso !fk_soc_to_sport
-    .order('name');
-    
-    if (error) { 
-        tbody.innerHTML = `<tr><td colspan="3">Errore: ${error.message}</td></tr>`; 
-        return; 
+    const { data, error } = await client
+        .from('societies')
+        .select('*, sports(name, icon)')
+        .order('name');
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="3">Errore: ${error.message}</td></tr>`;
+        return;
     }
 
-    // Popola filtro sport
+    window._societaData = data || [];
+
+    // Popola filtro sport una sola volta, ordinato alfabeticamente
     const fSport = document.getElementById('f-soc-sport');
     if (fSport && fSport.options.length <= 1) {
         const sportsMap = {};
-        (data || []).forEach(s => { if (s.sports) sportsMap[s.sport_id] = s.sports; });
-        Object.entries(sportsMap).forEach(([id, sp]) => {
-            fSport.innerHTML += `<option value="${id}">${sp.icon} ${sp.name}</option>`;
-        });
+        (data || []).forEach(s => { if (s.sports && s.sport_id) sportsMap[s.sport_id] = s.sports; });
+        Object.entries(sportsMap)
+            .sort((a, b) => a[1].name.localeCompare(b[1].name))
+            .forEach(([id, sp]) => {
+                fSport.innerHTML += `<option value="${id}">${sp.icon} ${sp.name}</option>`;
+            });
     }
 
-    // Salva dati globalmente per il filtro
-    window._societaData = data || [];
-    applySocietaFilters();
-
+    // Render tabella
     function renderSocieta(rows) {
+        const counter = document.getElementById('soc-results-count');
+        if (counter) counter.textContent = rows.length + ' risultat' + (rows.length === 1 ? 'o' : 'i');
         tbody.innerHTML = rows?.map(s => {
             const safeName = s.name.replace(/'/g, "\\'");
             return `
@@ -1224,21 +1232,23 @@ const { data, error } = await client
                     <button class="btn-sm btn-danger" onclick="handleSocietaDelete('${s.id}')">🗑️</button>
                 </td>
             </tr>`;
-        }).join('') || '<tr><td colspan="3">Nessuna società.</td></tr>';
+        }).join('') || '<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">Nessuna società trovata.</td></tr>';
     }
 
+    // applySocietaFilters definita PRIMA di essere chiamata
     window.applySocietaFilters = function() {
-        const search = (document.getElementById('f-soc-search')?.value || '').toLowerCase();
-        const sport = document.getElementById('f-soc-sport')?.value;
+        const search = (document.getElementById('f-soc-search')?.value || '').toLowerCase().trim();
+        const sport  = document.getElementById('f-soc-sport')?.value || '';
         const filtered = (window._societaData || []).filter(s => {
-            const matchName = !search || s.name.toLowerCase().includes(search);
-            const matchSport = !sport || s.sport_id === sport;
+            const matchName  = !search || s.name.toLowerCase().includes(search);
+            const matchSport = !sport  || String(s.sport_id) === String(sport);
             return matchName && matchSport;
         });
         renderSocieta(filtered);
     };
 
-    renderSocieta(data);
+    // Prima render
+    window.applySocietaFilters();
 
     document.getElementById('btn-add-societa').onclick = async () => {
         const { data: sportsList } = await client.from('sports').select('*').order('name');
