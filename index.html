@@ -5183,9 +5183,9 @@ window.templateDashboard = function() {
         <!-- TAB 1: PARTITE ULTIMO MESE -->
         <div id="dash-tab-1" style="display:none;">
             <div class="card">
-                <div class="header" style="margin-bottom:1rem;">
-                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">🏆 Partite ultimo mese</h3>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
+                    <h3 style="font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700;">🏆 Partite</h3>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                         <select id="dash-match-soc" onchange="window.onDashMatchSocChange()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
                             <option value="">Tutte le società</option>
                         </select>
@@ -5195,6 +5195,11 @@ window.templateDashboard = function() {
                         <select id="dash-match-team" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:#475569;">
                             <option value="">Tutte le squadre</option>
                         </select>
+                        <div style="width:1px; height:22px; background:#e2e8f0; margin:0 2px;"></div>
+                        <label style="font-size:0.72rem; font-weight:600; color:#64748b; white-space:nowrap;">Da:</label>
+                        <input type="date" id="dash-match-date-from" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; color:#475569; background:white; cursor:pointer;">
+                        <label style="font-size:0.72rem; font-weight:600; color:#64748b; white-space:nowrap;">A:</label>
+                        <input type="date" id="dash-match-date-to" onchange="window.renderDashMatches()" style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; color:#475569; background:white; cursor:pointer;">
                     </div>
                 </div>
                 <div style="overflow-x:auto;">
@@ -5576,16 +5581,11 @@ window._dashMatchTeams = [];
 
 window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
     try {
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        const fromDate = oneMonthAgo.toISOString().split('T')[0];
-
         const { data: types } = await client.from('session_types').select('id, name');
         const validIds = (types||[]).filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')).map(t => t.id);
 
         let q = client.from('sessions')
             .select('id, title, session_date, society_id, team_id, teams(name, category_id, categories(id, name)), societies(name)')
-            .gte('session_date', fromDate)
             .order('session_date', { ascending: false });
 
         if (validIds.length > 0) q = q.in('type_id', validIds);
@@ -5623,6 +5623,17 @@ window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
         _populateTabCatFilter('dash-match-cat', window._dashMatches, null);
         _populateTabTeamFilter('dash-match-team', window._dashMatches, null, null);
 
+        // Imposta date di default: ultimo mese → oggi
+        const today = new Date();
+        const lastMonth = new Date();
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        const toStr   = today.toISOString().split('T')[0];
+        const fromStr = lastMonth.toISOString().split('T')[0];
+        const elFrom = document.getElementById('dash-match-date-from');
+        const elTo   = document.getElementById('dash-match-date-to');
+        if (elFrom && !elFrom.value) elFrom.value = fromStr;
+        if (elTo   && !elTo.value)   elTo.value   = toStr;
+
         window.renderDashMatches();
     } catch(err) { console.error('loadDashMatches error:', err); }
 };
@@ -5630,18 +5641,24 @@ window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
 window.renderDashMatches = function() {
     const tbody = document.getElementById('dash-matches-body');
     if (!tbody) return;
-    const filterTeam = document.getElementById('dash-match-team')?.value;
-    const filterSoc  = document.getElementById('dash-match-soc')?.value;
-    const filterCat  = document.getElementById('dash-match-cat')?.value;
+    const filterTeam    = document.getElementById('dash-match-team')?.value;
+    const filterSoc     = document.getElementById('dash-match-soc')?.value;
+    const filterCat     = document.getElementById('dash-match-cat')?.value;
+    const filterDateFrom = document.getElementById('dash-match-date-from')?.value;
+    const filterDateTo   = document.getElementById('dash-match-date-to')?.value;
 
-    const filtered = window._dashMatches.filter(m =>
-        (!filterTeam || m.team_id   === filterTeam) &&
-        (!filterSoc  || m.society_id === filterSoc) &&
-        (!filterCat  || m.category_id === filterCat)
-    );
+    const filtered = window._dashMatches.filter(m => {
+        if (filterTeam && m.team_id    !== filterTeam)    return false;
+        if (filterSoc  && m.society_id !== filterSoc)     return false;
+        if (filterCat  && m.category_id !== filterCat)    return false;
+        const d = m.session_date?.split('T')[0];
+        if (filterDateFrom && d < filterDateFrom)         return false;
+        if (filterDateTo   && d > filterDateTo)           return false;
+        return true;
+    });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = "<tr><td colspan=\"5\" style=\"text-align:center; padding:20px; color:#94a3b8;\">Nessuna partita nell'ultimo mese.</td></tr>";
+        tbody.innerHTML = "<tr><td colspan=\"5\" style=\"text-align:center; padding:20px; color:#94a3b8;\">Nessuna partita nel periodo selezionato.</td></tr>";
         return;
     }
 
