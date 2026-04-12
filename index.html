@@ -338,6 +338,9 @@
         }
         .btn-logout:hover { background: rgba(239,68,68,0.2); color: #fca5a5; }
 
+        /* ── HOME FLOAT BTN ── */
+        #btn-home-float:hover { transform: scale(1.12); box-shadow: 0 6px 22px rgba(37,99,235,0.55); }
+
         /* IMPORT SPECIAL LINK */
         #sidebar a[data-section="import-atleti"] {
             background: rgba(37,99,235,0.15);
@@ -606,6 +609,19 @@
     </main>
 </div>
 
+<!-- FLOATING HOME BUTTON -->
+<button id="btn-home-float" onclick="window.loadPage('dashboard')"
+    title="Torna alla Dashboard"
+    style="display:none; position:fixed; bottom:28px; right:28px; z-index:500;
+           width:48px; height:48px; border-radius:50%; border:none; cursor:pointer;
+           background:linear-gradient(135deg,#2563eb,#1d4ed8);
+           color:white; font-size:20px; line-height:1;
+           box-shadow:0 4px 16px rgba(37,99,235,0.45);
+           transition:transform 0.18s, box-shadow 0.18s;
+           display:none; align-items:center; justify-content:center;">
+    🏠
+</button>
+
 <div id="modal-overlay" class="modal-overlay">
     <div class="modal-content">
         <h3 id="modal-title" style="margin-top:0">Titolo Modal</h3>
@@ -832,6 +848,16 @@
         document.querySelectorAll('#sidebar a').forEach(a => a.classList.remove('active'));
         const link = document.querySelector(`#sidebar a[data-section="${section}"]`);
         if (link) link.classList.add('active');
+
+        // Mostra/nascondi pulsante Home flottante
+        const homeBtn = document.getElementById('btn-home-float');
+        if (homeBtn) {
+            if (section === 'dashboard') {
+                homeBtn.style.display = 'none';
+            } else {
+                homeBtn.style.display = 'flex';
+            }
+        }
 
         const content = document.getElementById('content');
         if (!content) return;
