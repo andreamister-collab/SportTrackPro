@@ -6779,23 +6779,26 @@ window.initGenitoreView = async function() {
             const initialRows = allMatchRows.filter(r => r.date >= defaultFromStr && r.date <= defaultToStr);
 
             const matchesHTML = `
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
-                    <span style="font-size:0.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">📅 Filtra per data:</span>
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <label style="font-size:0.75rem;color:#94a3b8;font-weight:600;">Dal</label>
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;flex-wrap:nowrap;overflow-x:auto;">
+                    <div style="display:flex;align-items:center;gap:8px;white-space:nowrap;flex-shrink:0;">
+                        <span style="font-size:0.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">DA DATA</span>
                         <input type="date" id="${matchFromId}" value="${defaultFromStr}"
-                            style="border:1px solid #e2e8f0;border-radius:7px;padding:5px 10px;font-size:0.8rem;font-family:inherit;color:#334155;background:white;cursor:pointer;"
-                            onchange="window._gfm(this, '${athIdKey}')">
-                        <label style="font-size:0.75rem;color:#94a3b8;font-weight:600;">Al</label>
-                        <input type="date" id="${matchToId}" value="${defaultToStr}"
-                            style="border:1px solid #e2e8f0;border-radius:7px;padding:5px 10px;font-size:0.8rem;font-family:inherit;color:#334155;background:white;cursor:pointer;"
+                            style="border:1px solid #e2e8f0;border-radius:7px;padding:5px 10px;font-size:0.8rem;font-family:inherit;color:#334155;background:white;cursor:pointer;min-width:140px;"
                             onchange="window._gfm(this, '${athIdKey}')">
                     </div>
-                    <button onclick="window._grm('${athIdKey}')"
-                        style="margin-left:auto;font-size:0.72rem;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:7px;padding:5px 12px;cursor:pointer;font-family:inherit;">
-                        ↺ Reimposta
-                    </button>
-                    <span id="${matchCountId}" style="font-size:0.72rem;color:#94a3b8;">${initialRows.length} partita${initialRows.length !== 1 ? 'e' : ''}</span>
+                    <div style="display:flex;align-items:center;gap:8px;white-space:nowrap;flex-shrink:0;">
+                        <span style="font-size:0.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">A DATA</span>
+                        <input type="date" id="${matchToId}" value="${defaultToStr}"
+                            style="border:1px solid #e2e8f0;border-radius:7px;padding:5px 10px;font-size:0.8rem;font-family:inherit;color:#334155;background:white;cursor:pointer;min-width:140px;"
+                            onchange="window._gfm(this, '${athIdKey}')">
+                    </div>
+                    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                        <span id="${matchCountId}" style="font-size:0.75rem;color:#94a3b8;white-space:nowrap;">${initialRows.length} partita${initialRows.length !== 1 ? 'e' : ''}</span>
+                        <button onclick="window._grm('${athIdKey}')"
+                            style="font-size:0.72rem;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:7px;padding:5px 12px;cursor:pointer;font-family:inherit;white-space:nowrap;">
+                            ↺ Reimposta
+                        </button>
+                    </div>
                 </div>
                 <div id="${matchTableId}">${buildMatchTable(initialRows)}</div>`;
 
