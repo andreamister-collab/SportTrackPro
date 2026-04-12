@@ -5339,8 +5339,11 @@ window.templateDashboard = function() {
 
     <style>
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-        .kpi-card { background:white; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; border-top:3px solid var(--kpi-color,#2563eb); }
-        .kpi-card .kpi-label { font-size:0.68rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#94a3b8; margin-bottom:6px; }
+        .kpi-card { background:white; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; border-top:3px solid var(--kpi-color,#2563eb); transition:box-shadow 0.15s, transform 0.15s; }
+        .kpi-card[data-nav] { cursor:pointer; }
+        .kpi-card[data-nav]:hover { box-shadow:0 6px 20px rgba(0,0,0,0.10); transform:translateY(-2px); border-color:var(--kpi-color,#2563eb); }
+        .kpi-card[data-nav]:hover .kpi-label { color:var(--kpi-color,#2563eb); }
+        .kpi-card .kpi-label { font-size:0.68rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#94a3b8; margin-bottom:6px; transition:color 0.15s; }
         .kpi-card .kpi-value { font-family:'Space Grotesk',sans-serif; font-size:1.8rem; font-weight:700; color:var(--kpi-color,#2563eb); line-height:1; }
         .kpi-card .kpi-sub { font-size:0.72rem; color:#94a3b8; margin-top:4px; }
         /* Stile filtri tab dashboard */
@@ -5582,21 +5585,21 @@ window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
         } catch(e) { /* ignora errori pts */ }
 
         const kpis = [
-            { label:'🏆 Punti Totali',     value: totalPts,       sub: `${totalWins}V · ${totalDraws}P`,   color:'#f59e0b' },
-            { label:'Atleti Totali',      value: totalAtleti,   sub: `in ${totalCategorie} categor${totalCategorie === 1 ? 'ia' : 'ie'}`, color:'#2563eb' },
-            { label:'Sessioni Registrate', value: totalSessioni,  sub: 'tutte le categorie',              color:'#10b981' },
-            { label:'% Presenze Globali',  value: percPres+'%',   sub: `${pres}/${tot} totali`,            color:'#f59e0b' },
-            { label:'Società',             value: totalSocieta,   sub: '1 sport',                          color:'#06b6d4' },
-            { label:'Categorie',           value: totalCategorie, sub: 'attive',                           color:'#8b5cf6' },
-            { label:'Staff Totale',        value: totalStaff,     sub: 'utenti registrati',                color:'#64748b' },
-            { label:'Allenatori',          value: staffByRole.allenatori, sub:'registrati',               color:'#f59e0b' },
-            { label:'Dirigenti',           value: staffByRole.dirigenti,  sub:'registrati',               color:'#ef4444' },
-            ...(!hasTeamScope ? [{ label:'Presidenti', value: staffByRole.presidenti, sub:'registrati', color:'#2563eb' }] : []),
+            { label:'🏆 Punti Totali',     value: totalPts,       sub: `${totalWins}V · ${totalDraws}P`,   color:'#f59e0b', section:'partite' },
+            { label:'Atleti Totali',      value: totalAtleti,   sub: `in ${totalCategorie} categor${totalCategorie === 1 ? 'ia' : 'ie'}`, color:'#2563eb', section:'atleti' },
+            { label:'Sessioni Registrate', value: totalSessioni,  sub: 'tutte le categorie',              color:'#10b981', section:'sessioni' },
+            { label:'% Presenze Globali',  value: percPres+'%',   sub: `${pres}/${tot} totali`,            color:'#f59e0b', section:'sessioni' },
+            { label:'Società',             value: totalSocieta,   sub: '1 sport',                          color:'#06b6d4', section:'societa' },
+            { label:'Categorie',           value: totalCategorie, sub: 'attive',                           color:'#8b5cf6', section:'categoria' },
+            { label:'Staff Totale',        value: totalStaff,     sub: 'utenti registrati',                color:'#64748b', section:'staff' },
+            { label:'Allenatori',          value: staffByRole.allenatori, sub:'registrati',               color:'#f59e0b', section:'staff' },
+            { label:'Dirigenti',           value: staffByRole.dirigenti,  sub:'registrati',               color:'#ef4444', section:'staff' },
+            ...(!hasTeamScope ? [{ label:'Presidenti', value: staffByRole.presidenti, sub:'registrati', color:'#2563eb', section:'staff' }] : []),
         ];
 
         grid.innerHTML = kpis.map(k => `
-            <div class="kpi-card" style="--kpi-color:${k.color}">
-                <div class="kpi-label">${k.label}</div>
+            <div class="kpi-card" style="--kpi-color:${k.color}" ${k.section ? `data-nav="${k.section}" onclick="window.loadPage('${k.section}')" title="Vai a ${k.label}"` : ''}>
+                <div class="kpi-label">${k.label}${k.section ? ' <span style=\"font-size:0.6rem;opacity:0.5;\">↗</span>' : ''}</div>
                 <div class="kpi-value">${k.value}</div>
                 <div class="kpi-sub">${k.sub}</div>
             </div>
