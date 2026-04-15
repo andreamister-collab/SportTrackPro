@@ -4884,66 +4884,66 @@ window.exportConvocazioniIMG = async function(sessionId) {
         tempContainer = document.createElement('div');
         tempContainer.style.cssText = 'position:fixed; top:-9999px; left:-9999px; z-index:-1; pointer-events:none;';
         tempContainer.innerHTML = `
-            <div id="export-final-card" style="width:580px; background:#fffbea; color:#1a2240; font-family:'Outfit',Arial,sans-serif; border-radius:0; overflow:hidden; border:1px solid #e2e6f0;">
+            <div id="export-final-card" style="width:580px; background:#ffe44d; color:#1a2240; font-family:'Outfit',Arial,sans-serif; border-radius:0; overflow:hidden; border:1px solid #d4a800;">
 
                 <!-- HEADER BAND -->
                 <div style="background:linear-gradient(135deg,#1a2240 0%,#2d3a6b 100%); padding:28px 28px 20px; position:relative; border-bottom:3px solid #e8402e;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                         <div>
                             <div style="font-size:11px; font-weight:700; letter-spacing:0.15em; color:#f05540; text-transform:uppercase; margin-bottom:4px;">Lista Convocati</div>
-                            <div style="font-size:28px; font-weight:900; text-transform:uppercase; letter-spacing:-0.5px; line-height:1.1; color:#ffffff;">${nomeSocieta}</div>
+                            <div style="font-size:28px; font-weight:900; text-transform:uppercase; letter-spacing:-0.5px; line-height:1.1; color:#ffe44d;">${nomeSocieta}</div>
                             <div style="margin-top:10px; display:inline-flex; align-items:center; gap:8px;">
                                 ${nomeCategoria ? `<span style="background:#e8402e; color:white; padding:4px 14px; border-radius:5px; font-size:12px; font-weight:700; text-transform:uppercase;">${nomeCategoria}</span>` : ''}
                                 <span style="background:#e8402e; color:white; padding:4px 14px; border-radius:5px; font-size:12px; font-weight:700; text-transform:uppercase;">${nomeSquadra}</span>
                             </div>
                         </div>
-                        <div style="background:rgba(255,255,255,0.12); border:2px solid rgba(255,255,255,0.25); border-radius:12px; padding:12px 18px; text-align:center; min-width:68px;">
-                            <div style="font-size:34px; font-weight:900; color:#f05540; line-height:1;">${totalConvocati}</div>
+                        <div style="background:rgba(255,228,77,0.15); border:2px solid rgba(255,228,77,0.4); border-radius:12px; padding:12px 18px; text-align:center; min-width:68px;">
+                            <div style="font-size:34px; font-weight:900; color:#ffe44d; line-height:1;">${totalConvocati}</div>
                             <div style="font-size:9px; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.1em; margin-top:3px;">Convocati</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- INFO GARA -->
-                <div style="background:#fff8d6; padding:14px 28px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; border-bottom:1px solid #f0d060;">
+                <div style="background:#ffd700; padding:14px 28px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; border-bottom:2px solid #b8960a;">
                     <div>
-                        <div style="font-size:9px; color:#6b7280; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Avversario</div>
+                        <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Avversario</div>
                         <div style="font-size:13px; font-weight:800; color:#1a2240;">VS ${detail?.opponent_name || '---'}</div>
                     </div>
                     <div>
-                        <div style="font-size:9px; color:#6b7280; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Luogo</div>
-                        <div style="font-size:12px; font-weight:600; color:#374151;">${detail?.address || '---'}</div>
+                        <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Luogo</div>
+                        <div style="font-size:12px; font-weight:600; color:#1a2240;">${detail?.address || '---'}</div>
                     </div>
                     <div>
-                        <div style="font-size:9px; color:#6b7280; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Orari</div>
+                        <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Orari</div>
                         <div style="font-size:12px; font-weight:800; white-space:nowrap; display:flex; align-items:center; gap:6px;">
-                            <span style="color:#6b7280; font-weight:600; font-size:11px;">⏱ Ritrovo</span><span style="color:#e8402e;">${detail?.meet_time?.substring(0,5) || '--:--'}</span>
-                            <span style="color:#d1d5db; font-weight:400;">|</span>
-                            <span style="color:#6b7280; font-weight:600; font-size:11px;">⚽ Inizio</span><span style="color:#e8402e;">${detail?.match_start_time?.substring(0,5) || '--:--'}</span>
+                            <span style="color:#7a5c00; font-weight:600; font-size:11px;">⏱ Ritrovo</span><span style="color:#e8402e;">${detail?.meet_time?.substring(0,5) || '--:--'}</span>
+                            <span style="color:#b8960a; font-weight:400;">|</span>
+                            <span style="color:#7a5c00; font-weight:600; font-size:11px;">⚽ Inizio</span><span style="color:#e8402e;">${detail?.match_start_time?.substring(0,5) || '--:--'}</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- STAFF -->
-                <div style="background:#fffbea; padding:10px 28px; display:flex; gap:24px; border-bottom:1px solid #f0d060;">
+                <div style="background:#ffe44d; padding:10px 28px; display:flex; gap:24px; border-bottom:1px solid #d4a800;">
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <div style="width:30px; height:30px; background:#f0f2f7; border-radius:50%; border:1px solid #e2e6f0; display:flex; align-items:center; justify-content:center; font-size:14px;">👨‍💼</div>
+                        <div style="width:30px; height:30px; background:rgba(0,0,0,0.08); border-radius:50%; border:1px solid rgba(0,0,0,0.12); display:flex; align-items:center; justify-content:center; font-size:14px;">👨‍💼</div>
                         <div>
-                            <div style="font-size:9px; color:#9aa0b8; text-transform:uppercase; letter-spacing:0.08em; font-weight:700;">Allenatore</div>
+                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.08em; font-weight:700;">Allenatore</div>
                             <div style="font-size:12px; font-weight:700; color:#1a2240;">${nomeAllenatore}</div>
                         </div>
                     </div>
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <div style="width:30px; height:30px; background:#f0f2f7; border-radius:50%; border:1px solid #e2e6f0; display:flex; align-items:center; justify-content:center; font-size:14px;">📋</div>
+                        <div style="width:30px; height:30px; background:rgba(0,0,0,0.08); border-radius:50%; border:1px solid rgba(0,0,0,0.12); display:flex; align-items:center; justify-content:center; font-size:14px;">📋</div>
                         <div>
-                            <div style="font-size:9px; color:#9aa0b8; text-transform:uppercase; letter-spacing:0.08em; font-weight:700;">Dirigente</div>
+                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.08em; font-weight:700;">Dirigente</div>
                             <div style="font-size:12px; font-weight:700; color:#1a2240;">${nomeDirigente}</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- ROSA CONVOCATI -->
-                <div style="padding:18px 28px 24px; background:#fffbea;">
+                <div style="padding:18px 28px 24px; background:#ffe44d;">
                     ${ordineRuoli.map(ruolo => {
                         const lista = atletiRaggruppati[ruolo] || [];
                         if (lista.length === 0) return '';
@@ -4955,13 +4955,13 @@ window.exportConvocazioniIMG = async function(sessionId) {
                                     <div style="height:3px; width:14px; background:${col.bg}; border-radius:2px;"></div>
                                     <span style="font-size:10px; font-weight:800; letter-spacing:0.16em; color:${col.bg}; text-transform:uppercase;">${plural}</span>
                                     <span style="background:${col.bg}; color:#ffffff; border-radius:999px; font-size:9px; font-weight:800; padding:1px 8px;">${lista.length}</span>
-                                    <div style="flex:1; height:1px; background:#f0d060;"></div>
+                                    <div style="flex:1; height:1px; background:rgba(0,0,0,0.15);"></div>
                                 </div>
                                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px;">
                                     ${lista.map((a, i) => `
-                                        <div style="display:flex; align-items:center; justify-content:space-between; background:${i%2===0?'#fff3b0':'#fffbea'}; padding:6px 10px; border-radius:5px; border:1px solid ${i%2===0?'#f0d060':'transparent'};">
-                                            <span style="font-size:12px; font-weight:600; color:#1a2240; letter-spacing:0.01em;">${a.fullname}</span>
-                                            <span style="font-size:12px; font-weight:900; color:${col.bg}; min-width:24px; text-align:right;">${a.num || ''}</span>
+                                        <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,${i%2===0?'0.45':'0.2'}); padding:6px 10px; border-radius:5px; border:1px solid rgba(0,0,0,${i%2===0?'0.1':'0.05'});">
+                                            <span style="font-size:12px; font-weight:700; color:#1a2240; letter-spacing:0.01em;">${a.fullname}</span>
+                                            <span style="font-size:12px; font-weight:900; color:#1a2240; min-width:24px; text-align:right;">${a.num || ''}</span>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -4971,9 +4971,9 @@ window.exportConvocazioniIMG = async function(sessionId) {
                 </div>
 
                 <!-- FOOTER -->
-                <div style="background:#fff3b0; padding:9px 28px; display:flex; justify-content:space-between; align-items:center; border-top:2px solid #f0d060;">
-                    <span style="font-size:9px; color:#5a6480; text-transform:uppercase; letter-spacing:0.12em; font-weight:700;">SportTrackPro</span>
-                    <span style="font-size:9px; color:#5a6480; font-weight:600;">${new Date().toLocaleDateString('it-IT')}</span>
+                <div style="background:#ffd700; padding:9px 28px; display:flex; justify-content:space-between; align-items:center; border-top:2px solid #b8960a;">
+                    <span style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.12em; font-weight:700;">SportTrackPro</span>
+                    <span style="font-size:9px; color:#7a5c00; font-weight:600;">${new Date().toLocaleDateString('it-IT')}</span>
                 </div>
             </div>
         `;
