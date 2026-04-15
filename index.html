@@ -4916,7 +4916,11 @@ window.exportConvocazioniIMG = async function(sessionId) {
                     </div>
                     <div>
                         <div style="font-size:9px; color:#6b7280; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Orari</div>
-                        <div style="font-size:11px; color:#e8402e; font-weight:800; line-height:1.7;"><span style="color:#6b7280; font-weight:600;">⏱ Ritrovo:</span> ${detail?.meet_time?.substring(0,5) || '--:--'} &nbsp;|&nbsp; <span style="color:#6b7280; font-weight:600;">⚽ Inizio:</span> ${detail?.match_start_time?.substring(0,5) || '--:--'}</div>
+                        <div style="font-size:12px; font-weight:800; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+                            <span style="color:#6b7280; font-weight:600; font-size:11px;">⏱ Ritrovo</span><span style="color:#e8402e;">${detail?.meet_time?.substring(0,5) || '--:--'}</span>
+                            <span style="color:#d1d5db; font-weight:400;">|</span>
+                            <span style="color:#6b7280; font-weight:600; font-size:11px;">⚽ Inizio</span><span style="color:#e8402e;">${detail?.match_start_time?.substring(0,5) || '--:--'}</span>
+                        </div>
                     </div>
                 </div>
 
