@@ -4870,6 +4870,7 @@ window.exportConvocazioniIMG = async function(sessionId) {
             // Euristiche comuni per il plurale italiano
             if (up.endsWith('TORE')) pluraleRuoli[r] = up.replace(/TORE$/, 'TORI');
             else if (up.endsWith('TRICE')) pluraleRuoli[r] = up.replace(/TRICE$/, 'TRICI');
+            else if (up.endsWith('ISTA')) pluraleRuoli[r] = up.replace(/ISTA$/, 'ISTI');
             else if (up.endsWith('E')) pluraleRuoli[r] = up.replace(/E$/, 'I');
             else if (up.endsWith('O')) pluraleRuoli[r] = up.replace(/O$/, 'I');
             else if (up.endsWith('A')) pluraleRuoli[r] = up.replace(/A$/, 'E');
@@ -4915,7 +4916,7 @@ window.exportConvocazioniIMG = async function(sessionId) {
                     </div>
                     <div>
                         <div style="font-size:9px; color:#6b7280; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Orari</div>
-                        <div style="font-size:12px; color:#e8402e; font-weight:800;">⏱ ${detail?.meet_time?.substring(0,5) || '--:--'} &nbsp;|&nbsp; ⚽ ${detail?.match_start_time?.substring(0,5) || '--:--'}</div>
+                        <div style="font-size:11px; color:#e8402e; font-weight:800; line-height:1.7;"><span style="color:#6b7280; font-weight:600;">⏱ Ritrovo:</span> ${detail?.meet_time?.substring(0,5) || '--:--'} &nbsp;|&nbsp; <span style="color:#6b7280; font-weight:600;">⚽ Inizio:</span> ${detail?.match_start_time?.substring(0,5) || '--:--'}</div>
                     </div>
                 </div>
 
