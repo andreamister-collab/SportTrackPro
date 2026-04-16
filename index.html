@@ -4905,34 +4905,29 @@ window.exportConvocazioniIMG = async function(sessionId) {
                     </div>
                 </div>
 
-                <!-- INFO GARA: 4 colonne -->
-                <div style="background:#ffe44d; padding:14px 28px; display:grid; grid-template-columns:1.2fr 1.4fr 0.9fr 0.9fr; gap:12px; border-bottom:2px solid #1a2240;">
-                    <div>
-                        <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Avversario</div>
-                        <div style="font-size:13px; font-weight:800; color:#1a2240;">VS ${detail?.opponent_name || '---'}</div>
-                    </div>
-                    <div>
-                        <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Luogo</div>
-                        <div style="font-size:12px; font-weight:600; color:#1a2240;">${detail?.address || '---'}</div>
-                    </div>
-                    <div>
-                        <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Data</div>
-                        <div style="font-size:12px; font-weight:800; color:#1a2240;">${session.session_date ? new Date(session.session_date).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'}) : '---'}</div>
-                    </div>
-                    <div>
-                        <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Tipo Gara</div>
-                        <div style="display:inline-block; background:#1a2240; color:#ffe44d; border-radius:5px; padding:3px 10px; font-size:11px; font-weight:800; text-transform:uppercase; white-space:nowrap;">${detail?.is_friendly ? '🤝 Amichevole' : '🏆 Ufficiale'}</div>
-                    </div>
-                </div>
-
-                <!-- ORARI -->
-                <div style="background:#ffd700; padding:10px 28px; border-bottom:2px solid #1a2240;">
-                    <div style="font-size:12px; font-weight:800; white-space:nowrap; display:flex; align-items:center; gap:8px;">
-                        <span style="color:#7a5c00; font-weight:600; font-size:11px;">⏱ Ritrovo</span>
-                        <span style="color:#1a2240; font-size:14px;">${detail?.meet_time?.substring(0,5) || '--:--'}</span>
-                        <span style="color:#b8960a; font-weight:400; margin:0 4px;">|</span>
-                        <span style="color:#7a5c00; font-weight:600; font-size:11px;">⚽ Inizio</span>
-                        <span style="color:#1a2240; font-size:14px;">${detail?.match_start_time?.substring(0,5) || '--:--'}</span>
+                <!-- INFO GARA: 4 colonne + orari sotto -->
+                <div style="background:#ffe44d; padding:14px 28px 16px; border-bottom:2px solid #1a2240;">
+                    <div style="display:grid; grid-template-columns:1.2fr 1.4fr 0.9fr 0.9fr; gap:12px; margin-bottom:12px;">
+                        <div>
+                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Avversario</div>
+                            <div style="font-size:13px; font-weight:800; color:#1a2240;">VS ${detail?.opponent_name || '---'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Luogo</div>
+                            <div style="font-size:12px; font-weight:600; color:#1a2240;">${detail?.address || '---'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Data</div>
+                            <div style="font-size:12px; font-weight:800; color:#1a2240;">${session.session_date ? new Date(session.session_date).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'}) : '---'}</div>
+                            <div style="margin-top:6px; font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.08em; font-weight:700; margin-bottom:3px;">Ritrovo</div>
+                            <div style="font-size:12px; font-weight:800; color:#1a2240;">⏱ ${detail?.meet_time?.substring(0,5) || '--:--'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Tipo Gara</div>
+                            <div style="display:inline-block; background:#1a2240; color:#ffe44d; border-radius:5px; padding:3px 10px; font-size:11px; font-weight:800; text-transform:uppercase; white-space:nowrap;">${detail?.is_friendly ? '🤝 Amichevole' : '🏆 Ufficiale'}</div>
+                            <div style="margin-top:6px; font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.08em; font-weight:700; margin-bottom:3px;">Inizio</div>
+                            <div style="font-size:12px; font-weight:800; color:#1a2240;">⚽ ${detail?.match_start_time?.substring(0,5) || '--:--'}</div>
+                        </div>
                     </div>
                 </div>
 
