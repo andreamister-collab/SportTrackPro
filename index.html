@@ -4893,9 +4893,10 @@ window.exportConvocazioniIMG = async function(sessionId) {
                         <div>
                             <div style="font-size:11px; font-weight:700; letter-spacing:0.15em; color:#ffe44d; text-transform:uppercase; margin-bottom:4px;">Lista Convocati</div>
                             <div style="font-size:28px; font-weight:900; text-transform:uppercase; letter-spacing:-0.5px; line-height:1.1; color:#ffe44d;">${nomeSocieta}</div>
-                            <div style="margin-top:10px; display:inline-flex; align-items:center; gap:8px;">
+                            <div style="margin-top:10px; display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap;">
                                 ${nomeCategoria ? `<span style="background:#ffe44d; color:#1a2240; padding:4px 14px; border-radius:5px; font-size:12px; font-weight:800; text-transform:uppercase;">${nomeCategoria}</span>` : ''}
                                 <span style="background:#ffe44d; color:#1a2240; padding:4px 14px; border-radius:5px; font-size:12px; font-weight:800; text-transform:uppercase;">${nomeSquadra}</span>
+                                <span style="background:${detail?.is_friendly ? 'rgba(255,209,102,0.25)' : 'rgba(6,214,160,0.18)'}; color:${detail?.is_friendly ? '#ffe44d' : '#06d6a0'}; border:1.5px solid ${detail?.is_friendly ? '#ffe44d' : '#06d6a0'}; padding:4px 14px; border-radius:5px; font-size:12px; font-weight:800; text-transform:uppercase; white-space:nowrap;">${detail?.is_friendly ? '🤝 Amichevole' : '🏆 Ufficiale'}</span>
                             </div>
                         </div>
                         <div style="background:rgba(255,228,77,0.15); border:2px solid #ffe44d; border-radius:12px; padding:12px 18px; text-align:center; min-width:68px;">
@@ -4937,12 +4938,7 @@ window.exportConvocazioniIMG = async function(sessionId) {
                                 <span style="font-size:12px; font-weight:800; color:#1a2240;">${detail?.match_start_time?.substring(0,5) || '--:--'}</span>
                             </div>
                         </div>
-                        <div style="width:1px; background:rgba(26,34,64,0.15); align-self:stretch; margin:0 14px;"></div>
-                        <!-- Tipo Gara -->
-                        <div style="flex-shrink:0;">
-                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; font-weight:700;">Tipo Gara</div>
-                            <div style="display:inline-block; background:#1a2240; color:#ffe44d; border-radius:5px; padding:3px 10px; font-size:11px; font-weight:800; text-transform:uppercase; white-space:nowrap;">${detail?.is_friendly ? '🤝 Amichevole' : '🏆 Ufficiale'}</div>
-                        </div>
+
                     </div>
                 </div>
 
