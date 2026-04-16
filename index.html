@@ -4909,28 +4909,32 @@ window.exportConvocazioniIMG = async function(sessionId) {
                     </div>
                 </div>
 
-                <!-- INFO GARA: 3 colonne -->
-                <div style="background:#ffe44d; padding:14px 28px 16px; border-bottom:2px solid #1a2240;">
-                    <div style="display:grid; grid-template-columns:1.2fr 1.4fr 0.9fr; gap:12px; margin-bottom:10px;">
-                        <div>
-                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Avversario</div>
-                            <div style="font-size:13px; font-weight:800; color:#1a2240;">VS ${detail?.opponent_name || '---'}</div>
+                <!-- INFO GARA: unica riga -->
+                <div style="background:#ffe44d; padding:14px 28px 14px; border-bottom:2px solid #1a2240;">
+                    <div style="display:flex; align-items:center; gap:0; flex-wrap:nowrap;">
+                        <!-- Avversario -->
+                        <div style="flex:1; min-width:0; padding-right:14px;">
+                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; font-weight:700;">Avversario</div>
+                            <div style="font-size:13px; font-weight:800; color:#1a2240; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">VS ${detail?.opponent_name || '---'}</div>
                         </div>
-                        <div>
-                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Luogo</div>
-                            <div style="font-size:12px; font-weight:600; color:#1a2240;">${detail?.address || '---'}</div>
+                        <div style="width:1px; background:rgba(26,34,64,0.15); align-self:stretch; margin:0 14px;"></div>
+                        <!-- Luogo -->
+                        <div style="flex:1.4; min-width:0; padding-right:14px;">
+                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; font-weight:700;">Luogo</div>
+                            <div style="font-size:11px; font-weight:600; color:#1a2240; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${detail?.address || '---'}</div>
                         </div>
-                        <div>
-                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; font-weight:700;">Tipo Gara</div>
+                        <div style="width:1px; background:rgba(26,34,64,0.15); align-self:stretch; margin:0 14px;"></div>
+                        <!-- Orari -->
+                        <div style="flex-shrink:0;">
+                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:3px; font-weight:700;">Orari</div>
+                            <div style="font-size:11px; font-weight:800; color:#1a2240; white-space:nowrap;">⏱ ${detail?.meet_time?.substring(0,5) || '--:--'} &nbsp;|&nbsp; ⚽ ${detail?.match_start_time?.substring(0,5) || '--:--'}</div>
+                        </div>
+                        <div style="width:1px; background:rgba(26,34,64,0.15); align-self:stretch; margin:0 14px;"></div>
+                        <!-- Tipo Gara -->
+                        <div style="flex-shrink:0;">
+                            <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; font-weight:700;">Tipo Gara</div>
                             <div style="display:inline-block; background:#1a2240; color:#ffe44d; border-radius:5px; padding:3px 10px; font-size:11px; font-weight:800; text-transform:uppercase; white-space:nowrap;">${detail?.is_friendly ? '🤝 Amichevole' : '🏆 Ufficiale'}</div>
                         </div>
-                    </div>
-                    <!-- Orari su unica riga -->
-                    <div style="display:flex; align-items:center; gap:14px; background:rgba(26,34,64,0.07); border-radius:7px; padding:7px 14px; width:fit-content;">
-                        <span style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.08em; font-weight:700;">Orari</span>
-                        <span style="font-size:12px; font-weight:800; color:#1a2240;">⏱ Ritrovo ${detail?.meet_time?.substring(0,5) || '--:--'}</span>
-                        <span style="color:rgba(26,34,64,0.3); font-size:14px;">|</span>
-                        <span style="font-size:12px; font-weight:800; color:#1a2240;">⚽ ${detail?.match_start_time?.substring(0,5) || '--:--'}</span>
                     </div>
                 </div>
 
