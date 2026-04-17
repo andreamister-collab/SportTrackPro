@@ -5851,29 +5851,16 @@ window.loadDashMonthlyData = async function(seasonId, socId, scopedTeamIds) {
         if (socId     && socId     !== 'all') attQ = attQ.eq('sessions.society_id', socId);
         if (hasTeamScope) attQ = attQ.in('sessions.team_id', scopedTeamIds);
 
-        // ── 2. GOL (match_stats, solo sessioni di tipo partita/gara) ──
-        const { data: sessionTypes } = await client.from('session_types').select('id, name');
-        const matchTypeIds = (sessionTypes || [])
-            .filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara'))
-            .map(t => t.id);
-        let goalQ = client
-            .from('match_stats')
-            .select('goals, sessions!inner(session_date, team_id, society_id, season_id, category_id, type_id, teams!inner(id, name))');
-        if (matchTypeIds.length > 0) goalQ = goalQ.in('sessions.type_id', matchTypeIds);
-        if (seasonId && seasonId !== 'all') goalQ = goalQ.eq('sessions.season_id', seasonId);
-        if (socId     && socId     !== 'all') goalQ = goalQ.eq('sessions.society_id', socId);
-        if (hasTeamScope) goalQ = goalQ.in('sessions.team_id', scopedTeamIds);
-
-        // ── 3. PUNTI (match_details) ───────────────────────────────────
+        // ── 2. PUNTI + GOL (match_details) — goals_for è la fonte autorevole per i gol squadra ──
         let matchQ = client
             .from('match_details')
-            .select('match_status, is_friendly, sessions!inner(session_date, team_id, society_id, season_id, category_id, teams!inner(id, name))')
+            .select('match_status, is_friendly, goals_for, sessions!inner(session_date, team_id, society_id, season_id, category_id, teams!inner(id, name))')
             .eq('is_friendly', false);
         if (seasonId && seasonId !== 'all') matchQ = matchQ.eq('sessions.season_id', seasonId);
         if (socId     && socId     !== 'all') matchQ = matchQ.eq('sessions.society_id', socId);
         if (hasTeamScope) matchQ = matchQ.in('sessions.team_id', scopedTeamIds);
 
-        const [attRes, goalRes, matchRes] = await Promise.all([attQ, goalQ, matchQ]);
+        const [attRes, matchRes] = await Promise.all([attQ, matchQ]);
 
         // Helper: chiave mese e label
         const mkKey   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
@@ -5906,19 +5893,7 @@ window.loadDashMonthlyData = async function(seasonId, socId, scopedTeamIds) {
             else if (s === 'giustificato') m.giust++;
         });
 
-        // Aggrega gol
-        (goalRes.data || []).forEach(ps => {
-            const sess = ps.sessions;
-            if (!sess?.teams || !ps.goals) return;
-            const d = new Date(sess.session_date);
-            const key = mkKey(d);
-            ensureTeam(sess.team_id, sess.teams.name, sess.category_id, sess.society_id);
-            const team = teamsMap[sess.team_id];
-            ensureMonth(team, key, mkLabel(d));
-            team.months[key].goals += (ps.goals || 0);
-        });
-
-        // Aggrega punti
+        // Aggrega punti e gol (da match_details — fonte autorevole per i gol squadra)
         (matchRes.data || []).forEach(md => {
             const sess = md.sessions;
             if (!sess?.teams) return;
@@ -5927,6 +5902,7 @@ window.loadDashMonthlyData = async function(seasonId, socId, scopedTeamIds) {
             ensureTeam(sess.team_id, sess.teams.name, sess.category_id, sess.society_id);
             const team = teamsMap[sess.team_id];
             ensureMonth(team, key, mkLabel(d));
+            team.months[key].goals += (md.goals_for || 0);
             if (md.match_status === 'vittoria')  team.months[key].pts += 3;
             else if (md.match_status === 'pareggio') team.months[key].pts += 1;
         });
