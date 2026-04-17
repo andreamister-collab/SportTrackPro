@@ -8004,11 +8004,11 @@ window.initTest = async function() {
     const hasAssigned = assignedIds && assignedIds.length > 0;
 
     let q = client.from('test_sessions')
-        .select('id, session_date, notes, test_definitions!inner(id, name, team_id, teams(name))')
+        .select('id, session_date, notes, team_id, teams(name), test_definitions!inner(id, name)')
         .eq('test_definitions.society_id', socId);
 
-    if (teamId) q = q.eq('test_definitions.team_id', teamId);
-    else if (hasAssigned) q = q.in('test_definitions.team_id', assignedIds);
+    if (teamId) q = q.eq('team_id', teamId);
+    else if (hasAssigned) q = q.in('team_id', assignedIds);
     if (defId) q = q.eq('test_def_id', defId);
     if (dateFrom) q = q.gte('session_date', dateFrom);
     if (dateTo)   q = q.lte('session_date', dateTo);
@@ -8024,7 +8024,7 @@ window.initTest = async function() {
         <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:12px;">${new Date(s.session_date).toLocaleDateString('it-IT')}</td>
             <td style="padding:12px;"><strong>${s.test_definitions?.name || '—'}</strong></td>
-            <td style="padding:12px;color:var(--text-muted);">${s.test_definitions?.teams?.name || '—'}</td>
+            <td style="padding:12px;color:var(--text-muted);">${s.teams?.name || '—'}</td>
             <td style="padding:12px;color:var(--text-sub);font-size:11px;">${s.notes || ''}</td>
             <td style="padding:12px;text-align:center;">
                 <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;">
@@ -8111,13 +8111,6 @@ window.reloadTestTeamsOnly = function() {
 // ── EDITOR TIPO TEST ─────────────────────────────────────────────
 window.openTestDefEditor = async function(defId) {
     const socId = document.getElementById('f-test-soc')?.value || window._currentSocietyId;
-    const teamId = document.getElementById('f-test-team')?.value;
-
-    // Carica squadre per il select
-    let tq = client.from('teams').select('id,name').eq('society_id', socId).order('name');
-    const assignedIds = window._userAssignedTeamIds;
-    if (assignedIds?.length) tq = tq.in('id', assignedIds);
-    const { data: teams } = await tq;
 
     let def = null, perfs = [];
     if (defId) {
@@ -8127,8 +8120,6 @@ window.openTestDefEditor = async function(defId) {
         perfs = p || [];
     }
 
-    const teamOptions = (teams||[]).map(t => `<option value="${t.id}" ${def?.team_id===t.id||(!def&&t.id===teamId)?'selected':''}>${t.name}</option>`).join('');
-
     // Genera righe performance (min 1, max 5)
     const perfRows = (perfs.length ? perfs : [{}]).map((p,i) => _testPerfRow(i, p)).join('');
 
@@ -8136,17 +8127,9 @@ window.openTestDefEditor = async function(defId) {
         <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">⚙️ ${defId ? 'Modifica' : 'Nuovo'} Tipo Test</div>
         <h2 style="margin:0 0 20px;font-family:'Syne',sans-serif;font-size:1.3rem;">${def?.name || 'Configura Test'}</h2>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-            <div>
-                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">NOME TEST *</label>
-                <input id="tdef-name" type="text" value="${def?.name||''}" placeholder="es. Velocità 30m, Test Cooper..." style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;font-family:inherit;">
-            </div>
-            <div>
-                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">SQUADRA *</label>
-                <select id="tdef-team" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;">
-                    ${teamOptions}
-                </select>
-            </div>
+        <div style="margin-bottom:16px;">
+            <label style="font-size:11px;color:var(--text-muted);font-weight:700;">NOME TEST *</label>
+            <input id="tdef-name" type="text" value="${def?.name||''}" placeholder="es. Velocità 30m, Test Cooper..." style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;font-family:inherit;">
         </div>
         <div style="margin-bottom:20px;">
             <label style="font-size:11px;color:var(--text-muted);font-weight:700;">DESCRIZIONE</label>
@@ -8212,10 +8195,8 @@ window._updateAddPerfBtn = function() {
 
 window.saveTestDef = async function(existingId) {
     const name   = document.getElementById('tdef-name')?.value?.trim();
-    const teamId = document.getElementById('tdef-team')?.value;
     const desc   = document.getElementById('tdef-desc')?.value?.trim();
     if (!name)   { alert('Inserisci il nome del test.'); return; }
-    if (!teamId) { alert('Seleziona una squadra.'); return; }
 
     const rows = document.querySelectorAll('.tdef-perf-row');
     if (!rows.length) { alert('Aggiungi almeno una performance da misurare.'); return; }
@@ -8238,11 +8219,11 @@ window.saveTestDef = async function(existingId) {
     try {
         let defId = existingId;
         if (existingId) {
-            const { error } = await client.from('test_definitions').update({ name, description: desc, team_id: teamId, season_id: seasonId }).eq('id', existingId);
+            const { error } = await client.from('test_definitions').update({ name, description: desc, season_id: seasonId }).eq('id', existingId);
             if (error) throw error;
             await client.from('test_performances').delete().eq('test_def_id', existingId);
         } else {
-            const { data, error } = await client.from('test_definitions').insert({ name, description: desc, team_id: teamId, society_id: socId, season_id: seasonId, created_by: window._currentUserId }).select('id').single();
+            const { data, error } = await client.from('test_definitions').insert({ name, description: desc, society_id: socId, season_id: seasonId, created_by: window._currentUserId }).select('id').single();
             if (error) throw error;
             defId = data.id;
         }
@@ -8273,7 +8254,7 @@ window.openNewTestSession = async function() {
 
     // Load teams and test definitions in parallel
     const [{ data: defs }, { data: teams }] = await Promise.all([
-        client.from('test_definitions').select('id,name,team_id,teams(id,name)').eq('society_id', socId).order('name'),
+        client.from('test_definitions').select('id,name').eq('society_id', socId).order('name'),
         client.from('teams').select('id,name').eq('society_id', socId).order('name')
     ]);
 
@@ -8282,35 +8263,28 @@ window.openNewTestSession = async function() {
         return;
     }
 
-    // Store defs globally for filtering
-    window._tsessDefs = defs;
-
-    // Build unique team list from defs (only teams that actually have test definitions)
-    const teamIdsWithDefs = [...new Set(defs.map(d => d.team_id).filter(Boolean))];
-    const teamsWithDefs = (teams || []).filter(t => teamIdsWithDefs.includes(t.id));
-
     const today = new Date().toISOString().split('T')[0];
     window.openTestPopup(`
         <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">📋 Nuova Sessione Test</div>
         <h2 style="margin:0 0 20px;font-family:'Syne',sans-serif;font-size:1.3rem;">Pianifica sessione</h2>
-        <div style="margin-bottom:16px;">
-            <label style="font-size:11px;color:var(--text-muted);font-weight:700;">SQUADRA *</label>
-            <select id="tsess-team" onchange="window.filterTestDefsByTeam()" style="width:100%;padding:9px;border:1px solid var(--border-accent);border-radius:6px;margin-top:4px;background:rgba(232,64,46,0.03);">
-                <option value="">— Seleziona squadra —</option>
-                ${teamsWithDefs.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}
-            </select>
-        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
             <div>
-                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">TIPO TEST *</label>
-                <select id="tsess-def" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;">
-                    <option value="">— Prima seleziona squadra —</option>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">SQUADRA *</label>
+                <select id="tsess-team" style="width:100%;padding:9px;border:1px solid var(--border-accent);border-radius:6px;margin-top:4px;background:rgba(232,64,46,0.03);">
+                    <option value="">— Seleziona squadra —</option>
+                    ${(teams||[]).map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}
                 </select>
             </div>
             <div>
-                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">DATA *</label>
-                <input id="tsess-date" type="date" value="${today}" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;">
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">TIPO TEST *</label>
+                <select id="tsess-def" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;">
+                    ${defs.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}
+                </select>
             </div>
+        </div>
+        <div style="margin-bottom:16px;">
+            <label style="font-size:11px;color:var(--text-muted);font-weight:700;">DATA *</label>
+            <input id="tsess-date" type="date" value="${today}" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;">
         </div>
         <div>
             <label style="font-size:11px;color:var(--text-muted);font-weight:700;">NOTE</label>
@@ -8323,24 +8297,6 @@ window.openNewTestSession = async function() {
     `);
 };
 
-window.filterTestDefsByTeam = function() {
-    const teamId = document.getElementById('tsess-team')?.value;
-    const defSelect = document.getElementById('tsess-def');
-    if (!defSelect) return;
-    const defs = window._tsessDefs || [];
-    const filtered = teamId ? defs.filter(d => d.team_id === teamId) : [];
-    if (!filtered.length) {
-        defSelect.innerHTML = teamId
-            ? '<option value="">Nessun tipo test per questa squadra</option>'
-            : '<option value="">— Prima seleziona squadra —</option>';
-    } else {
-        defSelect.innerHTML = filtered.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
-    }
-    // Update border color to indicate the field is now active
-    defSelect.style.borderColor = teamId ? 'var(--border-accent)' : 'var(--border)';
-    defSelect.style.background = teamId ? 'rgba(232,64,46,0.03)' : '';
-};
-
 window.saveTestSession = async function() {
     const teamId = document.getElementById('tsess-team')?.value;
     const defId  = document.getElementById('tsess-def')?.value;
@@ -8349,7 +8305,7 @@ window.saveTestSession = async function() {
     if (!teamId) { alert('Seleziona una squadra.'); return; }
     if (!defId || !date) { alert('Seleziona tipo test e data.'); return; }
 
-    const { data, error } = await client.from('test_sessions').insert({ test_def_id: defId, session_date: date, notes }).select('id').single();
+    const { data, error } = await client.from('test_sessions').insert({ test_def_id: defId, team_id: teamId, session_date: date, notes }).select('id').single();
     if (error) { alert('Errore: ' + error.message); return; }
 
     window.closeTestPopup();
@@ -8367,11 +8323,11 @@ window.deleteTestSession = async function(sessId) {
 // ── TAB: CONVOCA ─────────────────────────────────────────────────
 window.openTestConvoca = async function(sessId) {
     const { data: sess } = await client.from('test_sessions')
-        .select('id, session_date, notes, test_definitions!inner(id, name, team_id, teams!inner(id,name))')
+        .select('id, session_date, notes, team_id, teams!inner(id,name), test_definitions!inner(id,name)')
         .eq('id', sessId).single();
     if (!sess) return;
 
-    const teamId = sess.test_definitions.team_id;
+    const teamId = sess.team_id;
 
     const [{ data: athletes }, { data: existing }] = await Promise.all([
         client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', teamId).order('jersey_number'),
@@ -8432,9 +8388,9 @@ window._testConvocaTutti = function() {
 
 window.saveTestConvoca = async function(sessId) {
     const { data: sess } = await client.from('test_sessions')
-        .select('test_definitions!inner(team_id)')
+        .select('team_id')
         .eq('id', sessId).single();
-    const teamId = sess?.test_definitions?.team_id || null;
+    const teamId = sess?.team_id || null;
 
     const radios = document.querySelectorAll('.tconv-radio:checked');
     const records = Array.from(radios).map(r => ({
@@ -8453,11 +8409,11 @@ window.saveTestConvoca = async function(sessId) {
 // ── TAB: TABELLINO ───────────────────────────────────────────────
 window.openTestTabellino = async function(sessId) {
     const { data: sess } = await client.from('test_sessions')
-        .select('id, session_date, notes, test_definitions!inner(id, name, team_id, teams!inner(name))')
+        .select('id, session_date, notes, team_id, test_definitions!inner(id, name)')
         .eq('id', sessId).single();
     if (!sess) return;
 
-    const teamId = sess.test_definitions.team_id;
+    const teamId = sess.team_id;
 
     const [{ data: perfs }, { data: attendances }, { data: existingRes }, { data: teamAthletes }] = await Promise.all([
         client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
@@ -8504,7 +8460,7 @@ window.openTestTabellino = async function(sessId) {
             <div>
                 <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">📝 Tabellino Test</div>
                 <div style="font-size:1.1rem;font-weight:800;font-family:'Syne',sans-serif;">${sess.test_definitions.name} — ${new Date(sess.session_date).toLocaleDateString('it-IT')}</div>
-                <div style="font-size:0.78rem;color:var(--text-sub);">${sess.test_definitions.teams?.name||''} ${sess.notes?'· '+sess.notes:''}</div>
+                <div style="font-size:0.78rem;color:var(--text-sub);">${sess.teams?.name||''} ${sess.notes?'· '+sess.notes:''}</div>
             </div>
         </div>
         ${!athletes.length ? '<p style="color:var(--text-sub);text-align:center;padding:24px;">Nessun atleta convocato. Vai prima in "Convoca".</p>' : `
@@ -8547,7 +8503,7 @@ window.saveTestTabellino = async function(sessId) {
 // ── TAB: STATS ───────────────────────────────────────────────────
 window.openTestStats = async function(sessId) {
     const { data: sess } = await client.from('test_sessions')
-        .select('id, session_date, test_definitions!inner(id, name, team_id, teams!inner(name))')
+        .select('id, session_date, team_id, test_definitions!inner(id, name)')
         .eq('id', sessId).single();
     if (!sess) return;
 
@@ -8555,7 +8511,7 @@ window.openTestStats = async function(sessId) {
         client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
         client.from('test_results').select('*').eq('test_session_id', sessId),
         client.from('test_attendances').select('athlete_id, status').eq('test_session_id', sessId).eq('status','convocato'),
-        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', sess.test_definitions.team_id)
+        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', sess.team_id)
     ]);
 
     // Build athlete detail map
@@ -8623,14 +8579,14 @@ window.openTestStats = async function(sessId) {
 // ── TAB: GRAFICO ─────────────────────────────────────────────────
 window.openTestGrafico = async function(sessId) {
     const { data: sess } = await client.from('test_sessions')
-        .select('id, session_date, test_definitions!inner(id, name, team_id, teams!inner(name))')
+        .select('id, session_date, team_id, test_definitions!inner(id, name)')
         .eq('id', sessId).single();
     if (!sess) return;
 
     const [{ data: perfs }, { data: results }, { data: teamAthletes }] = await Promise.all([
         client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
         client.from('test_results').select('*').eq('test_session_id', sessId),
-        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', sess.test_definitions.team_id)
+        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', sess.team_id)
     ]);
 
     // Build athlete detail map
