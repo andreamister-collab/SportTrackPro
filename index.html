@@ -8270,22 +8270,41 @@ window.deleteTestDef = async function(defId) {
 // ── NUOVA SESSIONE TEST ──────────────────────────────────────────
 window.openNewTestSession = async function() {
     const socId = document.getElementById('f-test-soc')?.value || window._currentSocietyId;
-    const { data: defs } = await client.from('test_definitions').select('id,name,teams(name)').eq('society_id', socId).order('name');
+
+    // Load teams and test definitions in parallel
+    const [{ data: defs }, { data: teams }] = await Promise.all([
+        client.from('test_definitions').select('id,name,team_id,teams(id,name)').eq('society_id', socId).order('name'),
+        client.from('teams').select('id,name').eq('society_id', socId).order('name')
+    ]);
 
     if (!defs?.length) {
         alert('Nessun tipo di test configurato. Crea prima un tipo di test.');
         return;
     }
 
+    // Store defs globally for filtering
+    window._tsessDefs = defs;
+
+    // Build unique team list from defs (only teams that actually have test definitions)
+    const teamIdsWithDefs = [...new Set(defs.map(d => d.team_id).filter(Boolean))];
+    const teamsWithDefs = (teams || []).filter(t => teamIdsWithDefs.includes(t.id));
+
     const today = new Date().toISOString().split('T')[0];
     window.openTestPopup(`
         <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">📋 Nuova Sessione Test</div>
         <h2 style="margin:0 0 20px;font-family:'Syne',sans-serif;font-size:1.3rem;">Pianifica sessione</h2>
+        <div style="margin-bottom:16px;">
+            <label style="font-size:11px;color:var(--text-muted);font-weight:700;">SQUADRA *</label>
+            <select id="tsess-team" onchange="window.filterTestDefsByTeam()" style="width:100%;padding:9px;border:1px solid var(--border-accent);border-radius:6px;margin-top:4px;background:rgba(232,64,46,0.03);">
+                <option value="">— Seleziona squadra —</option>
+                ${teamsWithDefs.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}
+            </select>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
             <div>
                 <label style="font-size:11px;color:var(--text-muted);font-weight:700;">TIPO TEST *</label>
                 <select id="tsess-def" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;">
-                    ${defs.map(d=>`<option value="${d.id}">${d.name} — ${d.teams?.name||'?'}</option>`).join('')}
+                    <option value="">— Prima seleziona squadra —</option>
                 </select>
             </div>
             <div>
@@ -8304,10 +8323,30 @@ window.openNewTestSession = async function() {
     `);
 };
 
+window.filterTestDefsByTeam = function() {
+    const teamId = document.getElementById('tsess-team')?.value;
+    const defSelect = document.getElementById('tsess-def');
+    if (!defSelect) return;
+    const defs = window._tsessDefs || [];
+    const filtered = teamId ? defs.filter(d => d.team_id === teamId) : [];
+    if (!filtered.length) {
+        defSelect.innerHTML = teamId
+            ? '<option value="">Nessun tipo test per questa squadra</option>'
+            : '<option value="">— Prima seleziona squadra —</option>';
+    } else {
+        defSelect.innerHTML = filtered.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    }
+    // Update border color to indicate the field is now active
+    defSelect.style.borderColor = teamId ? 'var(--border-accent)' : 'var(--border)';
+    defSelect.style.background = teamId ? 'rgba(232,64,46,0.03)' : '';
+};
+
 window.saveTestSession = async function() {
-    const defId = document.getElementById('tsess-def')?.value;
-    const date  = document.getElementById('tsess-date')?.value;
-    const notes = document.getElementById('tsess-notes')?.value?.trim();
+    const teamId = document.getElementById('tsess-team')?.value;
+    const defId  = document.getElementById('tsess-def')?.value;
+    const date   = document.getElementById('tsess-date')?.value;
+    const notes  = document.getElementById('tsess-notes')?.value?.trim();
+    if (!teamId) { alert('Seleziona una squadra.'); return; }
     if (!defId || !date) { alert('Seleziona tipo test e data.'); return; }
 
     const { data, error } = await client.from('test_sessions').insert({ test_def_id: defId, session_date: date, notes }).select('id').single();
