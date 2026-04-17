@@ -842,6 +842,7 @@
             <div class="sidebar-group-label">Attività</div>
             <a data-section="sessioni" id="nav-sessioni">📅 Gestione Sessioni</a>
             <a data-section="partite" id="nav-partite">🏆 Gestione Partite</a>
+            <a data-section="test" id="nav-test">🧪 Test Atletici</a>
 
             <a data-section="import-atleti" id="nav-import">📥 Importa Atleti</a>
         </div>
@@ -939,7 +940,7 @@
 
         const allNavIds = ['nav-stagioni','nav-sport','nav-societa','nav-categoria','nav-squadra',
                            'nav-staff','nav-genitori','nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
-                           'nav-sessioni','nav-partite','nav-import','nav-group-admin'];
+                           'nav-sessioni','nav-partite','nav-test','nav-import','nav-group-admin'];
 
         // GERARCHIA VISIBILITÀ MENU:
         // admin/manager      → tutto
@@ -952,13 +953,13 @@
             manager:      allNavIds,
             presidente:   ['nav-categoria','nav-squadra','nav-staff',
                            'nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
-                           'nav-sessioni','nav-partite','nav-import','nav-group-admin'],
+                           'nav-sessioni','nav-partite','nav-test','nav-import','nav-group-admin'],
             segretario:   ['nav-categoria','nav-squadra','nav-staff',
                            'nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
-                           'nav-sessioni','nav-partite','nav-import','nav-group-admin'],
+                           'nav-sessioni','nav-partite','nav-test','nav-import','nav-group-admin'],
             responsabile: ['nav-anagrafica-pura','nav-atleti','nav-group-admin'],
-            dirigente:    ['nav-atleti','nav-sessioni','nav-partite','nav-import'],
-            allenatore:   ['nav-atleti','nav-sessioni','nav-partite','nav-import'],
+            dirigente:    ['nav-atleti','nav-sessioni','nav-partite','nav-test','nav-import'],
+            allenatore:   ['nav-atleti','nav-sessioni','nav-partite','nav-test','nav-import'],
             genitore:     [],
         };
 
@@ -1186,6 +1187,12 @@
                 window._matchState = { seasons: [] }; // reset cache stagioni ad ogni navigazione
                 initPartite();
                 break;
+             case 'test':
+                content.innerHTML = templateTest();
+                window._testState = {};
+                initTest();
+                break;
+
              case 'import-atleti':
                 content.innerHTML = templateImportAtleti();
                 initImportAtleti();
@@ -7843,6 +7850,780 @@ window.initGenitoreView = async function() {
         contentEl.innerHTML = `<div class="card"><p style="color:#ef4444;">Errore caricamento dati: ${err.message}</p></div>`;
     }
 };
+
+
+/* ============================================================
+   MODULO TEST ATLETICI
+   Tabelle Supabase richieste:
+     test_definitions, test_performances,
+     test_sessions, test_attendances, test_results
+   ============================================================ */
+
+// ── POPUP OVERLAY (aggiunto dinamicamente una sola volta) ────────
+(function() {
+    if (document.getElementById('test-popup-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'test-popup-overlay';
+    overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:1300;background:rgba(200,205,220,0.75);backdrop-filter:blur(16px) saturate(0.6);align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = `
+        <div id="test-popup-box" style="background:var(--card-raised);border-radius:var(--r-2xl);box-shadow:var(--shadow-xl),0 0 0 1px rgba(255,79,59,0.1);width:100%;max-width:960px;max-height:92vh;overflow-y:auto;position:relative;animation:popupIn 0.28s cubic-bezier(.34,1.36,.64,1);border:1px solid var(--border-accent);">
+            <button onclick="window.closeTestPopup()" style="position:absolute;top:16px;right:16px;z-index:10;background:rgba(0,0,0,0.05);border:1px solid var(--border);width:32px;height:32px;border-radius:50%;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-sub);">✕</button>
+            <div id="test-popup-content" style="padding:28px 32px 24px;"></div>
+        </div>`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) window.closeTestPopup(); });
+    document.body.appendChild(overlay);
+})();
+
+window.closeTestPopup = function() {
+    const o = document.getElementById('test-popup-overlay');
+    if (o) o.style.display = 'none';
+};
+window.openTestPopup = function(html) {
+    document.getElementById('test-popup-content').innerHTML = html;
+    const o = document.getElementById('test-popup-overlay');
+    o.style.display = 'flex';
+};
+
+// ── TEMPLATE ────────────────────────────────────────────────────
+window.templateTest = function() {
+    return `
+    <div class="card" id="main-test-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+            <h2 style="margin:0;color:var(--text-main);">🧪 Test Atletici</h2>
+            <div style="display:flex;gap:8px;">
+                <button onclick="window.openTestDefEditor(null)" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">+ Nuovo Tipo Test</button>
+                <button onclick="window.openNewTestSession()" style="background:#059669;color:white;border:none;padding:8px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">📋 Nuova Sessione</button>
+            </div>
+        </div>
+
+        <!-- FILTRI -->
+        <div style="background:rgba(0,0,0,0.03);padding:14px;border-radius:8px;border:1px solid var(--border);margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
+            <div id="test-soc-filter-container">
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">SOCIETÀ</label>
+                <select id="f-test-soc" style="width:100%;padding:8px;margin-top:4px;" onchange="window.reloadTestSubFilters()">
+                    <option value="">Caricamento...</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">STAGIONE</label>
+                <select id="f-test-season" style="width:100%;padding:8px;margin-top:4px;" onchange="window.testOnSeasonChange()">
+                    <option value="">Tutte le stagioni</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">CATEGORIA</label>
+                <select id="f-test-cat" style="width:100%;padding:8px;margin-top:4px;" onchange="window.reloadTestTeamsOnly()">
+                    <option value="">Tutte</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">SQUADRA</label>
+                <select id="f-test-team" style="width:100%;padding:8px;margin-top:4px;" onchange="window.initTest()">
+                    <option value="">Tutte</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">TIPO TEST</label>
+                <select id="f-test-def" style="width:100%;padding:8px;margin-top:4px;" onchange="window.initTest()">
+                    <option value="">Tutti i tipi</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">DA DATA</label>
+                <input type="date" id="f-test-from" style="width:100%;padding:8px;margin-top:4px;" onchange="window.initTest()">
+            </div>
+            <div>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">A DATA</label>
+                <input type="date" id="f-test-to" style="width:100%;padding:8px;margin-top:4px;" onchange="window.initTest()">
+            </div>
+        </div>
+
+        <!-- LISTA SESSIONI TEST -->
+        <div class="table-container" style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px;">
+                <thead>
+                    <tr style="text-align:left;background:var(--card-raised);color:var(--text-sub);border-bottom:1px solid var(--border);">
+                        <th style="padding:12px;width:100px;">DATA</th>
+                        <th style="padding:12px;">TIPO TEST</th>
+                        <th style="padding:12px;">SQUADRA</th>
+                        <th style="padding:12px;">NOTE</th>
+                        <th style="padding:12px;text-align:center;">GESTIONE</th>
+                    </tr>
+                </thead>
+                <tbody id="list-test-body"></tbody>
+            </table>
+        </div>
+    </div>`;
+};
+
+// ── INIT ─────────────────────────────────────────────────────────
+window._testState = window._testState || {};
+
+window.initTest = async function() {
+    const tbody = document.getElementById('list-test-body');
+    if (!tbody) return;
+
+    const selSoc = document.getElementById('f-test-soc');
+    if (selSoc && (selSoc.value === '' || selSoc.options[0]?.text.includes('Caricamento'))) {
+        const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const isGlobal = ['admin','manager'].includes(effRole);
+        const userSocId = window._currentSocietyId;
+
+        if (isGlobal) {
+            const { data: socs } = await client.from('societies').select('id,name').order('name');
+            if (socs?.length) {
+                selSoc.innerHTML = socs.map(s => `<option value="${s.id}" ${s.id===userSocId?'selected':''}>${s.name}</option>`).join('');
+                selSoc.value = userSocId || socs[0].id;
+            }
+        } else {
+            const container = document.getElementById('test-soc-filter-container');
+            if (container) container.style.display = 'none';
+            if (userSocId) {
+                selSoc.innerHTML = `<option value="${userSocId}" selected>Società corrente</option>`;
+                selSoc.value = userSocId;
+                if (['dirigente','allenatore','responsabile'].includes(effRole)) {
+                    await window.loadUserAssignedTeams?.();
+                }
+            }
+        }
+        await _testFillSeasons();
+        await _testFillDefs();
+        return window.reloadTestSubFilters();
+    }
+
+    const socId   = selSoc?.value || window._currentSocietyId;
+    if (!socId) return;
+
+    const seasonRange = _testGetSeasonRange();
+    const dateFrom = seasonRange ? seasonRange.from : document.getElementById('f-test-from')?.value;
+    const dateTo   = seasonRange ? seasonRange.to   : document.getElementById('f-test-to')?.value;
+    const teamId   = document.getElementById('f-test-team')?.value;
+    const defId    = document.getElementById('f-test-def')?.value;
+
+    const assignedIds = window._userAssignedTeamIds;
+    const hasAssigned = assignedIds && assignedIds.length > 0;
+
+    let q = client.from('test_sessions')
+        .select('id, session_date, notes, test_definitions!inner(id, name, team_id, teams(name))')
+        .eq('test_definitions.society_id', socId);
+
+    if (teamId) q = q.eq('test_definitions.team_id', teamId);
+    else if (hasAssigned) q = q.in('test_definitions.team_id', assignedIds);
+    if (defId) q = q.eq('test_def_id', defId);
+    if (dateFrom) q = q.gte('session_date', dateFrom);
+    if (dateTo)   q = q.lte('session_date', dateTo);
+
+    const { data: sessions, error } = await q.order('session_date', { ascending: false });
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="5" style="padding:20px;text-align:center;color:#ef4444;">Errore: ${error.message}</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = (sessions || []).map(s => `
+        <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:12px;">${new Date(s.session_date).toLocaleDateString('it-IT')}</td>
+            <td style="padding:12px;"><strong>${s.test_definitions?.name || '—'}</strong></td>
+            <td style="padding:12px;color:var(--text-muted);">${s.test_definitions?.teams?.name || '—'}</td>
+            <td style="padding:12px;color:var(--text-sub);font-size:11px;">${s.notes || ''}</td>
+            <td style="padding:12px;text-align:center;">
+                <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;">
+                    <button onclick="window.openTestConvoca('${s.id}')" style="background:var(--primary);color:white;border:none;padding:5px 9px;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">📋 CONVOCA</button>
+                    <button onclick="window.openTestTabellino('${s.id}')" style="background:#f59e0b;color:white;border:none;padding:5px 9px;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">📝 TABELLINO</button>
+                    <button onclick="window.openTestStats('${s.id}')" style="background:#6366f1;color:white;border:none;padding:5px 9px;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">📊 STATS</button>
+                    <button onclick="window.openTestGrafico('${s.id}')" style="background:#0ea5e9;color:white;border:none;padding:5px 9px;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">📈 GRAFICO</button>
+                    <button onclick="window.deleteTestSession('${s.id}')" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);padding:5px 9px;border-radius:4px;cursor:pointer;font-size:11px;">🗑</button>
+                </div>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-sub);">Nessuna sessione trovata.</td></tr>';
+};
+
+// ── FILTRI HELPER ────────────────────────────────────────────────
+async function _testFillSeasons() {
+    const sel = document.getElementById('f-test-season');
+    if (!sel || window._testState.seasons?.length > 0) return;
+    const { data } = await client.from('seasons').select('id,name,start_date,end_date,is_active').order('name',{ascending:false});
+    window._testState.seasons = data || [];
+    (data||[]).forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.id; o.textContent = s.name + (s.is_active?' ✓':'');
+        if (s.is_active) o.selected = true;
+        sel.appendChild(o);
+    });
+}
+
+async function _testFillDefs() {
+    const sel = document.getElementById('f-test-def');
+    if (!sel) return;
+    const socId = document.getElementById('f-test-soc')?.value || window._currentSocietyId;
+    const { data } = await client.from('test_definitions').select('id,name').eq('society_id', socId).order('name');
+    sel.innerHTML = '<option value="">Tutti i tipi</option>' + (data||[]).map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+}
+
+function _testGetSeasonRange() {
+    const sel = document.getElementById('f-test-season');
+    if (!sel || !sel.value) return null;
+    const s = (window._testState.seasons||[]).find(x => x.id === sel.value);
+    return (s?.start_date && s?.end_date) ? { from: s.start_date, to: s.end_date } : null;
+}
+
+window.testOnSeasonChange = function() {
+    const has = !!document.getElementById('f-test-season')?.value;
+    ['f-test-from','f-test-to'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.disabled = has; el.style.opacity = has ? '0.4' : '1'; }
+    });
+    window.initTest();
+};
+
+window.reloadTestSubFilters = async function() {
+    const socId = document.getElementById('f-test-soc')?.value || window._currentSocietyId;
+    if (!socId) return;
+    const assignedIds = window._userAssignedTeamIds;
+    const hasAssigned = assignedIds && assignedIds.length > 0;
+
+    let tq = client.from('teams').select('id,name,category_id').eq('society_id', socId).order('name');
+    if (hasAssigned) tq = tq.in('id', assignedIds);
+    const { data: teams } = await tq;
+    window._testTeams = teams || [];
+
+    const catIds = hasAssigned ? [...new Set((teams||[]).map(t=>t.category_id).filter(Boolean))] : null;
+    let cq = client.from('categories').select('id,name').eq('society_id', socId).order('name');
+    if (catIds?.length) cq = cq.in('id', catIds);
+    const { data: cats } = await cq;
+
+    const catSel = document.getElementById('f-test-cat');
+    if (catSel) catSel.innerHTML = '<option value="">Tutte Categorie</option>' + (cats||[]).map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+
+    await _testFillDefs();
+    window.reloadTestTeamsOnly();
+};
+
+window.reloadTestTeamsOnly = function() {
+    const catId = document.getElementById('f-test-cat')?.value;
+    let filtered = window._testTeams || [];
+    if (catId) filtered = filtered.filter(t => String(t.category_id) === String(catId));
+    const sel = document.getElementById('f-test-team');
+    if (sel) sel.innerHTML = '<option value="">Tutte Squadre</option>' + filtered.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+    window.initTest();
+};
+
+// ── EDITOR TIPO TEST ─────────────────────────────────────────────
+window.openTestDefEditor = async function(defId) {
+    const socId = document.getElementById('f-test-soc')?.value || window._currentSocietyId;
+    const teamId = document.getElementById('f-test-team')?.value;
+
+    // Carica squadre per il select
+    let tq = client.from('teams').select('id,name').eq('society_id', socId).order('name');
+    const assignedIds = window._userAssignedTeamIds;
+    if (assignedIds?.length) tq = tq.in('id', assignedIds);
+    const { data: teams } = await tq;
+
+    let def = null, perfs = [];
+    if (defId) {
+        const { data: d } = await client.from('test_definitions').select('*').eq('id', defId).single();
+        def = d;
+        const { data: p } = await client.from('test_performances').select('*').eq('test_def_id', defId).order('sort_order');
+        perfs = p || [];
+    }
+
+    const teamOptions = (teams||[]).map(t => `<option value="${t.id}" ${def?.team_id===t.id||(!def&&t.id===teamId)?'selected':''}>${t.name}</option>`).join('');
+
+    // Genera righe performance (min 1, max 5)
+    const perfRows = (perfs.length ? perfs : [{}]).map((p,i) => _testPerfRow(i, p)).join('');
+
+    window.openTestPopup(`
+        <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">⚙️ ${defId ? 'Modifica' : 'Nuovo'} Tipo Test</div>
+        <h2 style="margin:0 0 20px;font-family:'Syne',sans-serif;font-size:1.3rem;">${def?.name || 'Configura Test'}</h2>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">NOME TEST *</label>
+                <input id="tdef-name" type="text" value="${def?.name||''}" placeholder="es. Velocità 30m, Test Cooper..." style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;font-family:inherit;">
+            </div>
+            <div>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">SQUADRA *</label>
+                <select id="tdef-team" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;">
+                    ${teamOptions}
+                </select>
+            </div>
+        </div>
+        <div style="margin-bottom:20px;">
+            <label style="font-size:11px;color:var(--text-muted);font-weight:700;">DESCRIZIONE</label>
+            <textarea id="tdef-desc" rows="2" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;font-family:inherit;resize:vertical;">${def?.description||''}</textarea>
+        </div>
+
+        <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">📏 Performance da misurare (max 5)</div>
+        <div id="tdef-perfs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+            ${perfRows}
+        </div>
+        <button onclick="window._addTestPerfRow()" id="tdef-add-perf-btn"
+            style="background:rgba(5,150,105,0.1);color:#059669;border:1px solid rgba(5,150,105,0.2);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">
+            + Aggiungi Performance
+        </button>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;border-top:1px solid var(--border);padding-top:16px;">
+            ${defId ? `<button onclick="window.deleteTestDef('${defId}')" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;margin-right:auto;">🗑 Elimina</button>` : ''}
+            <button onclick="window.closeTestPopup()" style="background:rgba(0,0,0,0.05);color:var(--text-sub);border:1px solid var(--border);padding:8px 20px;border-radius:6px;cursor:pointer;">Annulla</button>
+            <button onclick="window.saveTestDef('${defId||''}')" style="background:var(--primary);color:white;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-weight:700;">💾 Salva</button>
+        </div>
+    `);
+    window._testPerfIdx = perfs.length || 1;
+};
+
+function _testPerfRow(idx, p) {
+    const units = ['sec','min','cm','m','kg','rep','watt','bpm','punti','altro'];
+    return `
+    <div class="tdef-perf-row" data-perf-id="${p.id||''}" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+        <div>
+            <label style="font-size:10px;color:var(--text-muted);font-weight:600;">NOME PERFORMANCE</label>
+            <input type="text" class="tperf-name" value="${p.name||''}" placeholder="es. Tempo, Distanza, Ripetizioni" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:5px;margin-top:3px;font-family:inherit;font-size:13px;">
+        </div>
+        <div>
+            <label style="font-size:10px;color:var(--text-muted);font-weight:600;">UNITÀ</label>
+            <select class="tperf-unit" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:5px;margin-top:3px;">
+                ${units.map(u=>`<option value="${u}" ${p.unit===u?'selected':''}>${u}</option>`).join('')}
+            </select>
+        </div>
+        <div style="text-align:center;">
+            <label style="font-size:10px;color:var(--text-muted);font-weight:600;">MENO = MEGLIO</label>
+            <div style="margin-top:6px;">
+                <input type="checkbox" class="tperf-lib" ${p.lower_is_better?'checked':''} style="width:18px;height:18px;cursor:pointer;">
+            </div>
+        </div>
+        <button onclick="this.closest('.tdef-perf-row').remove();window._updateAddPerfBtn()" style="background:rgba(239,68,68,0.1);color:#ef4444;border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>`;
+}
+
+window._addTestPerfRow = function() {
+    const list = document.getElementById('tdef-perfs-list');
+    const rows = list?.querySelectorAll('.tdef-perf-row').length || 0;
+    if (rows >= 5) { alert('Massimo 5 performance per test.'); return; }
+    list.insertAdjacentHTML('beforeend', _testPerfRow(rows, {}));
+    window._updateAddPerfBtn();
+};
+window._updateAddPerfBtn = function() {
+    const list = document.getElementById('tdef-perfs-list');
+    const btn  = document.getElementById('tdef-add-perf-btn');
+    if (!list || !btn) return;
+    const rows = list.querySelectorAll('.tdef-perf-row').length;
+    btn.style.display = rows >= 5 ? 'none' : '';
+};
+
+window.saveTestDef = async function(existingId) {
+    const name   = document.getElementById('tdef-name')?.value?.trim();
+    const teamId = document.getElementById('tdef-team')?.value;
+    const desc   = document.getElementById('tdef-desc')?.value?.trim();
+    if (!name)   { alert('Inserisci il nome del test.'); return; }
+    if (!teamId) { alert('Seleziona una squadra.'); return; }
+
+    const rows = document.querySelectorAll('.tdef-perf-row');
+    if (!rows.length) { alert('Aggiungi almeno una performance da misurare.'); return; }
+
+    const perfs = [];
+    let valid = true;
+    rows.forEach((row, i) => {
+        const n = row.querySelector('.tperf-name')?.value?.trim();
+        const u = row.querySelector('.tperf-unit')?.value;
+        const l = row.querySelector('.tperf-lib')?.checked || false;
+        if (!n) { valid = false; return; }
+        perfs.push({ name: n, unit: u, lower_is_better: l, sort_order: i });
+    });
+    if (!valid) { alert('Compila il nome di ogni performance.'); return; }
+
+    const socId = document.getElementById('f-test-soc')?.value || window._currentSocietyId;
+    const seasonSel = document.getElementById('f-test-season');
+    const seasonId = seasonSel?.value || null;
+
+    try {
+        let defId = existingId;
+        if (existingId) {
+            const { error } = await client.from('test_definitions').update({ name, description: desc, team_id: teamId, season_id: seasonId }).eq('id', existingId);
+            if (error) throw error;
+            await client.from('test_performances').delete().eq('test_def_id', existingId);
+        } else {
+            const { data, error } = await client.from('test_definitions').insert({ name, description: desc, team_id: teamId, society_id: socId, season_id: seasonId, created_by: window._currentUserId }).select('id').single();
+            if (error) throw error;
+            defId = data.id;
+        }
+        const perfInserts = perfs.map(p => ({ ...p, test_def_id: defId }));
+        const { error: pe } = await client.from('test_performances').insert(perfInserts);
+        if (pe) throw pe;
+
+        window.closeTestPopup();
+        await _testFillDefs();
+        window.initTest();
+        alert('✅ Tipo test salvato!');
+    } catch(err) {
+        alert('Errore: ' + err.message);
+    }
+};
+
+window.deleteTestDef = async function(defId) {
+    if (!confirm('Eliminare questo tipo di test? Verranno eliminati anche tutti i risultati collegati.')) return;
+    await client.from('test_definitions').delete().eq('id', defId);
+    window.closeTestPopup();
+    await _testFillDefs();
+    window.initTest();
+};
+
+// ── NUOVA SESSIONE TEST ──────────────────────────────────────────
+window.openNewTestSession = async function() {
+    const socId = document.getElementById('f-test-soc')?.value || window._currentSocietyId;
+    const { data: defs } = await client.from('test_definitions').select('id,name,teams(name)').eq('society_id', socId).order('name');
+
+    if (!defs?.length) {
+        alert('Nessun tipo di test configurato. Crea prima un tipo di test.');
+        return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    window.openTestPopup(`
+        <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">📋 Nuova Sessione Test</div>
+        <h2 style="margin:0 0 20px;font-family:'Syne',sans-serif;font-size:1.3rem;">Pianifica sessione</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">TIPO TEST *</label>
+                <select id="tsess-def" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;">
+                    ${defs.map(d=>`<option value="${d.id}">${d.name} — ${d.teams?.name||'?'}</option>`).join('')}
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;color:var(--text-muted);font-weight:700;">DATA *</label>
+                <input id="tsess-date" type="date" value="${today}" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;">
+            </div>
+        </div>
+        <div>
+            <label style="font-size:11px;color:var(--text-muted);font-weight:700;">NOTE</label>
+            <textarea id="tsess-notes" rows="2" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-top:4px;font-family:inherit;resize:vertical;" placeholder="Condizioni meteo, campo, note..."></textarea>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+            <button onclick="window.closeTestPopup()" style="background:rgba(0,0,0,0.05);color:var(--text-sub);border:1px solid var(--border);padding:8px 20px;border-radius:6px;cursor:pointer;">Annulla</button>
+            <button onclick="window.saveTestSession()" style="background:#059669;color:white;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-weight:700;">📋 Crea e Convoca</button>
+        </div>
+    `);
+};
+
+window.saveTestSession = async function() {
+    const defId = document.getElementById('tsess-def')?.value;
+    const date  = document.getElementById('tsess-date')?.value;
+    const notes = document.getElementById('tsess-notes')?.value?.trim();
+    if (!defId || !date) { alert('Seleziona tipo test e data.'); return; }
+
+    const { data, error } = await client.from('test_sessions').insert({ test_def_id: defId, session_date: date, notes }).select('id').single();
+    if (error) { alert('Errore: ' + error.message); return; }
+
+    window.closeTestPopup();
+    window.initTest();
+    // Apri subito la convocazione
+    window.openTestConvoca(data.id);
+};
+
+window.deleteTestSession = async function(sessId) {
+    if (!confirm('Eliminare questa sessione e tutti i risultati?')) return;
+    await client.from('test_sessions').delete().eq('id', sessId);
+    window.initTest();
+};
+
+// ── TAB: CONVOCA ─────────────────────────────────────────────────
+window.openTestConvoca = async function(sessId) {
+    const { data: sess } = await client.from('test_sessions')
+        .select('id, session_date, notes, test_definitions!inner(id, name, team_id, teams!inner(id,name))')
+        .eq('id', sessId).single();
+    if (!sess) return;
+
+    const teamId = sess.test_definitions.team_id;
+
+    const [{ data: athletes }, { data: existing }] = await Promise.all([
+        client.from('team_athletes').select('athlete_id, jersey_number, athletes(id,name,surname)').eq('team_id', teamId).order('jersey_number'),
+        client.from('test_attendances').select('*').eq('test_session_id', sessId)
+    ]);
+
+    const attMap = {};
+    (existing||[]).forEach(a => attMap[a.athlete_id] = a);
+
+    const rows = (athletes||[]).sort((a,b) => (a.athletes?.surname||'').localeCompare(b.athletes?.surname||'')).map(a => {
+        const cur  = attMap[a.athlete_id] || {};
+        const isConv = !cur.status || cur.status === 'convocato';
+        const isAss  = cur.status === 'assente';
+        const isInj  = cur.status === 'infortunato';
+        return `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:var(--card-raised);border:1px solid var(--border);border-radius:8px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span style="color:var(--primary-mid);font-weight:bold;width:25px;font-size:14px;">${a.jersey_number||'--'}</span>
+                <span style="font-weight:600;text-transform:uppercase;font-size:13px;">${a.athletes?.surname} ${a.athletes?.name}</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;background:var(--card);padding:6px 12px;border-radius:20px;border:1px solid var(--border);">
+                <label style="color:#10b981;font-size:10px;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                    CONV. <input type="radio" name="tconv-${a.athlete_id}" class="tconv-radio" data-id="${a.athlete_id}" value="convocato" ${isConv?'checked':''}>
+                </label>
+                <label style="color:var(--text-sub);font-size:10px;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                    NON CONV. <input type="radio" name="tconv-${a.athlete_id}" class="tconv-radio" data-id="${a.athlete_id}" value="assente" ${isAss?'checked':''}>
+                </label>
+                <label style="color:#ef4444;font-size:10px;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:4px;border-left:1px solid var(--border);padding-left:8px;">
+                    🩹 INF. <input type="radio" name="tconv-${a.athlete_id}" class="tconv-radio" data-id="${a.athlete_id}" value="infortunato" ${isInj?'checked':''}>
+                </label>
+            </div>
+        </div>`;
+    }).join('');
+
+    window.openTestPopup(`
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+            <div style="width:4px;height:36px;background:var(--primary);border-radius:3px;flex-shrink:0;"></div>
+            <div>
+                <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">📋 Convocazioni Test</div>
+                <div style="font-size:1.1rem;font-weight:800;font-family:'Syne',sans-serif;">${sess.test_definitions.name} — ${new Date(sess.session_date).toLocaleDateString('it-IT')}</div>
+            </div>
+            <button onclick="window._testConvocaTutti()" style="margin-left:auto;background:#059669;color:white;border:none;padding:7px 14px;border-radius:6px;font-weight:600;cursor:pointer;font-size:12px;">✅ Convoca Tutti</button>
+        </div>
+        <div style="display:grid;gap:8px;margin-bottom:20px;" id="tconv-list">${rows}</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:16px;">
+            <button onclick="window.closeTestPopup()" style="background:rgba(0,0,0,0.05);color:var(--text-sub);border:1px solid var(--border);padding:8px 20px;border-radius:6px;cursor:pointer;">Annulla</button>
+            <button onclick="window.saveTestConvoca('${sessId}')" style="background:var(--primary);color:white;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-weight:700;">💾 Salva</button>
+        </div>
+    `);
+};
+
+window._testConvocaTutti = function() {
+    document.querySelectorAll('.tconv-radio[value="convocato"]').forEach(r => {
+        const isInj = document.querySelector(`input[name="${r.name}"][value="infortunato"]`)?.checked;
+        if (!isInj) r.checked = true;
+    });
+};
+
+window.saveTestConvoca = async function(sessId) {
+    const radios = document.querySelectorAll('.tconv-radio:checked');
+    const records = Array.from(radios).map(r => ({
+        test_session_id: sessId,
+        athlete_id: r.getAttribute('data-id'),
+        status: r.value
+    }));
+    if (!records.length) { alert('Nessun dato.'); return; }
+    const { error } = await client.from('test_attendances').upsert(records, { onConflict: 'test_session_id, athlete_id' });
+    if (error) { alert('Errore: ' + error.message); return; }
+    window.closeTestPopup();
+    alert('✅ Convocazioni salvate!');
+};
+
+// ── TAB: TABELLINO ───────────────────────────────────────────────
+window.openTestTabellino = async function(sessId) {
+    const { data: sess } = await client.from('test_sessions')
+        .select('id, session_date, notes, test_definitions!inner(id, name, team_id, teams!inner(name))')
+        .eq('id', sessId).single();
+    if (!sess) return;
+
+    const [{ data: perfs }, { data: attendances }, { data: existingRes }] = await Promise.all([
+        client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
+        client.from('test_attendances').select('athlete_id, status, team_athletes!inner(jersey_number, athletes!inner(id,name,surname))').eq('test_session_id', sessId).eq('status','convocato'),
+        client.from('test_results').select('*').eq('test_session_id', sessId)
+    ]);
+
+    // Build result map: athlete_id → perf_id → value
+    const resMap = {};
+    (existingRes||[]).forEach(r => {
+        if (!resMap[r.athlete_id]) resMap[r.athlete_id] = {};
+        resMap[r.athlete_id][r.performance_id] = r.value;
+    });
+
+    const athletes = (attendances||[]).sort((a,b) => (a.team_athletes?.athletes?.surname||'').localeCompare(b.team_athletes?.athletes?.surname||''));
+
+    const perfHeaders = (perfs||[]).map(p => `<th style="padding:9px 10px;text-align:center;font-size:0.66rem;font-weight:700;color:#3b82f6;">${p.name}<br><span style="font-weight:400;color:var(--text-muted);">(${p.unit})</span></th>`).join('');
+
+    const athRows = athletes.map(a => {
+        const ath = a.team_athletes?.athletes;
+        const cells = (perfs||[]).map(p => {
+            const val = resMap[a.athlete_id]?.[p.id] ?? '';
+            return `<td style="padding:7px 8px;text-align:center;"><input type="number" step="0.01" class="tres-input" data-aid="${a.athlete_id}" data-pid="${p.id}" value="${val}" style="width:80px;padding:5px;border:1px solid var(--border);border-radius:5px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;"></td>`;
+        }).join('');
+        return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">
+            <td style="padding:9px 10px;font-weight:600;white-space:nowrap;">${a.team_athletes?.jersey_number||'--'} ${ath?.surname} ${ath?.name}</td>
+            ${cells}
+        </tr>`;
+    }).join('');
+
+    window.openTestPopup(`
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+            <div style="width:4px;height:36px;background:#f59e0b;border-radius:3px;flex-shrink:0;"></div>
+            <div>
+                <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">📝 Tabellino Test</div>
+                <div style="font-size:1.1rem;font-weight:800;font-family:'Syne',sans-serif;">${sess.test_definitions.name} — ${new Date(sess.session_date).toLocaleDateString('it-IT')}</div>
+                <div style="font-size:0.78rem;color:var(--text-sub);">${sess.test_definitions.teams?.name||''} ${sess.notes?'· '+sess.notes:''}</div>
+            </div>
+        </div>
+        ${!athletes.length ? '<p style="color:var(--text-sub);text-align:center;padding:24px;">Nessun atleta convocato. Vai prima in "Convoca".</p>' : `
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                <thead><tr style="background:rgba(0,0,0,0.03);">
+                    <th style="padding:9px 10px;text-align:left;font-size:0.66rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">ATLETA</th>
+                    ${perfHeaders}
+                </tr></thead>
+                <tbody>${athRows}</tbody>
+            </table>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+            <button onclick="window.closeTestPopup()" style="background:rgba(0,0,0,0.05);color:var(--text-sub);border:1px solid var(--border);padding:8px 20px;border-radius:6px;cursor:pointer;">Annulla</button>
+            <button onclick="window.saveTestTabellino('${sessId}')" style="background:#f59e0b;color:white;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-weight:700;">💾 Salva Risultati</button>
+        </div>`}
+    `);
+};
+
+window.saveTestTabellino = async function(sessId) {
+    const inputs = document.querySelectorAll('.tres-input');
+    const records = [];
+    inputs.forEach(inp => {
+        const val = inp.value.trim();
+        if (val === '') return;
+        records.push({
+            test_session_id: sessId,
+            athlete_id: inp.getAttribute('data-aid'),
+            performance_id: inp.getAttribute('data-pid'),
+            value: parseFloat(val)
+        });
+    });
+    if (!records.length) { alert('Inserisci almeno un risultato.'); return; }
+    const { error } = await client.from('test_results').upsert(records, { onConflict: 'test_session_id, athlete_id, performance_id' });
+    if (error) { alert('Errore: ' + error.message); return; }
+    window.closeTestPopup();
+    alert('✅ Risultati salvati!');
+};
+
+// ── TAB: STATS ───────────────────────────────────────────────────
+window.openTestStats = async function(sessId) {
+    const { data: sess } = await client.from('test_sessions')
+        .select('id, session_date, test_definitions!inner(id, name, team_id, teams!inner(name))')
+        .eq('id', sessId).single();
+    if (!sess) return;
+
+    const [{ data: perfs }, { data: results }, { data: attendances }] = await Promise.all([
+        client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
+        client.from('test_results').select('*, team_athletes!inner(jersey_number, athletes!inner(name,surname))').eq('test_session_id', sessId),
+        client.from('test_attendances').select('athlete_id, status, team_athletes!inner(jersey_number, athletes!inner(id,name,surname))').eq('test_session_id', sessId).eq('status','convocato')
+    ]);
+
+    // Group results: athlete_id → perf_id → value
+    const resMap = {};
+    (results||[]).forEach(r => {
+        const ath = r.team_athletes;
+        if (!resMap[r.athlete_id]) resMap[r.athlete_id] = { name: `${ath?.athletes?.surname} ${ath?.athletes?.name}`, jersey: ath?.jersey_number, vals: {} };
+        resMap[r.athlete_id].vals[r.performance_id] = r.value;
+    });
+
+    const athletes = Object.values(resMap);
+
+    const perfHeaders = (perfs||[]).map(p => `<th style="padding:9px 10px;text-align:center;font-size:0.66rem;font-weight:700;color:#6366f1;">${p.name}<br><span style="color:var(--text-muted);font-weight:400;">(${p.unit})</span></th>`).join('');
+
+    // Per ogni performance, calcola rank
+    const rankMap = {};
+    (perfs||[]).forEach(p => {
+        const vals = athletes.map(a => ({ id: a.name, v: a.vals[p.id] })).filter(x => x.v !== undefined);
+        vals.sort((a,b) => p.lower_is_better ? a.v-b.v : b.v-a.v);
+        vals.forEach((v,i) => { if (!rankMap[v.id]) rankMap[v.id]={}; rankMap[v.id][p.id] = i+1; });
+    });
+
+    const athRows = athletes.sort((a,b)=>a.name.localeCompare(b.name)).map(a => {
+        const cells = (perfs||[]).map(p => {
+            const val = a.vals[p.id];
+            const rank = rankMap[a.name]?.[p.id];
+            const medal = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':'';
+            return `<td style="padding:9px 10px;text-align:center;">
+                ${val !== undefined ? `<span style="font-weight:700;font-family:'DM Mono',monospace;">${val}</span> ${medal}` : '<span style="color:var(--text-muted);">—</span>'}
+            </td>`;
+        }).join('');
+        return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">
+            <td style="padding:9px 10px;font-weight:600;white-space:nowrap;">${a.jersey||'--'} ${a.name}</td>
+            ${cells}
+        </tr>`;
+    }).join('');
+
+    window.openTestPopup(`
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+            <div style="width:4px;height:36px;background:#6366f1;border-radius:3px;flex-shrink:0;"></div>
+            <div>
+                <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">📊 Statistiche Test</div>
+                <div style="font-size:1.1rem;font-weight:800;font-family:'Syne',sans-serif;">${sess.test_definitions.name} — ${new Date(sess.session_date).toLocaleDateString('it-IT')}</div>
+            </div>
+        </div>
+        ${!athletes.length ? '<p style="color:var(--text-sub);text-align:center;padding:24px;">Nessun risultato registrato.</p>' : `
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                <thead><tr style="background:rgba(0,0,0,0.03);">
+                    <th style="padding:9px 10px;text-align:left;font-size:0.66rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">ATLETA</th>
+                    ${perfHeaders}
+                </tr></thead>
+                <tbody>${athRows}</tbody>
+            </table>
+        </div>
+        <div style="font-size:0.68rem;color:var(--text-muted);margin-top:10px;">🥇 1° posto  🥈 2° posto  🥉 3° posto per ogni performance</div>`}
+    `);
+};
+
+// ── TAB: GRAFICO ─────────────────────────────────────────────────
+window.openTestGrafico = async function(sessId) {
+    const { data: sess } = await client.from('test_sessions')
+        .select('id, session_date, test_definitions!inner(id, name, team_id, teams!inner(name))')
+        .eq('id', sessId).single();
+    if (!sess) return;
+
+    const [{ data: perfs }, { data: results }] = await Promise.all([
+        client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
+        client.from('test_results').select('*, team_athletes!inner(jersey_number, athletes!inner(name,surname))').eq('test_session_id', sessId)
+    ]);
+
+    if (!results?.length) {
+        window.openTestPopup('<div style="padding:40px;text-align:center;color:var(--text-sub);">Nessun risultato da visualizzare.</div>');
+        return;
+    }
+
+    // Group by performance
+    const resMap = {};
+    (results||[]).forEach(r => {
+        if (!resMap[r.performance_id]) resMap[r.performance_id] = [];
+        resMap[r.performance_id].push({ name: `${r.team_athletes?.athletes?.surname} ${r.team_athletes?.athletes?.name}`, value: r.value, jersey: r.team_athletes?.jersey_number });
+    });
+
+    const COLORS = ['#e8402e','#3b82f6','#10b981','#f59e0b','#8b5cf6'];
+
+    const charts = (perfs||[]).map((p, ci) => {
+        const data = (resMap[p.id]||[]).sort((a,b) => p.lower_is_better ? a.value-b.value : b.value-a.value);
+        if (!data.length) return '';
+        const max = Math.max(...data.map(d=>d.value));
+        const W = 720, BAR_H = 32, GAP = 8, padL = 160, padR = 60, padT = 16, padB = 8;
+        const H = padT + data.length*(BAR_H+GAP) + padB;
+        const color = COLORS[ci % COLORS.length];
+
+        const bars = data.map((d,i) => {
+            const y = padT + i*(BAR_H+GAP);
+            const bw = max > 0 ? ((d.value/max) * (W-padL-padR)) : 0;
+            const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+            return `
+            <text x="${padL-8}" y="${y+BAR_H/2+5}" text-anchor="end" font-size="11" fill="var(--text-main)" font-family="Outfit,sans-serif">${d.jersey||'--'} ${d.name}</text>
+            <rect x="${padL}" y="${y}" width="${Math.max(bw,2)}" height="${BAR_H}" rx="4" fill="${color}" opacity="0.85"/>
+            <text x="${padL+bw+6}" y="${y+BAR_H/2+5}" font-size="12" font-weight="700" fill="${color}" font-family="DM Mono,monospace">${d.value} ${medal}</text>`;
+        }).join('');
+
+        return `
+        <div style="margin-bottom:24px;">
+            <div style="font-size:0.75rem;font-weight:700;color:${color};margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;">${p.name} (${p.unit}) ${p.lower_is_better?'· meno = meglio':''}</div>
+            <svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;">${bars}</svg>
+        </div>`;
+    }).join('');
+
+    window.openTestPopup(`
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <div style="width:4px;height:36px;background:#0ea5e9;border-radius:3px;flex-shrink:0;"></div>
+            <div>
+                <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">📈 Grafico Test</div>
+                <div style="font-size:1.1rem;font-weight:800;font-family:'Syne',sans-serif;">${sess.test_definitions.name} — ${new Date(sess.session_date).toLocaleDateString('it-IT')}</div>
+            </div>
+        </div>
+        <div style="background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:10px;padding:20px;">
+            ${charts}
+        </div>
+    `);
+};
+
+window.templateTest   = window.templateTest;
+window.initTest       = window.initTest;
 </script>
 </body>
 </html>
