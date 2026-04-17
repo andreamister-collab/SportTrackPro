@@ -5435,6 +5435,10 @@ window.templateDashboard = function() {
                 style="padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.83rem; font-weight:600; background:transparent; color:var(--text-muted); transition:all 0.15s; white-space:nowrap;">
                 👤 Statistiche per Atleta
             </button>
+            <button id="dash-tab-btn-4" onclick="window.switchDashTab(4)"
+                style="padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.83rem; font-weight:600; background:transparent; color:var(--text-muted); transition:all 0.15s; white-space:nowrap;">
+                📊 Presenze Mensili
+            </button>
         </div>
 
         <!-- TAB 0: STATISTICHE GARE PER SQUADRA -->
@@ -5630,6 +5634,37 @@ window.templateDashboard = function() {
             </div>
         </div>
 
+        <!-- TAB 4: PRESENZE MENSILI PER SQUADRA -->
+        <div id="dash-tab-4" style="display:none;">
+            <div class="card">
+                <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h3 style="font-family:'DM Mono','Outfit',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">📊 Presenze Mensili per Squadra</h3>
+                        <span style="font-size:0.68rem; color:var(--text-sub);">Clicca su un grafico per ingrandirlo</span>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <select id="dash-monthly-soc" onchange="window.onDashMonthlySocChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le società</option>
+                        </select>
+                        <select id="dash-monthly-cat" onchange="window.onDashMonthlyCatChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le categorie</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="dash-monthly-grid" style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="text-align:center; padding:30px; color:var(--text-sub);">⏳ Caricamento grafici...</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- POPUP GRAFICO MENSILE INGRANDITO -->
+    <div id="monthly-chart-popup-overlay" style="display:none; position:fixed; inset:0; z-index:1200; background:rgba(200,205,220,0.75); backdrop-filter:blur(16px) saturate(0.6); align-items:center; justify-content:center; padding:20px;">
+        <div id="monthly-chart-popup-box" style="background:var(--card-raised); border-radius:var(--r-2xl); box-shadow:var(--shadow-xl), 0 0 0 1px rgba(255,79,59,0.1); width:100%; max-width:860px; max-height:92vh; overflow-y:auto; position:relative; animation:popupIn 0.28s cubic-bezier(.34,1.36,.64,1); border:1px solid var(--border-accent); padding:28px 32px 24px;">
+            <button onclick="window.closeMonthlyChartPopup()" style="position:absolute; top:14px; right:14px; background:rgba(0,0,0,0.05); border:1px solid var(--border); width:32px; height:32px; border-radius:50%; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-sub); transition:all 0.15s;" onmouseover="this.style.background='rgba(255,56,96,0.12)';this.style.color='#dc2626'" onmouseout="this.style.background='rgba(0,0,0,0.05)';this.style.color='var(--text-sub)'">✕</button>
+            <div id="monthly-chart-popup-content"></div>
+        </div>
     </div>
 
     <style>
@@ -5638,7 +5673,8 @@ window.templateDashboard = function() {
         #dash-stats-soc, #dash-stats-cat, #dash-stats-team,
         #dash-match-soc, #dash-match-cat, #dash-match-team,
         #dash-pres-soc,  #dash-pres-cat,  #dash-pres-team,
-        #dash-ath-soc,   #dash-ath-cat,   #dash-ath-team {
+        #dash-ath-soc,   #dash-ath-cat,   #dash-ath-team,
+        #dash-monthly-soc, #dash-monthly-cat {
             padding: 5px 10px;
             border: 1px solid var(--border);
             border-radius: 6px;
@@ -5654,7 +5690,8 @@ window.templateDashboard = function() {
         #dash-stats-soc:focus, #dash-stats-cat:focus, #dash-stats-team:focus,
         #dash-match-soc:focus, #dash-match-cat:focus, #dash-match-team:focus,
         #dash-pres-soc:focus,  #dash-pres-cat:focus,  #dash-pres-team:focus,
-        #dash-ath-soc:focus,   #dash-ath-cat:focus,   #dash-ath-team:focus {
+        #dash-ath-soc:focus,   #dash-ath-cat:focus,   #dash-ath-team:focus,
+        #dash-monthly-soc:focus, #dash-monthly-cat:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px var(--primary-glow);
@@ -5665,7 +5702,7 @@ window.templateDashboard = function() {
 
 /* ── TAB SWITCHER DASHBOARD ── */
 window.switchDashTab = function(idx) {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
         const panel = document.getElementById('dash-tab-' + i);
         const btn   = document.getElementById('dash-tab-btn-' + i);
         if (panel) panel.style.display = i === idx ? '' : 'none';
@@ -5674,6 +5711,7 @@ window.switchDashTab = function(idx) {
             btn.style.color      = i === idx ? 'white'   : 'var(--text-muted)';
         }
     }
+    if (idx === 4) window.renderDashMonthlyCharts();
 };
 
 /* ── DATI GLOBALI DASHBOARD ── */
@@ -5765,8 +5803,332 @@ window.refreshDashboard = async function() {
         window.loadDashPresenze(seasonId, socId, scopedTeamIds),
         window.loadDashStats(seasonId, socId, scopedTeamIds),
         window.loadDashAthletes(seasonId, socId, scopedTeamIds),
+        window.loadDashMonthlyData(seasonId, socId, scopedTeamIds),
     ]);
 };
+
+/* ══════════════════════════════════════════════════════════════
+   MODULO: PRESENZE MENSILI PER SQUADRA (Tab 4 Dashboard)
+══════════════════════════════════════════════════════════════ */
+
+window._dashMonthlyData = {};
+
+window.loadDashMonthlyData = async function(seasonId, socId, scopedTeamIds) {
+    try {
+        const hasTeamScope = scopedTeamIds && scopedTeamIds.length > 0;
+
+        // Query sessioni con presenze
+        let q = client
+            .from('attendances')
+            .select('status, sessions!inner(id, session_date, team_id, society_id, season_id, teams!inner(id, name))');
+
+        if (seasonId && seasonId !== 'all') q = q.eq('sessions.season_id', seasonId);
+        if (socId && socId !== 'all')       q = q.eq('sessions.society_id', socId);
+        if (hasTeamScope)                   q = q.in('sessions.team_id', scopedTeamIds);
+
+        const { data, error } = await q;
+        if (error) { console.error('Monthly data error:', error); return; }
+
+        // Aggrega: per ogni squadra → per ogni mese → {pres, ass, total}
+        const teamsMap = {};
+        (data || []).forEach(att => {
+            const sess = att.sessions;
+            if (!sess || !sess.teams) return;
+            const teamId   = sess.team_id;
+            const teamName = sess.teams.name;
+            const dateStr  = sess.session_date;
+            if (!dateStr) return;
+            const d = new Date(dateStr);
+            const monthKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const monthLabel = d.toLocaleDateString('it-IT', { month:'short', year:'2-digit' });
+
+            if (!teamsMap[teamId]) teamsMap[teamId] = { id: teamId, name: teamName, months: {} };
+            if (!teamsMap[teamId].months[monthKey]) teamsMap[teamId].months[monthKey] = { label: monthLabel, pres: 0, ass: 0, giust: 0, total: 0 };
+
+            const m = teamsMap[teamId].months[monthKey];
+            m.total++;
+            const s = (att.status || '').toLowerCase();
+            if (s === 'presente') m.pres++;
+            else if (s === 'assente') m.ass++;
+            else if (s === 'giustificato') m.giust++;
+        });
+
+        window._dashMonthlyData = teamsMap;
+
+        // Popola filtri del tab 4 (società/categoria) usando i dati già esistenti
+        _populateMonthlyFilters();
+
+        // Se il tab è visibile, renderizza subito
+        const tab4 = document.getElementById('dash-tab-4');
+        if (tab4 && tab4.style.display !== 'none') {
+            window.renderDashMonthlyCharts();
+        }
+
+    } catch(err) { console.error('loadDashMonthlyData error:', err); }
+};
+
+function _populateMonthlyFilters() {
+    // Riusa i dati di società/categorie già caricati dall'inizializzazione del dashboard
+    const societies = window._dashData?._societies || [];
+    const selSoc = document.getElementById('dash-monthly-soc');
+    if (selSoc && selSoc.options.length <= 1 && societies.length > 0) {
+        societies.forEach(s => {
+            selSoc.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+    }
+}
+
+window.onDashMonthlySocChange = async function() {
+    const socId = document.getElementById('dash-monthly-soc')?.value;
+    const selCat = document.getElementById('dash-monthly-cat');
+    if (!selCat) return;
+    selCat.innerHTML = '<option value="">Tutte le categorie</option>';
+    if (socId) {
+        const { data: cats } = await client.from('categories').select('id, name').eq('society_id', socId).order('name');
+        (cats || []).forEach(c => { selCat.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+    }
+    window.renderDashMonthlyCharts();
+};
+
+window.onDashMonthlyCatChange = async function() {
+    window.renderDashMonthlyCharts();
+};
+
+window.renderDashMonthlyCharts = async function() {
+    const grid = document.getElementById('dash-monthly-grid');
+    if (!grid) return;
+
+    const teamsMap = window._dashMonthlyData || {};
+    const teams = Object.values(teamsMap);
+
+    const catId  = document.getElementById('dash-monthly-cat')?.value;
+    const socId  = document.getElementById('dash-monthly-soc')?.value;
+
+    // Filtra per categoria se selezionata
+    let filteredTeams = teams;
+    if (catId || socId) {
+        // Recupera i team che matchano i filtri
+        let q = client.from('teams').select('id, category_id, society_id');
+        if (catId) q = q.eq('category_id', catId);
+        if (socId) q = q.eq('society_id', socId);
+        const { data: filteredTeamRows } = await q;
+        const allowedIds = new Set((filteredTeamRows || []).map(t => t.id));
+        filteredTeams = teams.filter(t => allowedIds.has(t.id));
+    }
+
+    if (filteredTeams.length === 0) {
+        grid.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-sub);">Nessun dato di presenza disponibile per i filtri selezionati.</div>';
+        return;
+    }
+
+    // Ordina squadre per nome
+    filteredTeams.sort((a, b) => a.name.localeCompare(b.name));
+
+    grid.innerHTML = filteredTeams.map(team => {
+        const months = Object.entries(team.months).sort((a, b) => a[0].localeCompare(b[0]));
+        if (months.length === 0) return '';
+        const chartSVG = _buildMiniBarChart(months, 520, 90);
+        return `
+        <div onclick="window.openMonthlyChartPopup('${team.id}')"
+             style="display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 18px; cursor:pointer; transition:all 0.18s; box-shadow:var(--shadow-sm);"
+             onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--border-accent)';this.style.background='var(--card-hover)'"
+             onmouseout="this.style.boxShadow='var(--shadow-sm)';this.style.borderColor='var(--border)';this.style.background='var(--card)'">
+            <div style="min-width:140px; max-width:160px;">
+                <div style="font-size:0.82rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${team.name}">${team.name}</div>
+                <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">${months.length} mes${months.length===1?'e':'i'} · clicca per ingrandire</div>
+            </div>
+            <div style="flex:1; overflow:hidden;">
+                ${chartSVG}
+            </div>
+            <div style="font-size:0.68rem; color:var(--text-muted); opacity:0.6; flex-shrink:0;">🔍</div>
+        </div>`;
+    }).join('');
+};
+
+function _buildMiniBarChart(months, width, height) {
+    const maxVal = Math.max(...months.map(([,m]) => m.total), 1);
+    const barW = Math.max(Math.floor((width - 20) / months.length) - 3, 4);
+    const chartH = height - 18; // spazio etichette in basso
+    const svgBars = months.map(([key, m], i) => {
+        const presH  = Math.round((m.pres  / maxVal) * chartH);
+        const gjustH = Math.round((m.giust / maxVal) * chartH);
+        const assH   = Math.round((m.ass   / maxVal) * chartH);
+        const x = 10 + i * (barW + 3);
+        const perc = m.total > 0 ? Math.round((m.pres / m.total) * 100) : 0;
+        // Barre impilate: presenti (verde), giustificati (amber), assenti (rosso)
+        let bars = '';
+        let yOffset = chartH;
+        if (presH > 0)  { yOffset -= presH;  bars += `<rect x="${x}" y="${yOffset}" width="${barW}" height="${presH}"  fill="#10b981" rx="2"/>`; }
+        if (gjustH > 0) { yOffset -= gjustH; bars += `<rect x="${x}" y="${yOffset}" width="${barW}" height="${gjustH}" fill="#f59e0b" rx="2"/>`; }
+        if (assH > 0)   { yOffset -= assH;   bars += `<rect x="${x}" y="${yOffset}" width="${barW}" height="${assH}"  fill="#ef4444" rx="2"/>`; }
+        // Etichetta mese
+        const labelX = x + barW / 2;
+        bars += `<text x="${labelX}" y="${chartH + 13}" text-anchor="middle" font-size="8" fill="rgba(90,100,128,0.7)" font-family="Outfit,sans-serif">${m.label}</text>`;
+        // Tooltip area (invisible rect per hover)
+        bars += `<title>${m.label}: ${m.pres}P / ${m.ass}A / ${m.giust}G — ${perc}%</title><rect x="${x}" y="0" width="${barW}" height="${chartH}" fill="transparent"/>`;
+        return bars;
+    }).join('');
+    return `<svg width="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" style="display:block;">${svgBars}</svg>`;
+}
+
+function _buildFullBarChart(months, width, height) {
+    if (!months || months.length === 0) return '';
+    const maxVal  = Math.max(...months.map(([,m]) => m.total), 1);
+    const padL    = 36, padR = 16, padT = 16, padB = 36;
+    const chartW  = width  - padL - padR;
+    const chartH  = height - padT - padB;
+    const barW    = Math.max(Math.floor(chartW / months.length) - 5, 8);
+
+    // Grid lines
+    const gridLines = [0.25, 0.5, 0.75, 1].map(f => {
+        const y = padT + chartH - Math.round(f * chartH);
+        const val = Math.round(f * maxVal);
+        return `<line x1="${padL}" y1="${y}" x2="${padL + chartW}" y2="${y}" stroke="rgba(0,0,0,0.07)" stroke-dasharray="4,3"/>
+                 <text x="${padL - 6}" y="${y + 4}" text-anchor="end" font-size="9" fill="rgba(90,100,128,0.8)" font-family="Outfit,sans-serif">${val}</text>`;
+    }).join('');
+
+    const svgBars = months.map(([key, m], i) => {
+        const presH  = Math.round((m.pres  / maxVal) * chartH);
+        const gjustH = Math.round((m.giust / maxVal) * chartH);
+        const assH   = Math.round((m.ass   / maxVal) * chartH);
+        const x      = padL + i * (barW + 5) + Math.floor((chartW / months.length - barW) / 2);
+        const baseY  = padT + chartH;
+        const perc   = m.total > 0 ? Math.round((m.pres / m.total) * 100) : 0;
+
+        let bars = '';
+        let yOff = baseY;
+        if (presH  > 0) { yOff -= presH;  bars += `<rect x="${x}" y="${yOff}" width="${barW}" height="${presH}"  fill="#10b981" rx="3"><title>${m.pres} Presenti</title></rect>`; }
+        if (gjustH > 0) { yOff -= gjustH; bars += `<rect x="${x}" y="${yOff}" width="${barW}" height="${gjustH}" fill="#f59e0b" rx="3"><title>${m.giust} Giustificati</title></rect>`; }
+        if (assH   > 0) { yOff -= assH;   bars += `<rect x="${x}" y="${yOff}" width="${barW}" height="${assH}"  fill="#ef4444" rx="3"><title>${m.ass} Assenti</title></rect>`; }
+
+        // % label sopra le barre
+        if (m.total > 0) {
+            const topY = baseY - presH - gjustH - assH - 4;
+            bars += `<text x="${x + barW/2}" y="${topY}" text-anchor="middle" font-size="9" font-weight="700" fill="${perc >= 70 ? '#059669' : perc >= 40 ? '#d97706' : '#dc2626'}" font-family="Outfit,sans-serif">${perc}%</text>`;
+        }
+
+        // Etichetta mese
+        bars += `<text x="${x + barW/2}" y="${padT + chartH + 18}" text-anchor="middle" font-size="10" fill="rgba(90,100,128,0.85)" font-family="Outfit,sans-serif" font-weight="500">${m.label}</text>`;
+        return bars;
+    }).join('');
+
+    // Asse X
+    const axisX = `<line x1="${padL}" y1="${padT + chartH}" x2="${padL + chartW}" y2="${padT + chartH}" stroke="rgba(0,0,0,0.15)" stroke-width="1.5"/>`;
+
+    return `<svg width="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" style="display:block;">${gridLines}${axisX}${svgBars}</svg>`;
+}
+
+window.openMonthlyChartPopup = function(teamId) {
+    const team = window._dashMonthlyData[teamId];
+    if (!team) return;
+
+    const months = Object.entries(team.months).sort((a, b) => a[0].localeCompare(b[0]));
+    const totalPres  = months.reduce((s,[,m]) => s + m.pres, 0);
+    const totalAss   = months.reduce((s,[,m]) => s + m.ass, 0);
+    const totalGiust = months.reduce((s,[,m]) => s + m.giust, 0);
+    const totalTot   = months.reduce((s,[,m]) => s + m.total, 0);
+    const avgPerc    = totalTot > 0 ? Math.round((totalPres / totalTot) * 100) : 0;
+    const percColor  = avgPerc >= 70 ? '#059669' : avgPerc >= 40 ? '#d97706' : '#dc2626';
+
+    const chartSVG = _buildFullBarChart(months, 780, 300);
+
+    const popupContent = document.getElementById('monthly-chart-popup-content');
+    if (!popupContent) return;
+
+    popupContent.innerHTML = `
+        <div style="margin-bottom:20px;">
+            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;">📊 Presenze Mensili</div>
+            <div style="font-size:1.3rem; font-weight:800; color:var(--text-main); font-family:'Syne',sans-serif;">${team.name}</div>
+        </div>
+
+        <!-- Riepilogo KPI -->
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px;">
+            <div style="background:rgba(5,150,105,0.09); border:1px solid rgba(5,150,105,0.2); border-radius:10px; padding:10px 18px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.4rem; font-weight:800; color:#059669; font-family:'DM Mono',monospace;">${totalPres}</div>
+                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Presenti</div>
+            </div>
+            <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.18); border-radius:10px; padding:10px 18px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.4rem; font-weight:800; color:#ef4444; font-family:'DM Mono',monospace;">${totalAss}</div>
+                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Assenti</div>
+            </div>
+            <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:10px; padding:10px 18px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.4rem; font-weight:800; color:#d97706; font-family:'DM Mono',monospace;">${totalGiust}</div>
+                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Giustificati</div>
+            </div>
+            <div style="background:rgba(99,102,241,0.07); border:1px solid rgba(99,102,241,0.15); border-radius:10px; padding:10px 18px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.4rem; font-weight:800; color:#6366f1; font-family:'DM Mono',monospace;">${totalTot}</div>
+                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Totale</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.09); border-radius:10px; padding:10px 18px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.4rem; font-weight:800; color:${percColor}; font-family:'DM Mono',monospace;">${avgPerc}%</div>
+                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Media %</div>
+            </div>
+        </div>
+
+        <!-- Grafico grande -->
+        <div style="background:rgba(0,0,0,0.02); border:1px solid var(--border); border-radius:var(--r-md); padding:16px 8px 8px;">
+            ${chartSVG}
+        </div>
+
+        <!-- Legenda -->
+        <div style="display:flex; gap:16px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--text-sub);">
+                <span style="width:12px;height:12px;border-radius:3px;background:#10b981;display:inline-block;flex-shrink:0;"></span> Presenti
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--text-sub);">
+                <span style="width:12px;height:12px;border-radius:3px;background:#f59e0b;display:inline-block;flex-shrink:0;"></span> Giustificati
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--text-sub);">
+                <span style="width:12px;height:12px;border-radius:3px;background:#ef4444;display:inline-block;flex-shrink:0;"></span> Assenti
+            </div>
+        </div>
+
+        <!-- Tabella riepilogo per mese -->
+        <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
+            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">Dettaglio per Mese</div>
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+                    <thead>
+                        <tr style="background:rgba(0,0,0,0.03);">
+                            <th style="padding:7px 10px; text-align:left; font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Mese</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.68rem; font-weight:700; color:#10b981; text-transform:uppercase;">Presenti</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.68rem; font-weight:700; color:#ef4444; text-transform:uppercase;">Assenti</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.68rem; font-weight:700; color:#d97706; text-transform:uppercase;">Giustificati</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Totale</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">% Pres.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${months.map(([key, m]) => {
+                            const p = m.total > 0 ? Math.round((m.pres / m.total) * 100) : 0;
+                            const pc = p >= 70 ? '#059669' : p >= 40 ? '#d97706' : '#dc2626';
+                            return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">
+                                <td style="padding:8px 10px; font-weight:600;">${m.label}</td>
+                                <td style="padding:8px 10px; text-align:center; color:#059669; font-weight:700;">${m.pres}</td>
+                                <td style="padding:8px 10px; text-align:center; color:#ef4444; font-weight:700;">${m.ass}</td>
+                                <td style="padding:8px 10px; text-align:center; color:#d97706; font-weight:700;">${m.giust}</td>
+                                <td style="padding:8px 10px; text-align:center; color:var(--text-sub);">${m.total}</td>
+                                <td style="padding:8px 10px; text-align:center;"><span style="font-weight:800; color:${pc}; font-family:'DM Mono',monospace;">${p}%</span></td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+
+    const overlay = document.getElementById('monthly-chart-popup-overlay');
+    if (overlay) { overlay.style.display = 'flex'; }
+};
+
+window.closeMonthlyChartPopup = function() {
+    const overlay = document.getElementById('monthly-chart-popup-overlay');
+    if (overlay) overlay.style.display = 'none';
+};
+
+// Chiudi popup cliccando sull'overlay
+document.getElementById('monthly-chart-popup-overlay')?.addEventListener('click', function(e) {
+    if (e.target === this) window.closeMonthlyChartPopup();
+});
 
 /* ── KPI ── */
 window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
@@ -6523,8 +6885,8 @@ function _applyTabFilterVisibility() {
     const isTeamScoped = ['responsabile','dirigente','allenatore'].includes(role);
 
     // ID dei selects per ogni tipo di filtro in ogni tab
-    const socSelects  = ['dash-stats-soc','dash-match-soc','dash-pres-soc','dash-ath-soc'];
-    const catSelects  = ['dash-stats-cat','dash-match-cat','dash-pres-cat','dash-ath-cat'];
+    const socSelects  = ['dash-stats-soc','dash-match-soc','dash-pres-soc','dash-ath-soc','dash-monthly-soc'];
+    const catSelects  = ['dash-stats-cat','dash-match-cat','dash-pres-cat','dash-ath-cat','dash-monthly-cat'];
     const teamSelects = ['dash-stats-team','dash-match-team','dash-pres-team','dash-ath-team'];
 
     socSelects.forEach(id => {
