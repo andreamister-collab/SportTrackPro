@@ -5451,6 +5451,10 @@ window.templateDashboard = function() {
                 style="padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.83rem; font-weight:600; background:transparent; color:var(--text-muted); transition:all 0.15s; white-space:nowrap;">
                 📊 Presenze Mensili
             </button>
+            <button id="dash-tab-btn-5" onclick="window.switchDashTab(5)"
+                style="padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.83rem; font-weight:600; background:transparent; color:var(--text-muted); transition:all 0.15s; white-space:nowrap;">
+                👤 Presenze Mensili Atleta
+            </button>
         </div>
 
         <!-- TAB 0: STATISTICHE GARE PER SQUADRA -->
@@ -5675,6 +5679,35 @@ window.templateDashboard = function() {
             </div>
         </div>
 
+        <!-- TAB 5: PRESENZE MENSILI PER ATLETA -->
+        <div id="dash-tab-5" style="display:none;">
+            <div class="card">
+                <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h3 style="font-family:'DM Mono','Outfit',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">👤 Presenze Mensili per Atleta</h3>
+                        <span style="font-size:0.68rem; color:var(--text-sub);">Andamento mensile delle presenze — Clicca su un atleta per ingrandire</span>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                        <select id="dash-ath-monthly-season" onchange="window.onDashAthMonthlySeasonChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le stagioni</option>
+                        </select>
+                        <select id="dash-ath-monthly-soc" onchange="window.onDashAthMonthlySocChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le società</option>
+                        </select>
+                        <select id="dash-ath-monthly-cat" onchange="window.onDashAthMonthlyCatChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le categorie</option>
+                        </select>
+                        <select id="dash-ath-monthly-team" onchange="window.renderDashAthMonthlyCharts()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le squadre</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="dash-ath-monthly-grid" style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="text-align:center; padding:30px; color:var(--text-sub);">⏳ Caricamento...</div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- POPUP GRAFICO MENSILE INGRANDITO -->
@@ -5692,7 +5725,8 @@ window.templateDashboard = function() {
         #dash-match-soc, #dash-match-cat, #dash-match-team,
         #dash-pres-soc,  #dash-pres-cat,  #dash-pres-team,
         #dash-ath-soc,   #dash-ath-cat,   #dash-ath-team,
-        #dash-monthly-soc, #dash-monthly-cat, #dash-monthly-season, #dash-monthly-team {
+        #dash-monthly-soc, #dash-monthly-cat, #dash-monthly-season, #dash-monthly-team,
+        #dash-ath-monthly-soc, #dash-ath-monthly-cat, #dash-ath-monthly-season, #dash-ath-monthly-team {
             padding: 5px 10px;
             border: 1px solid var(--border);
             border-radius: 6px;
@@ -5709,7 +5743,8 @@ window.templateDashboard = function() {
         #dash-match-soc:focus, #dash-match-cat:focus, #dash-match-team:focus,
         #dash-pres-soc:focus,  #dash-pres-cat:focus,  #dash-pres-team:focus,
         #dash-ath-soc:focus,   #dash-ath-cat:focus,   #dash-ath-team:focus,
-        #dash-monthly-soc:focus, #dash-monthly-cat:focus, #dash-monthly-season:focus, #dash-monthly-team:focus {
+        #dash-monthly-soc:focus, #dash-monthly-cat:focus, #dash-monthly-season:focus, #dash-monthly-team:focus,
+        #dash-ath-monthly-soc:focus, #dash-ath-monthly-cat:focus, #dash-ath-monthly-season:focus, #dash-ath-monthly-team:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px var(--primary-glow);
@@ -5720,7 +5755,7 @@ window.templateDashboard = function() {
 
 /* ── TAB SWITCHER DASHBOARD ── */
 window.switchDashTab = function(idx) {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
         const panel = document.getElementById('dash-tab-' + i);
         const btn   = document.getElementById('dash-tab-btn-' + i);
         if (panel) panel.style.display = i === idx ? '' : 'none';
@@ -5730,6 +5765,7 @@ window.switchDashTab = function(idx) {
         }
     }
     if (idx === 4) window.renderDashMonthlyCharts();
+    if (idx === 5) window.renderDashAthMonthlyCharts();
 };
 
 /* ── DATI GLOBALI DASHBOARD ── */
@@ -5979,6 +6015,354 @@ window.onDashMonthlyCatChange = async function() {
 window.onDashMonthlyFilterChange = function() {
     window.renderDashMonthlyCharts();
 };
+
+/* ══════════════════════════════════════════════════════════════
+   TAB 5 — PRESENZE MENSILI PER ATLETA
+   ══════════════════════════════════════════════════════════════ */
+
+window._dashAthMonthlyData = null; // cache: { athleteId: { id, name, jersey, teamName, months: { 'YYYY-MM': {label, pres, ass, giust, total} } } }
+
+window.onDashAthMonthlySocChange = async function() {
+    const socId   = document.getElementById('dash-ath-monthly-soc')?.value;
+    const selCat  = document.getElementById('dash-ath-monthly-cat');
+    const selTeam = document.getElementById('dash-ath-monthly-team');
+    if (selCat)  selCat.innerHTML  = '<option value="">Tutte le categorie</option>';
+    if (selTeam) selTeam.innerHTML = '<option value="">Tutte le squadre</option>';
+    if (socId) {
+        const { data: cats } = await client.from('categories').select('id,name').eq('society_id', socId).order('name');
+        (cats||[]).forEach(c => { selCat.innerHTML  += `<option value="${c.id}">${c.name}</option>`; });
+        const { data: tms }  = await client.from('teams').select('id,name').eq('society_id', socId).order('name');
+        (tms||[]).forEach(t  => { selTeam.innerHTML += `<option value="${t.id}">${t.name}</option>`; });
+    }
+    window._dashAthMonthlyData = null;
+    window.renderDashAthMonthlyCharts();
+};
+
+window.onDashAthMonthlyCatChange = async function() {
+    const catId   = document.getElementById('dash-ath-monthly-cat')?.value;
+    const socId   = document.getElementById('dash-ath-monthly-soc')?.value;
+    const selTeam = document.getElementById('dash-ath-monthly-team');
+    if (selTeam) selTeam.innerHTML = '<option value="">Tutte le squadre</option>';
+    let q = client.from('teams').select('id,name');
+    if (catId) q = q.eq('category_id', catId);
+    else if (socId) q = q.eq('society_id', socId);
+    q = q.order('name');
+    const { data: tms } = await q;
+    (tms||[]).forEach(t => { selTeam.innerHTML += `<option value="${t.id}">${t.name}</option>`; });
+    window._dashAthMonthlyData = null;
+    window.renderDashAthMonthlyCharts();
+};
+
+window.onDashAthMonthlySeasonChange = function() {
+    window._dashAthMonthlyData = null;
+    window.renderDashAthMonthlyCharts();
+};
+
+window.renderDashAthMonthlyCharts = async function() {
+    const grid = document.getElementById('dash-ath-monthly-grid');
+    if (!grid) return;
+    grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);">⏳ Caricamento...</div>';
+
+    try {
+        const seasonId = document.getElementById('dash-ath-monthly-season')?.value;
+        const socId    = document.getElementById('dash-ath-monthly-soc')?.value;
+        const catId    = document.getElementById('dash-ath-monthly-cat')?.value;
+        const teamId   = document.getElementById('dash-ath-monthly-team')?.value;
+
+        // Scope check (stessa logica degli altri tab)
+        const scopedTeamIds = window._userAssignedTeamIds;
+        const hasScope = scopedTeamIds && scopedTeamIds.length > 0;
+
+        // Build query
+        let q = client.from('attendances')
+            .select('athlete_id, status, athletes!inner(id, name, surname), sessions!inner(id, session_date, team_id, society_id, season_id, category_id, teams!inner(id,name))');
+
+        if (seasonId) q = q.eq('sessions.season_id', seasonId);
+        if (socId)    q = q.eq('sessions.society_id', socId);
+        if (catId)    q = q.eq('sessions.category_id', catId);
+        if (teamId)   q = q.eq('sessions.team_id', teamId);
+        if (hasScope) q = q.in('sessions.team_id', scopedTeamIds);
+
+        const { data: rows, error } = await q;
+        if (error) throw error;
+
+        if (!rows?.length) {
+            grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">Nessun dato per i filtri selezionati.</div>';
+            return;
+        }
+
+        const mkKey   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const mkLabel = d => d.toLocaleDateString('it-IT', { month:'short', year:'2-digit' });
+
+        const athMap = {};
+        rows.forEach(row => {
+            const aid = row.athlete_id;
+            const ath = row.athletes;
+            const sess = row.sessions;
+            if (!ath || !sess) return;
+
+            if (!athMap[aid]) {
+                athMap[aid] = {
+                    id: aid,
+                    name: `${ath.surname} ${ath.name}`,
+                    teamName: sess.teams?.name || '',
+                    months: {}
+                };
+            }
+            const d = new Date(sess.session_date);
+            const key = mkKey(d);
+            if (!athMap[aid].months[key]) {
+                athMap[aid].months[key] = { label: mkLabel(d), pres: 0, ass: 0, giust: 0, total: 0 };
+            }
+            const m = athMap[aid].months[key];
+            m.total++;
+            const s = (row.status || '').toLowerCase();
+            if (s === 'presente') m.pres++;
+            else if (s === 'assente') m.ass++;
+            else if (s === 'giustificato') m.giust++;
+        });
+
+        window._dashAthMonthlyData = athMap;
+
+        const athletes = Object.values(athMap).sort((a,b) => a.name.localeCompare(b.name));
+
+        if (!athletes.length) {
+            grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">Nessun dato disponibile.</div>';
+            return;
+        }
+
+        const COLORS = ['#10b981','#3b82f6','#e8402e','#8b5cf6','#f59e0b','#06b6d4','#ec4899','#14b8a6'];
+
+        grid.innerHTML = athletes.map((ath, idx) => {
+            const months = Object.entries(ath.months).sort((a,b) => a[0].localeCompare(b[0]));
+            if (!months.length) return '';
+            const color = COLORS[idx % COLORS.length];
+
+            const totPres  = months.reduce((s,[,m]) => s+m.pres, 0);
+            const totTot   = months.reduce((s,[,m]) => s+m.total, 0);
+            const totAss   = months.reduce((s,[,m]) => s+m.ass, 0);
+            const totGiust = months.reduce((s,[,m]) => s+m.giust, 0);
+            const avgPerc  = totTot > 0 ? Math.round((totPres/totTot)*100) : 0;
+            const percColor = avgPerc >= 75 ? '#059669' : avgPerc >= 50 ? '#d97706' : '#dc2626';
+
+            // Mini line chart (% presenze)
+            const miniSVG = _buildAthMiniLineChart(months, color, 420, 60);
+
+            return `
+            <div onclick="window.openAthMonthlyPopup('${ath.id}')"
+                 style="display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);border-left:3px solid ${color};border-radius:var(--r-lg);padding:11px 16px;cursor:pointer;transition:all 0.18s;box-shadow:var(--shadow-sm);"
+                 onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.background='var(--card-hover)'"
+                 onmouseout="this.style.boxShadow='var(--shadow-sm)';this.style.background='var(--card)'">
+                <!-- Avatar + nome -->
+                <div style="min-width:170px;max-width:200px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                        <div style="width:30px;height:30px;background:${color}22;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${color};flex-shrink:0;">${ath.name.charAt(0)}</div>
+                        <div>
+                            <div style="font-size:0.84rem;font-weight:700;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;" title="${ath.name}">${ath.name}</div>
+                            <div style="font-size:0.68rem;color:var(--text-muted);">${ath.teamName}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                        <span style="font-size:0.62rem;font-weight:700;background:${percColor}18;color:${percColor};border-radius:4px;padding:1px 6px;">${avgPerc}% pres.</span>
+                        <span style="font-size:0.62rem;font-weight:700;background:rgba(16,185,129,0.1);color:#059669;border-radius:4px;padding:1px 6px;">✅ ${totPres}</span>
+                        <span style="font-size:0.62rem;font-weight:700;background:rgba(239,68,68,0.1);color:#dc2626;border-radius:4px;padding:1px 6px;">❌ ${totAss}</span>
+                        ${totGiust > 0 ? `<span style="font-size:0.62rem;font-weight:700;background:rgba(245,158,11,0.1);color:#d97706;border-radius:4px;padding:1px 6px;">🟡 ${totGiust}</span>` : ''}
+                    </div>
+                </div>
+                <!-- Grafico mini -->
+                <div style="flex:1;overflow:hidden;min-width:0;">
+                    ${miniSVG}
+                </div>
+                <div style="font-size:0.72rem;color:var(--text-muted);opacity:0.5;flex-shrink:0;">🔍</div>
+            </div>`;
+        }).join('');
+
+        // Populate filters if empty
+        _populateAthMonthlyFilters();
+
+    } catch(err) {
+        grid.innerHTML = `<div style="text-align:center;padding:24px;color:#ef4444;">Errore: ${err.message}</div>`;
+        console.error(err);
+    }
+};
+
+function _buildAthMiniLineChart(months, color, W, H) {
+    if (!months || months.length < 1) return '';
+    const padL = 4, padR = 4, padT = 8, padB = 16;
+    const cW = W - padL - padR;
+    const cH = H - padT - padB;
+    const n  = months.length;
+
+    const percVals = months.map(([,m]) => m.total > 0 ? Math.round((m.pres / m.total) * 100) : 0);
+    const assVals  = months.map(([,m]) => m.total > 0 ? Math.round((m.ass  / m.total) * 100) : 0);
+
+    const xPos  = (i) => padL + (n === 1 ? cW/2 : i * (cW/(n-1)));
+    const yPerc = (v) => padT + cH - (v/100)*cH;
+
+    const buildLine = (vals, col, dash='') => {
+        if (vals.every(v => v===0)) return '';
+        const pts  = vals.map((v,i) => `${xPos(i).toFixed(1)},${yPerc(v).toFixed(1)}`).join(' ');
+        const dots = vals.map((v,i) =>
+            `<circle cx="${xPos(i).toFixed(1)}" cy="${yPerc(v).toFixed(1)}" r="2.5" fill="${col}" stroke="white" stroke-width="1"/>`
+        ).join('');
+        return `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" ${dash?`stroke-dasharray="${dash}"`:''}/>${dots}`;
+    };
+
+    const labels = months.map(([,m],i) => {
+        if (n <= 6 || i % Math.ceil(n/6) === 0)
+            return `<text x="${xPos(i).toFixed(1)}" y="${H-2}" text-anchor="middle" font-size="7.5" fill="rgba(90,100,128,0.7)" font-family="Outfit,sans-serif">${m.label}</text>`;
+        return '';
+    }).join('');
+
+    const baseline = `<line x1="${padL}" y1="${padT+cH}" x2="${padL+cW}" y2="${padT+cH}" stroke="rgba(0,0,0,0.07)" stroke-width="1"/>`;
+
+    return `<svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="display:block;">
+        ${baseline}
+        ${buildLine(percVals, color)}
+        ${buildLine(assVals,  '#ef4444', '4,3')}
+        ${labels}
+    </svg>`;
+}
+
+window.openAthMonthlyPopup = function(athId) {
+    const athData = window._dashAthMonthlyData?.[athId];
+    if (!athData) return;
+
+    const months = Object.entries(athData.months).sort((a,b) => a[0].localeCompare(b[0]));
+    if (!months.length) return;
+
+    const totPres  = months.reduce((s,[,m]) => s+m.pres, 0);
+    const totTot   = months.reduce((s,[,m]) => s+m.total, 0);
+    const totAss   = months.reduce((s,[,m]) => s+m.ass, 0);
+    const totGiust = months.reduce((s,[,m]) => s+m.giust, 0);
+    const avgPerc  = totTot > 0 ? Math.round((totPres/totTot)*100) : 0;
+    const percColor = avgPerc >= 75 ? '#059669' : avgPerc >= 50 ? '#d97706' : '#dc2626';
+
+    const fullChart = _buildAthFullLineChart(months, 720, 200);
+
+    // Tabella mesi
+    const tableRows = months.map(([key,m]) => {
+        const perc = m.total > 0 ? Math.round((m.pres/m.total)*100) : 0;
+        const pColor = perc >= 75 ? '#059669' : perc >= 50 ? '#d97706' : '#dc2626';
+        const bar = `<div style="height:6px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden;margin-top:3px;"><div style="height:100%;width:${perc}%;background:${pColor};border-radius:3px;transition:width 0.3s;"></div></div>`;
+        return `<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+            <td style="padding:8px 10px;font-weight:600;font-size:12px;">${m.label}</td>
+            <td style="padding:8px 10px;text-align:center;color:#059669;font-weight:700;">${m.pres}</td>
+            <td style="padding:8px 10px;text-align:center;color:#dc2626;font-weight:700;">${m.ass}</td>
+            <td style="padding:8px 10px;text-align:center;color:#d97706;font-weight:700;">${m.giust || 0}</td>
+            <td style="padding:8px 10px;text-align:center;color:var(--text-sub);">${m.total}</td>
+            <td style="padding:8px 10px;min-width:100px;"><span style="font-weight:700;color:${pColor};font-size:12px;">${perc}%</span>${bar}</td>
+        </tr>`;
+    }).join('');
+
+    const overlay = document.getElementById('monthly-chart-popup-overlay');
+    const box     = document.getElementById('monthly-chart-popup-content');
+    if (!overlay || !box) return;
+
+    box.innerHTML = `
+        <div style="margin-bottom:20px;">
+            <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">👤 Presenze Mensili</div>
+            <div style="font-size:1.2rem;font-weight:800;font-family:'Syne',sans-serif;margin-bottom:2px;">${athData.name}</div>
+            <div style="font-size:0.78rem;color:var(--text-sub);">${athData.teamName}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                <span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:${percColor}18;color:${percColor};">${avgPerc}% presenze medie</span>
+                <span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(16,185,129,0.1);color:#059669;">✅ ${totPres} presenti</span>
+                <span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(239,68,68,0.1);color:#dc2626;">❌ ${totAss} assenti</span>
+                ${totGiust>0?`<span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(245,158,11,0.1);color:#d97706;">🟡 ${totGiust} giustificati</span>`:''}
+                <span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(0,0,0,0.05);color:var(--text-sub);">📋 ${totTot} sessioni</span>
+            </div>
+        </div>
+        <div style="background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px;">
+            ${fullChart}
+            <div style="display:flex;gap:16px;margin-top:8px;justify-content:center;">
+                <span style="font-size:0.68rem;color:var(--text-muted);display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:14px;height:2px;background:#10b981;border-radius:2px;"></span> % Presenze</span>
+                <span style="font-size:0.68rem;color:var(--text-muted);display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:14px;height:2px;background:#ef4444;border-radius:2px;border-top:2px dashed #ef4444;"></span> % Assenze</span>
+            </div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                <thead>
+                    <tr style="background:rgba(0,0,0,0.03);">
+                        <th style="padding:8px 10px;text-align:left;font-size:0.66rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Mese</th>
+                        <th style="padding:8px 10px;text-align:center;font-size:0.66rem;font-weight:700;color:#059669;">✅ Pres.</th>
+                        <th style="padding:8px 10px;text-align:center;font-size:0.66rem;font-weight:700;color:#dc2626;">❌ Ass.</th>
+                        <th style="padding:8px 10px;text-align:center;font-size:0.66rem;font-weight:700;color:#d97706;">🟡 Giust.</th>
+                        <th style="padding:8px 10px;text-align:center;font-size:0.66rem;font-weight:700;color:var(--text-muted);">Tot.</th>
+                        <th style="padding:8px 10px;text-align:left;font-size:0.66rem;font-weight:700;color:var(--text-muted);min-width:120px;">%</th>
+                    </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+        </div>`;
+
+    overlay.style.display = 'flex';
+};
+
+function _buildAthFullLineChart(months, W, H) {
+    if (!months || months.length === 0) return '';
+    const padL = 40, padR = 20, padT = 20, padB = 38;
+    const cW = W - padL - padR;
+    const cH = H - padT - padB;
+    const n  = months.length;
+
+    const percVals = months.map(([,m]) => m.total > 0 ? Math.round((m.pres/m.total)*100) : 0);
+    const assVals  = months.map(([,m]) => m.total > 0 ? Math.round((m.ass /m.total)*100) : 0);
+
+    const xPos  = (i) => padL + (n===1 ? cW/2 : i*(cW/(n-1)));
+    const yPct  = (v) => padT + cH - (v/100)*cH;
+
+    const gridLines = [0,25,50,75,100].map(v => {
+        const y = yPct(v);
+        return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${padL+cW}" y2="${y.toFixed(1)}" stroke="rgba(0,0,0,0.06)" stroke-dasharray="4,4"/>
+                 <text x="${padL-6}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(90,100,128,0.75)" font-family="Outfit,sans-serif">${v}%</text>`;
+    }).join('');
+
+    const axisX = `<line x1="${padL}" y1="${padT+cH}" x2="${padL+cW}" y2="${padT+cH}" stroke="rgba(0,0,0,0.18)" stroke-width="1.5"/>`;
+    const axisY = `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+cH}" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>`;
+
+    const buildLine = (vals, col, dashArr='') => {
+        if (vals.every(v=>v===0)) return '';
+        const pts  = vals.map((v,i) => `${xPos(i).toFixed(1)},${yPct(v).toFixed(1)}`).join(' ');
+        const area = vals.map((v,i) => `${xPos(i).toFixed(1)},${yPct(v).toFixed(1)}`).join(' ') +
+            ` ${xPos(n-1).toFixed(1)},${padT+cH} ${xPos(0).toFixed(1)},${padT+cH}`;
+        const areaEl = dashArr ? '' : `<polygon points="${area}" fill="${col}" opacity="0.07"/>`;
+        const dots = vals.map((v,i) =>
+            `<circle cx="${xPos(i).toFixed(1)}" cy="${yPct(v).toFixed(1)}" r="4" fill="${col}" stroke="white" stroke-width="1.5">
+                <title>${months[i][1].label}: ${v}%</title></circle>`
+        ).join('');
+        return areaEl +
+            `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" ${dashArr?`stroke-dasharray="${dashArr}"`:''}/>${dots}`;
+    };
+
+    const xLabels = months.map(([,m],i) => {
+        const show = n <= 8 || i % Math.ceil(n/8) === 0 || i === n-1;
+        if (!show) return '';
+        const x = xPos(i);
+        return `<text x="${x.toFixed(1)}" y="${padT+cH+14}" text-anchor="middle" font-size="9.5" fill="rgba(90,100,128,0.8)" font-family="Outfit,sans-serif">${m.label}</text>`;
+    }).join('');
+
+    return `<svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="display:block;">
+        ${gridLines}${axisX}${axisY}
+        ${buildLine(percVals, '#10b981')}
+        ${buildLine(assVals,  '#ef4444', '5,4')}
+        ${xLabels}
+    </svg>`;
+}
+
+async function _populateAthMonthlyFilters() {
+    const selSeason = document.getElementById('dash-ath-monthly-season');
+    if (selSeason && selSeason.options.length <= 1) {
+        (window._dashData?._seasons || []).forEach(s => {
+            selSeason.innerHTML += `<option value="${s.id}">${s.name}${s.is_active?' ✓':''}</option>`;
+        });
+    }
+    const selSoc = document.getElementById('dash-ath-monthly-soc');
+    if (selSoc && selSoc.options.length <= 1) {
+        (window._dashData?._societies || []).forEach(s => {
+            selSoc.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+    }
+}
 
 window.renderDashMonthlyCharts = async function() {
     const grid = document.getElementById('dash-monthly-grid');
