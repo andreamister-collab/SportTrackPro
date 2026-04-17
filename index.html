@@ -5846,11 +5846,15 @@ window.loadDashMonthlyData = async function(seasonId, socId, scopedTeamIds) {
         if (socId     && socId     !== 'all') attQ = attQ.eq('sessions.society_id', socId);
         if (hasTeamScope) attQ = attQ.in('sessions.team_id', scopedTeamIds);
 
-        // ── 2. GOL (match_stats, solo partite ufficiali) ──────────────
+        // ── 2. GOL (match_stats, solo sessioni di tipo partita/gara) ──
+        const { data: sessionTypes } = await client.from('session_types').select('id, name');
+        const matchTypeIds = (sessionTypes || [])
+            .filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara'))
+            .map(t => t.id);
         let goalQ = client
             .from('match_stats')
-            .select('goals, sessions!inner(session_date, team_id, society_id, season_id, category_id, is_friendly, teams!inner(id, name))')
-            .eq('sessions.is_friendly', false);
+            .select('goals, sessions!inner(session_date, team_id, society_id, season_id, category_id, type_id, teams!inner(id, name))');
+        if (matchTypeIds.length > 0) goalQ = goalQ.in('sessions.type_id', matchTypeIds);
         if (seasonId && seasonId !== 'all') goalQ = goalQ.eq('sessions.season_id', seasonId);
         if (socId     && socId     !== 'all') goalQ = goalQ.eq('sessions.society_id', socId);
         if (hasTeamScope) goalQ = goalQ.in('sessions.team_id', scopedTeamIds);
