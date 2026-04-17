@@ -5639,19 +5639,25 @@ window.templateDashboard = function() {
             <div class="card">
                 <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
                     <div>
-                        <h3 style="font-family:'DM Mono','Outfit',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">📊 Presenze Mensili per Squadra</h3>
-                        <span style="font-size:0.68rem; color:var(--text-sub);">Clicca su un grafico per ingrandirlo</span>
+                        <h3 style="font-family:'DM Mono','Outfit',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">📈 Andamento Mensile per Squadra</h3>
+                        <span style="font-size:0.68rem; color:var(--text-sub);">Presenze · Gol · Punti — Clicca su un grafico per ingrandirlo</span>
                     </div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                        <select id="dash-monthly-season" onchange="window.onDashMonthlyFilterChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le stagioni</option>
+                        </select>
                         <select id="dash-monthly-soc" onchange="window.onDashMonthlySocChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
                             <option value="">Tutte le società</option>
                         </select>
                         <select id="dash-monthly-cat" onchange="window.onDashMonthlyCatChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
                             <option value="">Tutte le categorie</option>
                         </select>
+                        <select id="dash-monthly-team" onchange="window.onDashMonthlyFilterChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le squadre</option>
+                        </select>
                     </div>
                 </div>
-                <div id="dash-monthly-grid" style="display:flex; flex-direction:column; gap:12px;">
+                <div id="dash-monthly-grid" style="display:flex; flex-direction:column; gap:14px;">
                     <div style="text-align:center; padding:30px; color:var(--text-sub);">⏳ Caricamento grafici...</div>
                 </div>
             </div>
@@ -5674,7 +5680,7 @@ window.templateDashboard = function() {
         #dash-match-soc, #dash-match-cat, #dash-match-team,
         #dash-pres-soc,  #dash-pres-cat,  #dash-pres-team,
         #dash-ath-soc,   #dash-ath-cat,   #dash-ath-team,
-        #dash-monthly-soc, #dash-monthly-cat {
+        #dash-monthly-soc, #dash-monthly-cat, #dash-monthly-season, #dash-monthly-team {
             padding: 5px 10px;
             border: 1px solid var(--border);
             border-radius: 6px;
@@ -5691,7 +5697,7 @@ window.templateDashboard = function() {
         #dash-match-soc:focus, #dash-match-cat:focus, #dash-match-team:focus,
         #dash-pres-soc:focus,  #dash-pres-cat:focus,  #dash-pres-team:focus,
         #dash-ath-soc:focus,   #dash-ath-cat:focus,   #dash-ath-team:focus,
-        #dash-monthly-soc:focus, #dash-monthly-cat:focus {
+        #dash-monthly-soc:focus, #dash-monthly-cat:focus, #dash-monthly-season:focus, #dash-monthly-team:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px var(--primary-glow);
@@ -5813,39 +5819,76 @@ window.refreshDashboard = async function() {
 
 window._dashMonthlyData = {};
 
+/* ══════════════════════════════════════════════════════════════
+   MODULO PRESENZE MENSILI — Grafico a Linee Multi-Serie
+   Serie: % Presenze · Gol · Punti
+══════════════════════════════════════════════════════════════ */
+
+// Palette colori distinti per squadra (grafico mini preview)
+const TEAM_PALETTE = [
+    '#e8402e','#3b82f6','#10b981','#f59e0b','#8b5cf6',
+    '#ec4899','#06b6d4','#84cc16','#f97316','#6366f1',
+    '#14b8a6','#ef4444','#a855f7','#0ea5e9','#22c55e'
+];
+
+window._dashMonthlyData = {};
+window._dashMonthlyRaw  = {};   // dati grezzi per ricalcoli lato filtri
+
 window.loadDashMonthlyData = async function(seasonId, socId, scopedTeamIds) {
     try {
         const hasTeamScope = scopedTeamIds && scopedTeamIds.length > 0;
 
-        // Query sessioni con presenze
-        let q = client
+        // ── 1. PRESENZE (sessioni allenamento + gara) ──────────────────
+        let attQ = client
             .from('attendances')
-            .select('status, sessions!inner(id, session_date, team_id, society_id, season_id, teams!inner(id, name))');
+            .select('status, sessions!inner(id, session_date, team_id, society_id, season_id, category_id, teams!inner(id, name))');
+        if (seasonId && seasonId !== 'all') attQ = attQ.eq('sessions.season_id', seasonId);
+        if (socId     && socId     !== 'all') attQ = attQ.eq('sessions.society_id', socId);
+        if (hasTeamScope) attQ = attQ.in('sessions.team_id', scopedTeamIds);
 
-        if (seasonId && seasonId !== 'all') q = q.eq('sessions.season_id', seasonId);
-        if (socId && socId !== 'all')       q = q.eq('sessions.society_id', socId);
-        if (hasTeamScope)                   q = q.in('sessions.team_id', scopedTeamIds);
+        // ── 2. GOL (player_stats, solo partite ufficiali) ──────────────
+        let goalQ = client
+            .from('player_stats')
+            .select('goals, sessions!inner(session_date, team_id, society_id, season_id, category_id, teams!inner(id, name))');
+        if (seasonId && seasonId !== 'all') goalQ = goalQ.eq('sessions.season_id', seasonId);
+        if (socId     && socId     !== 'all') goalQ = goalQ.eq('sessions.society_id', socId);
+        if (hasTeamScope) goalQ = goalQ.in('sessions.team_id', scopedTeamIds);
 
-        const { data, error } = await q;
-        if (error) { console.error('Monthly data error:', error); return; }
+        // ── 3. PUNTI (match_details) ───────────────────────────────────
+        let matchQ = client
+            .from('match_details')
+            .select('match_status, is_friendly, sessions!inner(session_date, team_id, society_id, season_id, category_id, teams!inner(id, name))')
+            .eq('is_friendly', false);
+        if (seasonId && seasonId !== 'all') matchQ = matchQ.eq('sessions.season_id', seasonId);
+        if (socId     && socId     !== 'all') matchQ = matchQ.eq('sessions.society_id', socId);
+        if (hasTeamScope) matchQ = matchQ.in('sessions.team_id', scopedTeamIds);
 
-        // Aggrega: per ogni squadra → per ogni mese → {pres, ass, total}
+        const [attRes, goalRes, matchRes] = await Promise.all([attQ, goalQ, matchQ]);
+
+        // Helper: chiave mese e label
+        const mkKey   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const mkLabel = d => d.toLocaleDateString('it-IT', { month:'short', year:'2-digit' });
+
         const teamsMap = {};
-        (data || []).forEach(att => {
+        const ensureTeam = (teamId, teamName, catId, socId) => {
+            if (!teamsMap[teamId]) teamsMap[teamId] = {
+                id: teamId, name: teamName, category_id: catId, society_id: socId, months: {}
+            };
+        };
+        const ensureMonth = (team, key, label) => {
+            if (!team.months[key]) team.months[key] = { label, pres: 0, ass: 0, giust: 0, total: 0, goals: 0, pts: 0 };
+        };
+
+        // Aggrega presenze
+        (attRes.data || []).forEach(att => {
             const sess = att.sessions;
-            if (!sess || !sess.teams) return;
-            const teamId   = sess.team_id;
-            const teamName = sess.teams.name;
-            const dateStr  = sess.session_date;
-            if (!dateStr) return;
-            const d = new Date(dateStr);
-            const monthKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-            const monthLabel = d.toLocaleDateString('it-IT', { month:'short', year:'2-digit' });
-
-            if (!teamsMap[teamId]) teamsMap[teamId] = { id: teamId, name: teamName, months: {} };
-            if (!teamsMap[teamId].months[monthKey]) teamsMap[teamId].months[monthKey] = { label: monthLabel, pres: 0, ass: 0, giust: 0, total: 0 };
-
-            const m = teamsMap[teamId].months[monthKey];
+            if (!sess?.teams) return;
+            const d = new Date(sess.session_date);
+            const key = mkKey(d);
+            ensureTeam(sess.team_id, sess.teams.name, sess.category_id, sess.society_id);
+            const team = teamsMap[sess.team_id];
+            ensureMonth(team, key, mkLabel(d));
+            const m = team.months[key];
             m.total++;
             const s = (att.status || '').toLowerCase();
             if (s === 'presente') m.pres++;
@@ -5853,25 +5896,56 @@ window.loadDashMonthlyData = async function(seasonId, socId, scopedTeamIds) {
             else if (s === 'giustificato') m.giust++;
         });
 
+        // Aggrega gol
+        (goalRes.data || []).forEach(ps => {
+            const sess = ps.sessions;
+            if (!sess?.teams || !ps.goals) return;
+            const d = new Date(sess.session_date);
+            const key = mkKey(d);
+            ensureTeam(sess.team_id, sess.teams.name, sess.category_id, sess.society_id);
+            const team = teamsMap[sess.team_id];
+            ensureMonth(team, key, mkLabel(d));
+            team.months[key].goals += (ps.goals || 0);
+        });
+
+        // Aggrega punti
+        (matchRes.data || []).forEach(md => {
+            const sess = md.sessions;
+            if (!sess?.teams) return;
+            const d = new Date(sess.session_date);
+            const key = mkKey(d);
+            ensureTeam(sess.team_id, sess.teams.name, sess.category_id, sess.society_id);
+            const team = teamsMap[sess.team_id];
+            ensureMonth(team, key, mkLabel(d));
+            if (md.match_status === 'vittoria')  team.months[key].pts += 3;
+            else if (md.match_status === 'pareggio') team.months[key].pts += 1;
+        });
+
         window._dashMonthlyData = teamsMap;
 
-        // Popola filtri del tab 4 (società/categoria) usando i dati già esistenti
-        _populateMonthlyFilters();
+        // Popola i filtri del tab (stagioni, società, categorie, squadre)
+        await _populateMonthlyFilters(seasonId, socId);
 
-        // Se il tab è visibile, renderizza subito
+        // Renderizza se il tab è attivo
         const tab4 = document.getElementById('dash-tab-4');
-        if (tab4 && tab4.style.display !== 'none') {
-            window.renderDashMonthlyCharts();
-        }
+        if (tab4 && tab4.style.display !== 'none') window.renderDashMonthlyCharts();
 
     } catch(err) { console.error('loadDashMonthlyData error:', err); }
 };
 
-function _populateMonthlyFilters() {
-    // Riusa i dati di società/categorie già caricati dall'inizializzazione del dashboard
-    const societies = window._dashData?._societies || [];
+async function _populateMonthlyFilters(currentSeasonId, currentSocId) {
+    // Stagioni
+    const selSeason = document.getElementById('dash-monthly-season');
+    if (selSeason && selSeason.options.length <= 1) {
+        const seasons = window._dashData?._seasons || [];
+        seasons.forEach(s => {
+            selSeason.innerHTML += `<option value="${s.id}" ${s.id === currentSeasonId ? 'selected' : ''}>${s.name}${s.is_active?' ✓':''}</option>`;
+        });
+    }
+    // Società
     const selSoc = document.getElementById('dash-monthly-soc');
-    if (selSoc && selSoc.options.length <= 1 && societies.length > 0) {
+    if (selSoc && selSoc.options.length <= 1) {
+        const societies = window._dashData?._societies || [];
         societies.forEach(s => {
             selSoc.innerHTML += `<option value="${s.id}">${s.name}</option>`;
         });
@@ -5880,17 +5954,36 @@ function _populateMonthlyFilters() {
 
 window.onDashMonthlySocChange = async function() {
     const socId = document.getElementById('dash-monthly-soc')?.value;
-    const selCat = document.getElementById('dash-monthly-cat');
-    if (!selCat) return;
-    selCat.innerHTML = '<option value="">Tutte le categorie</option>';
+    const selCat  = document.getElementById('dash-monthly-cat');
+    const selTeam = document.getElementById('dash-monthly-team');
+    if (selCat)  selCat.innerHTML  = '<option value="">Tutte le categorie</option>';
+    if (selTeam) selTeam.innerHTML = '<option value="">Tutte le squadre</option>';
+
     if (socId) {
         const { data: cats } = await client.from('categories').select('id, name').eq('society_id', socId).order('name');
         (cats || []).forEach(c => { selCat.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+        // Popola squadre per questa società
+        const { data: tms } = await client.from('teams').select('id, name').eq('society_id', socId).order('name');
+        (tms || []).forEach(t => { selTeam.innerHTML += `<option value="${t.id}">${t.name}</option>`; });
     }
     window.renderDashMonthlyCharts();
 };
 
 window.onDashMonthlyCatChange = async function() {
+    const catId  = document.getElementById('dash-monthly-cat')?.value;
+    const socId  = document.getElementById('dash-monthly-soc')?.value;
+    const selTeam = document.getElementById('dash-monthly-team');
+    if (selTeam) selTeam.innerHTML = '<option value="">Tutte le squadre</option>';
+    let q = client.from('teams').select('id, name');
+    if (catId) q = q.eq('category_id', catId);
+    if (socId) q = q.eq('society_id', socId);
+    q = q.order('name');
+    const { data: tms } = await q;
+    (tms || []).forEach(t => { selTeam.innerHTML += `<option value="${t.id}">${t.name}</option>`; });
+    window.renderDashMonthlyCharts();
+};
+
+window.onDashMonthlyFilterChange = function() {
     window.renderDashMonthlyCharts();
 };
 
@@ -5898,217 +5991,305 @@ window.renderDashMonthlyCharts = async function() {
     const grid = document.getElementById('dash-monthly-grid');
     if (!grid) return;
 
-    const teamsMap = window._dashMonthlyData || {};
-    const teams = Object.values(teamsMap);
+    const teamsMap  = window._dashMonthlyData || {};
+    const catId     = document.getElementById('dash-monthly-cat')?.value;
+    const socId     = document.getElementById('dash-monthly-soc')?.value;
+    const teamId    = document.getElementById('dash-monthly-team')?.value;
+    const seasonId  = document.getElementById('dash-monthly-season')?.value;
 
-    const catId  = document.getElementById('dash-monthly-cat')?.value;
-    const socId  = document.getElementById('dash-monthly-soc')?.value;
+    let teams = Object.values(teamsMap);
 
-    // Filtra per categoria se selezionata
-    let filteredTeams = teams;
-    if (catId || socId) {
-        // Recupera i team che matchano i filtri
-        let q = client.from('teams').select('id, category_id, society_id');
-        if (catId) q = q.eq('category_id', catId);
-        if (socId) q = q.eq('society_id', socId);
-        const { data: filteredTeamRows } = await q;
-        const allowedIds = new Set((filteredTeamRows || []).map(t => t.id));
-        filteredTeams = teams.filter(t => allowedIds.has(t.id));
+    // Filtra per squadra specifica
+    if (teamId) {
+        teams = teams.filter(t => t.id === teamId);
+    } else {
+        // Filtra per categoria / società
+        if (catId || socId) {
+            let q = client.from('teams').select('id');
+            if (catId) q = q.eq('category_id', catId);
+            if (socId) q = q.eq('society_id', socId);
+            const { data: rows } = await q;
+            const allowed = new Set((rows || []).map(r => r.id));
+            teams = teams.filter(t => allowed.has(t.id));
+        }
     }
 
-    if (filteredTeams.length === 0) {
-        grid.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-sub);">Nessun dato di presenza disponibile per i filtri selezionati.</div>';
+    // Se stagione diversa dal caricamento principale, ricarica
+    const mainSeason = document.getElementById('dash-season-filter')?.value;
+    if (seasonId && seasonId !== '' && seasonId !== mainSeason) {
+        // Ricalcola solo per questa stagione con filtri aggiuntivi
+        grid.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sub);">⏳ Caricamento per stagione selezionata...</div>';
+        await window.loadDashMonthlyData(seasonId, socId || (window._dashData._forcedSocietyId || 'all'), null);
         return;
     }
 
-    // Ordina squadre per nome
-    filteredTeams.sort((a, b) => a.name.localeCompare(b.name));
+    if (teams.length === 0) {
+        grid.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-sub);">Nessun dato disponibile per i filtri selezionati.</div>';
+        return;
+    }
 
-    grid.innerHTML = filteredTeams.map(team => {
+    teams.sort((a, b) => a.name.localeCompare(b.name));
+
+    grid.innerHTML = teams.map((team, idx) => {
         const months = Object.entries(team.months).sort((a, b) => a[0].localeCompare(b[0]));
         if (months.length === 0) return '';
-        const chartSVG = _buildMiniBarChart(months, 520, 90);
+        const color = TEAM_PALETTE[idx % TEAM_PALETTE.length];
+        const miniSVG = _buildMiniLineChart(months, color, 520, 72);
+        const totPres  = months.reduce((s,[,m]) => s + m.pres, 0);
+        const totTot   = months.reduce((s,[,m]) => s + m.total, 0);
+        const totGoals = months.reduce((s,[,m]) => s + m.goals, 0);
+        const totPts   = months.reduce((s,[,m]) => s + m.pts, 0);
+        const avgPerc  = totTot > 0 ? Math.round((totPres / totTot) * 100) : 0;
+
         return `
-        <div onclick="window.openMonthlyChartPopup('${team.id}')"
-             style="display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 18px; cursor:pointer; transition:all 0.18s; box-shadow:var(--shadow-sm);"
-             onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--border-accent)';this.style.background='var(--card-hover)'"
-             onmouseout="this.style.boxShadow='var(--shadow-sm)';this.style.borderColor='var(--border)';this.style.background='var(--card)'">
-            <div style="min-width:140px; max-width:160px;">
-                <div style="font-size:0.82rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${team.name}">${team.name}</div>
-                <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">${months.length} mes${months.length===1?'e':'i'} · clicca per ingrandire</div>
+        <div onclick="window.openMonthlyChartPopup('${team.id}', ${idx})"
+             style="display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--border); border-left:3px solid ${color}; border-radius:var(--r-lg); padding:12px 18px; cursor:pointer; transition:all 0.18s; box-shadow:var(--shadow-sm);"
+             onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.background='var(--card-hover)'"
+             onmouseout="this.style.boxShadow='var(--shadow-sm)';this.style.background='var(--card)'">
+            <!-- Nome squadra + pillole -->
+            <div style="min-width:160px; max-width:190px;">
+                <div style="font-size:0.85rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${team.name}">${team.name}</div>
+                <div style="display:flex; gap:5px; margin-top:6px; flex-wrap:wrap;">
+                    <span style="font-size:0.62rem; font-weight:700; background:rgba(16,185,129,0.1); color:#059669; border-radius:4px; padding:1px 6px;">${avgPerc}% pres.</span>
+                    <span style="font-size:0.62rem; font-weight:700; background:rgba(59,130,246,0.1); color:#2563eb; border-radius:4px; padding:1px 6px;">⚽ ${totGoals} gol</span>
+                    <span style="font-size:0.62rem; font-weight:700; background:rgba(245,158,11,0.1); color:#d97706; border-radius:4px; padding:1px 6px;">🏆 ${totPts} pts</span>
+                </div>
             </div>
-            <div style="flex:1; overflow:hidden;">
-                ${chartSVG}
+            <!-- Grafico mini -->
+            <div style="flex:1; overflow:hidden; min-width:0;">
+                ${miniSVG}
             </div>
-            <div style="font-size:0.68rem; color:var(--text-muted); opacity:0.6; flex-shrink:0;">🔍</div>
+            <div style="font-size:0.72rem; color:var(--text-muted); opacity:0.5; flex-shrink:0;">🔍</div>
         </div>`;
     }).join('');
 };
 
-function _buildMiniBarChart(months, width, height) {
-    const maxVal = Math.max(...months.map(([,m]) => m.total), 1);
-    const barW = Math.max(Math.floor((width - 20) / months.length) - 3, 4);
-    const chartH = height - 18; // spazio etichette in basso
-    const svgBars = months.map(([key, m], i) => {
-        const presH  = Math.round((m.pres  / maxVal) * chartH);
-        const gjustH = Math.round((m.giust / maxVal) * chartH);
-        const assH   = Math.round((m.ass   / maxVal) * chartH);
-        const x = 10 + i * (barW + 3);
-        const perc = m.total > 0 ? Math.round((m.pres / m.total) * 100) : 0;
-        // Barre impilate: presenti (verde), giustificati (amber), assenti (rosso)
-        let bars = '';
-        let yOffset = chartH;
-        if (presH > 0)  { yOffset -= presH;  bars += `<rect x="${x}" y="${yOffset}" width="${barW}" height="${presH}"  fill="#10b981" rx="2"/>`; }
-        if (gjustH > 0) { yOffset -= gjustH; bars += `<rect x="${x}" y="${yOffset}" width="${barW}" height="${gjustH}" fill="#f59e0b" rx="2"/>`; }
-        if (assH > 0)   { yOffset -= assH;   bars += `<rect x="${x}" y="${yOffset}" width="${barW}" height="${assH}"  fill="#ef4444" rx="2"/>`; }
-        // Etichetta mese
-        const labelX = x + barW / 2;
-        bars += `<text x="${labelX}" y="${chartH + 13}" text-anchor="middle" font-size="8" fill="rgba(90,100,128,0.7)" font-family="Outfit,sans-serif">${m.label}</text>`;
-        // Tooltip area (invisible rect per hover)
-        bars += `<title>${m.label}: ${m.pres}P / ${m.ass}A / ${m.giust}G — ${perc}%</title><rect x="${x}" y="0" width="${barW}" height="${chartH}" fill="transparent"/>`;
-        return bars;
-    }).join('');
-    return `<svg width="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" style="display:block;">${svgBars}</svg>`;
-}
+/* ── GRAFICO A LINEE MINI (preview inline) ── */
+function _buildMiniLineChart(months, teamColor, W, H) {
+    if (!months || months.length < 1) return '';
+    const padL = 4, padR = 4, padT = 8, padB = 16;
+    const cW = W - padL - padR;
+    const cH = H - padT - padB;
+    const n  = months.length;
 
-function _buildFullBarChart(months, width, height) {
-    if (!months || months.length === 0) return '';
-    const maxVal  = Math.max(...months.map(([,m]) => m.total), 1);
-    const padL    = 36, padR = 16, padT = 16, padB = 36;
-    const chartW  = width  - padL - padR;
-    const chartH  = height - padT - padB;
-    const barW    = Math.max(Math.floor(chartW / months.length) - 5, 8);
+    // Serie: % presenze (0-100), gol (scala autonoma), punti (scala autonoma)
+    const percVals  = months.map(([,m]) => m.total > 0 ? Math.round((m.pres / m.total) * 100) : 0);
+    const goalVals  = months.map(([,m]) => m.goals);
+    const ptsVals   = months.map(([,m]) => m.pts);
 
-    // Grid lines
-    const gridLines = [0.25, 0.5, 0.75, 1].map(f => {
-        const y = padT + chartH - Math.round(f * chartH);
-        const val = Math.round(f * maxVal);
-        return `<line x1="${padL}" y1="${y}" x2="${padL + chartW}" y2="${y}" stroke="rgba(0,0,0,0.07)" stroke-dasharray="4,3"/>
-                 <text x="${padL - 6}" y="${y + 4}" text-anchor="end" font-size="9" fill="rgba(90,100,128,0.8)" font-family="Outfit,sans-serif">${val}</text>`;
-    }).join('');
+    const maxGoals = Math.max(...goalVals, 1);
+    const maxPts   = Math.max(...ptsVals, 1);
 
-    const svgBars = months.map(([key, m], i) => {
-        const presH  = Math.round((m.pres  / maxVal) * chartH);
-        const gjustH = Math.round((m.giust / maxVal) * chartH);
-        const assH   = Math.round((m.ass   / maxVal) * chartH);
-        const x      = padL + i * (barW + 5) + Math.floor((chartW / months.length - barW) / 2);
-        const baseY  = padT + chartH;
-        const perc   = m.total > 0 ? Math.round((m.pres / m.total) * 100) : 0;
+    const xPos = (i) => padL + (n === 1 ? cW / 2 : i * (cW / (n - 1)));
+    const yPerc = (v) => padT + cH - (v / 100) * cH;
+    const yGoal = (v) => padT + cH - (v / maxGoals) * cH;
+    const yPts  = (v) => padT + cH - (v / maxPts) * cH;
 
-        let bars = '';
-        let yOff = baseY;
-        if (presH  > 0) { yOff -= presH;  bars += `<rect x="${x}" y="${yOff}" width="${barW}" height="${presH}"  fill="#10b981" rx="3"><title>${m.pres} Presenti</title></rect>`; }
-        if (gjustH > 0) { yOff -= gjustH; bars += `<rect x="${x}" y="${yOff}" width="${barW}" height="${gjustH}" fill="#f59e0b" rx="3"><title>${m.giust} Giustificati</title></rect>`; }
-        if (assH   > 0) { yOff -= assH;   bars += `<rect x="${x}" y="${yOff}" width="${barW}" height="${assH}"  fill="#ef4444" rx="3"><title>${m.ass} Assenti</title></rect>`; }
+    const buildPolyline = (vals, yFn, color, dash = '') => {
+        if (vals.every(v => v === 0)) return '';
+        const pts = vals.map((v, i) => `${xPos(i).toFixed(1)},${yFn(v).toFixed(1)}`).join(' ');
+        // Dots
+        const dots = vals.map((v, i) =>
+            `<circle cx="${xPos(i).toFixed(1)}" cy="${yFn(v).toFixed(1)}" r="2.5" fill="${color}" stroke="white" stroke-width="1"/>`
+        ).join('');
+        return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" ${dash ? `stroke-dasharray="${dash}"` : ''}/>` + dots;
+    };
 
-        // % label sopra le barre
-        if (m.total > 0) {
-            const topY = baseY - presH - gjustH - assH - 4;
-            bars += `<text x="${x + barW/2}" y="${topY}" text-anchor="middle" font-size="9" font-weight="700" fill="${perc >= 70 ? '#059669' : perc >= 40 ? '#d97706' : '#dc2626'}" font-family="Outfit,sans-serif">${perc}%</text>`;
+    // Etichette mesi
+    const labels = months.map(([,m], i) => {
+        if (n <= 6 || i % Math.ceil(n / 6) === 0) {
+            return `<text x="${xPos(i).toFixed(1)}" y="${H - 2}" text-anchor="middle" font-size="7.5" fill="rgba(90,100,128,0.7)" font-family="Outfit,sans-serif">${m.label}</text>`;
         }
-
-        // Etichetta mese
-        bars += `<text x="${x + barW/2}" y="${padT + chartH + 18}" text-anchor="middle" font-size="10" fill="rgba(90,100,128,0.85)" font-family="Outfit,sans-serif" font-weight="500">${m.label}</text>`;
-        return bars;
+        return '';
     }).join('');
 
-    // Asse X
-    const axisX = `<line x1="${padL}" y1="${padT + chartH}" x2="${padL + chartW}" y2="${padT + chartH}" stroke="rgba(0,0,0,0.15)" stroke-width="1.5"/>`;
+    // Linea base
+    const baseline = `<line x1="${padL}" y1="${padT + cH}" x2="${padL + cW}" y2="${padT + cH}" stroke="rgba(0,0,0,0.07)" stroke-width="1"/>`;
 
-    return `<svg width="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" style="display:block;">${gridLines}${axisX}${svgBars}</svg>`;
+    return `<svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="display:block;">
+        ${baseline}
+        ${buildPolyline(percVals, yPerc, '#10b981')}
+        ${buildPolyline(goalVals, yGoal, '#3b82f6', '4,3')}
+        ${buildPolyline(ptsVals,  yPts,  '#f59e0b', '2,2')}
+        ${labels}
+    </svg>`;
 }
 
-window.openMonthlyChartPopup = function(teamId) {
+/* ── GRAFICO A LINEE FULL (popup ingrandito) ── */
+function _buildFullLineChart(months, W, H) {
+    if (!months || months.length === 0) return '';
+    const padL = 44, padR = 20, padT = 20, padB = 38;
+    const cW = W - padL - padR;
+    const cH = H - padT - padB;
+    const n  = months.length;
+
+    const percVals = months.map(([,m]) => m.total > 0 ? Math.round((m.pres / m.total) * 100) : 0);
+    const goalVals = months.map(([,m]) => m.goals);
+    const ptsVals  = months.map(([,m]) => m.pts);
+
+    const maxRight = Math.max(...goalVals, ...ptsVals, 1);
+
+    const xPos  = (i) => padL + (n === 1 ? cW / 2 : i * (cW / (n - 1)));
+    const yLeft = (v) => padT + cH - (v / 100) * cH;         // asse sinistra: %
+    const yRight= (v) => padT + cH - (v / maxRight) * cH;    // asse destra: gol/pts
+
+    // Grid H lines (asse sinistra %)
+    const gridLines = [0, 25, 50, 75, 100].map(v => {
+        const y = yLeft(v);
+        return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${padL + cW}" y2="${y.toFixed(1)}" stroke="rgba(0,0,0,0.06)" stroke-dasharray="4,4"/>
+                 <text x="${padL - 6}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(90,100,128,0.75)" font-family="Outfit,sans-serif">${v}%</text>`;
+    }).join('');
+
+    // Asse destra (valori grezzi)
+    const rightTicks = [0, 0.25, 0.5, 0.75, 1].map(f => {
+        const v = Math.round(f * maxRight);
+        const y = yRight(v);
+        return `<text x="${padL + cW + 6}" y="${(y + 4).toFixed(1)}" text-anchor="start" font-size="9" fill="rgba(90,100,128,0.6)" font-family="Outfit,sans-serif">${v}</text>`;
+    }).join('');
+
+    // Assi
+    const axisX = `<line x1="${padL}" y1="${padT + cH}" x2="${padL + cW}" y2="${padT + cH}" stroke="rgba(0,0,0,0.18)" stroke-width="1.5"/>`;
+    const axisY = `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + cH}" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>`;
+
+    const buildLine = (vals, yFn, color, dashArr = '') => {
+        if (vals.every(v => v === 0)) return '';
+        const pts = vals.map((v, i) => `${xPos(i).toFixed(1)},${yFn(v).toFixed(1)}`).join(' ');
+        const area = vals.map((v, i) => `${xPos(i).toFixed(1)},${yFn(v).toFixed(1)}`).join(' ') +
+            ` ${xPos(n-1).toFixed(1)},${padT + cH} ${xPos(0).toFixed(1)},${padT + cH}`;
+        const areaEl = dashArr ? '' : `<polygon points="${area}" fill="${color}" opacity="0.07"/>`;
+        const dots = vals.map((v, i) =>
+            `<circle cx="${xPos(i).toFixed(1)}" cy="${yFn(v).toFixed(1)}" r="4" fill="${color}" stroke="white" stroke-width="1.5">
+                <title>${months[i][1].label}: ${v}</title>
+             </circle>`
+        ).join('');
+        return areaEl +
+            `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" ${dashArr ? `stroke-dasharray="${dashArr}"` : ''}/>` +
+            dots;
+    };
+
+    // Etichette asse X
+    const xLabels = months.map(([,m], i) =>
+        `<text x="${xPos(i).toFixed(1)}" y="${padT + cH + 22}" text-anchor="middle" font-size="10" fill="rgba(90,100,128,0.9)" font-family="Outfit,sans-serif" font-weight="500">${m.label}</text>`
+    ).join('');
+
+    return `<svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="display:block; overflow:visible;">
+        ${gridLines}${axisX}${axisY}${rightTicks}
+        ${buildLine(percVals, yLeft,  '#10b981')}
+        ${buildLine(goalVals, yRight, '#3b82f6', '6,3')}
+        ${buildLine(ptsVals,  yRight, '#f59e0b', '3,2')}
+        ${xLabels}
+    </svg>`;
+}
+
+window.openMonthlyChartPopup = function(teamId, paletteIdx) {
     const team = window._dashMonthlyData[teamId];
     if (!team) return;
 
-    const months = Object.entries(team.months).sort((a, b) => a[0].localeCompare(b[0]));
-    const totalPres  = months.reduce((s,[,m]) => s + m.pres, 0);
-    const totalAss   = months.reduce((s,[,m]) => s + m.ass, 0);
-    const totalGiust = months.reduce((s,[,m]) => s + m.giust, 0);
-    const totalTot   = months.reduce((s,[,m]) => s + m.total, 0);
-    const avgPerc    = totalTot > 0 ? Math.round((totalPres / totalTot) * 100) : 0;
-    const percColor  = avgPerc >= 70 ? '#059669' : avgPerc >= 40 ? '#d97706' : '#dc2626';
+    const months    = Object.entries(team.months).sort((a, b) => a[0].localeCompare(b[0]));
+    const teamColor = TEAM_PALETTE[(paletteIdx || 0) % TEAM_PALETTE.length];
+    const totPres   = months.reduce((s,[,m]) => s + m.pres, 0);
+    const totAss    = months.reduce((s,[,m]) => s + m.ass, 0);
+    const totGiust  = months.reduce((s,[,m]) => s + m.giust, 0);
+    const totTot    = months.reduce((s,[,m]) => s + m.total, 0);
+    const totGoals  = months.reduce((s,[,m]) => s + m.goals, 0);
+    const totPts    = months.reduce((s,[,m]) => s + m.pts, 0);
+    const avgPerc   = totTot > 0 ? Math.round((totPres / totTot) * 100) : 0;
+    const percColor = avgPerc >= 70 ? '#059669' : avgPerc >= 40 ? '#d97706' : '#dc2626';
 
-    const chartSVG = _buildFullBarChart(months, 780, 300);
+    const chartSVG = _buildFullLineChart(months, 760, 280);
 
     const popupContent = document.getElementById('monthly-chart-popup-content');
     if (!popupContent) return;
 
     popupContent.innerHTML = `
-        <div style="margin-bottom:20px;">
-            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;">📊 Presenze Mensili</div>
-            <div style="font-size:1.3rem; font-weight:800; color:var(--text-main); font-family:'Syne',sans-serif;">${team.name}</div>
-        </div>
-
-        <!-- Riepilogo KPI -->
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px;">
-            <div style="background:rgba(5,150,105,0.09); border:1px solid rgba(5,150,105,0.2); border-radius:10px; padding:10px 18px; text-align:center; flex:1; min-width:80px;">
-                <div style="font-size:1.4rem; font-weight:800; color:#059669; font-family:'DM Mono',monospace;">${totalPres}</div>
-                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Presenti</div>
-            </div>
-            <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.18); border-radius:10px; padding:10px 18px; text-align:center; flex:1; min-width:80px;">
-                <div style="font-size:1.4rem; font-weight:800; color:#ef4444; font-family:'DM Mono',monospace;">${totalAss}</div>
-                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Assenti</div>
-            </div>
-            <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:10px; padding:10px 18px; text-align:center; flex:1; min-width:80px;">
-                <div style="font-size:1.4rem; font-weight:800; color:#d97706; font-family:'DM Mono',monospace;">${totalGiust}</div>
-                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Giustificati</div>
-            </div>
-            <div style="background:rgba(99,102,241,0.07); border:1px solid rgba(99,102,241,0.15); border-radius:10px; padding:10px 18px; text-align:center; flex:1; min-width:80px;">
-                <div style="font-size:1.4rem; font-weight:800; color:#6366f1; font-family:'DM Mono',monospace;">${totalTot}</div>
-                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Totale</div>
-            </div>
-            <div style="background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.09); border-radius:10px; padding:10px 18px; text-align:center; flex:1; min-width:80px;">
-                <div style="font-size:1.4rem; font-weight:800; color:${percColor}; font-family:'DM Mono',monospace;">${avgPerc}%</div>
-                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; margin-top:2px;">Media %</div>
+        <!-- Header -->
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+            <div style="width:4px; height:36px; background:${teamColor}; border-radius:3px; flex-shrink:0;"></div>
+            <div>
+                <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em;">📈 Andamento Mensile</div>
+                <div style="font-size:1.25rem; font-weight:800; color:var(--text-main); font-family:'Syne',sans-serif;">${team.name}</div>
             </div>
         </div>
 
-        <!-- Grafico grande -->
-        <div style="background:rgba(0,0,0,0.02); border:1px solid var(--border); border-radius:var(--r-md); padding:16px 8px 8px;">
+        <!-- KPI Pills -->
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;">
+            <div style="background:rgba(16,185,129,0.09); border:1px solid rgba(16,185,129,0.2); border-radius:10px; padding:10px 16px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.35rem; font-weight:800; color:#059669; font-family:'DM Mono',monospace; line-height:1;">${avgPerc}%</div>
+                <div style="font-size:0.62rem; color:var(--text-muted); text-transform:uppercase; margin-top:3px;">% Presenze</div>
+            </div>
+            <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.14); border-radius:10px; padding:10px 16px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.35rem; font-weight:800; color:#10b981; font-family:'DM Mono',monospace; line-height:1;">${totPres}</div>
+                <div style="font-size:0.62rem; color:var(--text-muted); text-transform:uppercase; margin-top:3px;">Presenti</div>
+            </div>
+            <div style="background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.15); border-radius:10px; padding:10px 16px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.35rem; font-weight:800; color:#ef4444; font-family:'DM Mono',monospace; line-height:1;">${totAss}</div>
+                <div style="font-size:0.62rem; color:var(--text-muted); text-transform:uppercase; margin-top:3px;">Assenti</div>
+            </div>
+            <div style="background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.16); border-radius:10px; padding:10px 16px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.35rem; font-weight:800; color:#d97706; font-family:'DM Mono',monospace; line-height:1;">${totGiust}</div>
+                <div style="font-size:0.62rem; color:var(--text-muted); text-transform:uppercase; margin-top:3px;">Giustificati</div>
+            </div>
+            <div style="background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.18); border-radius:10px; padding:10px 16px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.35rem; font-weight:800; color:#2563eb; font-family:'DM Mono',monospace; line-height:1;">⚽ ${totGoals}</div>
+                <div style="font-size:0.62rem; color:var(--text-muted); text-transform:uppercase; margin-top:3px;">Gol Totali</div>
+            </div>
+            <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.18); border-radius:10px; padding:10px 16px; text-align:center; flex:1; min-width:80px;">
+                <div style="font-size:1.35rem; font-weight:800; color:#d97706; font-family:'DM Mono',monospace; line-height:1;">🏆 ${totPts}</div>
+                <div style="font-size:0.62rem; color:var(--text-muted); text-transform:uppercase; margin-top:3px;">Punti Totali</div>
+            </div>
+        </div>
+
+        <!-- Grafico a Linee Full -->
+        <div style="background:rgba(0,0,0,0.02); border:1px solid var(--border); border-radius:var(--r-md); padding:16px 12px 8px;">
             ${chartSVG}
         </div>
 
         <!-- Legenda -->
-        <div style="display:flex; gap:16px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
-            <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--text-sub);">
-                <span style="width:12px;height:12px;border-radius:3px;background:#10b981;display:inline-block;flex-shrink:0;"></span> Presenti
+        <div style="display:flex; gap:18px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:7px; font-size:0.75rem; color:var(--text-sub);">
+                <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="5" r="3.5" fill="#10b981"/></svg>
+                % Presenze (asse sx)
             </div>
-            <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--text-sub);">
-                <span style="width:12px;height:12px;border-radius:3px;background:#f59e0b;display:inline-block;flex-shrink:0;"></span> Giustificati
+            <div style="display:flex; align-items:center; gap:7px; font-size:0.75rem; color:var(--text-sub);">
+                <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#3b82f6" stroke-width="2.5" stroke-dasharray="6,3" stroke-linecap="round"/><circle cx="12" cy="5" r="3.5" fill="#3b82f6"/></svg>
+                Gol (asse dx)
             </div>
-            <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--text-sub);">
-                <span style="width:12px;height:12px;border-radius:3px;background:#ef4444;display:inline-block;flex-shrink:0;"></span> Assenti
+            <div style="display:flex; align-items:center; gap:7px; font-size:0.75rem; color:var(--text-sub);">
+                <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="3,2" stroke-linecap="round"/><circle cx="12" cy="5" r="3.5" fill="#f59e0b"/></svg>
+                Punti (asse dx)
             </div>
         </div>
 
-        <!-- Tabella riepilogo per mese -->
+        <!-- Tabella dettaglio -->
         <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
-            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">Dettaglio per Mese</div>
+            <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">Dettaglio per Mese</div>
             <div style="overflow-x:auto;">
-                <table style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.79rem;">
                     <thead>
                         <tr style="background:rgba(0,0,0,0.03);">
-                            <th style="padding:7px 10px; text-align:left; font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Mese</th>
-                            <th style="padding:7px 10px; text-align:center; font-size:0.68rem; font-weight:700; color:#10b981; text-transform:uppercase;">Presenti</th>
-                            <th style="padding:7px 10px; text-align:center; font-size:0.68rem; font-weight:700; color:#ef4444; text-transform:uppercase;">Assenti</th>
-                            <th style="padding:7px 10px; text-align:center; font-size:0.68rem; font-weight:700; color:#d97706; text-transform:uppercase;">Giustificati</th>
-                            <th style="padding:7px 10px; text-align:center; font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Totale</th>
-                            <th style="padding:7px 10px; text-align:center; font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">% Pres.</th>
+                            <th style="padding:7px 10px; text-align:left; font-size:0.66rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Mese</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.66rem; font-weight:700; color:#10b981;">Pres.</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.66rem; font-weight:700; color:#ef4444;">Ass.</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.66rem; font-weight:700; color:#d97706;">Giust.</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.66rem; font-weight:700; color:var(--text-muted);">Tot.</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.66rem; font-weight:700; color:#059669;">% Pres.</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.66rem; font-weight:700; color:#2563eb;">⚽ Gol</th>
+                            <th style="padding:7px 10px; text-align:center; font-size:0.66rem; font-weight:700; color:#d97706;">🏆 Pts</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${months.map(([key, m]) => {
-                            const p = m.total > 0 ? Math.round((m.pres / m.total) * 100) : 0;
+                        ${months.map(([, m]) => {
+                            const p  = m.total > 0 ? Math.round((m.pres / m.total) * 100) : 0;
                             const pc = p >= 70 ? '#059669' : p >= 40 ? '#d97706' : '#dc2626';
                             return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">
                                 <td style="padding:8px 10px; font-weight:600;">${m.label}</td>
                                 <td style="padding:8px 10px; text-align:center; color:#059669; font-weight:700;">${m.pres}</td>
                                 <td style="padding:8px 10px; text-align:center; color:#ef4444; font-weight:700;">${m.ass}</td>
-                                <td style="padding:8px 10px; text-align:center; color:#d97706; font-weight:700;">${m.giust}</td>
+                                <td style="padding:8px 10px; text-align:center; color:#d97706;">${m.giust}</td>
                                 <td style="padding:8px 10px; text-align:center; color:var(--text-sub);">${m.total}</td>
                                 <td style="padding:8px 10px; text-align:center;"><span style="font-weight:800; color:${pc}; font-family:'DM Mono',monospace;">${p}%</span></td>
+                                <td style="padding:8px 10px; text-align:center; color:#2563eb; font-weight:700;">${m.goals}</td>
+                                <td style="padding:8px 10px; text-align:center; color:#d97706; font-weight:700;">${m.pts}</td>
                             </tr>`;
                         }).join('')}
                     </tbody>
@@ -6117,7 +6298,7 @@ window.openMonthlyChartPopup = function(teamId) {
         </div>`;
 
     const overlay = document.getElementById('monthly-chart-popup-overlay');
-    if (overlay) { overlay.style.display = 'flex'; }
+    if (overlay) overlay.style.display = 'flex';
 };
 
 window.closeMonthlyChartPopup = function() {
@@ -6125,7 +6306,6 @@ window.closeMonthlyChartPopup = function() {
     if (overlay) overlay.style.display = 'none';
 };
 
-// Chiudi popup cliccando sull'overlay
 document.getElementById('monthly-chart-popup-overlay')?.addEventListener('click', function(e) {
     if (e.target === this) window.closeMonthlyChartPopup();
 });
@@ -6887,7 +7067,7 @@ function _applyTabFilterVisibility() {
     // ID dei selects per ogni tipo di filtro in ogni tab
     const socSelects  = ['dash-stats-soc','dash-match-soc','dash-pres-soc','dash-ath-soc','dash-monthly-soc'];
     const catSelects  = ['dash-stats-cat','dash-match-cat','dash-pres-cat','dash-ath-cat','dash-monthly-cat'];
-    const teamSelects = ['dash-stats-team','dash-match-team','dash-pres-team','dash-ath-team'];
+    const teamSelects = ['dash-stats-team','dash-match-team','dash-pres-team','dash-ath-team','dash-monthly-team'];
 
     socSelects.forEach(id => {
         // Per dash-match-soc nascondiamo il wrapper che include anche la label
