@@ -4348,9 +4348,10 @@ window.openConvocazioni = async function(sessionId) {
         <div style="display:grid; gap:8px;">
             ${athletes?.sort((a,b) => a.athletes?.surname.localeCompare(b.athletes?.surname)).map(a => {
                 const current = attendanceMap[a.athlete_id] || {};
-                const isConv = current.is_called_up === true && current.status !== 'squalificato';
-                const isExcl = (current.is_called_up === false || !current.status) && current.status !== 'squalificato';
-                const isSq = current.status === 'squalificato';
+                const isConv = current.is_called_up === true && current.status !== 'squalificato' && current.status !== 'infortunato';
+                const isExcl = (current.is_called_up === false || !current.status) && current.status !== 'squalificato' && current.status !== 'infortunato';
+                const isSq   = current.status === 'squalificato';
+                const isInj  = current.status === 'infortunato';
 
                 return `
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--card-raised); border:1px solid var(--border); border-radius:8px;">
@@ -4363,10 +4364,13 @@ window.openConvocazioni = async function(sessionId) {
                             CONV. <input type="radio" name="status-${a.athlete_id}" class="conv-radio" data-id="${a.athlete_id}" value="presente" ${isConv ? 'checked' : ''}>
                         </label>
                         <label style="color:var(--text-sub); font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">
-                            ESCLUSO <input type="radio" name="status-${a.athlete_id}" class="conv-radio" data-id="${a.athlete_id}" value="assente" ${isExcl ? 'checked' : ''}>
+                            NON CONV. <input type="radio" name="status-${a.athlete_id}" class="conv-radio" data-id="${a.athlete_id}" value="assente" ${isExcl ? 'checked' : ''}>
                         </label>
                         <label style="color:#f59e0b; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px; border-left:1px solid #374151; padding-left:8px;">
                             SQUALIF. <input type="radio" name="status-${a.athlete_id}" class="conv-radio" data-id="${a.athlete_id}" value="squalificato" ${isSq ? 'checked' : ''}>
+                        </label>
+                        <label style="color:#ef4444; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                            🩹 INF. <input type="radio" name="status-${a.athlete_id}" class="conv-radio" data-id="${a.athlete_id}" value="infortunato" ${isInj ? 'checked' : ''}>
                         </label>
                     </div>
                 </div>`;
@@ -4380,7 +4384,8 @@ window.selezionaTuttiConvocati = function() {
     radios.forEach(r => {
         const row = r.closest('div');
         const isSqualificato = row.querySelector('input[value="squalificato"]').checked;
-        if (!isSqualificato) r.checked = true;
+        const isInfortunato  = row.querySelector('input[value="infortunato"]').checked;
+        if (!isSqualificato && !isInfortunato) r.checked = true;
     });
 };
 // --- 3.1 LOGICA SALVATAGGIO CONVOCAZIONI (Versione Ottimizzata) ---
