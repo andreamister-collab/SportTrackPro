@@ -8305,7 +8305,7 @@ window.saveTestSession = async function() {
     if (!teamId) { alert('Seleziona una squadra.'); return; }
     if (!defId || !date) { alert('Seleziona tipo test e data.'); return; }
 
-    const { data, error } = await client.from('test_sessions').insert({ test_def_id: defId, session_date: date, notes }).select('id').single();
+    const { data, error } = await client.from('test_sessions').insert({ test_def_id: defId, team_id: teamId, session_date: date, notes }).select('id').single();
     if (error) { alert('Errore: ' + error.message); return; }
 
     window.closeTestPopup();
@@ -8323,11 +8323,11 @@ window.deleteTestSession = async function(sessId) {
 // ── TAB: CONVOCA ─────────────────────────────────────────────────
 window.openTestConvoca = async function(sessId) {
     const { data: sess } = await client.from('test_sessions')
-        .select('id, session_date, notes, test_definitions!inner(id,name,team_id,teams!inner(id,name))')
+        .select('id, session_date, notes, team_id, teams!inner(id,name), test_definitions!inner(id,name)')
         .eq('id', sessId).single();
     if (!sess) return;
 
-    const teamId = sess.test_definitions.team_id;
+    const teamId = sess.team_id;
 
     const [{ data: athletes }, { data: existing }] = await Promise.all([
         client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', teamId).order('jersey_number'),
@@ -8388,9 +8388,9 @@ window._testConvocaTutti = function() {
 
 window.saveTestConvoca = async function(sessId) {
     const { data: sess } = await client.from('test_sessions')
-        .select('test_definitions!inner(team_id)')
+        .select('team_id')
         .eq('id', sessId).single();
-    const teamId = sess?.test_definitions?.team_id || null;
+    const teamId = sess?.team_id || null;
 
     const radios = document.querySelectorAll('.tconv-radio:checked');
     const records = Array.from(radios).map(r => ({
@@ -8409,11 +8409,11 @@ window.saveTestConvoca = async function(sessId) {
 // ── TAB: TABELLINO ───────────────────────────────────────────────
 window.openTestTabellino = async function(sessId) {
     const { data: sess } = await client.from('test_sessions')
-        .select('id, session_date, notes, test_definitions!inner(id, name, team_id)')
+        .select('id, session_date, notes, team_id, test_definitions!inner(id, name)')
         .eq('id', sessId).single();
     if (!sess) return;
 
-    const teamId = sess.test_definitions.team_id;
+    const teamId = sess.team_id;
 
     const [{ data: perfs }, { data: attendances }, { data: existingRes }, { data: teamAthletes }] = await Promise.all([
         client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
@@ -8503,7 +8503,7 @@ window.saveTestTabellino = async function(sessId) {
 // ── TAB: STATS ───────────────────────────────────────────────────
 window.openTestStats = async function(sessId) {
     const { data: sess } = await client.from('test_sessions')
-        .select('id, session_date, test_definitions!inner(id, name, team_id)')
+        .select('id, session_date, team_id, test_definitions!inner(id, name)')
         .eq('id', sessId).single();
     if (!sess) return;
 
@@ -8511,7 +8511,7 @@ window.openTestStats = async function(sessId) {
         client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
         client.from('test_results').select('*').eq('test_session_id', sessId),
         client.from('test_attendances').select('athlete_id, status').eq('test_session_id', sessId).eq('status','convocato'),
-        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', sess.test_definitions.team_id)
+        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', sess.team_id)
     ]);
 
     // Build athlete detail map
@@ -8579,14 +8579,14 @@ window.openTestStats = async function(sessId) {
 // ── TAB: GRAFICO ─────────────────────────────────────────────────
 window.openTestGrafico = async function(sessId) {
     const { data: sess } = await client.from('test_sessions')
-        .select('id, session_date, test_definitions!inner(id, name, team_id)')
+        .select('id, session_date, team_id, test_definitions!inner(id, name)')
         .eq('id', sessId).single();
     if (!sess) return;
 
     const [{ data: perfs }, { data: results }, { data: teamAthletes }] = await Promise.all([
         client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
         client.from('test_results').select('*').eq('test_session_id', sessId),
-        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', sess.test_definitions.team_id)
+        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', sess.team_id)
     ]);
 
     // Build athlete detail map
