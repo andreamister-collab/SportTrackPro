@@ -8335,7 +8335,7 @@ window.openTestConvoca = async function(sessId) {
     const teamId = sess.test_definitions.team_id;
 
     const [{ data: athletes }, { data: existing }] = await Promise.all([
-        client.from('team_athletes').select('athlete_id, jersey_number, athletes(id,name,surname)').eq('team_id', teamId).order('jersey_number'),
+        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', teamId).order('jersey_number'),
         client.from('test_attendances').select('*').eq('test_session_id', sessId)
     ]);
 
@@ -8392,11 +8392,17 @@ window._testConvocaTutti = function() {
 };
 
 window.saveTestConvoca = async function(sessId) {
+    const { data: sess } = await client.from('test_sessions')
+        .select('test_definitions!inner(team_id)')
+        .eq('id', sessId).single();
+    const teamId = sess?.test_definitions?.team_id || null;
+
     const radios = document.querySelectorAll('.tconv-radio:checked');
     const records = Array.from(radios).map(r => ({
         test_session_id: sessId,
         athlete_id: r.getAttribute('data-id'),
-        status: r.value
+        status: r.value,
+        team_id: teamId
     }));
     if (!records.length) { alert('Nessun dato.'); return; }
     const { error } = await client.from('test_attendances').upsert(records, { onConflict: 'test_session_id, athlete_id' });
@@ -8412,10 +8418,13 @@ window.openTestTabellino = async function(sessId) {
         .eq('id', sessId).single();
     if (!sess) return;
 
-    const [{ data: perfs }, { data: attendances }, { data: existingRes }] = await Promise.all([
+    const teamId = sess.test_definitions.team_id;
+
+    const [{ data: perfs }, { data: attendances }, { data: existingRes }, { data: teamAthletes }] = await Promise.all([
         client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
-        client.from('test_attendances').select('athlete_id, status, team_athletes!inner(jersey_number, athletes!inner(id,name,surname))').eq('test_session_id', sessId).eq('status','convocato'),
-        client.from('test_results').select('*').eq('test_session_id', sessId)
+        client.from('test_attendances').select('athlete_id, status').eq('test_session_id', sessId).eq('status','convocato'),
+        client.from('test_results').select('*').eq('test_session_id', sessId),
+        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', teamId)
     ]);
 
     // Build result map: athlete_id → perf_id → value
@@ -8425,18 +8434,27 @@ window.openTestTabellino = async function(sessId) {
         resMap[r.athlete_id][r.performance_id] = r.value;
     });
 
-    const athletes = (attendances||[]).sort((a,b) => (a.team_athletes?.athletes?.surname||'').localeCompare(b.team_athletes?.athletes?.surname||''));
+    // Build athlete detail map: athlete_id → { jersey_number, athletes }
+    const athDetailMap = {};
+    (teamAthletes||[]).forEach(a => { athDetailMap[a.athlete_id] = a; });
+
+    const athletes = (attendances||[]).sort((a,b) => {
+        const sa = athDetailMap[a.athlete_id]?.athletes?.surname||'';
+        const sb = athDetailMap[b.athlete_id]?.athletes?.surname||'';
+        return sa.localeCompare(sb);
+    });
 
     const perfHeaders = (perfs||[]).map(p => `<th style="padding:9px 10px;text-align:center;font-size:0.66rem;font-weight:700;color:#3b82f6;">${p.name}<br><span style="font-weight:400;color:var(--text-muted);">(${p.unit})</span></th>`).join('');
 
     const athRows = athletes.map(a => {
-        const ath = a.team_athletes?.athletes;
+        const detail = athDetailMap[a.athlete_id];
+        const ath = detail?.athletes;
         const cells = (perfs||[]).map(p => {
             const val = resMap[a.athlete_id]?.[p.id] ?? '';
             return `<td style="padding:7px 8px;text-align:center;"><input type="number" step="0.01" class="tres-input" data-aid="${a.athlete_id}" data-pid="${p.id}" value="${val}" style="width:80px;padding:5px;border:1px solid var(--border);border-radius:5px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;"></td>`;
         }).join('');
         return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">
-            <td style="padding:9px 10px;font-weight:600;white-space:nowrap;">${a.team_athletes?.jersey_number||'--'} ${ath?.surname} ${ath?.name}</td>
+            <td style="padding:9px 10px;font-weight:600;white-space:nowrap;">${detail?.jersey_number||'--'} ${ath?.surname||''} ${ath?.name||''}</td>
             ${cells}
         </tr>`;
     }).join('');
@@ -8494,17 +8512,23 @@ window.openTestStats = async function(sessId) {
         .eq('id', sessId).single();
     if (!sess) return;
 
-    const [{ data: perfs }, { data: results }, { data: attendances }] = await Promise.all([
+    const [{ data: perfs }, { data: results }, { data: attendances }, { data: teamAthletes }] = await Promise.all([
         client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
-        client.from('test_results').select('*, team_athletes!inner(jersey_number, athletes!inner(name,surname))').eq('test_session_id', sessId),
-        client.from('test_attendances').select('athlete_id, status, team_athletes!inner(jersey_number, athletes!inner(id,name,surname))').eq('test_session_id', sessId).eq('status','convocato')
+        client.from('test_results').select('*').eq('test_session_id', sessId),
+        client.from('test_attendances').select('athlete_id, status').eq('test_session_id', sessId).eq('status','convocato'),
+        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', sess.test_definitions.team_id)
     ]);
+
+    // Build athlete detail map
+    const athDetailMap = {};
+    (teamAthletes||[]).forEach(a => { athDetailMap[a.athlete_id] = a; });
 
     // Group results: athlete_id → perf_id → value
     const resMap = {};
     (results||[]).forEach(r => {
-        const ath = r.team_athletes;
-        if (!resMap[r.athlete_id]) resMap[r.athlete_id] = { name: `${ath?.athletes?.surname} ${ath?.athletes?.name}`, jersey: ath?.jersey_number, vals: {} };
+        const detail = athDetailMap[r.athlete_id];
+        const ath = detail?.athletes;
+        if (!resMap[r.athlete_id]) resMap[r.athlete_id] = { name: `${ath?.surname||''} ${ath?.name||''}`, jersey: detail?.jersey_number, vals: {} };
         resMap[r.athlete_id].vals[r.performance_id] = r.value;
     });
 
@@ -8564,10 +8588,15 @@ window.openTestGrafico = async function(sessId) {
         .eq('id', sessId).single();
     if (!sess) return;
 
-    const [{ data: perfs }, { data: results }] = await Promise.all([
+    const [{ data: perfs }, { data: results }, { data: teamAthletes }] = await Promise.all([
         client.from('test_performances').select('*').eq('test_def_id', sess.test_definitions.id).order('sort_order'),
-        client.from('test_results').select('*, team_athletes!inner(jersey_number, athletes!inner(name,surname))').eq('test_session_id', sessId)
+        client.from('test_results').select('*').eq('test_session_id', sessId),
+        client.from('athlete_team_seasons').select('athlete_id, jersey_number, athletes!inner(id,name,surname)').eq('team_id', sess.test_definitions.team_id)
     ]);
+
+    // Build athlete detail map
+    const athDetailMap = {};
+    (teamAthletes||[]).forEach(a => { athDetailMap[a.athlete_id] = a; });
 
     if (!results?.length) {
         window.openTestPopup('<div style="padding:40px;text-align:center;color:var(--text-sub);">Nessun risultato da visualizzare.</div>');
@@ -8578,7 +8607,8 @@ window.openTestGrafico = async function(sessId) {
     const resMap = {};
     (results||[]).forEach(r => {
         if (!resMap[r.performance_id]) resMap[r.performance_id] = [];
-        resMap[r.performance_id].push({ name: `${r.team_athletes?.athletes?.surname} ${r.team_athletes?.athletes?.name}`, value: r.value, jersey: r.team_athletes?.jersey_number });
+        const detail = athDetailMap[r.athlete_id];
+        resMap[r.performance_id].push({ name: `${detail?.athletes?.surname||''} ${detail?.athletes?.name||''}`, value: r.value, jersey: detail?.jersey_number });
     });
 
     const COLORS = ['#e8402e','#3b82f6','#10b981','#f59e0b','#8b5cf6'];
