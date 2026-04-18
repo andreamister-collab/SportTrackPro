@@ -4673,7 +4673,10 @@ window.openTabellino = async function(sessionId) {
         <!-- FOOTER -->
         <div style="padding:14px 24px; background:rgba(0,0,0,0.03); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
             <button onclick="window.closeMatchPopup()" style="padding:9px 18px; background:var(--card); color:var(--text-muted); border:1.5px solid rgba(0,0,0,0.1); border-radius:8px; font-weight:600; font-size:0.82rem; cursor:pointer; font-family:inherit;">✕ Annulla</button>
-            <button onclick="window.saveFullTabellino('${sessionId}', '${d.id}')" style="padding:10px 28px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:white; border:none; border-radius:8px; font-weight:700; font-size:0.88rem; cursor:pointer; font-family:inherit; box-shadow:0 4px 12px var(--primary-glow);">💾 Salva Report</button>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button onclick="window.printTabellinoMatchPDF('${sessionId}')" style="padding:9px 18px; background:rgba(99,102,241,0.1); color:#6366f1; border:1.5px solid rgba(99,102,241,0.25); border-radius:8px; font-weight:700; font-size:0.82rem; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:6px;">🖨️ Stampa PDF</button>
+                <button onclick="window.saveFullTabellino('${sessionId}', '${d.id}')" style="padding:10px 28px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:white; border:none; border-radius:8px; font-weight:700; font-size:0.88rem; cursor:pointer; font-family:inherit; box-shadow:0 4px 12px var(--primary-glow);">💾 Salva Report</button>
+            </div>
         </div>
     </div>`;
 };
@@ -4752,6 +4755,369 @@ window.saveFullTabellino = async function(sessionId, detailId) {
         console.error(err);
         alert("Errore durante il salvataggio: " + (err.message || "Controlla la console."));
     }
+};
+
+// --- STAMPA PDF TABELLINO MATCH ---
+window.printTabellinoMatchPDF = async function(sessionId) {
+    // Raccoglie i dati correnti dal form (già aperto nel popup)
+    const opponent  = document.getElementById('tab-opponent')?.value || '—';
+    const isHome    = document.getElementById('tab-is-home')?.value === 'true';
+    const isFriendly= document.getElementById('tab-is-friendly')?.value === 'true';
+    const meetTime  = document.getElementById('tab-meet-time')?.value || '';
+    const matchStart= document.getElementById('tab-match-start')?.value || '';
+    const address   = document.getElementById('tab-address')?.value || '';
+    const gf        = document.getElementById('tab-gf')?.value ?? '—';
+    const gs        = document.getElementById('tab-gs')?.value ?? '—';
+    const status    = document.getElementById('tab-status')?.value || '';
+
+    // Recupera dati sessione/squadra per intestazione
+    const session = await window.safeGetSession(sessionId);
+    const sessionDate = session?.session_date
+        ? new Date(session.session_date).toLocaleDateString('it-IT', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
+        : '—';
+
+    // Recupera nome squadra e categoria
+    let teamName = '', catName = '', societaName = '';
+    if (session?.team_id) {
+        const { data: teamRow } = await client.from('teams')
+            .select('name, categories(name), societies(name)')
+            .eq('id', session.team_id).maybeSingle();
+        teamName    = teamRow?.name || '';
+        catName     = teamRow?.categories?.name || '';
+        societaName = teamRow?.societies?.name || '';
+    }
+
+    // Raccoglie giocatori dal DOM (già renderizzati nella tabella)
+    const rows = [];
+    document.querySelectorAll('#players-stats-body tr').forEach(tr => {
+        const cells = tr.querySelectorAll('td');
+        if (!cells.length) return;
+        const num     = cells[0]?.textContent?.trim() || '—';
+        const nameEl  = cells[1];
+        const nameTxt = nameEl?.querySelector('span')?.textContent?.trim() || nameEl?.textContent?.trim() || '';
+        const role    = nameEl?.querySelectorAll('span')[1]?.textContent?.trim() || '';
+        const goals   = cells[2]?.querySelector('.stat-val')?.textContent?.trim() || '0';
+        const yc      = cells[3]?.querySelector('.stat-val')?.textContent?.trim() || '0';
+        const rc      = cells[4]?.querySelector('.stat-val')?.textContent?.trim() || '0';
+        const mins    = cells[5]?.querySelector('input')?.value || '0';
+        const starter = cells[6]?.querySelector('input')?.checked ?? true;
+        rows.push({ num, nameTxt, role, goals, yc, rc, mins, starter });
+    });
+
+    const statusLabel = { vittoria:'Vittoria ✅', sconfitta:'Sconfitta ❌', pareggio:'Pareggio 🤝', 'da disputare':'Da giocare ⏳' }[status] || status;
+    const locationLabel = isHome ? '🏠 Casa' : '🚌 Trasferta';
+    const tipoLabel = isFriendly ? 'Amichevole' : 'Ufficiale';
+
+    // Genera n righe vuote per atleti non convocati (utile per annotazioni campo)
+    const EXTRA_BLANK_ROWS = Math.max(0, 18 - rows.length);
+
+    const playerRowsHTML = rows.map((r, i) => `
+        <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
+            <td class="num">${r.num}</td>
+            <td class="name">${r.nameTxt}${r.role ? `<span class="role"> ${r.role}</span>` : ''}</td>
+            <td class="center starter-cell">${r.starter ? '✓' : ''}</td>
+            <td class="center writeable">${r.goals !== '0' ? r.goals : ''}</td>
+            <td class="center writeable">${r.yc !== '0' ? r.yc : ''}</td>
+            <td class="center writeable">${r.rc !== '0' ? r.rc : ''}</td>
+            <td class="center writeable">${r.mins !== '0' ? r.mins : ''}</td>
+            <td class="notes-cell writeable"></td>
+        </tr>`).join('');
+
+    const blankRowsHTML = Array.from({ length: EXTRA_BLANK_ROWS }, (_, i) => `
+        <tr class="${(rows.length + i) % 2 === 0 ? 'even' : 'odd'}">
+            <td class="num writeable"></td>
+            <td class="name writeable"></td>
+            <td class="center writeable"></td>
+            <td class="center writeable"></td>
+            <td class="center writeable"></td>
+            <td class="center writeable"></td>
+            <td class="center writeable"></td>
+            <td class="notes-cell writeable"></td>
+        </tr>`).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Tabellino — ${teamName} vs ${opponent}</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: 'Arial', sans-serif;
+        font-size: 10.5pt;
+        color: #111;
+        background: #fff;
+        padding: 18mm 16mm 14mm;
+    }
+
+    /* ── INTESTAZIONE ── */
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 2.5px solid #e8402e;
+        padding-bottom: 10px;
+        margin-bottom: 12px;
+    }
+    .header-left .club { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #e8402e; margin-bottom: 2px; }
+    .header-left .match-title { font-size: 16pt; font-weight: 900; letter-spacing: -0.5px; line-height: 1.1; }
+    .header-left .match-sub { font-size: 8.5pt; color: #555; margin-top: 3px; }
+    .header-right { text-align: right; }
+    .header-right .date { font-size: 9pt; font-weight: 700; color: #333; }
+    .header-right .badges { display: flex; gap: 6px; justify-content: flex-end; margin-top: 5px; flex-wrap: wrap; }
+    .badge {
+        font-size: 7.5pt; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+        border: 1px solid #ccc; color: #333;
+    }
+    .badge-home    { border-color: #e8402e; color: #e8402e; }
+    .badge-type    { border-color: #059669; color: #059669; }
+    .badge-status  { border-color: #6366f1; color: #6366f1; }
+
+    /* ── INFO GARA ── */
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    .info-box {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 6px 10px;
+    }
+    .info-label { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 2px; }
+    .info-value { font-size: 10pt; font-weight: 700; color: #111; }
+    .info-box.wide { grid-column: span 2; }
+
+    /* ── SCORE BOX ── */
+    .score-section {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        margin-bottom: 14px;
+        border: 1.5px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .score-team {
+        flex: 1;
+        text-align: center;
+        padding: 8px 12px;
+        background: #f8f8f8;
+    }
+    .score-team .label { font-size: 7pt; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px; }
+    .score-team .val { font-size: 28pt; font-weight: 900; font-family: 'Courier New', monospace; color: #111; line-height: 1; }
+    .score-sep { font-size: 22pt; font-weight: 900; color: #bbb; padding: 0 14px; background: #fff; }
+    .score-status {
+        flex: 0 0 auto;
+        padding: 8px 16px;
+        text-align: center;
+        border-left: 1.5px solid #ddd;
+        background: #fff;
+    }
+    .score-status .label { font-size: 7pt; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px; }
+    .score-status .val { font-size: 10pt; font-weight: 800; color: #6366f1; }
+
+    /* ── TABELLA GIOCATORI ── */
+    .section-title {
+        font-size: 8pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #e8402e;
+        border-bottom: 1.5px solid #e8402e;
+        padding-bottom: 3px;
+        margin-bottom: 7px;
+    }
+    table.players {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9.5pt;
+    }
+    table.players thead tr {
+        background: #f0f0f0;
+    }
+    table.players th {
+        padding: 5px 6px;
+        font-size: 7.5pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #555;
+        border: 1px solid #ccc;
+        text-align: center;
+        white-space: nowrap;
+    }
+    table.players th.left { text-align: left; }
+    table.players td {
+        padding: 5px 6px;
+        border: 1px solid #ddd;
+        vertical-align: middle;
+        height: 22px;
+    }
+    table.players tr.even td { background: #fafafa; }
+    table.players tr.odd  td { background: #fff; }
+    td.num   { width: 30px; text-align: center; font-weight: 700; color: #e8402e; }
+    td.name  { min-width: 140px; font-weight: 600; }
+    td.center { text-align: center; }
+    td.starter-cell { width: 42px; color: #059669; font-weight: 700; }
+    td.notes-cell { width: 90px; }
+    td.writeable { /* celle da compilare a penna — visivamente più aperte */ }
+    span.role { font-size: 7.5pt; color: #888; font-weight: 400; }
+
+    /* ── NOTE FINALI ── */
+    .notes-section { margin-top: 14px; }
+    .notes-box {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 8px 12px;
+        min-height: 48px;
+    }
+    .notes-lines { display: flex; flex-direction: column; gap: 12px; padding-top: 6px; }
+    .note-line   { border-bottom: 1px solid #ddd; height: 18px; }
+
+    /* ── FIRMA ── */
+    .firma-row {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 14px;
+        gap: 20px;
+    }
+    .firma-box {
+        flex: 1;
+        border-top: 1.5px solid #333;
+        padding-top: 4px;
+        font-size: 7.5pt;
+        color: #888;
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+    }
+
+    /* ── FOOTER PAGINA ── */
+    .page-footer {
+        margin-top: 16px;
+        border-top: 1px solid #eee;
+        padding-top: 6px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 7pt;
+        color: #aaa;
+    }
+
+    @media print {
+        body { padding: 10mm 12mm 8mm; }
+        @page { size: A4 portrait; margin: 0; }
+    }
+</style>
+</head>
+<body>
+
+<!-- INTESTAZIONE -->
+<div class="header">
+    <div class="header-left">
+        <div class="club">${societaName}${catName ? ' · ' + catName : ''} · SportTrackPro</div>
+        <div class="match-title">${teamName || 'Squadra'}<br><span style="color:#e8402e;">vs ${opponent}</span></div>
+        <div class="match-sub">${sessionDate}</div>
+    </div>
+    <div class="header-right">
+        <div class="date">${sessionDate}</div>
+        <div class="badges">
+            <span class="badge badge-home">${locationLabel}</span>
+            <span class="badge badge-type">${tipoLabel}</span>
+            ${status !== 'da disputare' ? `<span class="badge badge-status">${statusLabel}</span>` : ''}
+        </div>
+    </div>
+</div>
+
+<!-- INFO LOGISTICA -->
+<div class="info-grid">
+    <div class="info-box">
+        <div class="info-label">⏰ Ora Ritrovo</div>
+        <div class="info-value">${meetTime || '&nbsp;'}</div>
+    </div>
+    <div class="info-box">
+        <div class="info-label">⚡ Inizio Gara</div>
+        <div class="info-value">${matchStart || '&nbsp;'}</div>
+    </div>
+    <div class="info-box wide">
+        <div class="info-label">📍 Indirizzo</div>
+        <div class="info-value">${address || '&nbsp;'}</div>
+    </div>
+</div>
+
+<!-- RISULTATO -->
+<div class="score-section">
+    <div class="score-team">
+        <div class="label">Gol Fatti</div>
+        <div class="val">${gf}</div>
+    </div>
+    <div class="score-sep">—</div>
+    <div class="score-team">
+        <div class="label">Gol Subiti</div>
+        <div class="val">${gs}</div>
+    </div>
+    <div class="score-status">
+        <div class="label">Esito</div>
+        <div class="val">${statusLabel}</div>
+    </div>
+</div>
+
+<!-- TABELLA GIOCATORI -->
+<div class="section-title">📋 Convocati — Statistiche Individuali</div>
+<table class="players">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th class="left">Giocatore</th>
+            <th>Titolare</th>
+            <th>⚽ Gol</th>
+            <th>🟨 Amm.</th>
+            <th>🟥 Esp.</th>
+            <th>⏱ Min.</th>
+            <th class="left">Note</th>
+        </tr>
+    </thead>
+    <tbody>
+        ${playerRowsHTML}
+        ${blankRowsHTML}
+    </tbody>
+</table>
+
+<!-- NOTE ALLENATORE -->
+<div class="notes-section">
+    <div class="section-title" style="margin-top:12px;">📝 Note Allenatore / Annotazioni</div>
+    <div class="notes-box">
+        <div class="notes-lines">
+            <div class="note-line"></div>
+            <div class="note-line"></div>
+            <div class="note-line"></div>
+        </div>
+    </div>
+</div>
+
+<!-- FIRME -->
+<div class="firma-row">
+    <div class="firma-box">Firma Allenatore</div>
+    <div class="firma-box">Firma Dirigente</div>
+    <div class="firma-box">Firma Arbitro / Avversario</div>
+</div>
+
+<!-- FOOTER -->
+<div class="page-footer">
+    <span>SportTrackPro — Generato il ${new Date().toLocaleString('it-IT')}</span>
+    <span>${teamName} vs ${opponent} · ${sessionDate}</span>
+</div>
+
+<script>window.onload = function() { window.print(); };<\/script>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank', 'width=820,height=1100');
+    if (!win) { alert('Abilita i popup del browser per generare il PDF.'); return; }
+    win.document.write(html);
+    win.document.close();
 };
 
 // --- 5. EXPORT IMMAGINE ---
