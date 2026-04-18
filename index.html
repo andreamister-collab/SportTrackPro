@@ -7925,7 +7925,7 @@ async function _renderVistaAllenatore() {
 
         <!-- TABS NAVIGAZIONE -->
         <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-            <button class="all-tab-btn active" onclick="window._allTab('dashboard')">📊 Dashboard</button>
+            <button class="all-tab-btn active" onclick="window._allTab('dashboard')">📊 Sintesi</button>
             <button class="all-tab-btn" onclick="window._allTab('kpi')">📈 KPI Giocatori</button>
             <button class="all-tab-btn" onclick="window._allTab('drilldown')">🔍 Drill-down</button>
         </div>
@@ -7935,10 +7935,10 @@ async function _renderVistaAllenatore() {
 
             <!-- ROW 1: KPI veloci + prossimo impegno -->
             <div style="display:grid;grid-template-columns:repeat(4,1fr) 1.5fr;gap:12px;margin-bottom:16px;align-items:stretch;">
-                ${kpiCard('📅','${officialMatches.length}','Partite giocate','var(--primary)',`${mW}V · ${mD}P · ${mL}S`)}
-                ${kpiCard('⚽','${gf} — ${gs}','Gol fatti/subiti','#10b981')}
-                ${kpiCard('📋','${avgPresWeek}%','Presenza media','#3b82f6',`ultima settimana`)}
-                ${kpiCard('⚡','${avgLoad}','Carico medio sett.','#8b5cf6',`sess. per atleta`)}
+                ${kpiCard('📅', officialMatches.length, 'Partite giocate','var(--primary)',`${mW}V · ${mD}P · ${mL}S`)}
+                ${kpiCard('⚽',`${gf} — ${gs}`,'Gol fatti/subiti','#10b981')}
+                ${kpiCard('📋',`${avgPresWeek}%`,'Presenza media','#3b82f6','ultima settimana')}
+                ${kpiCard('⚡', avgLoad,'Carico medio sett.','#8b5cf6','sess. per atleta')}
                 <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
                     <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);margin-bottom:10px;">👥 Disponibilità prossima gara</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
