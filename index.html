@@ -9341,16 +9341,24 @@ window.reloadTestTeamsOnly = function() {
 window.openTestDefEditor = async function(defId) {
     const socId = document.getElementById('f-test-soc')?.value || window._currentSocietyId;
 
-    let def = null, perfs = [];
+    let def = null, perfs = [], lockedPerfIds = new Set();
     if (defId) {
         const { data: d } = await client.from('test_definitions').select('*').eq('id', defId).single();
         def = d;
         const { data: p } = await client.from('test_performances').select('*').eq('test_def_id', defId).order('sort_order');
         perfs = p || [];
+
+        // Recupera quali performance hanno risultati collegati (non eliminabili)
+        if (perfs.length > 0) {
+            const perfIds = perfs.map(x => x.id);
+            const { data: linked } = await client.from('test_results')
+                .select('performance_id').in('performance_id', perfIds);
+            (linked || []).forEach(r => lockedPerfIds.add(r.performance_id));
+        }
     }
 
     // Genera righe performance (min 1, max 5)
-    const perfRows = (perfs.length ? perfs : [{}]).map((p,i) => _testPerfRow(i, p)).join('');
+    const perfRows = (perfs.length ? perfs : [{}]).map((p,i) => _testPerfRow(i, p, lockedPerfIds.has(p.id))).join('');
 
     window.openTestPopup(`
         <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">⚙️ ${defId ? 'Modifica' : 'Nuovo'} Tipo Test</div>
@@ -9383,12 +9391,15 @@ window.openTestDefEditor = async function(defId) {
     window._testPerfIdx = perfs.length || 1;
 };
 
-function _testPerfRow(idx, p) {
+function _testPerfRow(idx, p, locked) {
     const units = ['sec','min','cm','m','kg','rep','watt','bpm','punti','altro'];
+    const removeBtn = locked
+        ? `<button disabled title="Performance con risultati: non eliminabile" style="background:rgba(0,0,0,0.04);color:var(--text-muted);border:none;width:28px;height:28px;border-radius:50%;cursor:not-allowed;font-size:14px;display:flex;align-items:center;justify-content:center;opacity:0.5;">🔒</button>`
+        : `<button onclick="this.closest('.tdef-perf-row').remove();window._updateAddPerfBtn()" style="background:rgba(239,68,68,0.1);color:#ef4444;border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">×</button>`;
     return `
-    <div class="tdef-perf-row" data-perf-id="${p.id||''}" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+    <div class="tdef-perf-row" data-perf-id="${p.id||''}" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;background:${locked?'rgba(99,102,241,0.04)':'rgba(0,0,0,0.02)'};border:1px solid ${locked?'rgba(99,102,241,0.15)':'var(--border)'};border-radius:8px;padding:10px 12px;">
         <div>
-            <label style="font-size:10px;color:var(--text-muted);font-weight:600;">NOME PERFORMANCE</label>
+            <label style="font-size:10px;color:var(--text-muted);font-weight:600;">NOME PERFORMANCE${locked?' 🔒':''}</label>
             <input type="text" class="tperf-name" value="${p.name||''}" placeholder="es. Tempo, Distanza, Ripetizioni" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:5px;margin-top:3px;font-family:inherit;font-size:13px;">
         </div>
         <div>
@@ -9403,7 +9414,7 @@ function _testPerfRow(idx, p) {
                 <input type="checkbox" class="tperf-lib" ${p.lower_is_better?'checked':''} style="width:18px;height:18px;cursor:pointer;">
             </div>
         </div>
-        <button onclick="this.closest('.tdef-perf-row').remove();window._updateAddPerfBtn()" style="background:rgba(239,68,68,0.1);color:#ef4444;border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">×</button>
+        ${removeBtn}
     </div>`;
 }
 
@@ -9436,8 +9447,10 @@ window.saveTestDef = async function(existingId) {
         const n = row.querySelector('.tperf-name')?.value?.trim();
         const u = row.querySelector('.tperf-unit')?.value;
         const l = row.querySelector('.tperf-lib')?.checked || false;
+        // data-perf-id è presente se si sta modificando una performance esistente
+        const pid = row.getAttribute('data-perf-id') || null;
         if (!n) { valid = false; return; }
-        perfs.push({ name: n, unit: u, lower_is_better: l, sort_order: i });
+        perfs.push({ id: pid, name: n, unit: u, lower_is_better: l, sort_order: i });
     });
     if (!valid) { alert('Compila il nome di ogni performance.'); return; }
 
@@ -9447,18 +9460,78 @@ window.saveTestDef = async function(existingId) {
 
     try {
         let defId = existingId;
+
         if (existingId) {
-            const { error } = await client.from('test_definitions').update({ name, description: desc, season_id: seasonId }).eq('id', existingId);
-            if (error) throw error;
-            await client.from('test_performances').delete().eq('test_def_id', existingId);
+            // 1. Aggiorna metadati definizione
+            const { error: defErr } = await client.from('test_definitions')
+                .update({ name, description: desc, season_id: seasonId })
+                .eq('id', existingId);
+            if (defErr) throw defErr;
+
+            // 2. Recupera performance esistenti e controlla quali hanno risultati collegati
+            const { data: existingPerfs } = await client.from('test_performances')
+                .select('id').eq('test_def_id', existingId);
+            const existingIds = (existingPerfs || []).map(p => p.id);
+
+            // IDs delle performance che l'utente sta mantenendo (quelle col data-perf-id valorizzato)
+            const keptIds = perfs.map(p => p.id).filter(Boolean);
+
+            // IDs da potenzialmente eliminare (esistenti ma non più nell'editor)
+            const toDeleteIds = existingIds.filter(id => !keptIds.includes(id));
+
+            // Per quelle da eliminare: verifica se hanno risultati — eliminare solo le "libere"
+            if (toDeleteIds.length > 0) {
+                const { data: linkedResults } = await client.from('test_results')
+                    .select('performance_id')
+                    .in('performance_id', toDeleteIds);
+                const lockedIds = new Set((linkedResults || []).map(r => r.performance_id));
+                const safeToDelete = toDeleteIds.filter(id => !lockedIds.has(id));
+                const lockedCount  = toDeleteIds.filter(id => lockedIds.has(id)).length;
+                if (safeToDelete.length > 0) {
+                    const { error: delErr } = await client.from('test_performances')
+                        .delete().in('id', safeToDelete);
+                    if (delErr) throw delErr;
+                }
+                if (lockedCount > 0) {
+                    // Avvisa l'utente — le performance con risultati vengono mantenute e aggiornate
+                    console.warn(`${lockedCount} performance non eliminata/e perché hanno risultati collegati. Verranno mantenute.`);
+                }
+                // Le performance con risultati collegati vengono aggiornate sul posto (step 3)
+            }
+
+            // 3. Aggiorna le performance esistenti (quelle con id valorizzato)
+            const toUpdate = perfs.filter(p => p.id);
+            for (const p of toUpdate) {
+                const { error: updErr } = await client.from('test_performances')
+                    .update({ name: p.name, unit: p.unit, lower_is_better: p.lower_is_better, sort_order: p.sort_order })
+                    .eq('id', p.id);
+                if (updErr) throw updErr;
+            }
+
+            // 4. Inserisci le performance nuove (quelle senza id)
+            const toInsert = perfs.filter(p => !p.id).map(p => ({
+                test_def_id: existingId, name: p.name, unit: p.unit,
+                lower_is_better: p.lower_is_better, sort_order: p.sort_order
+            }));
+            if (toInsert.length > 0) {
+                const { error: insErr } = await client.from('test_performances').insert(toInsert);
+                if (insErr) throw insErr;
+            }
+
         } else {
-            const { data, error } = await client.from('test_definitions').insert({ name, description: desc, society_id: socId, season_id: seasonId, created_by: window._currentUserId }).select('id').single();
+            // Nuova definizione: insert semplice
+            const { data, error } = await client.from('test_definitions')
+                .insert({ name, description: desc, society_id: socId, season_id: seasonId, created_by: window._currentUserId })
+                .select('id').single();
             if (error) throw error;
             defId = data.id;
+            const perfInserts = perfs.map(p => ({
+                test_def_id: defId, name: p.name, unit: p.unit,
+                lower_is_better: p.lower_is_better, sort_order: p.sort_order
+            }));
+            const { error: pe } = await client.from('test_performances').insert(perfInserts);
+            if (pe) throw pe;
         }
-        const perfInserts = perfs.map(p => ({ ...p, test_def_id: defId }));
-        const { error: pe } = await client.from('test_performances').insert(perfInserts);
-        if (pe) throw pe;
 
         window.closeTestPopup();
         await _testFillDefs();
