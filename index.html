@@ -5443,7 +5443,7 @@ window.templateDashboard = function() {
 
             <!-- GRUPPO AGGREGATI -->
             <div style="display:flex; align-items:center; gap:2px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:4px;">
-                <span style="font-size:0.58rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); padding:0 8px; white-space:nowrap;">Aggregati</span>
+                <span style="font-size:0.58rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); padding:0 8px; white-space:nowrap;">Sintesi</span>
                 <div style="width:1px; height:20px; background:var(--border); margin-right:4px;"></div>
                 <button id="dash-tab-btn-0" onclick="window.switchDashTab(0)"
                     style="padding:7px 14px; border-radius:7px; border:none; cursor:pointer; font-family:inherit; font-size:0.82rem; font-weight:600; background:var(--primary); color:white; transition:all 0.15s; white-space:nowrap;">
@@ -5465,7 +5465,7 @@ window.templateDashboard = function() {
 
             <!-- GRUPPO ATLETI -->
             <div style="display:flex; align-items:center; gap:2px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:4px;">
-                <span style="font-size:0.58rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); padding:0 8px; white-space:nowrap;">Atleti</span>
+                <span style="font-size:0.58rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); padding:0 8px; white-space:nowrap;">Dettagli per Atleti</span>
                 <div style="width:1px; height:20px; background:var(--border); margin-right:4px;"></div>
                 <button id="dash-tab-btn-3" onclick="window.switchDashTab(3)"
                     style="padding:7px 14px; border-radius:7px; border:none; cursor:pointer; font-family:inherit; font-size:0.82rem; font-weight:600; background:transparent; color:var(--text-muted); transition:all 0.15s; white-space:nowrap;">
@@ -5961,6 +5961,15 @@ window.initDashboard = async function() {
         await window.refreshDashboard();
         // Applica visibilità filtri tab in base al ruolo
         _applyTabFilterVisibility();
+
+        // Posiziona automaticamente sulla vista specializzata al primo accesso
+        const _initRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const _strategicRoles = ['admin','manager','presidente','segretario','responsabile','dirigente','allenatore','genitore'];
+        if (_strategicRoles.includes(_initRole)) {
+            window.switchDashTab(6);
+        } else {
+            window.switchDashTab(0);
+        }
 
     } catch(err) { console.error('initDashboard error:', err); }
 };
@@ -7849,7 +7858,7 @@ function _applyTabFilterVisibility() {
     const presTabBtn = document.getElementById('dash-tab-btn-6');
     const presDivider = document.getElementById('dash-pres-divider');
     if (presTabBtn) {
-        const canSeePresView = isGlobal || isSocScoped;
+        const canSeePresView = isGlobal || isSocScoped || isTeamScoped || role === 'genitore';
         presTabBtn.style.display = canSeePresView ? '' : 'none';
         if (presDivider) presDivider.style.display = canSeePresView ? '' : 'none';
     }
