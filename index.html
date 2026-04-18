@@ -7879,7 +7879,7 @@ async function _renderVistaAllenatore() {
 
         const stars5 = (v, color='#0ea5e9') => {
             const n = Math.round(v);
-            return [1,2,3,4,5].map(i => `<span style="color:${i<=n?color:'rgba(0,0,0,0.12)';font-size:12px;">★</span>`).join('');
+            return [1,2,3,4,5].map(i => `<span style="color:${i<=n?color:'rgba(0,0,0,0.12)'};font-size:12px;">★</span>`).join('');
         };
 
         const trendIcon = t => t > 0.3 ? '<span style="color:#10b981;">▲</span>' : t < -0.3 ? '<span style="color:#ef4444;">▼</span>' : '<span style="color:#94a3b8;">→</span>';
@@ -8060,7 +8060,7 @@ async function _renderVistaAllenatore() {
                     const starCell = (v, col) => {
                         if (!v) return '<td style="padding:8px;text-align:center;color:var(--text-muted);font-size:0.75rem;">—</td>';
                         const filled = Math.round(v);
-                        const stars = [1,2,3,4,5].map(i=>`<span style="color:${i<=filled?col:'rgba(0,0,0,0.12)';font-size:11px;">★</span>`).join('');
+                        const stars = [1,2,3,4,5].map(i=>`<span style="color:${i<=filled?col:'rgba(0,0,0,0.12)'};font-size:11px;">★</span>`).join('');
                         return `<td style="padding:8px;text-align:center;white-space:nowrap;">${stars}<br><span style="font-size:0.65rem;font-weight:700;color:${col};">${v.toFixed(1)}</span></td>`;
                     };
                     return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);" onmouseover="this.style.background='rgba(37,99,235,0.03)'" onmouseout="this.style.background=''">
