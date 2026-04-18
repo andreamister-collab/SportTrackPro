@@ -5732,8 +5732,18 @@ window.templateDashboard = function() {
 
     </div>
 
-        <!-- TAB 6: VISTA PRESIDENZA -->
+        <!-- TAB 6: VISTA SPECIALIZZATA (titolo dinamico per ruolo) -->
         <div id="dash-tab-6" style="display:none;">
+
+            <!-- INTESTAZIONE DINAMICA RUOLO -->
+            <div id="pres-view-header" style="display:flex; align-items:center; gap:14px; margin-bottom:18px; padding:14px 18px; background:linear-gradient(135deg, rgba(99,102,241,0.07) 0%, rgba(99,102,241,0.03) 100%); border:1px solid rgba(99,102,241,0.18); border-radius:12px;">
+                <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#6366f1,#818cf8); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; box-shadow:0 4px 14px rgba(99,102,241,0.35);" id="pres-view-icon">🏛️</div>
+                <div>
+                    <div id="pres-view-title" style="font-family:'Syne',sans-serif; font-size:1.05rem; font-weight:800; color:#1a2240; letter-spacing:-0.01em;">Vista Presidenza</div>
+                    <div id="pres-view-subtitle" style="font-size:0.72rem; color:var(--text-sub); margin-top:2px;">Dati aggregati della tua organizzazione</div>
+                </div>
+                <div id="pres-view-scope-badge" style="margin-left:auto; font-size:0.68rem; font-weight:700; padding:4px 12px; border-radius:99px; background:rgba(99,102,241,0.1); color:#6366f1; border:1px solid rgba(99,102,241,0.2); white-space:nowrap;"></div>
+            </div>
 
             <!-- FILTRO STAGIONE / SOCIETÀ / CATEGORIA / SQUADRA TAB PRESIDENZA -->
             <div style="background:rgba(0,0,0,0.02); border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -5834,9 +5844,17 @@ window.templateDashboard = function() {
                 </div>
             </div>
 
-        </div>
+            <!-- SEZIONE DETTAGLIO ATLETA (solo Genitore) -->
+            <div id="pres-genitore-section" style="display:none; margin-top:20px;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+                    <div style="width:3px; height:28px; background:#6366f1; border-radius:2px; flex-shrink:0;"></div>
+                    <div style="font-family:'Syne',sans-serif; font-size:0.95rem; font-weight:800; color:var(--text-main);">👶 Dettaglio Atleta</div>
+                    <div id="pres-gen-athlete-tabs" style="display:flex; gap:6px; margin-left:auto; flex-wrap:wrap;"></div>
+                </div>
+                <div id="pres-gen-athlete-content" style="color:var(--text-sub); text-align:center; padding:24px;">⏳ Caricamento dati atleta...</div>
+            </div>
 
-    </div>
+        </div>
     <div id="monthly-chart-popup-overlay" style="display:none; position:fixed; inset:0; z-index:1200; background:rgba(200,205,220,0.75); backdrop-filter:blur(16px) saturate(0.6); align-items:center; justify-content:center; padding:20px;">
         <div id="monthly-chart-popup-box" style="background:var(--card-raised); border-radius:var(--r-2xl); box-shadow:var(--shadow-xl), 0 0 0 1px rgba(255,79,59,0.1); width:100%; max-width:860px; max-height:92vh; overflow-y:auto; position:relative; animation:popupIn 0.28s cubic-bezier(.34,1.36,.64,1); border:1px solid var(--border-accent); padding:28px 32px 24px;">
             <button onclick="window.closeMonthlyChartPopup()" style="position:absolute; top:14px; right:14px; background:rgba(0,0,0,0.05); border:1px solid var(--border); width:32px; height:32px; border-radius:50%; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-sub); transition:all 0.15s;" onmouseover="this.style.background='rgba(255,56,96,0.12)';this.style.color='#dc2626'" onmouseout="this.style.background='rgba(0,0,0,0.05)';this.style.color='var(--text-sub)'">✕</button>
@@ -5887,7 +5905,7 @@ window.switchDashTab = function(idx) {
         if (panel) panel.style.display = i === idx ? '' : 'none';
         if (btn) {
             if (i === 6) {
-                // Vista Presidenza — stile indigo quando attivo
+                // Vista Specializzata — stile indigo quando attivo
                 btn.style.background   = i === idx ? '#6366f1' : 'rgba(99,102,241,0.07)';
                 btn.style.color        = i === idx ? 'white'   : '#6366f1';
                 btn.style.borderColor  = i === idx ? '#6366f1' : 'rgba(99,102,241,0.3)';
@@ -5899,7 +5917,15 @@ window.switchDashTab = function(idx) {
     }
     if (idx === 4) window.renderDashMonthlyCharts();
     if (idx === 5) window.renderDashAthMonthlyCharts();
-    if (idx === 6) { _presPopulateCatTeam().then(() => window.loadDashPresidenza()); }
+    if (idx === 6) {
+        const _r6 = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const _initAndLoad = async () => {
+            if (_r6 === 'genitore') await _initGenitoreTeamScope();
+            await _presPopulateCatTeam();
+            window.loadDashPresidenza();
+        };
+        _initAndLoad();
+    }
 };
 
 /* ── DATI GLOBALI DASHBOARD ── */
@@ -5966,7 +5992,13 @@ window.initDashboard = async function() {
         const _initRole = (window._effectiveRole || window._userRole || '').toLowerCase();
         const _strategicRoles = ['admin','manager','presidente','segretario','responsabile','dirigente','allenatore','genitore'];
         if (_strategicRoles.includes(_initRole)) {
-            window.switchDashTab(6);
+            if (_initRole === 'genitore') {
+                _initGenitoreTeamScope().then(() => {
+                    _presPopulateCatTeam().then(() => window.switchDashTab(6));
+                });
+            } else {
+                window.switchDashTab(6);
+            }
         } else {
             window.switchDashTab(0);
         }
@@ -6828,13 +6860,41 @@ window.openMonthlyChartPopup = function(teamId, paletteIdx) {
 
 window.loadDashPresidenza = async function() {
     try {
+        const role     = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const isGlobal    = ['admin','manager'].includes(role);
+        const isSocScoped = ['presidente','segretario'].includes(role);
+        const isTeamScoped = ['responsabile','dirigente','allenatore'].includes(role);
+        const isGenitore  = role === 'genitore';
+
         const seasonId = document.getElementById('pres-view-season')?.value || 'all';
-        const socId    = window._dashData._forcedSocietyId ||
-                         (document.getElementById('pres-view-soc')?.style.display !== 'none'
-                            ? document.getElementById('pres-view-soc')?.value
-                            : 'all') || 'all';
-        const catId    = document.getElementById('pres-view-cat')?.value || 'all';
-        const teamId   = document.getElementById('pres-view-team')?.value || 'all';
+        const catId    = document.getElementById('pres-view-cat')?.value  || 'all';
+
+        // ── Calcola socId (rispettando forced scope) ──
+        const socId = window._dashData._forcedSocietyId ||
+                      (document.getElementById('pres-view-soc')?.style.display !== 'none'
+                         ? document.getElementById('pres-view-soc')?.value
+                         : 'all') || 'all';
+
+        // ── Calcola teamId: per team-scoped viene forzato alle squadre assegnate ──
+        let teamId = document.getElementById('pres-view-team')?.value || 'all';
+        let forcedTeamIds = null; // array usato per IN(..) quando ruolo = dirigente/allenatore/responsabile/genitore
+
+        if (isTeamScoped) {
+            // Carica squadre assegnate (con cache)
+            const assigned = await window.loadUserAssignedTeams();
+            if (assigned && assigned.length > 0) {
+                forcedTeamIds = assigned;
+                // Se il select ha un team specifico scelto dall'utente, rispettalo (purché sia nelle assegnate)
+                if (teamId && teamId !== 'all' && !assigned.includes(teamId)) teamId = 'all';
+            }
+        } else if (isGenitore) {
+            // Genitore: forza sulle squadre dei figli
+            const genitoreTeamIds = window._genitoreTeamIds || [];
+            if (genitoreTeamIds.length > 0) {
+                forcedTeamIds = genitoreTeamIds;
+                teamId = 'all'; // mostra tutto (la sezione figlio gestirà il dettaglio individuale)
+            }
+        }
 
         // Sync season selector con main dashboard
         const presSeaSel = document.getElementById('pres-view-season');
@@ -6857,36 +6917,55 @@ window.loadDashPresidenza = async function() {
             });
         }
 
+        // ── Helper per applicare filtri alle query ──
+        function applyScope(q, tbl) {
+            // tbl: prefisso colonne ('sessions.' per join, '' per dirette)
+            if (seasonId && seasonId !== 'all') q = q.eq(`${tbl}season_id`, seasonId);
+            if (!isGlobal && socId && socId !== 'all') q = q.eq(`${tbl}society_id`, socId);
+            if (forcedTeamIds) {
+                q = q.in(`${tbl}team_id`, forcedTeamIds);
+            } else if (teamId && teamId !== 'all') {
+                q = q.eq(`${tbl}team_id`, teamId);
+            } else if (catId && catId !== 'all') {
+                // cat filter applicato solo se non c'è team specifico
+            }
+            return q;
+        }
+
         // Query match_details
         let mdQ = client.from('match_details')
             .select('session_id, goals_for, goals_against, match_status, is_friendly, sessions!inner(session_date, team_id, society_id, season_id, teams!inner(category_id))');
         if (seasonId && seasonId !== 'all') mdQ = mdQ.eq('sessions.season_id', seasonId);
-        if (socId && socId !== 'all') mdQ = mdQ.eq('sessions.society_id', socId);
-        if (teamId && teamId !== 'all') mdQ = mdQ.eq('sessions.team_id', teamId);
+        if (!isGlobal && socId && socId !== 'all') mdQ = mdQ.eq('sessions.society_id', socId);
+        if (forcedTeamIds) mdQ = mdQ.in('sessions.team_id', forcedTeamIds);
+        else if (teamId && teamId !== 'all') mdQ = mdQ.eq('sessions.team_id', teamId);
         else if (catId && catId !== 'all') mdQ = mdQ.eq('sessions.teams.category_id', catId);
 
         // Query match_stats
         let msQ = client.from('match_stats')
             .select('session_id, yellow_cards, red_cards, sessions!inner(session_date, team_id, society_id, season_id, teams!inner(category_id))');
         if (seasonId && seasonId !== 'all') msQ = msQ.eq('sessions.season_id', seasonId);
-        if (socId && socId !== 'all') msQ = msQ.eq('sessions.society_id', socId);
-        if (teamId && teamId !== 'all') msQ = msQ.eq('sessions.team_id', teamId);
+        if (!isGlobal && socId && socId !== 'all') msQ = msQ.eq('sessions.society_id', socId);
+        if (forcedTeamIds) msQ = msQ.in('sessions.team_id', forcedTeamIds);
+        else if (teamId && teamId !== 'all') msQ = msQ.eq('sessions.team_id', teamId);
         else if (catId && catId !== 'all') msQ = msQ.eq('sessions.teams.category_id', catId);
 
         // Query presenze
         let attQ = client.from('attendances')
             .select('status, athlete_id, sessions!inner(session_date, team_id, society_id, season_id, teams!inner(category_id))');
         if (seasonId && seasonId !== 'all') attQ = attQ.eq('sessions.season_id', seasonId);
-        if (socId && socId !== 'all') attQ = attQ.eq('sessions.society_id', socId);
-        if (teamId && teamId !== 'all') attQ = attQ.eq('sessions.team_id', teamId);
+        if (!isGlobal && socId && socId !== 'all') attQ = attQ.eq('sessions.society_id', socId);
+        if (forcedTeamIds) attQ = attQ.in('sessions.team_id', forcedTeamIds);
+        else if (teamId && teamId !== 'all') attQ = attQ.eq('sessions.team_id', teamId);
         else if (catId && catId !== 'all') attQ = attQ.eq('sessions.teams.category_id', catId);
 
         // Query atleti
         let athQ = client.from('athlete_team_seasons')
-            .select('athlete_id, athletes!inner(id, name, surname)');
-        if (socId && socId !== 'all') athQ = athQ.eq('society_id', socId);
+            .select('athlete_id, team_id, athletes!inner(id, name, surname)');
+        if (!isGlobal && socId && socId !== 'all') athQ = athQ.eq('society_id', socId);
         if (seasonId && seasonId !== 'all') athQ = athQ.eq('season_id', seasonId);
-        if (teamId && teamId !== 'all') athQ = athQ.eq('team_id', teamId);
+        if (forcedTeamIds) athQ = athQ.in('team_id', forcedTeamIds);
+        else if (teamId && teamId !== 'all') athQ = athQ.eq('team_id', teamId);
         else if (catId && catId !== 'all') athQ = athQ.eq('category_id', catId);
 
         const [mdRes, msRes, attRes, athRes] = await Promise.all([mdQ, msQ, attQ, athQ]);
@@ -7080,6 +7159,11 @@ window.loadDashPresidenza = async function() {
                 }).join('');
         }
 
+        // ── SEZIONE DETTAGLIO GENITORE ──────────────────────────────────────────
+        if (isGenitore) {
+            await _renderGenitoreAthleteDetail();
+        }
+
     } catch(err) { console.error('loadDashPresidenza error:', err); }
 };
 
@@ -7089,6 +7173,156 @@ function _presMonthLabel(yyyymm) {
     const y = parts[0], m = parseInt(parts[1],10)-1;
     const names = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
     return (names[m]||yyyymm)+' '+y;
+}
+
+/* ── Rendering dettaglio atleta per Vista Genitore ── */
+async function _renderGenitoreAthleteDetail() {
+    const section = document.getElementById('pres-genitore-section');
+    const tabsEl  = document.getElementById('pres-gen-athlete-tabs');
+    const contentEl = document.getElementById('pres-gen-athlete-content');
+    if (!section || !contentEl) return;
+
+    const userId = window._currentUserId;
+    const { data: links } = await client.from('parent_athletes')
+        .select('athlete_id, athletes(id,name,surname,born_date)')
+        .eq('parent_id', userId);
+
+    if (!links || links.length === 0) {
+        contentEl.innerHTML = '<p style="color:var(--text-sub);text-align:center;padding:20px;">Nessun atleta associato. Contatta l\'amministratore.</p>';
+        return;
+    }
+    const athletes = links.map(l => l.athletes).filter(Boolean);
+
+    // Tab per ogni figlio
+    if (tabsEl) {
+        tabsEl.innerHTML = athletes.map((a, i) =>
+            `<button onclick="window._switchGenAthlete(${i})" id="gen-ath-tab-${i}"
+                style="padding:5px 12px; border-radius:6px; border:1px solid rgba(99,102,241,0.3); cursor:pointer; font-family:inherit; font-size:0.78rem; font-weight:600; background:${i===0?'#6366f1':'rgba(99,102,241,0.07)'}; color:${i===0?'white':'#6366f1'}; transition:all 0.15s;">
+                👤 ${a.surname} ${a.name}
+            </button>`
+        ).join('');
+    }
+
+    // Carica dati per ogni figlio e tieni in cache
+    window._genAthleteCache = {};
+    window._switchGenAthlete = async function(idx) {
+        // Aggiorna stile tab
+        athletes.forEach((_, i) => {
+            const btn = document.getElementById(`gen-ath-tab-${i}`);
+            if (btn) { btn.style.background = i===idx?'#6366f1':'rgba(99,102,241,0.07)'; btn.style.color = i===idx?'white':'#6366f1'; }
+        });
+        const ath = athletes[idx];
+        contentEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-sub);">⏳ Caricamento dati atleta...</div>';
+
+        if (!window._genAthleteCache[ath.id]) {
+            const activeSeason = (window._dashData._seasons||[]).find(s=>s.is_active);
+            const sid = activeSeason?.id || null;
+
+            const [tsRes, msRes, attRes] = await Promise.all([
+                client.from('athlete_team_seasons')
+                    .select('athlete_id,season_id,team_id,seasons(id,name,is_active),teams(id,name,categories(name))')
+                    .eq('athlete_id', ath.id),
+                client.from('match_stats')
+                    .select('athlete_id,goals,yellow_cards,red_cards,minutes_played,sessions!inner(season_id,type_id)')
+                    .eq('athlete_id', ath.id),
+                client.from('attendances')
+                    .select('athlete_id,status,is_called_up,sessions!inner(season_id,type_id,session_date)')
+                    .eq('athlete_id', ath.id)
+            ]);
+
+            const teamSeasons = tsRes.data || [];
+            const matchStats  = msRes.data || [];
+            const attendances = attRes.data || [];
+
+            // Stats stagione attiva
+            const stAct = matchStats.filter(s => s.sessions?.season_id === sid);
+            const goals = stAct.reduce((s,x)=>s+(x.goals||0),0);
+            const yc    = stAct.reduce((s,x)=>s+(x.yellow_cards||0),0);
+            const rc    = stAct.reduce((s,x)=>s+(x.red_cards||0),0);
+            const min   = stAct.reduce((s,x)=>s+(x.minutes_played||0),0);
+
+            const attAct = attendances.filter(a => a.sessions?.season_id === sid);
+            const totPres = attAct.filter(a=>(a.status||'').toLowerCase()==='presente').length;
+            const totAll  = attAct.length;
+            const convocazioni = attAct.filter(a=>a.is_called_up).length;
+            const percPres = totAll>0 ? Math.round(totPres/totAll*100) : null;
+            const percColor = percPres===null?'#94a3b8':percPres>=75?'#10b981':percPres>=50?'#f59e0b':'#ef4444';
+
+            const activeTsSeason = teamSeasons.find(ts => ts.seasons?.is_active) || teamSeasons[0];
+            const teamName = activeTsSeason?.teams?.name || '—';
+            const catName  = activeTsSeason?.teams?.categories?.name || '';
+            const seasonName = activeTsSeason?.seasons?.name || activeSeason?.name || '—';
+            const age = ath.born_date ? Math.floor((Date.now()-new Date(ath.born_date))/(365.25*24*3600*1000)) : null;
+
+            // Presenze recenti (ultime 8)
+            const recentAtt = attendances
+                .filter(a => a.sessions?.session_date)
+                .sort((a,b) => new Date(b.sessions.session_date)-new Date(a.sessions.session_date))
+                .slice(0,8);
+            const presIcons = recentAtt.map(a => {
+                const st = (a.status||'').toLowerCase();
+                const icon = st==='presente'?'✅':st==='assente'?'❌':st==='infortunato'?'🤕':'⬜';
+                return `<span title="${new Date(a.sessions.session_date).toLocaleDateString('it-IT')}: ${a.status||'—'}" style="font-size:1rem;">${icon}</span>`;
+            }).join('');
+
+            window._genAthleteCache[ath.id] = { teamName, catName, seasonName, age, goals, yc, rc, min, totPres, totAll, convocazioni, percPres, percColor, presIcons };
+        }
+
+        const d = window._genAthleteCache[ath.id];
+        const pill = (val, label, color) =>
+            `<div style="text-align:center;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:12px 16px;min-width:80px;">
+                <div style="font-family:'DM Mono','Outfit',sans-serif;font-size:1.4rem;font-weight:800;color:${color};line-height:1;">${val}</div>
+                <div style="font-size:0.62rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:0.06em;margin-top:3px;">${label}</div>
+            </div>`;
+
+        contentEl.innerHTML = `
+            <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start;">
+                <!-- INFO ATLETA -->
+                <div style="flex:1; min-width:220px; background:rgba(99,102,241,0.05); border:1px solid rgba(99,102,241,0.15); border-radius:12px; padding:16px 20px;">
+                    <div style="font-size:1rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--text-main);">${ath.surname} ${ath.name}</div>
+                    ${d.age?`<div style="font-size:0.75rem;color:var(--text-sub);margin-top:2px;">🎂 ${d.age} anni</div>`:''}
+                    <div style="margin-top:10px;font-size:0.78rem;color:var(--text-sub);">
+                        <div>⚽ <strong>${d.teamName}</strong>${d.catName?` — ${d.catName}`:''}</div>
+                        <div style="margin-top:4px;">📅 Stagione: <strong>${d.seasonName}</strong></div>
+                    </div>
+                </div>
+                <!-- KPI STAGIONE -->
+                <div style="flex:2; min-width:300px;">
+                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">📊 Stagione in corso</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        ${pill(d.goals,'Gol','#e8402e')}
+                        ${pill(d.percPres!==null?d.percPres+'%':'—','Presenza',d.percColor)}
+                        ${pill(d.convocazioni,'Convoc.','#6366f1')}
+                        ${pill(d.totPres+'/'+d.totAll,'Presenze','#3b82f6')}
+                        ${pill(d.min,'Minuti','#059669')}
+                        ${pill(d.yc,'🟨','#d97706')}
+                        ${pill(d.rc,'🟥','#dc2626')}
+                    </div>
+                </div>
+            </div>
+            ${d.presIcons ? `<div style="margin-top:16px; padding:14px 16px; background:rgba(0,0,0,0.03); border:1px solid var(--border); border-radius:10px;">
+                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px;">🗓️ Ultime presenze</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">${d.presIcons}</div>
+                <div style="font-size:0.62rem;color:var(--text-muted);margin-top:6px;">✅ Presente · ❌ Assente · 🤕 Infortunato</div>
+            </div>` : ''}
+        `;
+    };
+
+    window._switchGenAthlete(0);
+}
+
+/* ── Inizializza team IDs genitore per scoping Vista ── */
+async function _initGenitoreTeamScope() {
+    if (window._genitoreTeamIds !== undefined) return;
+    const userId = window._currentUserId;
+    if (!userId) { window._genitoreTeamIds = []; return; }
+    const { data: links } = await client.from('parent_athletes')
+        .select('athlete_id').eq('parent_id', userId);
+    if (!links || !links.length) { window._genitoreTeamIds = []; return; }
+    const athIds = links.map(l => l.athlete_id);
+    const { data: ts } = await client.from('athlete_team_seasons')
+        .select('team_id').in('athlete_id', athIds);
+    window._genitoreTeamIds = [...new Set((ts||[]).map(r=>r.team_id).filter(Boolean))];
 }
 
 window.closeMonthlyChartPopup = function() {
@@ -7853,51 +8087,76 @@ function _applyTabFilterVisibility() {
     const isGlobal    = ['admin','manager'].includes(role);
     const isSocScoped = ['presidente','segretario'].includes(role);
     const isTeamScoped = ['responsabile','dirigente','allenatore'].includes(role);
+    const isGenitore  = role === 'genitore';
 
-    // Mostra il tab Vista Presidenza solo per ruoli strategici
+    // ── Titolo e sottotitolo dinamici della Vista Specializzata ──
+    const roleLabels = {
+        admin:        { icon:'⚙️',  title:'Vista Amministratore',   subtitle:'Accesso completo a tutte le società e stagioni',       badge:'Admin Globale' },
+        manager:      { icon:'🎛️', title:'Vista Manager',           subtitle:'Accesso globale a tutte le organizzazioni',             badge:'Manager Globale' },
+        presidente:   { icon:'🏛️', title:'Vista Presidenza',        subtitle:'KPI strategici della tua società',                     badge:'Presidente' },
+        segretario:   { icon:'📋',  title:'Vista Segreteria',        subtitle:'Riepilogo operativo della tua società',                 badge:'Segretario' },
+        responsabile: { icon:'📂',  title:'Vista Responsabile',      subtitle:'Dati delle tue categorie e squadre assegnate',          badge:'Responsabile' },
+        dirigente:    { icon:'👔',  title:'Vista Dirigente',         subtitle:'Statistiche delle squadre di cui sei dirigente',        badge:'Dirigente' },
+        allenatore:   { icon:'⚽',  title:'Vista Allenatore',        subtitle:'Statistiche della tua squadra',                        badge:'Allenatore' },
+        genitore:     { icon:'👨‍👩‍👧', title:'Vista Genitore',         subtitle:'Dati della squadra e dettaglio del tuo atleta',       badge:'Genitore' },
+    };
+    const lbl = roleLabels[role] || { icon:'📊', title:'Vista Dashboard', subtitle:'', badge:role };
+    const titleEl    = document.getElementById('pres-view-title');
+    const subtitleEl = document.getElementById('pres-view-subtitle');
+    const iconEl     = document.getElementById('pres-view-icon');
+    const badgeEl    = document.getElementById('pres-view-scope-badge');
+    const btn6       = document.getElementById('dash-tab-btn-6');
+    if (titleEl)    titleEl.textContent    = lbl.title;
+    if (subtitleEl) subtitleEl.textContent = lbl.subtitle;
+    if (iconEl)     iconEl.textContent     = lbl.icon;
+    if (badgeEl)    badgeEl.textContent    = lbl.badge;
+    if (btn6)       btn6.textContent       = lbl.icon + ' ' + lbl.title;
+
+    // ── Mostra Vista Specializzata per tutti i ruoli nominati ──
     const presTabBtn = document.getElementById('dash-tab-btn-6');
     const presDivider = document.getElementById('dash-pres-divider');
     if (presTabBtn) {
-        const canSeePresView = isGlobal || isSocScoped || isTeamScoped || role === 'genitore';
+        const canSeePresView = isGlobal || isSocScoped || isTeamScoped || isGenitore;
         presTabBtn.style.display = canSeePresView ? '' : 'none';
         if (presDivider) presDivider.style.display = canSeePresView ? '' : 'none';
     }
 
-    // ID dei selects per ogni tipo di filtro in ogni tab
+    // ── Visibilità sezione dettaglio genitore ──
+    const genSection = document.getElementById('pres-genitore-section');
+    if (genSection) genSection.style.display = isGenitore ? '' : 'none';
+
+    // ── Filtri nei tab generali (0-5) ──
     const socSelects  = ['dash-stats-soc','dash-match-soc','dash-pres-soc','dash-ath-soc','dash-monthly-soc'];
     const catSelects  = ['dash-stats-cat','dash-match-cat','dash-pres-cat','dash-ath-cat','dash-monthly-cat'];
     const teamSelects = ['dash-stats-team','dash-match-team','dash-pres-team','dash-ath-team','dash-monthly-team'];
 
     socSelects.forEach(id => {
-        // Per dash-match-soc nascondiamo il wrapper che include anche la label
         const wrapperId = id === 'dash-match-soc' ? 'dash-match-soc-wrap' : id;
         const el = document.getElementById(wrapperId);
         if (!el) return;
         el.style.display = isGlobal ? '' : 'none';
     });
-
     catSelects.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        // Nascosto solo per team-scoped (dirigente/allenatore vedono solo le proprie squadre, inutile filtrare per cat)
         el.style.display = isTeamScoped ? 'none' : '';
     });
-
     teamSelects.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        // Visibile sempre (ma per team-scoped contiene solo le proprie squadre)
         el.style.display = '';
     });
 
-    // Filtri Vista Presidenza: nascondi società per ruoli non globali
-    const presViewSoc = document.getElementById('pres-view-soc');
-    if (presViewSoc) presViewSoc.style.display = isGlobal ? '' : 'none';
-    // Filtri cat/team sempre visibili per chi accede alla Vista Presidenza
+    // ── Filtri Vista Specializzata (tab 6) ──
+    const presViewSoc  = document.getElementById('pres-view-soc');
     const presViewCat  = document.getElementById('pres-view-cat');
     const presViewTeam = document.getElementById('pres-view-team');
-    if (presViewCat)  presViewCat.style.display  = '';
-    if (presViewTeam) presViewTeam.style.display = '';
+    // Società: visibile solo admin/manager
+    if (presViewSoc)  presViewSoc.style.display  = isGlobal ? '' : 'none';
+    // Categoria: visibile per admin/manager/presidente/segretario/responsabile; nascosta per dirigente/allenatore/genitore
+    if (presViewCat)  presViewCat.style.display  = (isGlobal || isSocScoped || role === 'responsabile') ? '' : 'none';
+    // Squadra: nascosta per genitore (forzata automaticamente sui figli), visibile per tutti gli altri
+    if (presViewTeam) presViewTeam.style.display = isGenitore ? 'none' : '';
 }
 
 /* ── Handlers cascata Tab 0: Stats Gare ── */
@@ -7986,29 +8245,86 @@ window.onPresCatChange = async function() {
 async function _presPopulateCatTeam() {
     await _presPopulateCat();
     await _presPopulateTeam();
+
+    // Aggiorna il badge scope nell'header con il nome della squadra/categoria se unico
+    const role = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const badgeEl = document.getElementById('pres-view-scope-badge');
+    if (!badgeEl) return;
+
+    if (['dirigente','allenatore'].includes(role)) {
+        const teamSel = document.getElementById('pres-view-team');
+        const opts = teamSel ? [...teamSel.options].filter(o => o.value !== 'all') : [];
+        if (opts.length === 1) {
+            badgeEl.textContent = '⚽ ' + opts[0].textContent;
+            // Forza selezione automatica se c'è una sola squadra
+            if (teamSel) teamSel.value = opts[0].value;
+        } else if (opts.length > 1) {
+            badgeEl.textContent = opts.length + ' squadre';
+        }
+    } else if (role === 'responsabile') {
+        const catSel = document.getElementById('pres-view-cat');
+        const opts = catSel ? [...catSel.options].filter(o => o.value !== 'all') : [];
+        if (opts.length === 1) badgeEl.textContent = '📂 ' + opts[0].textContent;
+        else if (opts.length > 1) badgeEl.textContent = opts.length + ' categorie';
+    } else if (role === 'genitore') {
+        const teamIds = window._genitoreTeamIds || [];
+        if (teamIds.length === 1) {
+            // Recupera nome squadra
+            const { data: t } = await client.from('teams').select('name').eq('id', teamIds[0]).maybeSingle();
+            if (t) badgeEl.textContent = '⚽ ' + t.name;
+        } else if (teamIds.length > 1) {
+            badgeEl.textContent = teamIds.length + ' squadre';
+        }
+    }
 }
 
 async function _presPopulateCat() {
+    const role     = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isGlobal = ['admin','manager'].includes(role);
+    const isTeamScoped = ['dirigente','allenatore'].includes(role);
+    const isGenitore   = role === 'genitore';
+
+    // Per team-scoped e genitore il filtro categoria non è visibile → skip
+    if (isTeamScoped || isGenitore) return;
+
     const socId    = window._dashData._forcedSocietyId || document.getElementById('pres-view-soc')?.value || 'all';
     const seasonId = document.getElementById('pres-view-season')?.value || 'all';
     const catSel   = document.getElementById('pres-view-cat');
     if (!catSel) return;
 
     let q = client.from('categories').select('id, name').order('name');
-    if (socId && socId !== 'all') q = q.eq('society_id', socId);
+    if (!isGlobal && socId && socId !== 'all') q = q.eq('society_id', socId);
 
-    // Se filtro stagione: prendi solo categorie che hanno team in quella stagione
-    if (seasonId && seasonId !== 'all') {
+    // Per responsabile: limita alle categorie delle sue squadre assegnate
+    if (role === 'responsabile') {
+        const assigned = await window.loadUserAssignedTeams();
+        if (assigned && assigned.length > 0) {
+            const { data: assignedTeams } = await client.from('teams')
+                .select('category_id').in('id', assigned);
+            const catIds = [...new Set((assignedTeams||[]).map(t=>t.category_id).filter(Boolean))];
+            if (catIds.length) q = q.in('id', catIds);
+        }
+    } else if (seasonId && seasonId !== 'all') {
+        // Per altri ruoli: filtra per stagione
         const { data: teams } = await client.from('teams').select('category_id').eq('season_id', seasonId);
         const catIds = [...new Set((teams||[]).map(t=>t.category_id).filter(Boolean))];
         if (catIds.length) q = q.in('id', catIds);
     }
+
     const { data: cats } = await q;
     catSel.innerHTML = '<option value="all">Tutte le categorie</option>' +
         (cats||[]).map(c => '<option value="'+c.id+'">'+c.name+'</option>').join('');
 }
 
 async function _presPopulateTeam() {
+    const role     = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isGlobal = ['admin','manager'].includes(role);
+    const isTeamScoped = ['responsabile','dirigente','allenatore'].includes(role);
+    const isGenitore   = role === 'genitore';
+
+    // Genitore: il select squadra è nascosto, skip
+    if (isGenitore) return;
+
     const socId    = window._dashData._forcedSocietyId || document.getElementById('pres-view-soc')?.value || 'all';
     const seasonId = document.getElementById('pres-view-season')?.value || 'all';
     const catId    = document.getElementById('pres-view-cat')?.value || 'all';
@@ -8016,9 +8332,16 @@ async function _presPopulateTeam() {
     if (!teamSel) return;
 
     let q = client.from('teams').select('id, name').order('name');
-    if (socId    && socId    !== 'all') q = q.eq('society_id',  socId);
-    if (seasonId && seasonId !== 'all') q = q.eq('season_id',   seasonId);
+    if (!isGlobal && socId && socId !== 'all') q = q.eq('society_id', socId);
+    if (seasonId && seasonId !== 'all') q = q.eq('season_id', seasonId);
     if (catId    && catId    !== 'all') q = q.eq('category_id', catId);
+
+    // Per ruoli team-scoped: mostra solo le squadre assegnate
+    if (isTeamScoped) {
+        const assigned = await window.loadUserAssignedTeams();
+        if (assigned && assigned.length > 0) q = q.in('id', assigned);
+    }
+
     const { data: teams } = await q;
     teamSel.innerHTML = '<option value="all">Tutte le squadre</option>' +
         (teams||[]).map(t => '<option value="'+t.id+'">'+t.name+'</option>').join('');
