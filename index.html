@@ -6129,6 +6129,7 @@ window.templateDashboard = function() {
             </div>
 
             <!-- KPI STRATEGICI ROW 1 -->
+            <div id="pres-generic-sections">
             <div id="pres-kpi-row" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:12px; margin-bottom:20px;">
                 <div class="kpi-card-skeleton" style="height:100px; background:var(--card-raised); border-radius:12px; animation:pulse 1.5s infinite;"></div>
                 <div class="kpi-card-skeleton" style="height:100px; background:var(--card-raised); border-radius:12px; animation:pulse 1.5s infinite;"></div>
@@ -6207,6 +6208,15 @@ window.templateDashboard = function() {
                             <tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-sub);">⏳ Caricamento...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            </div><!-- /pres-generic-sections -->
+
+            <!-- VISTA ALLENATORE DEDICATA -->
+            <div id="pres-allenatore-section" style="display:none;">
+                <div id="allenatore-dash-content">
+                    <div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento dashboard allenatore...</div>
                 </div>
             </div>
 
@@ -7530,6 +7540,11 @@ window.loadDashPresidenza = async function() {
             await _renderGenitoreAthleteDetail();
         }
 
+        // ── VISTA ALLENATORE DEDICATA ────────────────────────────────────────────
+        if (role === 'allenatore') {
+            await _renderVistaAllenatore();
+        }
+
     } catch(err) { console.error('loadDashPresidenza error:', err); }
 };
 
@@ -7677,7 +7692,605 @@ async function _renderGenitoreAthleteDetail() {
     window._switchGenAthlete(0);
 }
 
-/* ── Inizializza team IDs genitore per scoping Vista ── */
+/* ════════════════════════════════════════════════════════════
+   VISTA ALLENATORE — Dashboard Intelligente
+   Sezioni: Dashboard giornaliera/settimanale · KPI · Drill-down
+════════════════════════════════════════════════════════════ */
+async function _renderVistaAllenatore() {
+    const container = document.getElementById('allenatore-dash-content');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento...</div>';
+
+    try {
+        const teamIds = window._userAssignedTeamIds || await window.loadUserAssignedTeams() || [];
+        if (!teamIds.length) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">Nessuna squadra assegnata.</div>';
+            return;
+        }
+
+        const activeSeason = (window._dashData._seasons || []).find(s => s.is_active);
+        const sid = activeSeason?.id || null;
+        const today = new Date();
+        const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 7);
+        const monthAgo = new Date(today); monthAgo.setDate(today.getDate() - 30);
+        const fmtDate = d => d.toISOString().split('T')[0];
+
+        // ── Carica dati in parallelo ──────────────────────────────────────────
+        const [
+            sessRes, attRes, matchStatsRes, matchDetRes, teamAthRes, nextMatchRes
+        ] = await Promise.all([
+            // Sessioni allenamento (ultimi 30gg)
+            client.from('sessions')
+                .select('id, session_date, title, type_id, session_types(name)')
+                .in('team_id', teamIds)
+                .gte('session_date', fmtDate(monthAgo))
+                .order('session_date', { ascending: false }),
+
+            // Presenze con valutazioni (ultimi 30gg)
+            client.from('attendances')
+                .select('athlete_id, status, performance_data, is_called_up, sessions!inner(id, session_date, type_id, team_id, session_types(name))')
+                .in('sessions.team_id', teamIds)
+                .gte('sessions.session_date', fmtDate(monthAgo)),
+
+            // Stats partite stagione corrente
+            client.from('match_stats')
+                .select('athlete_id, goals, yellow_cards, red_cards, minutes_played, is_starter, sessions!inner(session_date, team_id)')
+                .in('sessions.team_id', teamIds),
+
+            // Dettagli partite stagione corrente
+            client.from('match_details')
+                .select('session_id, goals_for, goals_against, match_status, is_friendly, sessions!inner(session_date, team_id)')
+                .in('sessions.team_id', teamIds)
+                .eq('is_friendly', false),
+
+            // Rosa squadra
+            client.from('athlete_team_seasons')
+                .select('athlete_id, jersey_number, role, athletes!inner(id, name, surname)')
+                .in('team_id', teamIds)
+                .eq('season_id', sid),
+
+            // Prossima partita
+            client.from('sessions')
+                .select('id, session_date, title, session_types(name)')
+                .in('team_id', teamIds)
+                .gte('session_date', fmtDate(today))
+                .order('session_date', { ascending: true })
+                .limit(1)
+        ]);
+
+        const sessions     = sessRes.data || [];
+        const attendances  = attRes.data || [];
+        const matchStats   = matchStatsRes.data || [];
+        const matchDetails = matchDetRes.data || [];
+        const roster       = teamAthRes.data || [];
+        const nextMatch    = nextMatchRes.data?.[0] || null;
+
+        // ── Mappa atleti ──────────────────────────────────────────────────────
+        const athMap = {};
+        roster.forEach(r => {
+            athMap[r.athlete_id] = { ...r.athletes, jersey: r.jersey_number, role: r.role };
+        });
+        const athIds = roster.map(r => r.athlete_id);
+
+        // ── Sessioni allenamento (no gare) ───────────────────────────────────
+        const trainSessions = sessions.filter(s => !s.session_types?.name?.toLowerCase().includes('gara') && !s.session_types?.name?.toLowerCase().includes('partita'));
+        const recentTrain   = trainSessions.slice(0, 7); // ultimi 7 allenamenti
+
+        // ── Presenze allenamenti ─────────────────────────────────────────────
+        const trainAttMap = {}; // athlete_id → [{date, status, VEL, TEC, FIS, RES, COM}]
+        attendances.forEach(a => {
+            const sType = a.sessions?.session_types?.name?.toLowerCase() || '';
+            const isGara = sType.includes('gara') || sType.includes('partita');
+            if (isGara) return;
+            if (!trainAttMap[a.athlete_id]) trainAttMap[a.athlete_id] = [];
+            const pd = a.performance_data || {};
+            trainAttMap[a.athlete_id].push({
+                date: a.sessions?.session_date,
+                status: a.status,
+                VEL: pd.VEL || 0, TEC: pd.TEC || 0,
+                FIS: pd.FIS || 0, RES: pd.RES || 0, COM: pd.COM || 0
+            });
+        });
+
+        // ── Calcola KPI per atleta ────────────────────────────────────────────
+        // Filtra ultimi 7 allenamenti per "forma" e carico
+        const trainSessIds7 = new Set(recentTrain.map(s => s.id));
+        const athKPI = {};
+        athIds.forEach(aid => {
+            const allAtt = (trainAttMap[aid] || []).sort((a, b) => b.date?.localeCompare(a.date));
+            const recent7 = allAtt.filter((_, i) => i < 7);
+            const all30   = allAtt;
+
+            const avgAttr = (arr, key) => arr.length ? arr.reduce((s, x) => s + (x[key] || 0), 0) / arr.filter(x => (x[key] || 0) > 0).length || 0 : 0;
+
+            const pres7  = recent7.filter(a => a.status === 'presente').length;
+            const pres30 = all30.filter(a => a.status === 'presente').length;
+            const inj    = all30.filter(a => a.status === 'infortunato').length;
+            const tot7   = recent7.length;
+            const tot30  = all30.length;
+
+            // Medie ultime 7 sessioni
+            const vel7 = avgAttr(recent7.filter(x => x.VEL), 'VEL');
+            const tec7 = avgAttr(recent7.filter(x => x.TEC), 'TEC');
+            const fis7 = avgAttr(recent7.filter(x => x.FIS), 'FIS');
+            const res7 = avgAttr(recent7.filter(x => x.RES), 'RES');
+            const com7 = avgAttr(recent7.filter(x => x.COM), 'COM');
+
+            // Trend: confronto prima metà vs seconda metà degli ultimi 8
+            const half = Math.floor(all30.length / 2);
+            const oldHalf = all30.slice(half);
+            const newHalf = all30.slice(0, half);
+            const avgGlobOld = ['VEL','TEC','FIS','RES','COM'].reduce((s,k) => s + avgAttr(oldHalf.filter(x=>x[k]),k), 0) / 5;
+            const avgGlobNew = ['VEL','TEC','FIS','RES','COM'].reduce((s,k) => s + avgAttr(newHalf.filter(x=>x[k]),k), 0) / 5;
+            const trend = all30.length >= 4 ? avgGlobNew - avgGlobOld : 0;
+
+            // Carico settimanale (n sessioni presenti ultime 7gg)
+            const weekAgoStr = fmtDate(weekAgo);
+            const loadWeek = all30.filter(a => a.date >= weekAgoStr && a.status === 'presente').length;
+
+            // Stats partita (stagione)
+            const athMatchStats = matchStats.filter(s => s.athlete_id === aid);
+            const totGoals = athMatchStats.reduce((s, x) => s + (x.goals || 0), 0);
+            const totYC    = athMatchStats.reduce((s, x) => s + (x.yellow_cards || 0), 0);
+            const totRC    = athMatchStats.reduce((s, x) => s + (x.red_cards || 0), 0);
+            const totMin   = athMatchStats.reduce((s, x) => s + (x.minutes_played || 0), 0);
+
+            // Disponibilità prossima partita
+            const lastStatus = all30[0]?.status || 'presente';
+            const avail = lastStatus !== 'infortunato' && inj === 0 ? 'available' : lastStatus === 'infortunato' ? 'injured' : 'monitor';
+
+            athKPI[aid] = { pres7, pres30, tot7, tot30, inj, vel7, tec7, fis7, res7, com7, trend, loadWeek, totGoals, totYC, totRC, totMin, avail, recent7 };
+        });
+
+        // ── Statistiche squadra ───────────────────────────────────────────────
+        const officialMatches = matchDetails.filter(d => !d.is_friendly);
+        const mW = officialMatches.filter(d => d.match_status === 'vittoria').length;
+        const mD = officialMatches.filter(d => d.match_status === 'pareggio').length;
+        const mL = officialMatches.filter(d => d.match_status === 'sconfitta').length;
+        const gf = officialMatches.reduce((s, d) => s + (d.goals_for || 0), 0);
+        const gs = officialMatches.reduce((s, d) => s + (d.goals_against || 0), 0);
+
+        // ── Alerts ────────────────────────────────────────────────────────────
+        const alerts = [];
+        athIds.forEach(aid => {
+            const kpi = athKPI[aid];
+            const name = athMap[aid] ? `${athMap[aid].surname} ${athMap[aid].name}` : aid;
+            if (!kpi) return;
+            if (kpi.inj > 0)           alerts.push({ type: 'injury',  aid, name, msg: `${kpi.inj} sessione/i come infortunato` });
+            if (kpi.trend < -0.5)      alerts.push({ type: 'perf',    aid, name, msg: `Calo prestazioni: −${Math.abs(kpi.trend).toFixed(1)}★` });
+            if (kpi.com7 > 0 && kpi.com7 < 2.5) alerts.push({ type: 'behav',  aid, name, msg: `Comportamento basso (${kpi.com7.toFixed(1)}★)` });
+            if (kpi.tot7 >= 3 && kpi.pres7 / kpi.tot7 < 0.5)
+                alerts.push({ type: 'absent', aid, name, msg: `Bassa presenza: ${kpi.pres7}/${kpi.tot7} allenamenti` });
+        });
+
+        // ── Carico medio squadra ─────────────────────────────────────────────
+        const avgLoad = athIds.length ? (athIds.reduce((s, aid) => s + (athKPI[aid]?.loadWeek || 0), 0) / athIds.length).toFixed(1) : 0;
+        const avgPresWeek = athIds.length ? Math.round(athIds.reduce((s, aid) => {
+            const k = athKPI[aid]; return s + (k.tot7 > 0 ? k.pres7/k.tot7*100 : 0);
+        }, 0) / athIds.length) : 0;
+
+        // ── HTML ─────────────────────────────────────────────────────────────
+        const kpiCard = (icon, val, label, color='var(--primary)', sub='') =>
+            `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;">
+                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);">${icon} ${label}</div>
+                <div style="font-size:1.6rem;font-weight:900;font-family:'DM Mono','Outfit',sans-serif;color:${color};line-height:1;">${val}</div>
+                ${sub ? `<div style="font-size:0.68rem;color:var(--text-sub);">${sub}</div>` : ''}
+            </div>`;
+
+        const stars5 = (v, color='#0ea5e9') => {
+            const n = Math.round(v);
+            return [1,2,3,4,5].map(i => `<span style="color:${i<=n?color:'rgba(0,0,0,0.12)';font-size:12px;">★</span>`).join('');
+        };
+
+        const trendIcon = t => t > 0.3 ? '<span style="color:#10b981;">▲</span>' : t < -0.3 ? '<span style="color:#ef4444;">▼</span>' : '<span style="color:#94a3b8;">→</span>';
+
+        const availBadge = avail => {
+            const m = { available: ['#dcfce7','#16a34a','✅ Disponibile'], injured: ['#fee2e2','#dc2626','🩹 Infortunato'], monitor: ['rgba(245,158,11,0.12)','#d97706','⚠️ Monitorare'] };
+            const [bg, col, lbl] = m[avail] || m.available;
+            return `<span style="background:${bg};color:${col};padding:2px 8px;border-radius:99px;font-size:0.65rem;font-weight:700;">${lbl}</span>`;
+        };
+
+        const alertIcon = type => ({ injury:'🩹', perf:'📉', behav:'⚠️', absent:'📋' })[type] || '❗';
+        const alertColor = type => ({ injury:'#fee2e2|#dc2626', perf:'rgba(239,68,68,0.08)|#ef4444', behav:'rgba(245,158,11,0.1)|#d97706', absent:'rgba(37,99,235,0.08)|#2563eb' })[type]?.split('|') || ['rgba(0,0,0,0.05)','#555'];
+
+        const nextMatchHTML = nextMatch
+            ? `<div style="background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.18);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;">
+                <div style="font-size:1.4rem;">📅</div>
+                <div>
+                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--primary);">Prossimo impegno</div>
+                    <div style="font-size:0.92rem;font-weight:700;color:var(--text-main);margin-top:2px;">${nextMatch.title || nextMatch.session_types?.name || 'Sessione'}</div>
+                    <div style="font-size:0.75rem;color:var(--text-sub);">${new Date(nextMatch.session_date).toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'long'})}</div>
+                </div>
+               </div>`
+            : '';
+
+        // Disponibilità per prossima partita
+        const availCount    = athIds.filter(id => athKPI[id]?.avail === 'available').length;
+        const injuredCount  = athIds.filter(id => athKPI[id]?.avail === 'injured').length;
+        const monitorCount  = athIds.filter(id => athKPI[id]?.avail === 'monitor').length;
+
+        // ── RENDER ────────────────────────────────────────────────────────────
+        container.innerHTML = `
+        <style>
+        .all-tab-btn { padding:7px 16px;border-radius:7px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.8rem;font-weight:600;background:transparent;color:var(--text-muted);transition:all 0.15s; }
+        .all-tab-btn.active { background:var(--primary);color:white;border-color:var(--primary); }
+        .all-section { display:none; }
+        .all-section.active { display:block; }
+        .ath-row { display:grid;grid-template-columns:32px 1fr 90px 90px 90px 90px 90px 80px 80px;gap:6px;align-items:center;padding:8px 12px;border-radius:8px;transition:background 0.12s; }
+        .ath-row:hover { background:rgba(37,99,235,0.04); }
+        .ath-row-head { display:grid;grid-template-columns:32px 1fr 90px 90px 90px 90px 90px 80px 80px;gap:6px;padding:6px 12px; }
+        .spark { display:inline-flex;gap:2px;align-items:flex-end; }
+        .spark-bar { width:6px;border-radius:2px 2px 0 0; }
+        </style>
+
+        <!-- TABS NAVIGAZIONE -->
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+            <button class="all-tab-btn active" onclick="window._allTab('dashboard')">📊 Dashboard</button>
+            <button class="all-tab-btn" onclick="window._allTab('kpi')">📈 KPI Giocatori</button>
+            <button class="all-tab-btn" onclick="window._allTab('drilldown')">🔍 Drill-down</button>
+        </div>
+
+        <!-- ══ TAB 1: DASHBOARD ══════════════════════════════════════════════ -->
+        <div id="all-tab-dashboard" class="all-section active">
+
+            <!-- ROW 1: KPI veloci + prossimo impegno -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr) 1.5fr;gap:12px;margin-bottom:16px;align-items:stretch;">
+                ${kpiCard('📅','${officialMatches.length}','Partite giocate','var(--primary)',`${mW}V · ${mD}P · ${mL}S`)}
+                ${kpiCard('⚽','${gf} — ${gs}','Gol fatti/subiti','#10b981')}
+                ${kpiCard('📋','${avgPresWeek}%','Presenza media','#3b82f6',`ultima settimana`)}
+                ${kpiCard('⚡','${avgLoad}','Carico medio sett.','#8b5cf6',`sess. per atleta`)}
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+                    <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);margin-bottom:10px;">👥 Disponibilità prossima gara</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <div style="flex:1;text-align:center;background:#dcfce7;border-radius:8px;padding:8px 4px;"><div style="font-size:1.3rem;font-weight:900;color:#16a34a;">${availCount}</div><div style="font-size:0.6rem;font-weight:700;color:#16a34a;">DISPONIBILI</div></div>
+                        <div style="flex:1;text-align:center;background:rgba(245,158,11,0.12);border-radius:8px;padding:8px 4px;"><div style="font-size:1.3rem;font-weight:900;color:#d97706;">${monitorCount}</div><div style="font-size:0.6rem;font-weight:700;color:#d97706;">MONITORARE</div></div>
+                        <div style="flex:1;text-align:center;background:#fee2e2;border-radius:8px;padding:8px 4px;"><div style="font-size:1.3rem;font-weight:900;color:#dc2626;">${injuredCount}</div><div style="font-size:0.6rem;font-weight:700;color:#dc2626;">INFORTUNATI</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROW 2: Prossimo impegno + Alerts -->
+            <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:14px;margin-bottom:16px;">
+                <div>
+                    ${nextMatchHTML}
+                    <!-- Carico allenamenti (ultimi 5) -->
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:12px;">
+                        <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">⚡ Carico allenamenti recenti</div>
+                        ${recentTrain.slice(0,5).map(s => {
+                            const d = new Date(s.session_date);
+                            const presentCount = attendances.filter(a => a.sessions?.id === s.id && a.status === 'presente').length;
+                            const totalCount   = attendances.filter(a => a.sessions?.id === s.id).length;
+                            const perc = totalCount > 0 ? Math.round(presentCount/totalCount*100) : 0;
+                            const col = perc >= 80 ? '#10b981' : perc >= 60 ? '#0ea5e9' : '#f59e0b';
+                            return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05);">
+                                <div style="font-size:0.7rem;color:var(--text-sub);white-space:nowrap;width:60px;">${d.toLocaleDateString('it-IT',{day:'2-digit',month:'short'})}</div>
+                                <div style="flex:1;background:rgba(0,0,0,0.05);border-radius:99px;height:7px;overflow:hidden;"><div style="height:100%;width:${perc}%;background:${col};border-radius:99px;transition:width 0.4s;"></div></div>
+                                <div style="font-size:0.72rem;font-weight:700;color:${col};width:36px;text-align:right;">${perc}%</div>
+                                <div style="font-size:0.68rem;color:var(--text-muted);width:40px;text-align:right;">${presentCount}/${totalCount}</div>
+                            </div>`;
+                        }).join('') || '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun allenamento recente.</div>'}
+                    </div>
+                </div>
+
+                <!-- ALERTS -->
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">🚨 Alert Squadra</div>
+                    ${alerts.length === 0
+                        ? '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#10b981;gap:8px;"><span style="font-size:2rem;">✅</span><span style="font-size:0.82rem;font-weight:600;">Nessun alert — squadra in buona forma!</span></div>'
+                        : alerts.slice(0,8).map(al => {
+                            const [bg, col] = alertColor(al.type);
+                            return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;margin-bottom:6px;background:${bg};border-radius:8px;">
+                                <span style="font-size:1rem;flex-shrink:0;">${alertIcon(al.type)}</span>
+                                <div>
+                                    <div style="font-size:0.8rem;font-weight:700;color:${col};">${al.name}</div>
+                                    <div style="font-size:0.72rem;color:var(--text-sub);">${al.msg}</div>
+                                </div>
+                            </div>`;
+                        }).join('')
+                    }
+                </div>
+            </div>
+
+            <!-- ROW 3: Forma giocatori (tabella compatta) -->
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">🏃 Stato Forma Giocatori</div>
+                <div style="overflow-x:auto;">
+                    <div class="ath-row-head" style="border-bottom:1px solid var(--border);margin-bottom:4px;">
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);">#</div>
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);">Atleta</div>
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-align:center;">Presenza</div>
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-align:center;">⚡ Carico</div>
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-align:center;">Trend</div>
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-align:center;">COM</div>
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-align:center;">Infortuni</div>
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-align:center;">⚽ Gol</div>
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-align:center;">Disponibilità</div>
+                    </div>
+                    ${roster.sort((a,b)=>(athMap[a.athlete_id]?.surname||'').localeCompare(athMap[b.athlete_id]?.surname||'')).map(r => {
+                        const aid = r.athlete_id;
+                        const ath = athMap[aid];
+                        const kpi = athKPI[aid] || {};
+                        const presPerc = kpi.tot7 > 0 ? Math.round(kpi.pres7/kpi.tot7*100) : null;
+                        const presCol = presPerc === null ? '#94a3b8' : presPerc >= 80 ? '#10b981' : presPerc >= 60 ? '#0ea5e9' : '#ef4444';
+                        return `<div class="ath-row" onclick="window._allDrillAthlete('${aid}')" style="cursor:pointer;">
+                            <div style="font-size:0.78rem;font-weight:700;color:var(--primary);">${ath?.jersey||'—'}</div>
+                            <div style="font-size:0.82rem;font-weight:600;">${ath?.surname||''} ${ath?.name||''}<span style="font-size:0.65rem;color:var(--text-muted);margin-left:4px;">${ath?.role||''}</span></div>
+                            <div style="text-align:center;font-size:0.78rem;font-weight:700;color:${presCol};">${presPerc !== null ? presPerc+'%' : '—'}</div>
+                            <div style="text-align:center;">
+                                <span style="background:rgba(139,92,246,0.1);color:#8b5cf6;border-radius:99px;padding:2px 8px;font-size:0.72rem;font-weight:700;">${kpi.loadWeek||0}</span>
+                            </div>
+                            <div style="text-align:center;">${trendIcon(kpi.trend||0)}</div>
+                            <div style="text-align:center;font-size:0.8rem;">${kpi.com7>0?kpi.com7.toFixed(1)+'★':'—'}</div>
+                            <div style="text-align:center;font-size:0.78rem;color:${(kpi.inj||0)>0?'#dc2626':'var(--text-muted)'};">${kpi.inj||0}</div>
+                            <div style="text-align:center;font-size:0.78rem;font-weight:700;color:#10b981;">${kpi.totGoals||0}</div>
+                            <div style="text-align:center;">${availBadge(kpi.avail||'available')}</div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ TAB 2: KPI GIOCATORI ══════════════════════════════════════════ -->
+        <div id="all-tab-kpi" class="all-section">
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                <thead>
+                    <tr style="background:rgba(0,0,0,0.03);">
+                        <th style="padding:10px 12px;text-align:left;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Giocatore</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:#3b82f6;text-transform:uppercase;">⚡ VEL</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:#8b5cf6;text-transform:uppercase;">🎯 TEC</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:#f59e0b;text-transform:uppercase;">💪 FIS</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:#10b981;text-transform:uppercase;">🫁 RES</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:#ec4899;text-transform:uppercase;">😤 COM</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Media</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Trend</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:#dc2626;text-transform:uppercase;">🟥</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:#d97706;text-transform:uppercase;">🟨</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:#10b981;text-transform:uppercase;">⚽</th>
+                        <th style="padding:10px 8px;text-align:center;font-size:0.65rem;font-weight:700;color:var(--primary);text-transform:uppercase;">⏱ Min</th>
+                    </tr>
+                </thead>
+                <tbody>
+                ${roster.sort((a,b)=>(athMap[a.athlete_id]?.surname||'').localeCompare(athMap[b.athlete_id]?.surname||'')).map(r => {
+                    const aid = r.athlete_id;
+                    const ath = athMap[aid];
+                    const kpi = athKPI[aid] || {};
+                    const attrs = [kpi.vel7||0, kpi.tec7||0, kpi.fis7||0, kpi.res7||0, kpi.com7||0];
+                    const mean = attrs.filter(v=>v>0).length ? (attrs.reduce((s,v)=>s+v,0)/attrs.filter(v=>v>0).length).toFixed(1) : '—';
+                    const starCell = (v, col) => {
+                        if (!v) return '<td style="padding:8px;text-align:center;color:var(--text-muted);font-size:0.75rem;">—</td>';
+                        const filled = Math.round(v);
+                        const stars = [1,2,3,4,5].map(i=>`<span style="color:${i<=filled?col:'rgba(0,0,0,0.12)';font-size:11px;">★</span>`).join('');
+                        return `<td style="padding:8px;text-align:center;white-space:nowrap;">${stars}<br><span style="font-size:0.65rem;font-weight:700;color:${col};">${v.toFixed(1)}</span></td>`;
+                    };
+                    return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);" onmouseover="this.style.background='rgba(37,99,235,0.03)'" onmouseout="this.style.background=''">
+                        <td style="padding:8px 12px;font-weight:600;">${ath?.jersey||'—'} ${ath?.surname||''} ${ath?.name||''}<span style="font-size:0.65rem;color:var(--text-muted);margin-left:4px;">${ath?.role||''}</span></td>
+                        ${starCell(kpi.vel7,'#3b82f6')}
+                        ${starCell(kpi.tec7,'#8b5cf6')}
+                        ${starCell(kpi.fis7,'#f59e0b')}
+                        ${starCell(kpi.res7,'#10b981')}
+                        ${starCell(kpi.com7,'#ec4899')}
+                        <td style="padding:8px;text-align:center;font-weight:800;font-family:'DM Mono',monospace;color:var(--primary);">${mean}</td>
+                        <td style="padding:8px;text-align:center;font-size:1rem;">${trendIcon(kpi.trend||0)} <span style="font-size:0.65rem;color:var(--text-muted);">${kpi.trend?kpi.trend.toFixed(1):''}</span></td>
+                        <td style="padding:8px;text-align:center;font-weight:700;color:#dc2626;">${kpi.totRC||0}</td>
+                        <td style="padding:8px;text-align:center;font-weight:700;color:#d97706;">${kpi.totYC||0}</td>
+                        <td style="padding:8px;text-align:center;font-weight:700;color:#10b981;">${kpi.totGoals||0}</td>
+                        <td style="padding:8px;text-align:center;font-weight:600;color:var(--primary);">${kpi.totMin||0}'</td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
+            </div>
+
+            <!-- Media squadra per attributo -->
+            <div style="margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px;">📊 Media Squadra per Attributo</div>
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+                ${[
+                    {key:'vel7',label:'Velocità',color:'#3b82f6',icon:'⚡'},
+                    {key:'tec7',label:'Tecnica',color:'#8b5cf6',icon:'🎯'},
+                    {key:'fis7',label:'Forza',color:'#f59e0b',icon:'💪'},
+                    {key:'res7',label:'Resistenza',color:'#10b981',icon:'🫁'},
+                    {key:'com7',label:'Comportamento',color:'#ec4899',icon:'😤'}
+                ].map(attr => {
+                    const vals = athIds.map(id => athKPI[id]?.[attr.key]||0).filter(v=>v>0);
+                    const avg = vals.length ? (vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(2) : 0;
+                    const perc = (avg/5)*100;
+                    return `<div style="text-align:center;padding:12px;background:rgba(0,0,0,0.03);border-radius:10px;">
+                        <div style="font-size:1.1rem;margin-bottom:4px;">${attr.icon}</div>
+                        <div style="font-size:1.3rem;font-weight:900;font-family:'DM Mono',monospace;color:${attr.color};">${avg}</div>
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);margin:3px 0 6px;">${attr.label}</div>
+                        <div style="background:rgba(0,0,0,0.06);border-radius:99px;height:5px;overflow:hidden;">
+                            <div style="height:100%;width:${perc}%;background:${attr.color};border-radius:99px;"></div>
+                        </div>
+                    </div>`;
+                }).join('')}
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ TAB 3: DRILL-DOWN ═════════════════════════════════════════════ -->
+        <div id="all-tab-drilldown" class="all-section">
+            <div style="display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;">
+                <!-- Lista giocatori -->
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+                    <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">Seleziona giocatore</div>
+                    <div style="max-height:400px;overflow-y:auto;">
+                    ${roster.sort((a,b)=>(athMap[a.athlete_id]?.surname||'').localeCompare(athMap[b.athlete_id]?.surname||'')).map(r => {
+                        const aid = r.athlete_id;
+                        const ath = athMap[aid];
+                        const kpi = athKPI[aid] || {};
+                        return `<div id="dd-ath-${aid}" onclick="window._allDrillAthlete('${aid}')"
+                            style="padding:9px 14px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.04);transition:background 0.12s;display:flex;align-items:center;gap:10px;"
+                            onmouseover="this.style.background='rgba(37,99,235,0.05)'" onmouseout="if(!this.classList.contains('dd-active'))this.style.background=''">
+                            <span style="font-size:0.72rem;font-weight:700;color:var(--primary);width:22px;">${ath?.jersey||'—'}</span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:0.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ath?.surname||''} ${ath?.name||''}</div>
+                                <div style="font-size:0.65rem;color:var(--text-muted);">${ath?.role||''}</div>
+                            </div>
+                            ${availBadge(kpi.avail||'available')}
+                        </div>`;
+                    }).join('')}
+                    </div>
+                </div>
+                <!-- Detail panel -->
+                <div id="all-drill-detail" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;min-height:300px;">
+                    <div style="text-align:center;padding:40px;color:var(--text-sub);">👈 Seleziona un giocatore per vedere il dettaglio</div>
+                </div>
+            </div>
+        </div>`;
+
+        // ── Drill-down per singolo atleta ──────────────────────────────────
+        window._allDrillAthlete = function(aid) {
+            // Highlight sidebar
+            document.querySelectorAll('[id^="dd-ath-"]').forEach(el => { el.style.background=''; el.classList.remove('dd-active'); });
+            const activeEl = document.getElementById(`dd-ath-${aid}`);
+            if (activeEl) { activeEl.style.background='rgba(37,99,235,0.1)'; activeEl.classList.add('dd-active'); }
+
+            // Switch to drilldown tab if needed
+            window._allTab('drilldown');
+
+            const ath = athMap[aid];
+            const kpi = athKPI[aid] || {};
+            const allAtt = (trainAttMap[aid] || []).sort((a,b) => a.date?.localeCompare(b.date));
+            const squadAvg = (key) => {
+                const vals = athIds.map(id => athKPI[id]?.[key]||0).filter(v=>v>0);
+                return vals.length ? (vals.reduce((s,v)=>s+v,0)/vals.length) : 0;
+            };
+
+            const attrDefs = [
+                {key:'vel7',label:'Velocità',color:'#3b82f6',icon:'⚡'},
+                {key:'tec7',label:'Tecnica',color:'#8b5cf6',icon:'🎯'},
+                {key:'fis7',label:'Forza (FIS)',color:'#f59e0b',icon:'💪'},
+                {key:'res7',label:'Resistenza',color:'#10b981',icon:'🫁'},
+                {key:'com7',label:'Comportamento',color:'#ec4899',icon:'😤'}
+            ];
+
+            // Sparkline per ogni attributo (storico 30gg)
+            const sparkLine = (dataKey, color, W=120, H=32) => {
+                const vals = allAtt.map(a => a[dataKey.replace('7','')] || 0);
+                if (!vals.length || vals.every(v=>v===0)) return '<span style="color:var(--text-muted);font-size:0.72rem;">Nessun dato</span>';
+                const max = 5;
+                const pts = vals.map((v,i) => `${((i/(vals.length-1||1))*(W-8)+4).toFixed(1)},${(H-4-(v/max)*(H-8)).toFixed(1)}`).join(' ');
+                return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:inline-block;vertical-align:middle;">
+                    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                    ${vals.map((v,i) => {
+                        const cx = ((i/(vals.length-1||1))*(W-8)+4).toFixed(1);
+                        const cy = (H-4-(v/max)*(H-8)).toFixed(1);
+                        return `<circle cx="${cx}" cy="${cy}" r="3" fill="${color}" stroke="white" stroke-width="1"/>`;
+                    }).join('')}
+                </svg>`;
+            };
+
+            const detail = document.getElementById('all-drill-detail');
+            if (!detail) return;
+            detail.innerHTML = `
+                <!-- Header atleta -->
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+                    <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#818cf8);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:900;color:white;font-family:'DM Mono',monospace;">${ath?.jersey||'?'}</div>
+                    <div>
+                        <div style="font-size:1.05rem;font-weight:800;font-family:'Syne',sans-serif;">${ath?.surname||''} ${ath?.name||''}</div>
+                        <div style="font-size:0.72rem;color:var(--text-sub);margin-top:2px;">${ath?.role||'Atleta'} · ${availBadge(kpi.avail||'available')}</div>
+                    </div>
+                    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+                        <span style="background:rgba(37,99,235,0.08);color:var(--primary);padding:3px 10px;border-radius:99px;font-size:0.68rem;font-weight:700;">⚽ ${kpi.totGoals||0} gol</span>
+                        <span style="background:rgba(239,68,68,0.08);color:#dc2626;padding:3px 10px;border-radius:99px;font-size:0.68rem;font-weight:700;">🟥 ${kpi.totRC||0}</span>
+                        <span style="background:rgba(245,158,11,0.1);color:#d97706;padding:3px 10px;border-radius:99px;font-size:0.68rem;font-weight:700;">🟨 ${kpi.totYC||0}</span>
+                        <span style="background:rgba(139,92,246,0.08);color:#7c3aed;padding:3px 10px;border-radius:99px;font-size:0.68rem;font-weight:700;">⏱ ${kpi.totMin||0}'</span>
+                    </div>
+                </div>
+
+                <!-- Attributi: giocatore vs media squadra -->
+                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">📊 Attributi — Giocatore vs Media Squadra</div>
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px;">
+                ${attrDefs.map(attr => {
+                    const val = kpi[attr.key] || 0;
+                    const avg = squadAvg(attr.key);
+                    const diff = val - avg;
+                    const percVal = (val/5)*100;
+                    const percAvg = (avg/5)*100;
+                    const diffColor = diff > 0.2 ? '#10b981' : diff < -0.2 ? '#ef4444' : '#94a3b8';
+                    return `<div style="background:rgba(0,0,0,0.03);border:1px solid var(--border);border-radius:10px;padding:10px 8px;text-align:center;">
+                        <div style="font-size:1rem;margin-bottom:4px;">${attr.icon}</div>
+                        <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);margin-bottom:6px;">${attr.label}</div>
+                        <div style="font-size:1.4rem;font-weight:900;font-family:'DM Mono',monospace;color:${attr.color};">${val?val.toFixed(1):'—'}</div>
+                        <div style="font-size:0.62rem;color:${diffColor};font-weight:700;margin-top:2px;">${diff?`${diff>0?'+':''}${diff.toFixed(1)} vs squadra`:''}</div>
+                        <!-- Barra doppia: giocatore + media -->
+                        <div style="position:relative;height:5px;background:rgba(0,0,0,0.07);border-radius:99px;margin-top:6px;overflow:hidden;">
+                            <div style="position:absolute;left:0;top:0;height:100%;width:${percAvg}%;background:rgba(0,0,0,0.15);border-radius:99px;"></div>
+                            <div style="position:absolute;left:0;top:0;height:100%;width:${percVal}%;background:${attr.color};border-radius:99px;opacity:0.85;"></div>
+                        </div>
+                        <div style="font-size:0.58rem;color:var(--text-muted);margin-top:3px;">Media: ${avg.toFixed(1)}</div>
+                    </div>`;
+                }).join('')}
+                </div>
+
+                <!-- Storico sparklines per attributo -->
+                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">📈 Storico Trend (${allAtt.length} sessioni)</div>
+                ${allAtt.length < 2
+                    ? '<div style="color:var(--text-muted);font-size:0.8rem;padding:10px 0;">Dati insufficienti per il trend (min. 2 sessioni valutate).</div>'
+                    : `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px;">
+                    ${attrDefs.map(attr => {
+                        const sk = sparkLine(attr.key, attr.color);
+                        return `<div style="background:rgba(0,0,0,0.03);border:1px solid var(--border);border-radius:10px;padding:8px 10px;text-align:center;">
+                            <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);margin-bottom:6px;">${attr.icon} ${attr.label}</div>
+                            <div style="display:flex;justify-content:center;">${sk}</div>
+                        </div>`;
+                    }).join('')}
+                    </div>`
+                }
+
+                <!-- Storico sessioni (tabella) -->
+                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px;">🗓 Ultime sessioni</div>
+                <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+                    <thead><tr style="background:rgba(0,0,0,0.03);">
+                        <th style="padding:7px 10px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);">Data</th>
+                        <th style="padding:7px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);">Presenza</th>
+                        <th style="padding:7px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#3b82f6;">VEL</th>
+                        <th style="padding:7px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#8b5cf6;">TEC</th>
+                        <th style="padding:7px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#f59e0b;">FIS</th>
+                        <th style="padding:7px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#10b981;">RES</th>
+                        <th style="padding:7px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#ec4899;">COM</th>
+                    </tr></thead>
+                    <tbody>
+                    ${allAtt.slice().reverse().slice(0,12).map(a => {
+                        const statColor = s => s==='presente'?'#10b981':s==='assente'?'#ef4444':s==='infortunato'?'#f59e0b':'#94a3b8';
+                        const statIcon  = s => s==='presente'?'✅':s==='assente'?'❌':s==='infortunato'?'🩹':'📋';
+                        const starMini = (v, col) => v>0?`<span style="font-weight:700;font-family:'DM Mono',monospace;color:${col};">${v}★</span>`:'<span style="color:var(--text-muted);">—</span>';
+                        return `<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+                            <td style="padding:6px 10px;">${new Date(a.date).toLocaleDateString('it-IT',{day:'2-digit',month:'short'})}</td>
+                            <td style="padding:6px 8px;text-align:center;"><span style="color:${statColor(a.status)};font-size:0.78rem;">${statIcon(a.status)}</span></td>
+                            <td style="padding:6px 8px;text-align:center;">${starMini(a.VEL,'#3b82f6')}</td>
+                            <td style="padding:6px 8px;text-align:center;">${starMini(a.TEC,'#8b5cf6')}</td>
+                            <td style="padding:6px 8px;text-align:center;">${starMini(a.FIS,'#f59e0b')}</td>
+                            <td style="padding:6px 8px;text-align:center;">${starMini(a.RES,'#10b981')}</td>
+                            <td style="padding:6px 8px;text-align:center;">${starMini(a.COM,'#ec4899')}</td>
+                        </tr>`;
+                    }).join('') || '<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--text-muted);">Nessuna sessione registrata.</td></tr>'}
+                    </tbody>
+                </table>
+                </div>`;
+        };
+
+        // Tab switcher
+        window._allTab = function(tab) {
+            document.querySelectorAll('.all-tab-btn').forEach((b,i) => {
+                const tabs = ['dashboard','kpi','drilldown'];
+                b.classList.toggle('active', tabs[i] === tab);
+            });
+            document.querySelectorAll('.all-section').forEach(s => s.classList.remove('active'));
+            const el = document.getElementById(`all-tab-${tab}`);
+            if (el) el.classList.add('active');
+        };
+
+    } catch(err) {
+        console.error('_renderVistaAllenatore error:', err);
+        const container = document.getElementById('allenatore-dash-content');
+        if (container) container.innerHTML = `<div style="color:#ef4444;padding:16px;">Errore caricamento: ${err.message}</div>`;
+    }
+}
+
 async function _initGenitoreTeamScope() {
     if (window._genitoreTeamIds !== undefined) return;
     const userId = window._currentUserId;
@@ -8490,6 +9103,12 @@ function _applyTabFilterVisibility() {
     // ── Visibilità sezione dettaglio genitore ──
     const genSection = document.getElementById('pres-genitore-section');
     if (genSection) genSection.style.display = isGenitore ? '' : 'none';
+
+    // ── Visibilità sezioni generiche KPI presidenza vs vista allenatore ──
+    const presGenericSections = document.getElementById('pres-generic-sections');
+    const allenatoreSectionWrap = document.getElementById('pres-allenatore-section');
+    if (presGenericSections)  presGenericSections.style.display  = (role === 'allenatore') ? 'none' : '';
+    if (allenatoreSectionWrap) allenatoreSectionWrap.style.display = (role === 'allenatore') ? '' : 'none';
 
     // ── Filtri nei tab generali (0-5) ──
     const socSelects  = ['dash-stats-soc','dash-match-soc','dash-pres-soc','dash-ath-soc','dash-monthly-soc'];
