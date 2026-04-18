@@ -22,13 +22,13 @@
 
         :root {
             /* ── BRAND — Coral Red (unchanged) */
-            --primary:        #e8402e;
-            --primary-dark:   #c73020;
-            --primary-mid:    #f05540;
-            --primary-glow:   rgba(232,64,46,0.18);
-            --primary-subtle: rgba(232,64,46,0.07);
-            --accent:         #f59e0b;
-            --accent-glow:    rgba(245,158,11,0.15);
+            --primary:        #2563eb;
+            --primary-dark:   #1d4ed8;
+            --primary-mid:    #3b82f6;
+            --primary-glow:   rgba(37,99,235,0.18);
+            --primary-subtle: rgba(37,99,235,0.07);
+            --accent:         #0ea5e9;
+            --accent-glow:    rgba(14,165,233,0.15);
             --success:        #059669;
             --success-dim:    rgba(5,150,105,0.1);
             --warning:        #d97706;
@@ -42,13 +42,13 @@
             --card-hover:     #f8f9fc;
             --border:         rgba(0,0,0,0.08);
             --border-strong:  rgba(0,0,0,0.14);
-            --border-accent:  rgba(232,64,46,0.2);
+            --border-accent:  rgba(37,99,235,0.2);
 
             /* ── SIDEBAR */
             --sidebar-bg:         #ffffff;
             --sidebar-border:     rgba(0,0,0,0.07);
-            --sidebar-active-bg:  rgba(232,64,46,0.09);
-            --sidebar-active-bar: #e8402e;
+            --sidebar-active-bg:  rgba(37,99,235,0.09);
+            --sidebar-active-bar: #2563eb;
             --sidebar-hover-bg:   rgba(0,0,0,0.04);
             --sidebar-text:       #8a96b0;
             --sidebar-text-active:#1a2240;
@@ -63,7 +63,7 @@
             --shadow-md:  0 4px 20px rgba(0,0,0,0.09), 0 2px 8px rgba(0,0,0,0.05);
             --shadow-lg:  0 12px 48px rgba(0,0,0,0.1), 0 4px 16px rgba(0,0,0,0.06);
             --shadow-xl:  0 24px 72px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.07);
-            --glow-primary: 0 0 40px rgba(232,64,46,0.1), 0 0 80px rgba(232,64,46,0.05);
+            --glow-primary: 0 0 40px rgba(37,99,235,0.1), 0 0 80px rgba(37,99,235,0.05);
 
             /* ── RADII */
             --r-sm:  6px;
@@ -88,8 +88,8 @@
             font-family: 'Outfit', system-ui, sans-serif;
             background: var(--bg);
             background-image:
-                radial-gradient(ellipse 120% 80% at 50% -10%, rgba(232,64,46,0.04) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 40% at 100% 80%, rgba(245,158,11,0.025) 0%, transparent 50%);
+                radial-gradient(ellipse 120% 80% at 50% -10%, rgba(37,99,235,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 100% 80%, rgba(14,165,233,0.025) 0%, transparent 50%);
             min-height: 100vh;
             color: var(--text-main);
             -webkit-font-smoothing: antialiased;
@@ -98,8 +98,8 @@
         /* ── SCROLLBAR */
         ::-webkit-scrollbar { width: 3px; height: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(232,64,46,0.25); border-radius: 99px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(232,64,46,0.5); }
+        ::-webkit-scrollbar-thumb { background: rgba(37,99,235,0.25); border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(37,99,235,0.5); }
 
         /* ══════════════════════════════════════
            MATCH POPUP
@@ -119,7 +119,7 @@
         #match-popup-box {
             background: var(--card-raised);
             border-radius: var(--r-2xl);
-            box-shadow: var(--shadow-xl), 0 0 0 1px rgba(255,79,59,0.1), var(--glow-primary);
+            box-shadow: var(--shadow-xl), 0 0 0 1px rgba(37,99,235,0.1), var(--glow-primary);
             width: 100%;
             max-width: 900px;
             max-height: 92vh;
@@ -142,8 +142,8 @@
             transition: all 0.15s;
         }
         #match-popup-close-btn:hover {
-            background: rgba(255,56,96,0.15); color: var(--danger);
-            border-color: rgba(255,56,96,0.3); transform: rotate(90deg);
+            background: rgba(37,99,235,0.15); color: var(--danger);
+            border-color: rgba(37,99,235,0.3); transform: rotate(90deg);
         }
 
         /* ══════════════════════════════════════
@@ -166,9 +166,9 @@
             position: absolute;
             inset: 0;
             background:
-                radial-gradient(ellipse 70% 50% at 15% 50%, rgba(232,64,46,0.1) 0%, transparent 55%),
-                radial-gradient(ellipse 50% 60% at 85% 30%, rgba(245,158,11,0.07) 0%, transparent 50%),
-                radial-gradient(ellipse 80% 40% at 50% 100%, rgba(232,64,46,0.06) 0%, transparent 50%);
+                radial-gradient(ellipse 70% 50% at 15% 50%, rgba(37,99,235,0.1) 0%, transparent 55%),
+                radial-gradient(ellipse 50% 60% at 85% 30%, rgba(14,165,233,0.07) 0%, transparent 50%),
+                radial-gradient(ellipse 80% 40% at 50% 100%, rgba(37,99,235,0.06) 0%, transparent 50%);
             animation: meshPulse 10s ease-in-out infinite alternate;
         }
         @keyframes meshPulse {
@@ -198,7 +198,7 @@
             padding: 3rem 2.5rem;
             width: 100%;
             max-width: 400px;
-            box-shadow: var(--shadow-xl), 0 0 0 1px rgba(232,64,46,0.05), var(--glow-primary);
+            box-shadow: var(--shadow-xl), 0 0 0 1px rgba(37,99,235,0.05), var(--glow-primary);
             animation: loginCardIn 0.55s cubic-bezier(.34,1.3,.64,1) both;
         }
         @keyframes loginCardIn {
@@ -219,7 +219,7 @@
             border-radius: var(--r-md);
             display: flex; align-items: center; justify-content: center;
             font-size: 22px;
-            box-shadow: 0 8px 28px rgba(255,79,59,0.5);
+            box-shadow: 0 8px 28px rgba(37,99,235,0.5);
             flex-shrink: 0;
         }
 
@@ -265,16 +265,16 @@
         }
         .login-card input:focus {
             outline: none;
-            border-color: rgba(232,64,46,0.5);
-            background: rgba(232,64,46,0.04);
-            box-shadow: 0 0 0 4px rgba(232,64,46,0.1);
+            border-color: rgba(37,99,235,0.5);
+            background: rgba(37,99,235,0.04);
+            box-shadow: 0 0 0 4px rgba(37,99,235,0.1);
         }
         .login-card input::placeholder { color: rgba(26,34,64,0.3); }
 
         .btn-login {
             width: 100%;
             padding: 0.88rem;
-            background: linear-gradient(135deg, var(--primary), #c93020);
+            background: linear-gradient(135deg, var(--primary), #1d4ed8);
             color: white;
             border: none;
             border-radius: var(--r-md);
@@ -286,7 +286,7 @@
             letter-spacing: 0.06em;
             text-transform: uppercase;
             margin-top: 0.5rem;
-            box-shadow: 0 4px 24px rgba(255,79,59,0.5);
+            box-shadow: 0 4px 24px rgba(37,99,235,0.5);
             position: relative;
             overflow: hidden;
         }
@@ -300,7 +300,7 @@
         }
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 32px rgba(255,79,59,0.65);
+            box-shadow: 0 8px 32px rgba(37,99,235,0.65);
         }
         .btn-login { color: white !important; } .btn-login:hover::after { opacity: 1; }
         .btn-login:active { transform: translateY(0); }
@@ -351,7 +351,7 @@
             border-radius: var(--r-sm);
             display: flex; align-items: center; justify-content: center;
             font-size: 15px; flex-shrink: 0;
-            box-shadow: 0 4px 14px rgba(255,79,59,0.4);
+            box-shadow: 0 4px 14px rgba(37,99,235,0.4);
         }
 
         .sidebar-brand-name {
@@ -420,7 +420,7 @@
             background: var(--sidebar-active-bar);
             border-radius: 2px;
             position: absolute; left: 0;
-            box-shadow: 0 0 12px rgba(255,79,59,0.8);
+            box-shadow: 0 0 12px rgba(37,99,235,0.8);
         }
 
         .sidebar-footer {
@@ -431,8 +431,8 @@
         .btn-logout {
             width: 100%;
             background: transparent;
-            border: 1px solid rgba(255,56,96,0.15);
-            color: rgba(255,100,120,0.7);
+            border: 1px solid rgba(37,99,235,0.15);
+            color: rgba(59,130,246,0.7);
             padding: 0.58rem 1rem;
             border-radius: var(--r-sm);
             cursor: pointer;
@@ -444,9 +444,9 @@
             letter-spacing: 0.04em;
         }
         .btn-logout:hover {
-            background: rgba(255,56,96,0.1);
-            border-color: rgba(255,56,96,0.3);
-            color: #ff8a9a;
+            background: rgba(37,99,235,0.1);
+            border-color: rgba(37,99,235,0.3);
+            color: #93c5fd;
         }
 
         /* IMPORT SPECIAL LINK */
@@ -458,11 +458,11 @@
             margin-top: 6px;
         }
         #sidebar a[data-section="import-atleti"]:hover {
-            background: rgba(255,79,59,0.15);
+            background: rgba(37,99,235,0.15);
         }
 
         /* HOME FLOAT BTN */
-        #btn-home-float:hover { transform: scale(1.1); box-shadow: 0 8px 32px rgba(255,79,59,0.7); }
+        #btn-home-float:hover { transform: scale(1.1); box-shadow: 0 8px 32px rgba(37,99,235,0.7); }
 
         /* ── MAIN CONTENT ── */
         #content {
@@ -475,7 +475,7 @@
             flex: 1;
             background: var(--bg);
             background-image:
-                radial-gradient(ellipse 60% 30% at 80% 10%, rgba(232,64,46,0.03) 0%, transparent 50%);
+                radial-gradient(ellipse 60% 30% at 80% 10%, rgba(37,99,235,0.03) 0%, transparent 50%);
         }
         #content .card, #content > div { width: 100%; box-sizing: border-box; }
         #app[style*="flex"] { width: 100%; }
@@ -510,7 +510,7 @@
             position: absolute;
             inset: 0;
             border-radius: inherit;
-            background: linear-gradient(135deg, rgba(232,64,46,0.02) 0%, transparent 60%);
+            background: linear-gradient(135deg, rgba(37,99,235,0.02) 0%, transparent 60%);
             pointer-events: none;
         }
         .card:hover {
@@ -548,12 +548,12 @@
             font-family: inherit;
             transition: all 0.18s;
             display: inline-flex; align-items: center; gap: 6px;
-            box-shadow: 0 2px 10px rgba(255,79,59,0.3);
+            box-shadow: 0 2px 10px rgba(37,99,235,0.3);
             letter-spacing: 0.02em;
         }
         .btn:hover {
             background: var(--primary-dark);
-            box-shadow: 0 4px 18px rgba(255,79,59,0.5);
+            box-shadow: 0 4px 18px rgba(37,99,235,0.5);
             transform: translateY(-1px);
         }
         .btn:active { transform: translateY(0); }
@@ -587,7 +587,7 @@
             font-size: var(--text-sm);
             color: var(--text-main);
         }
-        tr:hover td { background: rgba(232,64,46,0.04) !important; }
+        tr:hover td { background: rgba(37,99,235,0.04) !important; }
         tr:last-child td { border-bottom: none; }
 
         /* ── BADGES ── */
@@ -616,7 +616,7 @@
             border-radius: var(--r-xl);
             width: 90%; max-width: 460px;
             max-height: 90vh; overflow-y: auto;
-            box-shadow: var(--shadow-xl), 0 0 0 1px rgba(255,79,59,0.1);
+            box-shadow: var(--shadow-xl), 0 0 0 1px rgba(37,99,235,0.1);
             border: 1px solid var(--border-accent);
             animation: popupIn 0.24s cubic-bezier(.34,1.36,.64,1);
         }
@@ -652,7 +652,7 @@
         .star { font-size: 1.4rem; color: rgba(0,0,0,0.15); transition: all 0.2s ease; cursor: pointer; }
         .star.active { color: var(--accent) !important; }
         .star:hover { transform: scale(1.2); }
-        .att-row-data:hover { background: rgba(255,79,59,0.04); }
+        .att-row-data:hover { background: rgba(37,99,235,0.04); }
 
         /* SESSION FILTER */
         #filter-society-sess {
@@ -668,7 +668,7 @@
             font-size: var(--text-2xs); font-weight: 700;
             letter-spacing: 0.05em; text-transform: uppercase;
             padding: 2px 6px; border-radius: 4px;
-            background: rgba(255,79,59,0.15); color: var(--primary-mid);
+            background: rgba(37,99,235,0.15); color: var(--primary-mid);
             margin-left: auto;
         }
 
@@ -726,7 +726,7 @@
             margin-top: 6px;
         }
         #sidebar a[data-section="import-atleti"]:hover {
-            background: rgba(255,79,59,0.15);
+            background: rgba(37,99,235,0.15);
         }
 
         /* ── FILTER BARS */
@@ -861,9 +861,9 @@
     title="Torna alla Dashboard"
     style="display:none; position:fixed; bottom:28px; right:28px; z-index:500;
            width:48px; height:48px; border-radius:50%; border:none; cursor:pointer;
-           background:linear-gradient(135deg, var(--primary, #ff4f3b), #c93020);
+           background:linear-gradient(135deg, var(--primary, #3b82f6), #1d4ed8);
            color:var(--text-main); font-size:18px; line-height:1;
-           box-shadow:0 4px 20px rgba(255,79,59,0.55);
+           box-shadow:0 4px 20px rgba(37,99,235,0.55);
            transition:transform 0.18s, box-shadow 0.18s;
            align-items:center; justify-content:center;">
     🏠
@@ -2272,7 +2272,7 @@ window.handleDeleteStaff = async function(id) {
     const style = document.createElement('style');
     style.innerHTML = `
         .btn-icon-atleta { border: none; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer; transition: 0.2s; margin-left: 4px; }
-        .btn-icon-atleta.edit { background-color: rgba(255,79,59,0.1); color: var(--primary); }
+        .btn-icon-atleta.edit { background-color: rgba(37,99,235,0.1); color: var(--primary); }
         .btn-icon-atleta.delete { background-color: rgba(239,68,68,0.1); color: #ef4444; }
         .btn-icon-atleta.link { background-color: rgba(5,150,105,0.1); color: var(--success); }
         .btn-icon-atleta:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
@@ -3342,7 +3342,7 @@ function templateSessioni() {
                         <th style="padding:12px; text-align:center;">Note</th>
                         <th style="padding:12px; text-align:center; color:#10b981;">P</th>
                         <th style="padding:12px; text-align:center; color:#ef4444;">A</th>
-                        <th style="padding:12px; text-align:center; color:#f59e0b;">G</th>
+                        <th style="padding:12px; text-align:center; color:#0ea5e9;">G</th>
                         <th style="padding:12px; text-align:center; color:#8b5cf6;">I</th>
                         <th style="padding:12px; text-align:center;">% Pres.</th>
                         <th style="padding:12px; text-align:right;">Azioni</th>
@@ -3664,7 +3664,7 @@ async function initSessioni() {
             </td>
             <td style="padding:10px; text-align:center; font-weight:bold; color:#10b981;">${stats.p}</td>
             <td style="padding:10px; text-align:center; font-weight:bold; color:#ef4444;">${stats.a}</td>
-            <td style="padding:10px; text-align:center; font-weight:bold; color:#f59e0b;">${stats.g}</td>
+            <td style="padding:10px; text-align:center; font-weight:bold; color:#0ea5e9;">${stats.g}</td>
             <td style="padding:10px; text-align:center; font-weight:bold; color:#8b5cf6;">${stats.i}</td>
             <td style="padding:10px; text-align:center;"><strong>${perc}%</strong></td>
             <td style="padding:10px; text-align:right;">
@@ -3814,7 +3814,7 @@ async function openAttendanceModal(sessionId) {
     popupBox.style.maxWidth = '900px';
 
     const stars = (k, p) => [1,2,3,4,5].map(s =>
-        `<span onclick="setRating(this,${s})" style="cursor:pointer;color:${s<=(p[k]||0)?'#f59e0b':'rgba(0,0,0,0.18)'};font-size:16px;line-height:1;">★</span>`
+        `<span onclick="setRating(this,${s})" style="cursor:pointer;color:${s<=(p[k]||0)?'#0ea5e9':'rgba(0,0,0,0.18)'};font-size:16px;line-height:1;">★</span>`
     ).join('');
 
     content.innerHTML = `
@@ -4127,7 +4127,7 @@ async function initPartite() {
             <td style="padding:12px;"><span style="color:var(--text-muted);">${m.teams?.name || '---'}</span></td>
             <td style="padding:12px; text-align:center; display:flex; gap:6px; justify-content:center;">
                 <button class="btn-sm" onclick="window.openConvocazioni('${m.id}')" style="background:var(--primary); color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:600;">📋 CONVOCA</button>
-                <button class="btn-sm" onclick="window.openTabellino('${m.id}')" style="background:#f59e0b; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:600;">⚽ TABELLINO</button>
+                <button class="btn-sm" onclick="window.openTabellino('${m.id}')" style="background:#0ea5e9; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:600;">⚽ TABELLINO</button>
                 <button class="btn-sm" onclick="window.openStatistiche('${m.id}')" style="background:#6366f1; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:600;">📊 STATS</button>
 				<button onclick="window.exportConvocazioniIMG('${m.id}')"style="background:#10b981; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600;">🖼️ IMMAGINE</button>
 			</td>
@@ -4373,7 +4373,7 @@ window.openConvocazioni = async function(sessionId) {
                         <label style="color:var(--text-sub); font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">
                             NON CONV. <input type="radio" name="status-${a.athlete_id}" class="conv-radio" data-id="${a.athlete_id}" value="assente" ${isExcl ? 'checked' : ''}>
                         </label>
-                        <label style="color:#f59e0b; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px; border-left:1px solid #374151; padding-left:8px;">
+                        <label style="color:#0ea5e9; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px; border-left:1px solid #374151; padding-left:8px;">
                             SQUALIF. <input type="radio" name="status-${a.athlete_id}" class="conv-radio" data-id="${a.athlete_id}" value="squalificato" ${isSq ? 'checked' : ''}>
                         </label>
                         <label style="color:#ef4444; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">
@@ -4522,7 +4522,7 @@ window.openTabellino = async function(sessionId) {
 
         <!-- BADGES ROW -->
         <div style="display:flex; gap:8px; padding:10px 24px; background:rgba(0,0,0,0.03); border-bottom:1px solid var(--border); flex-wrap:wrap;">
-            <span style="background:${d.is_home !== false ? 'rgba(255,79,59,0.12)' : 'rgba(139,92,246,0.12)'}; color:${d.is_home !== false ? 'var(--primary-mid)' : '#a78bfa'}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${d.is_home !== false ? '🏠 Casa' : '🚌 Trasferta'}</span>
+            <span style="background:${d.is_home !== false ? 'rgba(37,99,235,0.12)' : 'rgba(139,92,246,0.12)'}; color:${d.is_home !== false ? 'var(--primary-mid)' : '#a78bfa'}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${d.is_home !== false ? '🏠 Casa' : '🚌 Trasferta'}</span>
             <span style="background:${!d.is_friendly ? 'rgba(6,214,160,0.12)' : 'rgba(255,209,102,0.1)'}; color:${!d.is_friendly ? '#06d6a0' : '#ffd166'}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${!d.is_friendly ? '🏆 Ufficiale' : '🤝 Amichevole'}</span>
             <span style="background:${ebg}; color:${efg}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${elbl === 'V' ? '✅ Vittoria' : elbl === 'S' ? '❌ Sconfitta' : elbl === 'P' ? '🤝 Pareggio' : '⏳ Da giocare'}</span>
             <span style="background:var(--card-raised); color:var(--text-sub); padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">👥 ${sortedConv.length} convocati</span>
@@ -4607,7 +4607,7 @@ window.openTabellino = async function(sessionId) {
                             <th style="padding:10px 12px; text-align:left; font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">#</th>
                             <th style="padding:10px 12px; text-align:left; font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Giocatore</th>
                             <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:#10b981; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">⚽ Gol</th>
-                            <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:#f59e0b; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">🟨 Amm.</th>
+                            <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:#0ea5e9; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">🟨 Amm.</th>
                             <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:#ef4444; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">🟥 Esp.</th>
                             <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">⏱ Minuti</th>
                             <th style="padding:10px 12px; text-align:center; font-size:0.68rem; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap;">Titolare</th>
@@ -4625,7 +4625,7 @@ window.openTabellino = async function(sessionId) {
                             const mins = st.minutes_played || 0;
                             const isStarter = st.is_starter !== false;
                             return `
-                            <tr style="border-bottom:1px solid rgba(0,0,0,0.05);" onmouseover="this.style.background='rgba(255,79,59,0.05)'" onmouseout="this.style.background=''">
+                            <tr style="border-bottom:1px solid rgba(0,0,0,0.05);" onmouseover="this.style.background='rgba(37,99,235,0.05)'" onmouseout="this.style.background=''">
                                 <td style="padding:9px 12px; font-weight:700; color:var(--primary); font-size:0.85rem;">${jersey}</td>
                                 <td style="padding:9px 12px; font-weight:600; white-space:nowrap;">
                                     <span style="font-size:0.85rem; color:var(--text-main);">${fullName}</span>
@@ -4641,7 +4641,7 @@ window.openTabellino = async function(sessionId) {
                                 <td style="padding:6px 8px; text-align:center;">
                                     <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
                                         <button onclick="window._adjustStat(this, -1)" data-field="yellow_cards" data-id="${aid}" style="width:22px; height:22px; border-radius:50%; border:1px solid var(--border); background:var(--card); cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; color:var(--text-muted);">−</button>
-                                        <span class="stat-val" data-field="yellow_cards" data-id="${aid}" style="font-weight:800; font-size:1rem; color:#f59e0b; min-width:20px; text-align:center;">${yc}</span>
+                                        <span class="stat-val" data-field="yellow_cards" data-id="${aid}" style="font-weight:800; font-size:1rem; color:#0ea5e9; min-width:20px; text-align:center;">${yc}</span>
                                         <button onclick="window._adjustStat(this, 1)" data-field="yellow_cards" data-id="${aid}" style="width:22px; height:22px; border-radius:50%; border:1px solid var(--border); background:var(--card); cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; color:var(--text-muted);">+</button>
                                     </div>
                                 </td>
@@ -4855,11 +4855,11 @@ window.printTabellinoMatchPDF = async function(sessionId) {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        border-bottom: 2.5px solid #e8402e;
+        border-bottom: 2.5px solid #2563eb;
         padding-bottom: 10px;
         margin-bottom: 12px;
     }
-    .header-left .club { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #e8402e; margin-bottom: 2px; }
+    .header-left .club { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #2563eb; margin-bottom: 2px; }
     .header-left .match-title { font-size: 16pt; font-weight: 900; letter-spacing: -0.5px; line-height: 1.1; }
     .header-left .match-sub { font-size: 8.5pt; color: #555; margin-top: 3px; }
     .header-right { text-align: right; }
@@ -4869,7 +4869,7 @@ window.printTabellinoMatchPDF = async function(sessionId) {
         font-size: 7.5pt; font-weight: 700; padding: 2px 8px; border-radius: 99px;
         border: 1px solid #ccc; color: #333;
     }
-    .badge-home    { border-color: #e8402e; color: #e8402e; }
+    .badge-home    { border-color: #2563eb; color: #2563eb; }
     .badge-type    { border-color: #059669; color: #059669; }
     .badge-status  { border-color: #6366f1; color: #6366f1; }
 
@@ -4925,8 +4925,8 @@ window.printTabellinoMatchPDF = async function(sessionId) {
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.1em;
-        color: #e8402e;
-        border-bottom: 1.5px solid #e8402e;
+        color: #2563eb;
+        border-bottom: 1.5px solid #2563eb;
         padding-bottom: 3px;
         margin-bottom: 7px;
     }
@@ -4958,7 +4958,7 @@ window.printTabellinoMatchPDF = async function(sessionId) {
     }
     table.players tr.even td { background: #fafafa; }
     table.players tr.odd  td { background: #fff; }
-    td.num   { width: 30px; text-align: center; font-weight: 700; color: #e8402e; }
+    td.num   { width: 30px; text-align: center; font-weight: 700; color: #2563eb; }
     td.name  { min-width: 140px; font-weight: 600; }
     td.center { text-align: center; }
     td.starter-cell { width: 42px; color: #059669; font-weight: 700; }
@@ -5018,7 +5018,7 @@ window.printTabellinoMatchPDF = async function(sessionId) {
 <div class="header">
     <div class="header-left">
         <div class="club">${societaName}${catName ? ' · ' + catName : ''} · SportTrackPro</div>
-        <div class="match-title">${teamName || 'Squadra'}<br><span style="color:#e8402e;">vs ${opponent}</span></div>
+        <div class="match-title">${teamName || 'Squadra'}<br><span style="color:#2563eb;">vs ${opponent}</span></div>
         <div class="match-sub">${sessionDate}</div>
     </div>
     <div class="header-right">
@@ -5223,7 +5223,7 @@ window.exportConvocazioniIMG = async function(sessionId) {
 
         // Palette di colori da assegnare ciclicamente ai ruoli dinamici
         const paletteColori = [
-            { bg: "#f59e0b", text: "#1a1a2e" },
+            { bg: "#0ea5e9", text: "#1a1a2e" },
             { bg: "var(--primary)", text: "#ffffff" },
             { bg: "#8b5cf6", text: "#ffffff" },
             { bg: "#ef4444", text: "#ffffff" },
@@ -5471,16 +5471,16 @@ window.openStatistiche = async function(sessionId) {
 
         <!-- KPI GRID -->
         <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; margin-bottom:1.25rem;">
-            ${kpiCard('🏆 Punti', totalPts, wins+'V · '+draws+'P · '+losses+'S', '#f59e0b')}
+            ${kpiCard('🏆 Punti', totalPts, wins+'V · '+draws+'P · '+losses+'S', '#0ea5e9')}
             ${kpiCard('Partite', totalMatches, 'ufficiali giocate', 'var(--primary)')}
             ${kpiCard('🏠 Casa', homeMatches, 'partite in casa', 'var(--primary)')}
             ${kpiCard('🚌 Trasferta', awayMatches, 'partite fuori', '#8b5cf6')}
             ${kpiCard('Vittorie', wins, `${totalMatches > 0 ? Math.round(wins/totalMatches*100) : 0}% win rate`, '#10b981')}
-            ${kpiCard('Pareggi', draws, 'risultati pari', '#f59e0b')}
+            ${kpiCard('Pareggi', draws, 'risultati pari', '#0ea5e9')}
             ${kpiCard('Sconfitte', losses, 'risultati negativi', '#ef4444')}
             ${kpiCard('GF', totalGF, 'gol fatti', '#10b981')}
             ${kpiCard('GS', totalGS, 'gol subiti', '#ef4444')}
-            ${kpiCard('🟨 Amm.', totalAmm, 'ammonizioni', '#f59e0b')}
+            ${kpiCard('🟨 Amm.', totalAmm, 'ammonizioni', '#0ea5e9')}
             ${kpiCard('🟥 Esp.', totalEsp, 'espulsioni', '#ef4444')}
         </div>
 
@@ -5490,7 +5490,7 @@ window.openStatistiche = async function(sessionId) {
             <div style="font-size:0.7rem; font-weight:700; color:var(--text-sub); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:8px;">Andamento V/P/S</div>
             <div style="display:flex; border-radius:8px; overflow:hidden; height:28px;">
                 ${wins  > 0 ? `<div style="flex:${wins};  background:#10b981; display:flex; align-items:center; justify-content:center; color:var(--text-main); font-size:0.72rem; font-weight:700;">${wins}V</div>` : ''}
-                ${draws > 0 ? `<div style="flex:${draws}; background:#f59e0b; display:flex; align-items:center; justify-content:center; color:var(--text-main); font-size:0.72rem; font-weight:700;">${draws}P</div>` : ''}
+                ${draws > 0 ? `<div style="flex:${draws}; background:#0ea5e9; display:flex; align-items:center; justify-content:center; color:var(--text-main); font-size:0.72rem; font-weight:700;">${draws}P</div>` : ''}
                 ${losses> 0 ? `<div style="flex:${losses};background:#ef4444; display:flex; align-items:center; justify-content:center; color:var(--text-main); font-size:0.72rem; font-weight:700;">${losses}S</div>` : ''}
             </div>
         </div>` : ''}
@@ -5512,7 +5512,7 @@ window.openStatistiche = async function(sessionId) {
                             <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#10b981;" title="Presenze partite">P. Gara</th>
                             <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:var(--primary);" title="Convocazioni">Conv.</th>
                             <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#10b981;">⚽ Gol</th>
-                            <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#f59e0b;">🟨</th>
+                            <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#0ea5e9;">🟨</th>
                             <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#ef4444;">🟥</th>
                             <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:var(--primary);" title="Minuti Giocati">⏱ Min.</th>
                             <th style="padding:9px 10px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#ef4444;">Squal.</th>
@@ -5522,13 +5522,13 @@ window.openStatistiche = async function(sessionId) {
                         ${athletes.length === 0 ? '<tr><td colspan="8" style="padding:20px; text-align:center; color:var(--text-sub);">Nessun dato disponibile.</td></tr>' :
                           athletes.map(a => {
                             const convPerc = a.totali > 0 ? Math.round(a.presenze/a.totali*100) : 0;
-                            const percColor = convPerc >= 75 ? '#10b981' : convPerc >= 50 ? '#f59e0b' : '#ef4444';
-                            return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);" onmouseover="this.style.background='rgba(255,79,59,0.05)'" onmouseout="this.style.background=''">
+                            const percColor = convPerc >= 75 ? '#10b981' : convPerc >= 50 ? '#0ea5e9' : '#ef4444';
+                            return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);" onmouseover="this.style.background='rgba(37,99,235,0.05)'" onmouseout="this.style.background=''">
                                 <td style="padding:9px 12px; font-weight:600;">${a.name}</td>
                                 <td style="padding:9px 10px; text-align:center; font-weight:700; color:${percColor};">${a.presenze}<span style="font-size:0.65rem; color:var(--text-sub); font-weight:400;">/${a.totali}</span></td>
                                 <td style="padding:9px 10px; text-align:center; color:var(--primary); font-weight:700;">${a.presenze}</td>
                                 <td style="padding:9px 10px; text-align:center; color:#10b981; font-weight:700;">${a.gol}</td>
-                                <td style="padding:9px 10px; text-align:center; color:#f59e0b; font-weight:700;">${a.amm}</td>
+                                <td style="padding:9px 10px; text-align:center; color:#0ea5e9; font-weight:700;">${a.amm}</td>
                                 <td style="padding:9px 10px; text-align:center; color:#ef4444; font-weight:700;">${a.esp}</td>
                                 <td style="padding:9px 10px; text-align:center; color:var(--primary); font-weight:700;">${a.min > 0 ? a.min + '<span style="font-size:0.65rem; color:var(--text-sub); font-weight:400;">\'</span>' : '<span style="color:var(--text-muted);">—</span>'}</td>
                                 <td style="padding:9px 10px; text-align:center; color:#ef4444; font-size:0.78rem;">${a.squal > 0 ? a.squal + ' gg' : '-'}</td>
@@ -5867,13 +5867,13 @@ window.templateDashboard = function() {
                         <thead>
                             <tr style="background:rgba(0,0,0,0.03); color:var(--text-muted);">
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Squadra</th>
-                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#f59e0b;" title="Punti">Pts</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#0ea5e9;" title="Punti">Pts</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;" title="Partite ufficiali">P</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:var(--primary);" title="In casa">🏠</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#8b5cf6;" title="In trasferta">🚌</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#10b981;">GF</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#ef4444;">GS</th>
-                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#f59e0b;">🟨</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#0ea5e9;">🟨</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#ef4444;">🟥</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">V/P/S</th>
                             </tr>
@@ -5963,7 +5963,7 @@ window.templateDashboard = function() {
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left;">Sessione</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#10b981;">P</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#ef4444;">A</th>
-                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#f59e0b;">G</th>
+                                <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center; color:#0ea5e9;">G</th>
                                 <th style="padding:8px 10px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:center;">%</th>
                             </tr>
                         </thead>
@@ -6006,23 +6006,23 @@ window.templateDashboard = function() {
                                 <th style="padding:9px 12px; font-weight:700; font-size:0.72rem; text-transform:uppercase; text-align:left; white-space:nowrap;" rowspan="2">Squadra</th>
                                 <th colspan="5" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#10b981; border-left:1px solid var(--border); background:rgba(5,150,105,0.08); border-radius:4px 4px 0 0;">ALLENAMENTI</th>
                                 <th colspan="6" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:var(--primary); border-left:1px solid var(--border); background:var(--primary-subtle); border-radius:4px 4px 0 0;">PARTITE</th>
-                                <th colspan="2" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#f59e0b; border-left:1px solid var(--border); background:rgba(255,179,71,0.06); border-radius:4px 4px 0 0;">TOTALE</th>
+                                <th colspan="2" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#0ea5e9; border-left:1px solid var(--border); background:rgba(255,179,71,0.06); border-radius:4px 4px 0 0;">TOTALE</th>
                                 <th colspan="5" style="padding:5px 10px; font-weight:700; font-size:0.65rem; text-transform:uppercase; text-align:center; color:#6366f1; border-left:1px solid var(--border); background:rgba(99,102,241,0.06); border-radius:4px 4px 0 0;">PERFORMANCE ★</th>
                             </tr>
                             <tr style="background:rgba(0,0,0,0.03); color:var(--text-muted);">
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981; border-left:1px solid var(--border);" title="Presenze">P</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#ef4444;" title="Assenze">A</th>
-                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="Giustificati">G</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#0ea5e9;" title="Giustificati">G</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#8b5cf6;" title="Infortunati">I</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981;" title="% Presenze Allenamenti">%</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981; border-left:1px solid var(--border);" title="Presenze partite">P</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:var(--primary);" title="Convocazioni">Conv.</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#10b981;" title="Gol">⚽</th>
-                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="Ammonizioni">🟨</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#0ea5e9;" title="Ammonizioni">🟨</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#ef4444;" title="Espulsioni">🟥</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:var(--primary);" title="Minuti Giocati">⏱</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:var(--text-sub); border-left:1px solid var(--border);" title="Presenze Totali">Pres. Tot.</th>
-                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#f59e0b;" title="% Presenze Totale">% Tot.</th>
+                                <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#0ea5e9;" title="% Presenze Totale">% Tot.</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1; border-left:1px solid var(--border);">VEL</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1;">TEC</th>
                                 <th style="padding:7px 10px; font-weight:700; font-size:0.68rem; text-align:center; color:#6366f1;">FIS</th>
@@ -6196,8 +6196,8 @@ window.templateDashboard = function() {
                                 <th style="padding:8px 12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:left;">Mese</th>
                                 <th style="padding:8px 12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#10b981;">GF</th>
                                 <th style="padding:8px 12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#ef4444;">GS</th>
-                                <th style="padding:8px 12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#f59e0b;">Pts</th>
-                                <th style="padding:8px 12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#f59e0b;">🟨</th>
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#0ea5e9;">Pts</th>
+                                <th style="padding:8px 12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#0ea5e9;">🟨</th>
                                 <th style="padding:8px 12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#ef4444;">🟥</th>
                                 <th style="padding:8px 12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#3b82f6;">% Pres.</th>
                                 <th style="padding:8px 12px; font-weight:700; font-size:0.68rem; text-transform:uppercase; text-align:center; color:#6366f1;">V/P/S</th>
@@ -6222,8 +6222,8 @@ window.templateDashboard = function() {
 
         </div>
     <div id="monthly-chart-popup-overlay" style="display:none; position:fixed; inset:0; z-index:1200; background:rgba(200,205,220,0.75); backdrop-filter:blur(16px) saturate(0.6); align-items:center; justify-content:center; padding:20px;">
-        <div id="monthly-chart-popup-box" style="background:var(--card-raised); border-radius:var(--r-2xl); box-shadow:var(--shadow-xl), 0 0 0 1px rgba(255,79,59,0.1); width:100%; max-width:860px; max-height:92vh; overflow-y:auto; position:relative; animation:popupIn 0.28s cubic-bezier(.34,1.36,.64,1); border:1px solid var(--border-accent); padding:28px 32px 24px;">
-            <button onclick="window.closeMonthlyChartPopup()" style="position:absolute; top:14px; right:14px; background:rgba(0,0,0,0.05); border:1px solid var(--border); width:32px; height:32px; border-radius:50%; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-sub); transition:all 0.15s;" onmouseover="this.style.background='rgba(255,56,96,0.12)';this.style.color='#dc2626'" onmouseout="this.style.background='rgba(0,0,0,0.05)';this.style.color='var(--text-sub)'">✕</button>
+        <div id="monthly-chart-popup-box" style="background:var(--card-raised); border-radius:var(--r-2xl); box-shadow:var(--shadow-xl), 0 0 0 1px rgba(37,99,235,0.1); width:100%; max-width:860px; max-height:92vh; overflow-y:auto; position:relative; animation:popupIn 0.28s cubic-bezier(.34,1.36,.64,1); border:1px solid var(--border-accent); padding:28px 32px 24px;">
+            <button onclick="window.closeMonthlyChartPopup()" style="position:absolute; top:14px; right:14px; background:rgba(0,0,0,0.05); border:1px solid var(--border); width:32px; height:32px; border-radius:50%; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-sub); transition:all 0.15s;" onmouseover="this.style.background='rgba(37,99,235,0.12)';this.style.color='#dc2626'" onmouseout="this.style.background='rgba(0,0,0,0.05)';this.style.color='var(--text-sub)'">✕</button>
             <div id="monthly-chart-popup-content"></div>
         </div>
     </div>
@@ -6415,7 +6415,7 @@ window._dashMonthlyData = {};
 
 // Palette colori distinti per squadra (grafico mini preview)
 const TEAM_PALETTE = [
-    '#e8402e','#3b82f6','#10b981','#f59e0b','#8b5cf6',
+    '#2563eb','#3b82f6','#10b981','#0ea5e9','#8b5cf6',
     '#ec4899','#06b6d4','#84cc16','#f97316','#6366f1',
     '#14b8a6','#ef4444','#a855f7','#0ea5e9','#22c55e'
 ];
@@ -6672,7 +6672,7 @@ window.renderDashAthMonthlyCharts = async function() {
             return;
         }
 
-        const COLORS = ['#10b981','#3b82f6','#e8402e','#8b5cf6','#f59e0b','#06b6d4','#ec4899','#14b8a6'];
+        const COLORS = ['#10b981','#3b82f6','#2563eb','#8b5cf6','#0ea5e9','#06b6d4','#ec4899','#14b8a6'];
 
         grid.innerHTML = athletes.map((ath, idx) => {
             const months = Object.entries(ath.months).sort((a,b) => a[0].localeCompare(b[0]));
@@ -6707,7 +6707,7 @@ window.renderDashAthMonthlyCharts = async function() {
                         <span style="font-size:0.62rem;font-weight:700;background:${percColor}18;color:${percColor};border-radius:4px;padding:1px 6px;">${avgPerc}% pres.</span>
                         <span style="font-size:0.62rem;font-weight:700;background:rgba(16,185,129,0.1);color:#059669;border-radius:4px;padding:1px 6px;">✅ ${totPres}</span>
                         <span style="font-size:0.62rem;font-weight:700;background:rgba(239,68,68,0.1);color:#dc2626;border-radius:4px;padding:1px 6px;">❌ ${totAss}</span>
-                        ${totGiust > 0 ? `<span style="font-size:0.62rem;font-weight:700;background:rgba(245,158,11,0.1);color:#d97706;border-radius:4px;padding:1px 6px;">🟡 ${totGiust}</span>` : ''}
+                        ${totGiust > 0 ? `<span style="font-size:0.62rem;font-weight:700;background:rgba(14,165,233,0.1);color:#d97706;border-radius:4px;padding:1px 6px;">🟡 ${totGiust}</span>` : ''}
                     </div>
                 </div>
                 <!-- Grafico mini -->
@@ -6809,7 +6809,7 @@ window.openAthMonthlyPopup = function(athId) {
                 <span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:${percColor}18;color:${percColor};">${avgPerc}% presenze medie</span>
                 <span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(16,185,129,0.1);color:#059669;">✅ ${totPres} presenti</span>
                 <span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(239,68,68,0.1);color:#dc2626;">❌ ${totAss} assenti</span>
-                ${totGiust>0?`<span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(245,158,11,0.1);color:#d97706;">🟡 ${totGiust} giustificati</span>`:''}
+                ${totGiust>0?`<span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(14,165,233,0.1);color:#d97706;">🟡 ${totGiust} giustificati</span>`:''}
                 <span style="font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(0,0,0,0.05);color:var(--text-sub);">📋 ${totTot} sessioni</span>
             </div>
         </div>
@@ -6970,7 +6970,7 @@ window.renderDashMonthlyCharts = async function() {
                 <div style="display:flex; gap:5px; margin-top:6px; flex-wrap:wrap;">
                     <span style="font-size:0.62rem; font-weight:700; background:rgba(16,185,129,0.1); color:#059669; border-radius:4px; padding:1px 6px;">${avgPerc}% pres.</span>
                     <span style="font-size:0.62rem; font-weight:700; background:rgba(59,130,246,0.1); color:#2563eb; border-radius:4px; padding:1px 6px;">⚽ ${totGoals} gol</span>
-                    <span style="font-size:0.62rem; font-weight:700; background:rgba(245,158,11,0.1); color:#d97706; border-radius:4px; padding:1px 6px;">🏆 ${totPts} pts</span>
+                    <span style="font-size:0.62rem; font-weight:700; background:rgba(14,165,233,0.1); color:#d97706; border-radius:4px; padding:1px 6px;">🏆 ${totPts} pts</span>
                 </div>
             </div>
             <!-- Grafico mini -->
@@ -7028,7 +7028,7 @@ function _buildMiniLineChart(months, teamColor, W, H) {
         ${baseline}
         ${buildPolyline(percVals, yPerc, '#10b981')}
         ${buildPolyline(goalVals, yGoal, '#3b82f6', '4,3')}
-        ${buildPolyline(ptsVals,  yPts,  '#f59e0b', '2,2')}
+        ${buildPolyline(ptsVals,  yPts,  '#0ea5e9', '2,2')}
         ${labels}
     </svg>`;
 }
@@ -7094,7 +7094,7 @@ function _buildFullLineChart(months, W, H) {
         ${gridLines}${axisX}${axisY}${rightTicks}
         ${buildLine(percVals, yLeft,  '#10b981')}
         ${buildLine(goalVals, yRight, '#3b82f6', '6,3')}
-        ${buildLine(ptsVals,  yRight, '#f59e0b', '3,2')}
+        ${buildLine(ptsVals,  yRight, '#0ea5e9', '3,2')}
         ${xLabels}
     </svg>`;
 }
@@ -7143,7 +7143,7 @@ window.openMonthlyChartPopup = function(teamId, paletteIdx) {
                 <div style="font-size:1.35rem; font-weight:800; color:#ef4444; font-family:'DM Mono',monospace; line-height:1;">${totAss}</div>
                 <div style="font-size:0.62rem; color:var(--text-muted); text-transform:uppercase; margin-top:3px;">Assenti</div>
             </div>
-            <div style="background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.16); border-radius:10px; padding:10px 16px; text-align:center; flex:1; min-width:80px;">
+            <div style="background:rgba(14,165,233,0.07); border:1px solid rgba(245,158,11,0.16); border-radius:10px; padding:10px 16px; text-align:center; flex:1; min-width:80px;">
                 <div style="font-size:1.35rem; font-weight:800; color:#d97706; font-family:'DM Mono',monospace; line-height:1;">${totGiust}</div>
                 <div style="font-size:0.62rem; color:var(--text-muted); text-transform:uppercase; margin-top:3px;">Giustificati</div>
             </div>
@@ -7173,7 +7173,7 @@ window.openMonthlyChartPopup = function(teamId, paletteIdx) {
                 Gol (asse dx)
             </div>
             <div style="display:flex; align-items:center; gap:7px; font-size:0.75rem; color:var(--text-sub);">
-                <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="3,2" stroke-linecap="round"/><circle cx="12" cy="5" r="3.5" fill="#f59e0b"/></svg>
+                <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#0ea5e9" stroke-width="2.5" stroke-dasharray="3,2" stroke-linecap="round"/><circle cx="12" cy="5" r="3.5" fill="#0ea5e9"/></svg>
                 Punti (asse dx)
             </div>
         </div>
@@ -7366,10 +7366,10 @@ window.loadDashPresidenza = async function() {
 
         // KPI cards
         const kpiData = [
-            { icon:'\uD83C\uDFC6', label:'Punti Totali',      value: totalPts,      sub: totalWins+'V \u00b7 '+totalDraws+'P \u00b7 '+totalLoss+'S', color:'#f59e0b' },
+            { icon:'\uD83C\uDFC6', label:'Punti Totali',      value: totalPts,      sub: totalWins+'V \u00b7 '+totalDraws+'P \u00b7 '+totalLoss+'S', color:'#0ea5e9' },
             { icon:'\u26bd',       label:'Gol Segnati',        value: totalGF,       sub: 'media '+avgGFMatch+'/partita', color:'#10b981' },
             { icon:'\uD83E\uDD45', label:'Gol Subiti',         value: totalGS,       sub: 'media '+avgGSMatch+'/partita', color:'#ef4444' },
-            { icon:'\uD83D\uDFE8', label:'Ammonizioni',        value: totalAmm,      sub: avgAmm+'/partita', color:'#f59e0b' },
+            { icon:'\uD83D\uDFE8', label:'Ammonizioni',        value: totalAmm,      sub: avgAmm+'/partita', color:'#0ea5e9' },
             { icon:'\uD83D\uDFE5', label:'Espulsioni',         value: totalEsp,      sub: 'totale stagione', color:'#ef4444' },
             { icon:'\uD83D\uDC65', label:'Atleti Registrati',  value: totalAtleti,   sub: percPres+'% presenze medie', color:'var(--primary)' },
             { icon:'\uD83E\uDE79', label:'% Infortuni',        value: percInf+'%',   sub: totInf+' presenze infortun.', color:'#8b5cf6' },
@@ -7419,9 +7419,9 @@ window.loadDashPresidenza = async function() {
         const discEl = document.getElementById('pres-disciplina');
         if (discEl) {
             const percDisp = totAll > 0 ? Math.round(((totAll-totInf)/totAll)*100) : 100;
-            const ammCol = totalAmm>30?'#ef4444':totalAmm>15?'#f59e0b':'#10b981';
-            const espCol = totalEsp>5?'#ef4444':totalEsp>2?'#f59e0b':'#10b981';
-            const dispCol = percDisp>=85?'#10b981':percDisp>=70?'#f59e0b':'#ef4444';
+            const ammCol = totalAmm>30?'#ef4444':totalAmm>15?'#0ea5e9':'#10b981';
+            const espCol = totalEsp>5?'#ef4444':totalEsp>2?'#0ea5e9':'#10b981';
+            const dispCol = percDisp>=85?'#10b981':percDisp>=70?'#0ea5e9':'#ef4444';
             discEl.innerHTML =
                 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">' +
                 '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:12px 14px;text-align:center;">' +
@@ -7473,9 +7473,9 @@ window.loadDashPresidenza = async function() {
         };
 
         const topEl = document.getElementById('pres-top-players');
-        if (topEl) topEl.innerHTML = renderPlayerList(ranked, p => p>=85?'#059669':p>=70?'#10b981':'#f59e0b');
+        if (topEl) topEl.innerHTML = renderPlayerList(ranked, p => p>=85?'#059669':p>=70?'#10b981':'#0ea5e9');
         const worstEl = document.getElementById('pres-worst-players');
-        if (worstEl) worstEl.innerHTML = renderPlayerList([...ranked].reverse(), p => p<40?'#ef4444':p<60?'#f59e0b':'#d97706');
+        if (worstEl) worstEl.innerHTML = renderPlayerList([...ranked].reverse(), p => p<40?'#ef4444':p<60?'#0ea5e9':'#d97706');
 
         // Tabella mensile aggregata
         const monthTableMap = {};
@@ -7511,12 +7511,12 @@ window.loadDashPresidenza = async function() {
                 : sortedMKeys.map(k => {
                     const m=monthTableMap[k];
                     const perc=m.tot>0?Math.round((m.pres/m.tot)*100):0;
-                    const pCol=perc>=75?'#10b981':perc>=50?'#f59e0b':'#ef4444';
+                    const pCol=perc>=75?'#10b981':perc>=50?'#0ea5e9':'#ef4444';
                     return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">' +
                         '<td style="padding:8px 12px;font-weight:600;white-space:nowrap;">'+_presMonthLabel(k)+'</td>' +
                         '<td style="padding:8px 12px;text-align:center;color:#10b981;font-weight:700;">'+m.gf+'</td>' +
                         '<td style="padding:8px 12px;text-align:center;color:#ef4444;font-weight:700;">'+m.gs+'</td>' +
-                        '<td style="padding:8px 12px;text-align:center;color:#f59e0b;font-weight:800;font-family:\'DM Mono\',monospace;">'+m.pts+'</td>' +
+                        '<td style="padding:8px 12px;text-align:center;color:#0ea5e9;font-weight:800;font-family:\'DM Mono\',monospace;">'+m.pts+'</td>' +
                         '<td style="padding:8px 12px;text-align:center;color:#d97706;font-weight:700;">'+m.amm+'</td>' +
                         '<td style="padding:8px 12px;text-align:center;color:#ef4444;font-weight:700;">'+m.esp+'</td>' +
                         '<td style="padding:8px 12px;text-align:center;"><span style="font-weight:800;color:'+pCol+';font-family:\'DM Mono\',monospace;">'+perc+'%</span></td>' +
@@ -7612,7 +7612,7 @@ async function _renderGenitoreAthleteDetail() {
             const totAll  = attAct.length;
             const convocazioni = attAct.filter(a=>a.is_called_up).length;
             const percPres = totAll>0 ? Math.round(totPres/totAll*100) : null;
-            const percColor = percPres===null?'#94a3b8':percPres>=75?'#10b981':percPres>=50?'#f59e0b':'#ef4444';
+            const percColor = percPres===null?'#94a3b8':percPres>=75?'#10b981':percPres>=50?'#0ea5e9':'#ef4444';
 
             const activeTsSeason = teamSeasons.find(ts => ts.seasons?.is_active) || teamSeasons[0];
             const teamName = activeTsSeason?.teams?.name || '—';
@@ -7656,7 +7656,7 @@ async function _renderGenitoreAthleteDetail() {
                 <div style="flex:2; min-width:300px;">
                     <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">📊 Stagione in corso</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        ${pill(d.goals,'Gol','#e8402e')}
+                        ${pill(d.goals,'Gol','#2563eb')}
                         ${pill(d.percPres!==null?d.percPres+'%':'—','Presenza',d.percColor)}
                         ${pill(d.convocazioni,'Convoc.','#6366f1')}
                         ${pill(d.totPres+'/'+d.totAll,'Presenze','#3b82f6')}
@@ -7805,14 +7805,14 @@ window.loadDashKPIs = async function(seasonId, socId, scopedTeamIds) {
         } catch(e) { /* ignora errori pts */ }
 
         const kpis = [
-            { label:'🏆 Punti Totali',     value: totalPts,       sub: `${totalWins}V · ${totalDraws}P`,   color:'#f59e0b', section:'partite' },
+            { label:'🏆 Punti Totali',     value: totalPts,       sub: `${totalWins}V · ${totalDraws}P`,   color:'#0ea5e9', section:'partite' },
             { label:'Atleti Totali',      value: totalAtleti,   sub: `in ${totalCategorie} categor${totalCategorie === 1 ? 'ia' : 'ie'}`, color:'var(--primary)', section:'atleti' },
             { label:'Sessioni Registrate', value: totalSessioni,  sub: 'tutte le categorie',              color:'#10b981', section:'sessioni' },
-            { label:'% Presenze Globali',  value: percPres+'%',   sub: `${pres}/${tot} totali`,            color:'#f59e0b', section:'sessioni' },
+            { label:'% Presenze Globali',  value: percPres+'%',   sub: `${pres}/${tot} totali`,            color:'#0ea5e9', section:'sessioni' },
             { label:'Società',             value: totalSocieta,   sub: '1 sport',                          color:'#06b6d4', section:'societa' },
             { label:'Categorie',           value: totalCategorie, sub: 'attive',                           color:'#8b5cf6', section:'categoria' },
             { label:'Staff Totale',        value: totalStaff,     sub: 'utenti registrati',                color:'#64748b', section:'staff' },
-            { label:'Allenatori',          value: staffByRole.allenatori, sub:'registrati',               color:'#f59e0b', section:'staff' },
+            { label:'Allenatori',          value: staffByRole.allenatori, sub:'registrati',               color:'#0ea5e9', section:'staff' },
             { label:'Dirigenti',           value: staffByRole.dirigenti,  sub:'registrati',               color:'#ef4444', section:'staff' },
             ...(!hasTeamScope ? [{ label:'Presidenti', value: staffByRole.presidenti, sub:'registrati', color:'var(--primary)', section:'staff' }] : []),
         ];
@@ -8004,7 +8004,7 @@ window.renderDashPresenze = function() {
         const g = att.filter(x => (x.status||'').toLowerCase()==='giustificato').length;
         const tot = att.length;
         const perc = tot > 0 ? Math.round((p/tot)*100) : 0;
-        const percColor = perc >= 75 ? '#10b981' : perc >= 50 ? '#f59e0b' : '#ef4444';
+        const percColor = perc >= 75 ? '#10b981' : perc >= 50 ? '#0ea5e9' : '#ef4444';
         return `
         <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:8px 10px;">
@@ -8013,7 +8013,7 @@ window.renderDashPresenze = function() {
             </td>
             <td style="padding:8px 10px; text-align:center; color:#10b981; font-weight:700;">${p}</td>
             <td style="padding:8px 10px; text-align:center; color:#ef4444; font-weight:700;">${a}</td>
-            <td style="padding:8px 10px; text-align:center; color:#f59e0b; font-weight:700;">${g}</td>
+            <td style="padding:8px 10px; text-align:center; color:#0ea5e9; font-weight:700;">${g}</td>
             <td style="padding:8px 10px; text-align:center; font-weight:700; color:${percColor};">${perc}%</td>
         </tr>`;
     }).join('');
@@ -8128,13 +8128,13 @@ window.renderDashStats = function() {
     tbody.innerHTML = filtered.map(t => `
         <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:8px 10px; font-weight:600; font-size:0.82rem;">${t.name}<br><span style="font-size:0.7rem; color:var(--text-sub);">${t.category_name !== '-' ? t.category_name + ' · ' : ''}${t.soc}</span></td>
-            <td style="padding:8px 10px; text-align:center; font-weight:800; font-family:'DM Mono','Outfit',sans-serif; font-size:1rem; color:#f59e0b;">${t.pts}</td>
+            <td style="padding:8px 10px; text-align:center; font-weight:800; font-family:'DM Mono','Outfit',sans-serif; font-size:1rem; color:#0ea5e9;">${t.pts}</td>
             <td style="padding:8px 10px; text-align:center; color:var(--text-muted); font-weight:700;">${t.partite}</td>
             <td style="padding:8px 10px; text-align:center; color:var(--primary); font-weight:700;" title="In casa">${t.casa}</td>
             <td style="padding:8px 10px; text-align:center; color:#8b5cf6; font-weight:700;" title="In trasferta">${t.trasferta}</td>
             <td style="padding:8px 10px; text-align:center; color:#10b981; font-weight:700;">${t.gf}</td>
             <td style="padding:8px 10px; text-align:center; color:#ef4444; font-weight:700;">${t.gs}</td>
-            <td style="padding:8px 10px; text-align:center; color:#f59e0b; font-weight:700;">${t.amm}</td>
+            <td style="padding:8px 10px; text-align:center; color:#0ea5e9; font-weight:700;">${t.amm}</td>
             <td style="padding:8px 10px; text-align:center; color:#ef4444; font-weight:700;">${t.esp}</td>
             <td style="padding:8px 10px; text-align:center; font-size:0.78rem; white-space:nowrap;">
                 <span style="color:#10b981;">${t.w}V</span> · <span style="color:var(--text-muted);">${t.d}P</span> · <span style="color:#ef4444;">${t.l}S</span>
@@ -8330,7 +8330,7 @@ window.renderDashAthletes = function() {
     tbody.innerHTML = filtered.map(a => {
         // % presenze allenamenti
         const percSess = a.sess_tot > 0 ? Math.round((a.sess_pres / a.sess_tot) * 100) : null;
-        const cSess = percSess === null ? 'var(--text-muted)' : percSess >= 75 ? '#10b981' : percSess >= 50 ? '#f59e0b' : '#ef4444';
+        const cSess = percSess === null ? 'var(--text-muted)' : percSess >= 75 ? '#10b981' : percSess >= 50 ? '#0ea5e9' : '#ef4444';
         const tSess = percSess !== null ? percSess + '%' : '-';
         // % presenze partite
         const percGara = a.gara_tot > 0 ? Math.round((a.gara_pres / a.gara_tot) * 100) : null;
@@ -8338,11 +8338,11 @@ window.renderDashAthletes = function() {
         const totPres = (a.sess_pres || 0) + (a.gara_pres || 0);
         const totTot  = (a.sess_tot  || 0) + (a.gara_tot  || 0);
         const percTot = totTot > 0 ? Math.round((totPres / totTot) * 100) : null;
-        const cTot = percTot === null ? 'var(--text-muted)' : percTot >= 75 ? '#10b981' : percTot >= 50 ? '#f59e0b' : '#ef4444';
+        const cTot = percTot === null ? 'var(--text-muted)' : percTot >= 75 ? '#10b981' : percTot >= 50 ? '#0ea5e9' : '#ef4444';
         const tTot = percTot !== null ? percTot + '%' : '-';
 
         return `
-        <tr style="border-bottom:1px solid rgba(0,0,0,0.05); transition:background 0.1s;" onmouseover="this.style.background='rgba(255,79,59,0.05)'" onmouseout="this.style.background=''">
+        <tr style="border-bottom:1px solid rgba(0,0,0,0.05); transition:background 0.1s;" onmouseover="this.style.background='rgba(37,99,235,0.05)'" onmouseout="this.style.background=''">
             <td style="padding:9px 12px;">
                 <div style="font-weight:700; font-size:0.82rem; color:var(--text-main);">${a.name}</div>
                 <div style="font-size:0.7rem; color:var(--text-sub);">${a.society}</div>
@@ -8354,14 +8354,14 @@ window.renderDashAthletes = function() {
             <!-- Allenamenti -->
             <td style="padding:9px 12px; text-align:center; color:#10b981; font-weight:700; border-left:1px solid var(--border);">${a.sess_pres || 0}</td>
             <td style="padding:9px 12px; text-align:center; color:#ef4444; font-weight:700;">${a.sess_ass || 0}</td>
-            <td style="padding:9px 12px; text-align:center; color:#f59e0b; font-weight:700;">${a.sess_giust || 0}</td>
+            <td style="padding:9px 12px; text-align:center; color:#0ea5e9; font-weight:700;">${a.sess_giust || 0}</td>
             <td style="padding:9px 12px; text-align:center; color:#8b5cf6; font-weight:700;">${a.sess_inf || 0}</td>
             <td style="padding:9px 12px; text-align:center; font-weight:700; color:${cSess};">${tSess}</td>
             <!-- Partite -->
             <td style="padding:9px 12px; text-align:center; color:#10b981; font-weight:700; border-left:1px solid var(--border);">${a.gara_pres || 0}</td>
             <td style="padding:9px 12px; text-align:center; color:var(--primary); font-weight:700;">${a.conv || 0}</td>
             <td style="padding:9px 12px; text-align:center; color:#10b981; font-weight:700;">${a.gol || 0}</td>
-            <td style="padding:9px 12px; text-align:center; color:#f59e0b; font-weight:700;">${a.amm || 0}</td>
+            <td style="padding:9px 12px; text-align:center; color:#0ea5e9; font-weight:700;">${a.amm || 0}</td>
             <td style="padding:9px 12px; text-align:center; color:#ef4444; font-weight:700;">${a.esp || 0}</td>
             <td style="padding:9px 12px; text-align:center; color:var(--primary); font-weight:600; font-size:0.8rem;">${a.min > 0 ? a.min + '\'' : '<span style="color:var(--text-muted);">—</span>'}</td>
             <!-- Totale -->
@@ -8822,7 +8822,7 @@ window.renderGenitori = function() {
     tbody.innerHTML = list.map(g => {
         const athletes = window._genitoreAthletes[g.id] || [];
         const athBadges = athletes.length > 0
-            ? athletes.map(a => `<span style="background:rgba(255,79,59,0.15); color:var(--primary-mid); padding:2px 8px; border-radius:99px; font-size:0.72rem; font-weight:700; white-space:nowrap;">${a.surname} ${a.name}</span>`).join(' ')
+            ? athletes.map(a => `<span style="background:rgba(37,99,235,0.15); color:var(--primary-mid); padding:2px 8px; border-radius:99px; font-size:0.72rem; font-weight:700; white-space:nowrap;">${a.surname} ${a.name}</span>`).join(' ')
             : '<span style="color:var(--text-sub); font-size:0.78rem;">— nessun atleta —</span>';
 
         return `<tr>
@@ -9118,7 +9118,7 @@ window.initGenitoreView = async function() {
             const stAct = statsBy[ath.id]?.[sid] || {};
             const prAct = presBy[ath.id]?.[sid] || {};
             const convPerc = prAct.tot > 0 ? Math.round(prAct.conv/prAct.tot*100) : null;
-            const percColor = convPerc === null ? '#94a3b8' : convPerc>=75 ? '#10b981' : convPerc>=50 ? '#f59e0b' : '#ef4444';
+            const percColor = convPerc === null ? '#94a3b8' : convPerc>=75 ? '#10b981' : convPerc>=50 ? '#0ea5e9' : '#ef4444';
 
             // Totali carriera
             const totGoals = Object.values(statsBy[ath.id]||{}).reduce((s,x)=>s+(x.goals||0),0);
@@ -9208,7 +9208,7 @@ window.initGenitoreView = async function() {
                         <th style="padding:7px 10px;text-align:left;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Sessione</th>
                         <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#10b981;">P</th>
                         <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#ef4444;">A</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#f59e0b;">G</th>
+                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#0ea5e9;">G</th>
                         <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);">%</th>
                     </tr></thead>
                     <tbody>${presSessions.map(s => {
@@ -9218,7 +9218,7 @@ window.initGenitoreView = async function() {
                         const g = att.filter(a=>(a.status||'').toLowerCase()==='giustificato').length;
                         const tot = att.length;
                         const perc = tot>0 ? Math.round(p/tot*100) : 0;
-                        const pc = perc>=75?'#10b981':perc>=50?'#f59e0b':'#ef4444';
+                        const pc = perc>=75?'#10b981':perc>=50?'#0ea5e9':'#ef4444';
                         return `<tr style="border-bottom:1px solid var(--border);">
                             <td style="padding:8px 10px;">
                                 <div style="font-weight:600;font-size:0.8rem;">${s.title||'Sessione'}</div>
@@ -9226,7 +9226,7 @@ window.initGenitoreView = async function() {
                             </td>
                             <td style="padding:8px 10px;text-align:center;color:#10b981;font-weight:700;">${p}</td>
                             <td style="padding:8px 10px;text-align:center;color:#ef4444;font-weight:700;">${ab}</td>
-                            <td style="padding:8px 10px;text-align:center;color:#f59e0b;font-weight:700;">${g}</td>
+                            <td style="padding:8px 10px;text-align:center;color:#0ea5e9;font-weight:700;">${g}</td>
                             <td style="padding:8px 10px;text-align:center;font-weight:700;color:${pc};">${perc}%</td>
                         </tr>`;
                     }).join('')}</tbody>
@@ -9239,7 +9239,7 @@ window.initGenitoreView = async function() {
                 : `<table style="width:100%;border-collapse:collapse;">
                     <thead><tr style="border-bottom:1px solid var(--border);">
                         <th style="padding:7px 10px;text-align:left;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Squadra</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#f59e0b;" title="Punti">Pts</th>
+                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#0ea5e9;" title="Punti">Pts</th>
                         <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-sub);">P</th>
                         <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--primary);" title="Casa">🏠</th>
                         <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#8b5cf6;" title="Trasferta">🚌</th>
@@ -9250,7 +9250,7 @@ window.initGenitoreView = async function() {
                     </tr></thead>
                     <tbody>${statsGaraList.map(t => `<tr style="border-bottom:1px solid var(--border);">
                         <td style="padding:8px 10px;font-weight:600;font-size:0.82rem;">${t.name}</td>
-                        <td style="padding:8px 10px;text-align:center;font-weight:800;font-family:'DM Mono','Outfit',sans-serif;font-size:1rem;color:#f59e0b;">${t.pts}</td>
+                        <td style="padding:8px 10px;text-align:center;font-weight:800;font-family:'DM Mono','Outfit',sans-serif;font-size:1rem;color:#0ea5e9;">${t.pts}</td>
                         <td style="padding:8px 10px;text-align:center;font-weight:700;color:var(--text-main);">${t.p}</td>
                         <td style="padding:8px 10px;text-align:center;font-weight:700;color:var(--primary);">${t.casa}</td>
                         <td style="padding:8px 10px;text-align:center;font-weight:700;color:#8b5cf6;">${t.trasf}</td>
@@ -9276,7 +9276,7 @@ window.initGenitoreView = async function() {
                         <div style="font-size:1.4rem;font-weight:800;color:#059669;line-height:1;">${totGoals}</div>
                         <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;margin-top:3px;">⚽ Gol</div>
                     </div>
-                    <div style="background:rgba(232,64,46,0.07);border-radius:12px;padding:10px 18px;text-align:center;border:1px solid rgba(232,64,46,0.15);">
+                    <div style="background:rgba(37,99,235,0.07);border-radius:12px;padding:10px 18px;text-align:center;border:1px solid rgba(37,99,235,0.15);">
                         <div style="font-size:1.4rem;font-weight:800;color:var(--primary);line-height:1;">${totMin}'</div>
                         <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;margin-top:3px;">⏱ Min</div>
                     </div>
@@ -9300,14 +9300,14 @@ window.initGenitoreView = async function() {
                 <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;">📊 Statistiche del tuo atleta — ${seasonName}</div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
                     ${pill(stAct.goals||0,'⚽ Gol','#059669','rgba(5,150,105,0.1)','rgba(5,150,105,0.2)')}
-                    ${pill(stAct.min||0,'⏱ Min','var(--primary)','rgba(255,79,59,0.08)','rgba(255,79,59,0.2)')}
+                    ${pill(stAct.min||0,'⏱ Min','var(--primary)','rgba(37,99,235,0.08)','rgba(37,99,235,0.2)')}
                     ${pill(stAct.yc||0,'🟨 Amm','#ffd166')}
                     ${pill(stAct.rc||0,'🟥 Esp','#ef4444','rgba(239,68,68,0.1)','rgba(239,68,68,0.25)')}
                     <div style="width:1px;background:rgba(0,0,0,0.08);margin:0 4px;"></div>
                     ${pill(totPts,'🏆 Punti','#ffd166')}
                     <div style="width:1px;background:rgba(0,0,0,0.08);margin:0 4px;"></div>
                     ${pill(prAct.pres||0,'Presenze','#059669','rgba(5,150,105,0.1)','rgba(5,150,105,0.2)')}
-                    ${pill(prAct.conv||0,'Convoc.','var(--primary)','rgba(255,79,59,0.08)','rgba(255,79,59,0.2)')}
+                    ${pill(prAct.conv||0,'Convoc.','var(--primary)','rgba(37,99,235,0.08)','rgba(37,99,235,0.2)')}
                     ${pill(prAct.tot||0,'Partite','#64748b')}
                     ${convPerc !== null ? pill(convPerc+'%','Conv%',percColor) : ''}
                 </div>
@@ -9438,7 +9438,7 @@ window.initGenitoreView = async function() {
     overlay.id = 'test-popup-overlay';
     overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:1300;background:rgba(200,205,220,0.75);backdrop-filter:blur(16px) saturate(0.6);align-items:center;justify-content:center;padding:20px;';
     overlay.innerHTML = `
-        <div id="test-popup-box" style="background:var(--card-raised);border-radius:var(--r-2xl);box-shadow:var(--shadow-xl),0 0 0 1px rgba(255,79,59,0.1);width:100%;max-width:960px;max-height:92vh;overflow-y:auto;position:relative;animation:popupIn 0.28s cubic-bezier(.34,1.36,.64,1);border:1px solid var(--border-accent);">
+        <div id="test-popup-box" style="background:var(--card-raised);border-radius:var(--r-2xl);box-shadow:var(--shadow-xl),0 0 0 1px rgba(37,99,235,0.1);width:100%;max-width:960px;max-height:92vh;overflow-y:auto;position:relative;animation:popupIn 0.28s cubic-bezier(.34,1.36,.64,1);border:1px solid var(--border-accent);">
             <button onclick="window.closeTestPopup()" style="position:absolute;top:16px;right:16px;z-index:10;background:rgba(0,0,0,0.05);border:1px solid var(--border);width:32px;height:32px;border-radius:50%;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-sub);">✕</button>
             <div id="test-popup-content" style="padding:28px 32px 24px;"></div>
         </div>`;
@@ -9624,7 +9624,7 @@ window.initTest = async function() {
             <td style="padding:12px;text-align:center;">
                 <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;">
                     <button onclick="window.openTestConvoca('${s.id}')" style="background:var(--primary);color:white;border:none;padding:5px 9px;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">📋 CONVOCA</button>
-                    <button onclick="window.openTestTabellino('${s.id}')" style="background:#f59e0b;color:white;border:none;padding:5px 9px;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">📝 TABELLINO</button>
+                    <button onclick="window.openTestTabellino('${s.id}')" style="background:#0ea5e9;color:white;border:none;padding:5px 9px;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">📝 TABELLINO</button>
                     <button onclick="window.openTestStats('${s.id}')" style="background:#6366f1;color:white;border:none;padding:5px 9px;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">📊 STATS</button>
                     <button onclick="window.openTestGrafico('${s.id}')" style="background:#0ea5e9;color:white;border:none;padding:5px 9px;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">📈 GRAFICO</button>
                     <button onclick="window.deleteTestSession('${s.id}')" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);padding:5px 9px;border-radius:4px;cursor:pointer;font-size:11px;">🗑</button>
@@ -9972,7 +9972,7 @@ window.renderTestDefList = async function() {
         return `
         <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:flex-start;gap:16px;transition:box-shadow 0.15s;"
              onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='none'">
-            <div style="width:40px;height:40px;background:rgba(232,64,46,0.08);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🧪</div>
+            <div style="width:40px;height:40px;background:rgba(37,99,235,0.08);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🧪</div>
             <div style="flex:1;min-width:0;">
                 <div style="font-size:15px;font-weight:800;font-family:'Syne',sans-serif;color:var(--text-main);margin-bottom:2px;">${d.name}</div>
                 ${d.description ? `<div style="font-size:12px;color:var(--text-sub);margin-bottom:8px;">${d.description}</div>` : ''}
@@ -10026,7 +10026,7 @@ window.openNewTestSession = async function() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
             <div>
                 <label style="font-size:11px;color:var(--text-muted);font-weight:700;">SQUADRA *</label>
-                <select id="tsess-team" style="width:100%;padding:9px;border:1px solid var(--border-accent);border-radius:6px;margin-top:4px;background:rgba(232,64,46,0.03);">
+                <select id="tsess-team" style="width:100%;padding:9px;border:1px solid var(--border-accent);border-radius:6px;margin-top:4px;background:rgba(37,99,235,0.03);">
                     <option value="">— Seleziona squadra —</option>
                     ${(teams||[]).map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}
                 </select>
@@ -10210,7 +10210,7 @@ window.openTestTabellino = async function(sessId) {
                         data-original="${val}"
                         value="${val}"
                         style="width:72px;padding:5px;border:1px solid var(--border);border-radius:5px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;transition:border-color 0.15s;"
-                        oninput="this.style.borderColor=this.value!==this.dataset.original?'#f59e0b':'var(--border)'">
+                        oninput="this.style.borderColor=this.value!==this.dataset.original?'#0ea5e9':'var(--border)'">
                     ${val !== '' ? `<button onclick="this.previousElementSibling.value='';this.previousElementSibling.dispatchEvent(new Event('input'));this.previousElementSibling.dataset.cleared='1';this.style.display='none';"
                         title="Azzera questo valore"
                         style="background:rgba(239,68,68,0.1);color:#ef4444;border:none;width:20px;height:20px;border-radius:4px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;">×</button>` : ''}
@@ -10225,7 +10225,7 @@ window.openTestTabellino = async function(sessId) {
 
     window.openTestPopup(`
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
-            <div style="width:4px;height:36px;background:#f59e0b;border-radius:3px;flex-shrink:0;"></div>
+            <div style="width:4px;height:36px;background:#0ea5e9;border-radius:3px;flex-shrink:0;"></div>
             <div>
                 <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">📝 Tabellino Test</div>
                 <div style="font-size:1.1rem;font-weight:800;font-family:'Syne',sans-serif;">${sess.test_definitions.name} — ${new Date(sess.session_date).toLocaleDateString('it-IT')}</div>
@@ -10244,12 +10244,12 @@ window.openTestTabellino = async function(sessId) {
             </table>
         </div>
         <div style="font-size:0.68rem;color:var(--text-muted);margin-top:8px;display:flex;align-items:center;gap:10px;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;border:1.5px solid #f59e0b;"></span> Campo modificato
+            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;border:1.5px solid #0ea5e9;"></span> Campo modificato
             <span style="display:inline-block;width:10px;height:10px;border-radius:2px;border:1.5px solid #ef4444;"></span> Campo azzerato (verrà cancellato)
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
             <button onclick="window.closeTestPopup()" style="background:rgba(0,0,0,0.05);color:var(--text-sub);border:1px solid var(--border);padding:8px 20px;border-radius:6px;cursor:pointer;">Annulla</button>
-            <button onclick="window.saveTestTabellino('${sessId}')" style="background:#f59e0b;color:white;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-weight:700;">💾 Salva Risultati</button>
+            <button onclick="window.saveTestTabellino('${sessId}')" style="background:#0ea5e9;color:white;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-weight:700;">💾 Salva Risultati</button>
         </div>`}
     `);
 };
@@ -10433,7 +10433,7 @@ window.openTestGrafico = async function(sessId) {
         resMap[r.performance_id].push({ name: `${detail?.athletes?.surname||''} ${detail?.athletes?.name||''}`, value: r.value, jersey: detail?.jersey_number });
     });
 
-    const COLORS = ['#e8402e','#3b82f6','#10b981','#f59e0b','#8b5cf6'];
+    const COLORS = ['#2563eb','#3b82f6','#10b981','#0ea5e9','#8b5cf6'];
 
     const charts = (perfs||[]).map((p, ci) => {
         const data = (resMap[p.id]||[]).sort((a,b) => p.lower_is_better ? a.value-b.value : b.value-a.value);
