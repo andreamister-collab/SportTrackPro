@@ -7540,8 +7540,8 @@ window.loadDashPresidenza = async function() {
             await _renderGenitoreAthleteDetail();
         }
 
-        // ── VISTA ALLENATORE DEDICATA ────────────────────────────────────────────
-        if (role === 'allenatore') {
+        // ── VISTA ALLENATORE / DIRIGENTE DEDICATA ──────────────────────────────────
+        if (role === 'allenatore' || role === 'dirigente') {
             await _renderVistaAllenatore();
         }
 
@@ -9208,8 +9208,9 @@ function _applyTabFilterVisibility() {
     // ── Visibilità sezioni generiche KPI presidenza vs vista allenatore ──
     const presGenericSections = document.getElementById('pres-generic-sections');
     const allenatoreSectionWrap = document.getElementById('pres-allenatore-section');
-    if (presGenericSections)  presGenericSections.style.display  = (role === 'allenatore') ? 'none' : '';
-    if (allenatoreSectionWrap) allenatoreSectionWrap.style.display = (role === 'allenatore') ? '' : 'none';
+    const _isAllDirView = (role === 'allenatore' || role === 'dirigente');
+    if (presGenericSections)  presGenericSections.style.display  = _isAllDirView ? 'none' : '';
+    if (allenatoreSectionWrap) allenatoreSectionWrap.style.display = _isAllDirView ? '' : 'none';
 
     // ── Filtri nei tab generali (0-5) ──
     const socSelects  = ['dash-stats-soc','dash-match-soc','dash-pres-soc','dash-ath-soc','dash-monthly-soc'];
