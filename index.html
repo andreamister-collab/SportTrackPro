@@ -7719,18 +7719,16 @@ async function _renderVistaAllenatore() {
         const [
             sessRes, attRes, matchStatsRes, matchDetRes, teamAthRes, nextMatchRes
         ] = await Promise.all([
-            // Sessioni allenamento (ultimi 30gg)
+            // Sessioni allenamento (tutta la stagione)
             client.from('sessions')
                 .select('id, session_date, title, type_id, session_types(name)')
                 .in('team_id', teamIds)
-                .gte('session_date', fmtDate(monthAgo))
                 .order('session_date', { ascending: false }),
 
-            // Presenze con valutazioni (ultimi 30gg)
+            // Presenze con valutazioni (tutta la stagione)
             client.from('attendances')
                 .select('athlete_id, status, performance_data, is_called_up, sessions!inner(id, session_date, type_id, team_id, session_types(name))')
-                .in('sessions.team_id', teamIds)
-                .gte('sessions.session_date', fmtDate(monthAgo)),
+                .in('sessions.team_id', teamIds),
 
             // Stats partite stagione corrente
             client.from('match_stats')
@@ -7774,7 +7772,7 @@ async function _renderVistaAllenatore() {
 
         // ── Sessioni allenamento (no gare) ───────────────────────────────────
         const trainSessions = sessions.filter(s => !s.session_types?.name?.toLowerCase().includes('gara') && !s.session_types?.name?.toLowerCase().includes('partita'));
-        const recentTrain   = trainSessions.slice(0, 7); // ultimi 7 allenamenti
+        const recentTrain   = trainSessions; // tutte le sessioni disponibili
 
         // ── Presenze allenamenti ─────────────────────────────────────────────
         const trainAttMap = {}; // athlete_id → [{date, status, VEL, TEC, FIS, RES, COM}]
@@ -7909,6 +7907,39 @@ async function _renderVistaAllenatore() {
         const injuredCount  = athIds.filter(id => athKPI[id]?.avail === 'injured').length;
         const monitorCount  = athIds.filter(id => athKPI[id]?.avail === 'monitor').length;
 
+        // ── Sessioni helper (definite prima del render) ───────────────────────
+        window._allTrainSessions = recentTrain;
+        window._allAttendances   = attendances;
+        window._fmtDate          = fmtDate;
+
+        window._renderSessList = (days) => {
+            const cutoff   = days > 0 ? fmtDate(new Date(Date.now() - days*86400000)) : null;
+            const filtered = cutoff ? recentTrain.filter(s => s.session_date >= cutoff) : recentTrain;
+            if (!filtered.length) return '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessuna sessione.</div>';
+            return filtered.map(s => {
+                const d            = new Date(s.session_date);
+                const presentCount = attendances.filter(a => a.sessions?.id === s.id && a.status === 'presente').length;
+                const totalCount   = attendances.filter(a => a.sessions?.id === s.id).length;
+                const perc         = totalCount > 0 ? Math.round(presentCount / totalCount * 100) : 0;
+                const col          = perc >= 80 ? '#10b981' : perc >= 60 ? '#0ea5e9' : '#f59e0b';
+                return '<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05);">'
+                    + '<div style="font-size:0.7rem;color:var(--text-sub);white-space:nowrap;width:60px;">' + d.toLocaleDateString('it-IT',{day:'2-digit',month:'short'}) + '</div>'
+                    + '<div style="font-size:0.65rem;color:var(--text-muted);white-space:nowrap;width:70px;overflow:hidden;text-overflow:ellipsis;" title="' + (s.session_types?.name||'') + '">' + (s.session_types?.name||'—') + '</div>'
+                    + '<div style="flex:1;background:rgba(0,0,0,0.05);border-radius:99px;height:7px;overflow:hidden;"><div style="height:100%;width:' + perc + '%;background:' + col + ';border-radius:99px;transition:width 0.4s;"></div></div>'
+                    + '<div style="font-size:0.72rem;font-weight:700;color:' + col + ';width:36px;text-align:right;">' + perc + '%</div>'
+                    + '<div style="font-size:0.68rem;color:var(--text-muted);width:40px;text-align:right;">' + presentCount + '/' + totalCount + '</div>'
+                    + '</div>';
+            }).join('');
+        };
+
+        window._filterSess = (days, btn) => {
+            document.querySelectorAll('#sess-btn-7,#sess-btn-30,#sess-btn-all').forEach(b => {
+                b.style.background = 'transparent'; b.style.color = 'var(--text-muted)'; b.style.borderColor = 'var(--border)';
+            });
+            btn.style.background = 'var(--primary)'; btn.style.color = 'white'; btn.style.borderColor = 'var(--primary)';
+            document.getElementById('sess-list').innerHTML = window._renderSessList(days);
+        };
+
         // ── RENDER ────────────────────────────────────────────────────────────
         container.innerHTML = `
         <style>
@@ -7953,22 +7984,20 @@ async function _renderVistaAllenatore() {
             <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:14px;margin-bottom:16px;">
                 <div>
                     ${nextMatchHTML}
-                    <!-- Carico allenamenti (ultimi 5) -->
+                    <!-- Carico allenamenti — tutte le sessioni, con filtro -->
                     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:12px;">
-                        <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">⚡ Carico allenamenti recenti</div>
-                        ${recentTrain.slice(0,5).map(s => {
-                            const d = new Date(s.session_date);
-                            const presentCount = attendances.filter(a => a.sessions?.id === s.id && a.status === 'presente').length;
-                            const totalCount   = attendances.filter(a => a.sessions?.id === s.id).length;
-                            const perc = totalCount > 0 ? Math.round(presentCount/totalCount*100) : 0;
-                            const col = perc >= 80 ? '#10b981' : perc >= 60 ? '#0ea5e9' : '#f59e0b';
-                            return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05);">
-                                <div style="font-size:0.7rem;color:var(--text-sub);white-space:nowrap;width:60px;">${d.toLocaleDateString('it-IT',{day:'2-digit',month:'short'})}</div>
-                                <div style="flex:1;background:rgba(0,0,0,0.05);border-radius:99px;height:7px;overflow:hidden;"><div style="height:100%;width:${perc}%;background:${col};border-radius:99px;transition:width 0.4s;"></div></div>
-                                <div style="font-size:0.72rem;font-weight:700;color:${col};width:36px;text-align:right;">${perc}%</div>
-                                <div style="font-size:0.68rem;color:var(--text-muted);width:40px;text-align:right;">${presentCount}/${totalCount}</div>
-                            </div>`;
-                        }).join('') || '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun allenamento recente.</div>'}
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">⚡ Sessioni — presenze</div>
+                            <div style="display:flex;gap:4px;">
+                                <button onclick="window._filterSess(7,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--primary);background:var(--primary);color:white;font-size:0.68rem;font-weight:700;cursor:pointer;" id="sess-btn-7">7gg</button>
+                                <button onclick="window._filterSess(30,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:700;cursor:pointer;" id="sess-btn-30">30gg</button>
+                                <button onclick="window._filterSess(0,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:700;cursor:pointer;" id="sess-btn-all">Tutte</button>
+                            </div>
+                        </div>
+                        <div id="sess-list" style="max-height:280px;overflow-y:auto;padding-right:2px;">
+                        ${window._renderSessList(7)}
+                        </div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:8px;text-align:right;">${recentTrain.length} sessioni totali in archivio</div>
                     </div>
                 </div>
 
