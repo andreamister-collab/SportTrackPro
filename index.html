@@ -9836,7 +9836,20 @@ window.openTestTabellino = async function(sessId) {
         const ath = detail?.athletes;
         const cells = (perfs||[]).map(p => {
             const val = resMap[a.athlete_id]?.[p.id] ?? '';
-            return `<td style="padding:7px 8px;text-align:center;"><input type="number" step="0.01" class="tres-input" data-aid="${a.athlete_id}" data-pid="${p.id}" value="${val}" style="width:80px;padding:5px;border:1px solid var(--border);border-radius:5px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;"></td>`;
+            // data-original traccia il valore già salvato (stringa vuota = nessun risultato)
+            return `<td style="padding:7px 8px;text-align:center;">
+                <div style="display:flex;align-items:center;gap:4px;justify-content:center;">
+                    <input type="number" step="0.01" class="tres-input"
+                        data-aid="${a.athlete_id}" data-pid="${p.id}"
+                        data-original="${val}"
+                        value="${val}"
+                        style="width:72px;padding:5px;border:1px solid var(--border);border-radius:5px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;transition:border-color 0.15s;"
+                        oninput="this.style.borderColor=this.value!==this.dataset.original?'#f59e0b':'var(--border)'">
+                    ${val !== '' ? `<button onclick="this.previousElementSibling.value='';this.previousElementSibling.dispatchEvent(new Event('input'));this.previousElementSibling.dataset.cleared='1';this.style.display='none';"
+                        title="Azzera questo valore"
+                        style="background:rgba(239,68,68,0.1);color:#ef4444;border:none;width:20px;height:20px;border-radius:4px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;">×</button>` : ''}
+                </div>
+            </td>`;
         }).join('');
         return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">
             <td style="padding:9px 10px;font-weight:600;white-space:nowrap;">${detail?.jersey_number||'--'} ${ath?.surname||''} ${ath?.name||''}</td>
@@ -9852,6 +9865,7 @@ window.openTestTabellino = async function(sessId) {
                 <div style="font-size:1.1rem;font-weight:800;font-family:'Syne',sans-serif;">${sess.test_definitions.name} — ${new Date(sess.session_date).toLocaleDateString('it-IT')}</div>
                 <div style="font-size:0.78rem;color:var(--text-sub);">${sess.teams?.name||''} ${sess.notes?'· '+sess.notes:''}</div>
             </div>
+            <button onclick="window._resetAllTestResults()" style="margin-left:auto;background:rgba(239,68,68,0.08);color:#ef4444;border:1px solid rgba(239,68,68,0.2);padding:7px 14px;border-radius:6px;font-weight:600;cursor:pointer;font-size:12px;">🗑 Azzera Tutti</button>
         </div>
         ${!athletes.length ? '<p style="color:var(--text-sub);text-align:center;padding:24px;">Nessun atleta convocato. Vai prima in "Convoca".</p>' : `
         <div style="overflow-x:auto;">
@@ -9863,31 +9877,88 @@ window.openTestTabellino = async function(sessId) {
                 <tbody>${athRows}</tbody>
             </table>
         </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:0.68rem;color:var(--text-muted);margin-top:8px;display:flex;align-items:center;gap:10px;">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;border:1.5px solid #f59e0b;"></span> Campo modificato
+            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;border:1.5px solid #ef4444;"></span> Campo azzerato (verrà cancellato)
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
             <button onclick="window.closeTestPopup()" style="background:rgba(0,0,0,0.05);color:var(--text-sub);border:1px solid var(--border);padding:8px 20px;border-radius:6px;cursor:pointer;">Annulla</button>
             <button onclick="window.saveTestTabellino('${sessId}')" style="background:#f59e0b;color:white;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-weight:700;">💾 Salva Risultati</button>
         </div>`}
     `);
 };
 
+window._resetAllTestResults = function() {
+    if (!confirm('Azzerare tutti i risultati del tabellino? I valori esistenti verranno cancellati al salvataggio.')) return;
+    document.querySelectorAll('.tres-input').forEach(inp => {
+        inp.dataset.cleared = inp.dataset.original !== '' ? '1' : '';
+        inp.value = '';
+        inp.style.borderColor = inp.dataset.original !== '' ? '#ef4444' : 'var(--border)';
+        // Nasconde il × (già gestito dallo svuotamento)
+        const btn = inp.nextElementSibling;
+        if (btn) btn.style.display = 'none';
+    });
+};
+
 window.saveTestTabellino = async function(sessId) {
     const inputs = document.querySelectorAll('.tres-input');
-    const records = [];
+    const toUpsert  = [];   // valori da inserire/aggiornare
+    const toDelete  = [];   // coppie {athlete_id, performance_id} da eliminare
+
     inputs.forEach(inp => {
+        const aid = inp.getAttribute('data-aid');
+        const pid = inp.getAttribute('data-pid');
         const val = inp.value.trim();
-        if (val === '') return;
-        records.push({
-            test_session_id: sessId,
-            athlete_id: inp.getAttribute('data-aid'),
-            performance_id: inp.getAttribute('data-pid'),
-            value: parseFloat(val)
-        });
+        const original = inp.dataset.original;   // '' = non aveva valore
+        const cleared  = inp.dataset.cleared === '1';
+
+        if (val !== '') {
+            // Valore presente: upsert (nuovo o modificato)
+            toUpsert.push({
+                test_session_id: sessId,
+                athlete_id: aid,
+                performance_id: pid,
+                value: parseFloat(val)
+            });
+        } else if (original !== '' || cleared) {
+            // Campo svuotato che aveva un valore originale → cancellare dal DB
+            toDelete.push({ aid, pid });
+        }
+        // Se era vuoto e rimane vuoto: non fare nulla
     });
-    if (!records.length) { alert('Inserisci almeno un risultato.'); return; }
-    const { error } = await client.from('test_results').upsert(records, { onConflict: 'test_session_id, athlete_id, performance_id' });
-    if (error) { alert('Errore: ' + error.message); return; }
-    window.closeTestPopup();
-    alert('✅ Risultati salvati!');
+
+    if (!toUpsert.length && !toDelete.length) {
+        alert('Nessuna modifica da salvare.');
+        return;
+    }
+
+    try {
+        // 1. Upsert valori presenti
+        if (toUpsert.length) {
+            const { error } = await client.from('test_results')
+                .upsert(toUpsert, { onConflict: 'test_session_id, athlete_id, performance_id' });
+            if (error) throw error;
+        }
+
+        // 2. Elimina i risultati azzerati
+        for (const { aid, pid } of toDelete) {
+            const { error } = await client.from('test_results')
+                .delete()
+                .eq('test_session_id', sessId)
+                .eq('athlete_id', aid)
+                .eq('performance_id', pid);
+            if (error) throw error;
+        }
+
+        window.closeTestPopup();
+        const msg = [
+            toUpsert.length  ? `${toUpsert.length} risultat${toUpsert.length===1?'o':'i'} salvat${toUpsert.length===1?'o':'i'}` : '',
+            toDelete.length  ? `${toDelete.length} risultat${toDelete.length===1?'o':'i'} azzerati` : ''
+        ].filter(Boolean).join(', ');
+        alert(`✅ ${msg}.`);
+    } catch(err) {
+        alert('Errore: ' + err.message);
+    }
 };
 
 // ── TAB: STATS ───────────────────────────────────────────────────
