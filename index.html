@@ -5455,6 +5455,10 @@ window.templateDashboard = function() {
                 style="padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.83rem; font-weight:600; background:transparent; color:var(--text-muted); transition:all 0.15s; white-space:nowrap;">
                 👤 Presenze Mensili Atleta
             </button>
+            <button id="dash-tab-btn-6" onclick="window.switchDashTab(6)"
+                style="padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-size:0.83rem; font-weight:600; background:transparent; color:var(--text-muted); transition:all 0.15s; white-space:nowrap; border-left: 1px solid var(--border);">
+                ⭐ Vista Ruolo
+            </button>
         </div>
 
         <!-- TAB 0: STATISTICHE GARE PER SQUADRA -->
@@ -5708,6 +5712,13 @@ window.templateDashboard = function() {
             </div>
         </div>
 
+        <!-- TAB 6: VISTA RUOLO -->
+        <div id="dash-tab-6" style="display:none;">
+            <div id="role-view-container">
+                <div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento vista ruolo...</div>
+            </div>
+        </div>
+
     </div>
 
     <!-- POPUP GRAFICO MENSILE INGRANDITO -->
@@ -5755,7 +5766,7 @@ window.templateDashboard = function() {
 
 /* ── TAB SWITCHER DASHBOARD ── */
 window.switchDashTab = function(idx) {
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
         const panel = document.getElementById('dash-tab-' + i);
         const btn   = document.getElementById('dash-tab-btn-' + i);
         if (panel) panel.style.display = i === idx ? '' : 'none';
@@ -5766,6 +5777,7 @@ window.switchDashTab = function(idx) {
     }
     if (idx === 4) window.renderDashMonthlyCharts();
     if (idx === 5) window.renderDashAthMonthlyCharts();
+    if (idx === 6) window.renderRoleView();
 };
 
 /* ── DATI GLOBALI DASHBOARD ── */
@@ -6347,6 +6359,539 @@ function _buildAthFullLineChart(months, W, H) {
         ${buildLine(assVals,  '#ef4444', '5,4')}
         ${xLabels}
     </svg>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TAB 6 — VISTA RUOLO
+   Renderizza una dashboard personalizzata in base al management_role
+   dell'utente loggato. Riusa i dati già caricati da refreshDashboard.
+   ══════════════════════════════════════════════════════════════ */
+
+window.renderRoleView = async function() {
+    const container = document.getElementById('role-view-container');
+    if (!container) return;
+
+    const role = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const seasonId = document.getElementById('dash-season-filter')?.value;
+    const socId = window._dashData._forcedSocietyId ||
+                  document.getElementById('dash-soc-filter')?.value || 'all';
+    const scopedTeamIds = window._userAssignedTeamIds;
+
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento...</div>';
+
+    try {
+        if (['admin','manager','presidente'].includes(role)) {
+            await _renderPresidenteView(container, seasonId, socId);
+        } else if (['segretario','responsabile'].includes(role)) {
+            await _renderResponsabileView(container, seasonId, socId);
+        } else if (role === 'dirigente') {
+            await _renderDirigenteView(container, seasonId, socId, scopedTeamIds);
+        } else if (role === 'allenatore') {
+            await _renderAllenatoreView(container, seasonId, socId, scopedTeamIds);
+        } else {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">Vista non disponibile per il ruolo corrente.</div>';
+        }
+    } catch(err) {
+        container.innerHTML = `<div style="text-align:center;padding:24px;color:#ef4444;">Errore: ${err.message}</div>`;
+        console.error('renderRoleView error:', err);
+    }
+};
+
+/* ─── HELPER: kpi card HTML ─── */
+function _kpiCard(label, value, sub, color, icon) {
+    return `<div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;border-top:3px solid ${color};">
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:6px;">${icon ? icon+' ' : ''}${label}</div>
+        <div style="font-size:1.6rem;font-weight:800;font-family:'DM Mono',monospace;color:${color};line-height:1;">${value}</div>
+        ${sub ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">${sub}</div>` : ''}
+    </div>`;
+}
+
+/* ─── HELPER: section header ─── */
+function _sectionHeader(title, sub, color) {
+    return `<div style="display:flex;align-items:center;gap:10px;margin:24px 0 12px;">
+        <div style="width:4px;height:32px;background:${color};border-radius:3px;flex-shrink:0;"></div>
+        <div>
+            <div style="font-size:1rem;font-weight:800;font-family:'Syne',sans-serif;">${title}</div>
+            ${sub ? `<div style="font-size:0.72rem;color:var(--text-muted);">${sub}</div>` : ''}
+        </div>
+    </div>`;
+}
+
+/* ─── HELPER: bar percentage ─── */
+function _bar(pct, color) {
+    const c = pct >= 75 ? '#059669' : pct >= 50 ? '#d97706' : '#dc2626';
+    const col = color || c;
+    return `<div style="display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;height:6px;background:rgba(0,0,0,0.07);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;"></div>
+        </div>
+        <span style="font-size:0.72rem;font-weight:700;color:${col};min-width:32px;text-align:right;">${pct}%</span>
+    </div>`;
+}
+
+/* ══════════════════════════════════════
+   VISTA PRESIDENTE / ADMIN / MANAGER
+   Focus: aggregati società, ranking squadre, top atleti, disciplina
+   ══════════════════════════════════════ */
+async function _renderPresidenteView(container, seasonId, socId) {
+    // Riusa dati già caricati dove possibile
+    const teams = window._dashMatchStats || [];
+    const athletes = window._dashAthletes || [];
+
+    // KPI di sintesi da dati già in memoria
+    const totAtleti = athletes.length;
+    const totPartite = teams.reduce((s,t) => s+t.partite, 0);
+    const totPunti   = teams.reduce((s,t) => s+t.pts, 0);
+    const totGol     = teams.reduce((s,t) => s+t.gf, 0);
+    const totAmm     = teams.reduce((s,t) => s+t.amm, 0);
+    const totEsp     = teams.reduce((s,t) => s+t.esp, 0);
+
+    const presAtleti = athletes.filter(a => a.sess_tot > 0);
+    const avgPres = presAtleti.length > 0
+        ? Math.round(presAtleti.reduce((s,a) => s + (a.sess_pres/a.sess_tot*100), 0) / presAtleti.length)
+        : 0;
+
+    // Top scorer
+    const topScorer = [...athletes].sort((a,b) => b.gol - a.gol).slice(0, 5);
+    // Top presenze
+    const topPres = [...athletes].filter(a=>a.sess_tot>0).sort((a,b) =>
+        (b.sess_pres/b.sess_tot) - (a.sess_pres/a.sess_tot)).slice(0,5);
+    // Ranking squadre per punti
+    const rankTeams = [...teams].sort((a,b) => b.pts - a.pts).slice(0,10);
+    // Disciplina per squadra
+    const disciplina = [...teams].sort((a,b) => (b.amm+b.esp*3) - (a.amm+a.esp*3)).slice(0,8);
+
+    container.innerHTML = `
+        ${_sectionHeader('Vista Presidente', 'Panoramica aggregata società · stagione corrente', 'var(--primary)')}
+
+        <!-- KPI row -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:20px;">
+            ${_kpiCard('Atleti', totAtleti, 'tesserati', 'var(--primary)', '👥')}
+            ${_kpiCard('Partite', totPartite, 'ufficiali', '#3b82f6', '⚽')}
+            ${_kpiCard('Punti totali', totPunti, 'tutte le squadre', '#f59e0b', '🏆')}
+            ${_kpiCard('Gol segnati', totGol, 'stagione', '#10b981', '🥅')}
+            ${_kpiCard('% Presenze', avgPres+'%', 'media allenamenti', '#8b5cf6', '📅')}
+            ${_kpiCard('Ammonizioni', totAmm, `+ ${totEsp} espulsioni`, '#ef4444', '🟨')}
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+            <!-- Ranking squadre -->
+            <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                ${_sectionHeader('Classifica squadre', 'Per punti · partite ufficiali', '#3b82f6')}
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                    <thead><tr style="color:var(--text-muted);font-size:0.66rem;font-weight:700;text-transform:uppercase;border-bottom:1px solid var(--border);">
+                        <th style="padding:6px 4px;text-align:left;">#</th>
+                        <th style="padding:6px 4px;text-align:left;">Squadra</th>
+                        <th style="padding:6px 4px;text-align:center;">P</th>
+                        <th style="padding:6px 4px;text-align:center;">V</th>
+                        <th style="padding:6px 4px;text-align:center;">GF</th>
+                        <th style="padding:6px 4px;text-align:center;color:#f59e0b;">Pts</th>
+                    </tr></thead>
+                    <tbody>
+                    ${rankTeams.length ? rankTeams.map((t,i) => `
+                        <tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+                            <td style="padding:7px 4px;color:var(--text-muted);font-weight:700;">${i+1}</td>
+                            <td style="padding:7px 4px;font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.name}</td>
+                            <td style="padding:7px 4px;text-align:center;color:var(--text-sub);">${t.partite}</td>
+                            <td style="padding:7px 4px;text-align:center;color:#059669;">${t.w}</td>
+                            <td style="padding:7px 4px;text-align:center;color:#2563eb;">${t.gf}</td>
+                            <td style="padding:7px 4px;text-align:center;font-weight:800;color:#f59e0b;font-family:'DM Mono',monospace;">${t.pts}</td>
+                        </tr>`) .join('')
+                    : '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">Nessuna partita registrata</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Disciplina squadre -->
+            <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                ${_sectionHeader('Disciplina', 'Ammonizioni + espulsioni per squadra', '#ef4444')}
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                ${disciplina.length ? disciplina.map(t => {
+                    const tot = t.amm + t.esp * 3;
+                    const maxTot = disciplina[0] ? disciplina[0].amm + disciplina[0].esp * 3 : 1;
+                    const pct = maxTot > 0 ? Math.round((tot/maxTot)*100) : 0;
+                    return `<div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                            <span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;">${t.name}</span>
+                            <span style="font-size:11px;color:var(--text-muted);">🟨${t.amm} 🟥${t.esp}</span>
+                        </div>
+                        ${_bar(pct, '#ef4444')}
+                    </div>`;
+                }).join('')
+                : '<div style="text-align:center;padding:20px;color:var(--text-muted);">Nessun dato disciplina</div>'}
+                </div>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+
+            <!-- Top scorer -->
+            <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                ${_sectionHeader('Top marcatori', 'Gol segnati stagione', '#10b981')}
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                ${topScorer.filter(a=>a.gol>0).length ? topScorer.filter(a=>a.gol>0).map((a,i) => `
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:11px;font-weight:800;color:var(--text-muted);width:16px;">${i+1}</span>
+                        <div style="width:28px;height:28px;border-radius:50%;background:rgba(16,185,129,0.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#059669;flex-shrink:0;">${a.name.charAt(0)}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name}</div>
+                            <div style="font-size:10px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.team}</div>
+                        </div>
+                        <span style="font-size:16px;font-weight:800;color:#059669;font-family:'DM Mono',monospace;">${a.gol}</span>
+                    </div>`).join('')
+                : '<div style="text-align:center;padding:20px;color:var(--text-muted);">Nessun gol registrato</div>'}
+                </div>
+            </div>
+
+            <!-- Top presenze -->
+            <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                ${_sectionHeader('Top presenze', '% allenamenti · min. 5 sessioni', '#8b5cf6')}
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                ${topPres.filter(a=>a.sess_tot>=5).slice(0,5).length ? topPres.filter(a=>a.sess_tot>=5).slice(0,5).map((a,i) => {
+                    const pct = Math.round(a.sess_pres/a.sess_tot*100);
+                    return `<div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+                            <span style="font-size:11px;font-weight:800;color:var(--text-muted);width:16px;">${i+1}</span>
+                            <span style="font-size:12px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name}</span>
+                            <span style="font-size:10px;color:var(--text-muted);">${a.team}</span>
+                        </div>
+                        ${_bar(pct, '#8b5cf6')}
+                    </div>`;
+                }).join('')
+                : '<div style="text-align:center;padding:20px;color:var(--text-muted);">Dati insufficienti</div>'}
+                </div>
+            </div>
+        </div>`;
+}
+
+/* ══════════════════════════════════════
+   VISTA SEGRETARIO / RESPONSABILE
+   Focus: situazione operativa, presenze per squadra, test atletici, calendario
+   ══════════════════════════════════════ */
+async function _renderResponsabileView(container, seasonId, socId) {
+    const teams = window._dashMatchStats || [];
+    const athletes = window._dashAthletes || [];
+    const monthlyData = window._dashMonthlyData || {};
+
+    // Presenze medie per squadra
+    const teamPres = Object.values(monthlyData).map(t => {
+        const months = Object.values(t.months);
+        const totPres = months.reduce((s,m) => s+m.pres, 0);
+        const totTot  = months.reduce((s,m) => s+m.total, 0);
+        return { name: t.name, pct: totTot > 0 ? Math.round(totPres/totTot*100) : 0, totTot };
+    }).filter(t => t.totTot > 0).sort((a,b) => b.pct - a.pct);
+
+    // Atleti con bassa presenza (< 50%)
+    const bassPres = athletes.filter(a => a.sess_tot >= 5 && (a.sess_pres/a.sess_tot) < 0.5)
+        .sort((a,b) => (a.sess_pres/a.sess_tot) - (b.sess_pres/b.sess_tot)).slice(0,8);
+
+    // Test atletici aggregati
+    let testData = [];
+    try {
+        const { data: testSess } = await client.from('test_sessions')
+            .select('id, session_date, test_definitions!inner(name), teams!inner(name)')
+            .order('session_date', { ascending: false })
+            .limit(20);
+        testData = testSess || [];
+    } catch(e) { /* ignora */ }
+
+    container.innerHTML = `
+        ${_sectionHeader('Vista Responsabile Tecnico', 'Situazione operativa · presenze · test atletici', '#059669')}
+
+        <!-- Presenze per squadra -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                ${_sectionHeader('Presenze per squadra', '% media allenamenti stagione', '#10b981')}
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                ${teamPres.slice(0,10).length ? teamPres.slice(0,10).map(t => `
+                    <div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                            <span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;">${t.name}</span>
+                        </div>
+                        ${_bar(t.pct)}
+                    </div>`).join('')
+                : '<div style="text-align:center;padding:20px;color:var(--text-muted);">Nessun dato presenze</div>'}
+                </div>
+            </div>
+
+            <!-- Atleti bassa presenza -->
+            <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                ${_sectionHeader('Atleti bassa presenza', 'Sotto il 50% · min. 5 sessioni', '#ef4444')}
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                ${bassPres.length ? bassPres.map(a => {
+                    const pct = Math.round(a.sess_pres/a.sess_tot*100);
+                    return `<div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                            <span style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;">${a.name}</span>
+                            <span style="font-size:10px;color:var(--text-muted);">${a.team}</span>
+                        </div>
+                        ${_bar(pct)}
+                    </div>`;
+                }).join('')
+                : '<div style="text-align:center;padding:20px;color:var(--text-muted);">Nessun atleta sotto soglia ✅</div>'}
+                </div>
+            </div>
+        </div>
+
+        <!-- Test atletici recenti -->
+        <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+            ${_sectionHeader('Ultime sessioni test atletici', 'Sessioni registrate per squadra', '#8b5cf6')}
+            <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                    <thead><tr style="color:var(--text-muted);font-size:0.66rem;font-weight:700;text-transform:uppercase;border-bottom:1px solid var(--border);">
+                        <th style="padding:7px 8px;text-align:left;">Data</th>
+                        <th style="padding:7px 8px;text-align:left;">Tipo test</th>
+                        <th style="padding:7px 8px;text-align:left;">Squadra</th>
+                    </tr></thead>
+                    <tbody>
+                    ${testData.length ? testData.map(t => `
+                        <tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+                            <td style="padding:7px 8px;color:var(--text-sub);">${new Date(t.session_date).toLocaleDateString('it-IT')}</td>
+                            <td style="padding:7px 8px;font-weight:600;">${t.test_definitions?.name || '—'}</td>
+                            <td style="padding:7px 8px;color:var(--text-sub);">${t.teams?.name || '—'}</td>
+                        </tr>`).join('')
+                    : '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted);">Nessuna sessione test registrata</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+}
+
+/* ══════════════════════════════════════
+   VISTA DIRIGENTE
+   Focus: squadra assegnata, rosa, prossime sessioni, disciplina
+   ══════════════════════════════════════ */
+async function _renderDirigenteView(container, seasonId, socId, scopedTeamIds) {
+    if (!scopedTeamIds || !scopedTeamIds.length) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Nessuna squadra assegnata.</div>';
+        return;
+    }
+
+    // Carica dati squadra
+    const [rosaRes, sessioniRes, matchRes] = await Promise.all([
+        client.from('athlete_team_seasons')
+            .select('athlete_id, jersey_number, role, athletes!inner(name, surname)')
+            .in('team_id', scopedTeamIds)
+            .order('jersey_number'),
+        client.from('sessions')
+            .select('id, title, session_date, session_types(name), teams(name)')
+            .in('team_id', scopedTeamIds)
+            .gte('session_date', new Date().toISOString().slice(0,10))
+            .order('session_date')
+            .limit(8),
+        client.from('match_details')
+            .select('goals_for, goals_against, match_status, is_friendly, sessions!inner(session_date, team_id, teams(name))')
+            .in('sessions.team_id', scopedTeamIds)
+            .eq('is_friendly', false)
+            .order('sessions(session_date)', { ascending: false })
+            .limit(6)
+    ]);
+
+    const rosa = rosaRes.data || [];
+    const prossime = sessioniRes.data || [];
+    const ultimePartite = matchRes.data || [];
+
+    // Presenze rosa dalla cache
+    const athletes = (window._dashAthletes || []).filter(a => scopedTeamIds.includes(a.team_id));
+    const presMap = {};
+    athletes.forEach(a => { presMap[a.id] = a; });
+
+    container.innerHTML = `
+        ${_sectionHeader('Vista Dirigente', 'La tua squadra · presenze · prossimi appuntamenti', '#3b82f6')}
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+
+            <!-- Rosa -->
+            <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                ${_sectionHeader('Rosa', `${rosa.length} atleti tesserati`, '#3b82f6')}
+                <div style="max-height:320px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                    <thead><tr style="color:var(--text-muted);font-size:0.66rem;font-weight:700;text-transform:uppercase;border-bottom:1px solid var(--border);">
+                        <th style="padding:5px 6px;text-align:left;">#</th>
+                        <th style="padding:5px 6px;text-align:left;">Atleta</th>
+                        <th style="padding:5px 6px;text-align:left;">Ruolo</th>
+                        <th style="padding:5px 6px;text-align:center;">% Pres.</th>
+                    </tr></thead>
+                    <tbody>
+                    ${rosa.map(r => {
+                        const ad = presMap[r.athlete_id];
+                        const pct = ad && ad.sess_tot > 0 ? Math.round(ad.sess_pres/ad.sess_tot*100) : null;
+                        const pc = pct === null ? 'var(--text-muted)' : pct >= 75 ? '#059669' : pct >= 50 ? '#d97706' : '#ef4444';
+                        return `<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+                            <td style="padding:6px;color:var(--text-muted);font-weight:700;">${r.jersey_number||'—'}</td>
+                            <td style="padding:6px;font-weight:600;">${r.athletes?.surname} ${r.athletes?.name}</td>
+                            <td style="padding:6px;color:var(--text-sub);font-size:11px;">${r.role||'—'}</td>
+                            <td style="padding:6px;text-align:center;font-weight:700;color:${pc};">${pct !== null ? pct+'%' : '—'}</td>
+                        </tr>`;
+                    }).join('')}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+
+            <!-- Prossimi appuntamenti + ultime partite -->
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                    ${_sectionHeader('Prossimi appuntamenti', '', '#f59e0b')}
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                    ${prossime.length ? prossime.map(s => {
+                        const isGara = (s.session_types?.name||'').toLowerCase().includes('gara') || (s.session_types?.name||'').toLowerCase().includes('partita');
+                        const col = isGara ? '#ef4444' : '#3b82f6';
+                        const ico = isGara ? '⚽' : '🏃';
+                        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:8px;">
+                            <span style="font-size:16px;">${ico}</span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title||s.session_types?.name||'Sessione'}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">${s.teams?.name||''}</div>
+                            </div>
+                            <span style="font-size:11px;font-weight:700;color:${col};white-space:nowrap;">${new Date(s.session_date).toLocaleDateString('it-IT',{day:'2-digit',month:'short'})}</span>
+                        </div>`;
+                    }).join('')
+                    : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nessun appuntamento programmato</div>'}
+                    </div>
+                </div>
+
+                <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                    ${_sectionHeader('Ultime partite', 'Risultati ufficiali', '#10b981')}
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                    ${ultimePartite.length ? ultimePartite.map(m => {
+                        const esito = m.match_status === 'vittoria' ? {c:'#059669',l:'V'} : m.match_status === 'sconfitta' ? {c:'#ef4444',l:'S'} : m.match_status === 'pareggio' ? {c:'#d97706',l:'P'} : {c:'var(--text-muted)',l:'—'};
+                        return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:8px;">
+                            <span style="width:20px;height:20px;border-radius:50%;background:${esito.c}22;color:${esito.c};font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${esito.l}</span>
+                            <div style="flex:1;">
+                                <span style="font-size:12px;font-weight:700;color:var(--text-main);">${m.goals_for} - ${m.goals_against}</span>
+                            </div>
+                            <span style="font-size:11px;color:var(--text-muted);">${new Date(m.sessions?.session_date).toLocaleDateString('it-IT',{day:'2-digit',month:'short'})}</span>
+                        </div>`;
+                    }).join('')
+                    : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nessuna partita registrata</div>'}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+}
+
+/* ══════════════════════════════════════
+   VISTA ALLENATORE
+   Focus: disponibilità rosa oggi, scheda atleta, test atletici squadra
+   ══════════════════════════════════════ */
+async function _renderAllenatoreView(container, seasonId, socId, scopedTeamIds) {
+    if (!scopedTeamIds || !scopedTeamIds.length) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Nessuna squadra assegnata.</div>';
+        return;
+    }
+
+    const [rosaRes, testRes, nextSessRes] = await Promise.all([
+        client.from('athlete_team_seasons')
+            .select('athlete_id, jersey_number, role, athletes!inner(name, surname)')
+            .in('team_id', scopedTeamIds)
+            .order('jersey_number'),
+        client.from('test_sessions')
+            .select('id, session_date, test_definitions!inner(name), test_results(athlete_id, value, test_performances!inner(name, unit, lower_is_better))')
+            .in('team_id', scopedTeamIds)
+            .order('session_date', { ascending: false })
+            .limit(3),
+        client.from('sessions')
+            .select('id, title, session_date, session_types(name)')
+            .in('team_id', scopedTeamIds)
+            .gte('session_date', new Date().toISOString().slice(0,10))
+            .order('session_date')
+            .limit(1)
+    ]);
+
+    const rosa = rosaRes.data || [];
+    const testSessions = testRes.data || [];
+    const nextSess = nextSessRes.data?.[0] || null;
+
+    // Atleti dalla cache con dettaglio
+    const athletes = (window._dashAthletes || []).filter(a => scopedTeamIds.includes(a.team_id));
+    const presMap = {};
+    athletes.forEach(a => { presMap[a.id] = a; });
+
+    // Ultima sessione presenze
+    let lastSessData = [];
+    try {
+        const { data: lastSess } = await client.from('sessions')
+            .select('id, session_date, attendances(athlete_id, status)')
+            .in('team_id', scopedTeamIds)
+            .lte('session_date', new Date().toISOString().slice(0,10))
+            .order('session_date', { ascending: false })
+            .limit(1);
+        if (lastSess?.[0]?.attendances) lastSessData = lastSess[0].attendances;
+    } catch(e) { /* ignora */ }
+
+    const lastSessMap = {};
+    lastSessData.forEach(a => { lastSessMap[a.athlete_id] = a.status; });
+
+    container.innerHTML = `
+        ${_sectionHeader('Vista Allenatore', 'Rosa · disponibilità · test atletici', '#f59e0b')}
+
+        ${nextSess ? `<div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+            <span style="font-size:20px;">📌</span>
+            <div>
+                <div style="font-size:12px;font-weight:800;">Prossimo appuntamento</div>
+                <div style="font-size:13px;color:var(--text-sub);">${nextSess.title||nextSess.session_types?.name||'Sessione'} — ${new Date(nextSess.session_date).toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}</div>
+            </div>
+        </div>` : ''}
+
+        <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:16px;">
+
+            <!-- Rosa con disponibilità -->
+            <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                ${_sectionHeader('Rosa e disponibilità', 'Stato ultima sessione', '#3b82f6')}
+                <div style="max-height:380px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                    <thead><tr style="color:var(--text-muted);font-size:0.66rem;font-weight:700;text-transform:uppercase;border-bottom:1px solid var(--border);">
+                        <th style="padding:5px 6px;">#</th>
+                        <th style="padding:5px 6px;text-align:left;">Atleta</th>
+                        <th style="padding:5px 6px;text-align:center;">% Pres.</th>
+                        <th style="padding:5px 6px;text-align:center;">⚽ Gol</th>
+                        <th style="padding:5px 6px;text-align:center;">🟨</th>
+                        <th style="padding:5px 6px;text-align:center;">Ultima sess.</th>
+                    </tr></thead>
+                    <tbody>
+                    ${rosa.map(r => {
+                        const ad = presMap[r.athlete_id];
+                        const pct = ad && ad.sess_tot > 0 ? Math.round(ad.sess_pres/ad.sess_tot*100) : null;
+                        const pc = pct === null ? 'var(--text-muted)' : pct >= 75 ? '#059669' : pct >= 50 ? '#d97706' : '#ef4444';
+                        const lastStatus = lastSessMap[r.athlete_id] || '—';
+                        const sc = lastStatus === 'presente' ? '#059669' : lastStatus === 'assente' ? '#ef4444' : lastStatus === 'infortunato' ? '#f59e0b' : 'var(--text-muted)';
+                        const si = lastStatus === 'presente' ? '✅' : lastStatus === 'assente' ? '❌' : lastStatus === 'infortunato' ? '🩹' : '—';
+                        return `<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+                            <td style="padding:6px;text-align:center;color:var(--text-muted);font-weight:700;">${r.jersey_number||'—'}</td>
+                            <td style="padding:6px;font-weight:600;">${r.athletes?.surname} ${r.athletes?.name}</td>
+                            <td style="padding:6px;text-align:center;font-weight:700;color:${pc};">${pct !== null ? pct+'%' : '—'}</td>
+                            <td style="padding:6px;text-align:center;color:#059669;font-weight:700;">${ad?.gol||0}</td>
+                            <td style="padding:6px;text-align:center;color:#d97706;">${ad?.amm||0}</td>
+                            <td style="padding:6px;text-align:center;font-size:13px;" title="${lastStatus}">${si}</td>
+                        </tr>`;
+                    }).join('')}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+
+            <!-- Test atletici -->
+            <div style="background:var(--card-raised);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+                ${_sectionHeader('Ultimi test atletici', 'Sessioni recenti squadra', '#8b5cf6')}
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                ${testSessions.length ? testSessions.map(ts => {
+                    const results = ts.test_results || [];
+                    const resCount = results.length;
+                    return `<div style="padding:10px 12px;background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:8px;">
+                        <div style="font-size:12px;font-weight:800;margin-bottom:2px;">${ts.test_definitions?.name||'Test'}</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">${new Date(ts.session_date).toLocaleDateString('it-IT')} · ${resCount} risultati</div>
+                        <button onclick="window.openTestStats('${ts.id}')"
+                            style="font-size:11px;font-weight:600;color:#8b5cf6;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);padding:4px 10px;border-radius:5px;cursor:pointer;">
+                            📊 Vedi risultati
+                        </button>
+                    </div>`;
+                }).join('')
+                : '<div style="text-align:center;padding:20px;color:var(--text-muted);">Nessun test registrato</div>'}
+                </div>
+            </div>
+        </div>`;
 }
 
 async function _populateAthMonthlyFilters() {
