@@ -6095,6 +6095,9 @@ window.templateDashboard = function() {
                 <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
                     <div><h3 style="font-family:'DM Mono','Outfit',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">⚽ Statistiche Gare per Squadra</h3><span style="font-size:0.68rem; color:var(--text-sub);">Solo partite ufficiali &middot; Amichevoli escluse</span></div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <select id="dash-stats-season" onchange="window.onDashStatsSeasonChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le stagioni</option>
+                        </select>
                         <select id="dash-stats-soc" onchange="window.onDashStatsSocChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
                             <option value="">Tutte le società</option>
                         </select>
@@ -6137,6 +6140,12 @@ window.templateDashboard = function() {
                     <h3 style="font-family:'DM Mono','Outfit',sans-serif; font-size:0.95rem; font-weight:700; margin:0;">🏆 Partite</h3>
                 </div>
                 <div style="background:rgba(0,0,0,0.03); padding:12px 15px; border-radius:8px; border:1px solid var(--border); margin-bottom:15px; display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
+                    <div>
+                        <label style="font-size:11px; color:var(--text-muted); font-weight:700; letter-spacing:0.04em;">STAGIONE</label>
+                        <select id="dash-match-season" onchange="window.onDashMatchSeasonChange()" style="width:100%; padding:7px 8px; margin-top:4px; border:1px solid var(--border); border-radius:6px; font-size:0.8rem; color:var(--text-main); background:var(--card);">
+                            <option value="">Tutte le stagioni</option>
+                        </select>
+                    </div>
                     <div id="dash-match-soc-wrap">
                         <label style="font-size:11px; color:var(--text-muted); font-weight:700; letter-spacing:0.04em;">SOCIETÀ</label>
                         <select id="dash-match-soc" onchange="window.onDashMatchSocChange()" style="width:100%; padding:7px 8px; margin-top:4px; border:1px solid var(--border); border-radius:6px; font-size:0.8rem; color:var(--text-main); background:var(--card);">
@@ -6189,6 +6198,9 @@ window.templateDashboard = function() {
                 <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
                     <h3 style="font-family:'DM Mono','Outfit',sans-serif; font-size:0.95rem; font-weight:700;">📅 Presenze Sessioni</h3>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <select id="dash-pres-season" onchange="window.onDashPresSeasonChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le stagioni</option>
+                        </select>
                         <select id="dash-pres-soc" onchange="window.onDashPresSocChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
                             <option value="">Tutte le società</option>
                         </select>
@@ -6225,6 +6237,9 @@ window.templateDashboard = function() {
                 <div class="header" style="margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
                     <h3 style="font-family:'DM Mono','Outfit',sans-serif; font-size:0.95rem; font-weight:700;">👤 Statistiche per Atleta</h3>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                        <select id="dash-ath-season" onchange="window.onDashAthSeasonChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
+                            <option value="">Tutte le stagioni</option>
+                        </select>
                         <select id="dash-ath-soc" onchange="window.onDashAthSocChange()" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; width:auto; margin:0; color:var(--text-sub);">
                             <option value="">Tutte le società</option>
                         </select>
@@ -6669,7 +6684,87 @@ window.refreshDashboard = async function() {
         window.loadDashAthletes(seasonId, socId, scopedTeamIds),
         window.loadDashMonthlyData(seasonId, socId, scopedTeamIds),
     ]);
+
+    // Popola i filtri stagione nei tab 0-3 (eseguito una sola volta)
+    _populateAllTabSeasonFilters(seasonId);
 };
+
+
+/* Handler stagione per i singoli tab — ricarica i filtri categoria/team */
+window.onDashStatsSeasonChange = function() {
+    const seasonId = document.getElementById('dash-stats-season')?.value || '';
+    // Reset cat/team e ripopola
+    const catSel = document.getElementById('dash-stats-cat');
+    const teamSel = document.getElementById('dash-stats-team');
+    if (catSel) catSel.innerHTML = '<option value="">Tutte le categorie</option>';
+    if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>';
+    if (seasonId) _repopulateCatTeamForSeason('dash-stats-cat', 'dash-stats-team', seasonId);
+    window.renderDashStats();
+};
+window.onDashMatchSeasonChange = function() {
+    const seasonId = document.getElementById('dash-match-season')?.value || '';
+    const catSel = document.getElementById('dash-match-cat');
+    const teamSel = document.getElementById('dash-match-team');
+    if (catSel) catSel.innerHTML = '<option value="">Tutte le categorie</option>';
+    if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>';
+    if (seasonId) _repopulateCatTeamForSeason('dash-match-cat', 'dash-match-team', seasonId);
+    window.renderDashMatches();
+};
+window.onDashPresSeasonChange = function() {
+    const seasonId = document.getElementById('dash-pres-season')?.value || '';
+    const catSel = document.getElementById('dash-pres-cat');
+    const teamSel = document.getElementById('dash-pres-team');
+    if (catSel) catSel.innerHTML = '<option value="">Tutte le categorie</option>';
+    if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>';
+    if (seasonId) _repopulateCatTeamForSeason('dash-pres-cat', 'dash-pres-team', seasonId);
+    window.renderDashPresenze();
+};
+window.onDashAthSeasonChange = function() {
+    const seasonId = document.getElementById('dash-ath-season')?.value || '';
+    const catSel = document.getElementById('dash-ath-cat');
+    const teamSel = document.getElementById('dash-ath-team');
+    if (catSel) catSel.innerHTML = '<option value="">Tutte le categorie</option>';
+    if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>';
+    if (seasonId) _repopulateCatTeamForSeason('dash-ath-cat', 'dash-ath-team', seasonId);
+    window.renderDashAthletes();
+};
+
+/* Ripopola cat e team filtrati per stagione */
+async function _repopulateCatTeamForSeason(catSelId, teamSelId, seasonId) {
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isScoped = ['dirigente','allenatore','responsabile'].includes(effRole);
+    const scopedIds = isScoped ? (window._userAssignedTeamIds || []) : null;
+
+    let tq = client.from('teams').select('id, name, category_id').eq('season_id', seasonId).order('name');
+    if (scopedIds && scopedIds.length) tq = tq.in('id', scopedIds);
+    const { data: teams } = await tq;
+
+    const catIds = [...new Set((teams||[]).map(t=>t.category_id).filter(Boolean))];
+    if (catIds.length) {
+        const { data: cats } = await client.from('categories').select('id, name').in('id', catIds).order('name');
+        const catSel = document.getElementById(catSelId);
+        if (catSel) (cats||[]).forEach(c => { catSel.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+    }
+    const teamSel = document.getElementById(teamSelId);
+    if (teamSel) (teams||[]).forEach(t => { teamSel.innerHTML += `<option value="${t.id}">${t.name}</option>`; });
+}
+
+/* Popola i select stagione nei tab 0-3 e categoria dove necessario */
+function _populateAllTabSeasonFilters(activeSeasonId) {
+    const seasons = window._dashData?._seasons || [];
+    const tabSeasonIds = ['dash-stats-season','dash-match-season','dash-pres-season','dash-ath-season'];
+    tabSeasonIds.forEach(selId => {
+        const sel = document.getElementById(selId);
+        if (!sel || sel.options.length > 1) return; // già popolato
+        seasons.forEach(s => {
+            const o = document.createElement('option');
+            o.value = s.id;
+            o.textContent = s.name + (s.is_active ? ' ✓' : '');
+            if (s.id === activeSeasonId) o.selected = true;
+            sel.appendChild(o);
+        });
+    });
+}
 
 /* ══════════════════════════════════════════════════════════════
    MODULO: PRESENZE MENSILI PER SQUADRA (Tab 4 Dashboard)
@@ -6787,6 +6882,22 @@ async function _populateMonthlyFilters(currentSeasonId, currentSocId) {
         const societies = window._dashData?._societies || [];
         societies.forEach(s => {
             selSoc.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+    }
+    // Categorie — ricava dai dati già caricati in _dashMonthlyData
+    const selCat = document.getElementById('dash-monthly-cat');
+    if (selCat && selCat.options.length <= 1) {
+        const catIds = [...new Set(Object.values(window._dashMonthlyData || {}).map(t => t.category_id).filter(Boolean))];
+        if (catIds.length > 0) {
+            const { data: cats } = await client.from('categories').select('id, name').in('id', catIds).order('name');
+            (cats || []).forEach(c => { selCat.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+        }
+    }
+    // Squadre — ricava dai dati già caricati
+    const selTeam = document.getElementById('dash-monthly-team');
+    if (selTeam && selTeam.options.length <= 1) {
+        Object.values(window._dashMonthlyData || {}).sort((a,b) => (a.name||'').localeCompare(b.name||'')).forEach(t => {
+            selTeam.innerHTML += `<option value="${t.id}">${t.name}</option>`;
         });
     }
 }
@@ -8867,6 +8978,7 @@ window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
 window.renderDashMatches = function() {
     const tbody = document.getElementById('dash-matches-body');
     if (!tbody) return;
+    const filterSeason  = document.getElementById('dash-match-season')?.value;
     const filterTeam    = document.getElementById('dash-match-team')?.value;
     const filterSoc     = document.getElementById('dash-match-soc')?.value;
     const filterCat     = document.getElementById('dash-match-cat')?.value;
@@ -8874,6 +8986,7 @@ window.renderDashMatches = function() {
     const filterDateTo   = document.getElementById('dash-match-date-to')?.value;
 
     const filtered = window._dashMatches.filter(m => {
+        if (filterSeason && m.season_id   !== filterSeason)  return false;
         if (filterTeam && m.team_id    !== filterTeam)    return false;
         if (filterSoc  && m.society_id !== filterSoc)     return false;
         if (filterCat  && m.category_id !== filterCat)    return false;
@@ -8953,12 +9066,14 @@ window.loadDashPresenze = async function(seasonId, socId, scopedTeamIds) {
 window.renderDashPresenze = function() {
     const tbody = document.getElementById('dash-pres-body');
     if (!tbody) return;
+    const filterSeason = document.getElementById('dash-pres-season')?.value;
     const filterTeam = document.getElementById('dash-pres-team')?.value;
     const filterSoc  = document.getElementById('dash-pres-soc')?.value;
     const filterCat  = document.getElementById('dash-pres-cat')?.value;
 
     const filtered = window._dashSessions
         .filter(s =>
+            (!filterSeason || s.season_id   === filterSeason) &&
             (!filterTeam || s.team_id     === filterTeam) &&
             (!filterSoc  || s.society_id  === filterSoc)  &&
             (!filterCat  || s.category_id === filterCat)
@@ -9081,12 +9196,14 @@ window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
 window.renderDashStats = function() {
     const tbody = document.getElementById('dash-stats-body');
     if (!tbody) return;
+    const filterSeason = document.getElementById('dash-stats-season')?.value;
     const filterSoc  = document.getElementById('dash-stats-soc')?.value;
     const filterCat  = document.getElementById('dash-stats-cat')?.value;
     const filterTeam = document.getElementById('dash-stats-team')?.value;
 
     const filtered = window._dashMatchStats
         .filter(t =>
+            (!filterSeason || t.season_id  === filterSeason) &&
             (!filterSoc  || t.society_id  === filterSoc) &&
             (!filterCat  || t.category_id === filterCat) &&
             (!filterTeam || t.team_id     === filterTeam)
@@ -9277,6 +9394,7 @@ window.renderDashAthletes = function() {
     const tbody = document.getElementById('dash-athletes-body');
     if (!tbody) return;
 
+    const filterSeason = document.getElementById('dash-ath-season')?.value;
     const filterSoc  = document.getElementById('dash-ath-soc')?.value;
     const filterCat  = document.getElementById('dash-ath-cat')?.value;
     const filterTeam = document.getElementById('dash-ath-team')?.value;
@@ -9285,6 +9403,7 @@ window.renderDashAthletes = function() {
     const sortDir = window._dashAthSortDir || -1;
 
     let filtered = window._dashAthletes.filter(a =>
+        (!filterSeason || a.season_id  === filterSeason) &&
         (!filterSoc  || a.society_id  === filterSoc)  &&
         (!filterCat  || a.category_id === filterCat)  &&
         (!filterTeam || a.team_id     === filterTeam) &&
@@ -9909,6 +10028,9 @@ async function _renderVistaResponsabile() {
         <!-- ══ TAB: DASHBOARD ══════════════════════════════════════════════ -->
         <div id="resp-tab-dashboard" class="resp-section active">
 
+            <!-- Prossimo Impegno -->
+            ${nextMatchHTML}
+
             <!-- KPI veloci -->
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px;">
                 ${kpiMini('📅', officialMatches.length, 'Partite ufficiali','var(--primary)')}
@@ -10162,6 +10284,17 @@ async function _renderVistaResponsabile() {
 
 window.loadDashResponsabile = function() {
     window._userAssignedTeamIds = null; // forza reload squadre
+    // Popola il filtro stagione della Vista (condiviso con pres-view-season)
+    const presSeaSel = document.getElementById('pres-view-season');
+    if (presSeaSel && presSeaSel.options.length <= 1 && window._dashData?._seasons?.length) {
+        window._dashData._seasons.forEach(s => {
+            const o = document.createElement('option');
+            o.value = s.id;
+            o.textContent = s.name + (s.is_active ? ' ✓' : '');
+            if (s.is_active) o.selected = true;
+            presSeaSel.appendChild(o);
+        });
+    }
     _renderVistaResponsabile();
 };
 
@@ -10267,6 +10400,7 @@ function _applyTabFilterVisibility() {
     if (responsabileSectionWrap)   responsabileSectionWrap.style.display = _isRespView   ? '' : 'none';
 
     // ── Filtri nei tab generali (0-5) ──
+    const seasonSelects = ['dash-stats-season','dash-match-season','dash-pres-season','dash-ath-season'];
     const socSelects  = ['dash-stats-soc','dash-match-soc','dash-pres-soc','dash-ath-soc','dash-monthly-soc'];
     const catSelects  = ['dash-stats-cat','dash-match-cat','dash-pres-cat','dash-ath-cat','dash-monthly-cat'];
     const teamSelects = ['dash-stats-team','dash-match-team','dash-pres-team','dash-ath-team','dash-monthly-team'];
