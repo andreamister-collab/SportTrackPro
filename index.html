@@ -8972,8 +8972,21 @@ window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
             selSoc.innerHTML = '<option value="">Tutte le società</option>' +
                 matchSocs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
         }
-        _populateTabCatFilter('dash-match-cat', window._dashMatches, null);
-        _populateTabTeamFilter('dash-match-team', window._dashMatches, null, null);
+        // Se l'utente ha uno scope (responsabile/dirigente/allenatore), popola i filtri
+        // cat e team usando solo i dati già filtrati per scope — non tutte le opzioni DB
+        if (scopedTeamIds && scopedTeamIds.length > 0 && window._userScopeData) {
+            const scopeCats  = window._userScopeData.categories || [];
+            const scopeTeams = window._userScopeData.teams      || [];
+            const catSel  = document.getElementById('dash-match-cat');
+            const teamSel = document.getElementById('dash-match-team');
+            if (catSel)  catSel.innerHTML  = '<option value="">Tutte le categorie</option>' +
+                scopeCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>' +
+                scopeTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        } else {
+            _populateTabCatFilter('dash-match-cat', window._dashMatches, null);
+            _populateTabTeamFilter('dash-match-team', window._dashMatches, null, null);
+        }
 
         // Imposta date di default: ultimo mese → oggi
         const today = new Date();
@@ -9524,7 +9537,7 @@ window.loadUserAssignedTeams = async function() {
     window._userAssignedTeamIds = ids;
 
     // ── Carica dettagli teams/categorie e salva nello store condiviso ──
-    // Usato da Vista Responsabile e tab dashboard per evitare query duplicate
+    // Riusato da Vista Responsabile, tab dashboard e filtri partite per evitare query duplicate
     if (ids.length > 0 && !window._userScopeData) {
         const catIdsForStore = [...new Set((data||[]).filter(r => r.category_id).map(r => r.category_id))];
         const [{ data: teamsDetail }, { data: catsDetail }] = await Promise.all([
