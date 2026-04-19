@@ -10028,10 +10028,7 @@ async function _renderVistaResponsabile() {
         <!-- ══ TAB: DASHBOARD ══════════════════════════════════════════════ -->
         <div id="resp-tab-dashboard" class="resp-section active">
 
-            <!-- Prossimo Impegno -->
-            ${nextMatchHTML}
-
-            <!-- KPI veloci -->
+            <!-- ROW 1: KPI veloci -->
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px;">
                 ${kpiMini('📅', officialMatches.length, 'Partite ufficiali','var(--primary)')}
                 ${kpiMini('⚽', gf+' — '+gs, 'GF — GS','#10b981')}
@@ -10041,75 +10038,80 @@ async function _renderVistaResponsabile() {
                 ${kpiMini('⚠️', monCount, 'Da monitorare','#d97706')}
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <!-- ROW 2: col-sinistra (Prossimo Impegno + Sessioni) | col-destra (Stato Fisico + Disponibilità) -->
+            <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:14px;margin-bottom:16px;">
 
-                <!-- Stato fisico squadra -->
-                <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
-                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px;">🏥 Stato Fisico Squadra</div>
-                    ${athIds.filter(id=>athKPI[id]?.avail!=='available').length===0
-                        ? '<div style="text-align:center;padding:20px;color:#10b981;font-weight:600;">✅ Tutti disponibili</div>'
-                        : athIds.filter(id=>athKPI[id]?.avail!=='available').map(id=>{
-                            const ath=athMap[id], k=athKPI[id];
-                            return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.05);">'
-                                +availBadge(k.avail)
-                                +'<div style="font-size:0.8rem;font-weight:600;">'+(ath?.surname||'')+' '+(ath?.name||'')+'</div>'
-                                +'<div style="font-size:0.65rem;color:var(--text-muted);margin-left:auto;">'+(ath?.role||'')+' · '+(ath?.teamName||'')+'</div>'
-                                +'</div>';
-                          }).join('')
-                    }
+                <!-- Colonna sinistra -->
+                <div>
+                    ${nextMatchHTML}
+                    <!-- Sessioni con filtro -->
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">⚡ Sessioni — presenze</div>
+                            <div style="display:flex;gap:4px;">
+                                <button id="resp-sess-btn-7"   onclick="window._resp_filterSess(7,this)"  style="padding:3px 9px;border-radius:5px;border:1px solid var(--primary);background:var(--primary);color:white;font-size:0.68rem;font-weight:700;cursor:pointer;">7gg</button>
+                                <button id="resp-sess-btn-30"  onclick="window._resp_filterSess(30,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:700;cursor:pointer;">30gg</button>
+                                <button id="resp-sess-btn-all" onclick="window._resp_filterSess(0,this)"  style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:700;cursor:pointer;">Tutte</button>
+                            </div>
+                        </div>
+                        <div id="resp-sess-list" style="max-height:280px;overflow-y:auto;">
+                            ${window._resp_renderSessList(7)}
+                        </div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:8px;text-align:right;">${trainSessions.length} sessioni totali</div>
+                    </div>
                 </div>
 
-                <!-- Disponibilità per ruolo -->
-                <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
-                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px;">👥 Disponibilità per Ruolo</div>
-                    ${Object.entries(roleGroups).sort((a,b)=>a[0].localeCompare(b[0])).map(([ruolo,ids])=>{
-                        const av=ids.filter(id=>athKPI[id]?.avail==='available').length, tot=ids.length;
-                        const perc=Math.round(av/tot*100);
-                        const col=perc===100?'#10b981':perc>=70?'#0ea5e9':perc>=40?'#f59e0b':'#ef4444';
-                        return '<div style="margin-bottom:9px;">'
-                            +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
-                            +'<span style="font-size:0.78rem;font-weight:600;">'+ruolo+'</span>'
-                            +'<span style="font-size:0.72rem;font-weight:700;color:'+col+';">'+av+'/'+tot+'</span></div>'
-                            +'<div style="background:rgba(0,0,0,0.06);border-radius:99px;height:6px;overflow:hidden;">'
-                            +'<div style="height:100%;width:'+perc+'%;background:'+col+';border-radius:99px;"></div></div></div>';
-                    }).join('')}
-                </div>
-            <!-- Alerts + Sessioni -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-                <!-- Alert squadra -->
-                <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
-                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px;">🚨 Alert</div>
-                    ${alerts.length===0
-                        ? '<div style="text-align:center;padding:20px;color:#10b981;font-weight:600;">✅ Nessun alert</div>'
-                        : alerts.slice(0,8).map(al=>{
-                            const [bg,col]=alertColor(al.type);
-                            return '<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;margin-bottom:5px;background:'+bg+';border-radius:8px;">'
-                                +'<span style="font-size:1rem;flex-shrink:0;">'+alertIcon(al.type)+'</span>'
-                                +'<div><div style="font-size:0.78rem;font-weight:700;color:'+col+';">'+al.name+'<span style="font-size:0.62rem;font-weight:400;color:var(--text-muted);margin-left:4px;">'+al.teamName+'</span></div>'
-                                +'<div style="font-size:0.7rem;color:var(--text-sub);">'+al.msg+'</div></div>'
-                                +'</div>';
-                          }).join('')
-                    }
-                </div>
+                <!-- Colonna destra: Alert + Stato Fisico + Disponibilità -->
+                <div style="display:flex;flex-direction:column;gap:12px;">
 
-                <!-- Sessioni con filtro -->
-                <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
-                        <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">⚡ Sessioni — presenze</div>
-                        <div style="display:flex;gap:4px;">
-                            <button id="resp-sess-btn-7"   onclick="window._resp_filterSess(7,this)"  style="padding:3px 9px;border-radius:5px;border:1px solid var(--primary);background:var(--primary);color:white;font-size:0.68rem;font-weight:700;cursor:pointer;">7gg</button>
-                            <button id="resp-sess-btn-30"  onclick="window._resp_filterSess(30,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:700;cursor:pointer;">30gg</button>
-                            <button id="resp-sess-btn-all" onclick="window._resp_filterSess(0,this)"  style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:700;cursor:pointer;">Tutte</button>
+                    <!-- Alert squadra -->
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+                        <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">🚨 Alert Squadra</div>
+                        ${alerts.length===0
+                            ? '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;color:#10b981;gap:6px;"><span style="font-size:1.5rem;">✅</span><span style="font-size:0.82rem;font-weight:600;">Nessun alert</span></div>'
+                            : alerts.slice(0,6).map(al=>{
+                                const [bg,col]=alertColor(al.type);
+                                return '<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;margin-bottom:5px;background:'+bg+';border-radius:8px;">'
+                                    +'<span style="font-size:1rem;flex-shrink:0;">'+alertIcon(al.type)+'</span>'
+                                    +'<div><div style="font-size:0.78rem;font-weight:700;color:'+col+';">'+al.name+'<span style="font-size:0.62rem;font-weight:400;color:var(--text-muted);margin-left:4px;">'+al.teamName+'</span></div>'
+                                    +'<div style="font-size:0.7rem;color:var(--text-sub);">'+al.msg+'</div></div>'
+                                    +'</div>';
+                              }).join('')
+                        }
+                    </div>
+
+                    <!-- Stato fisico + Disponibilità side by side -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">🏥 Stato Fisico</div>
+                            ${athIds.filter(id=>athKPI[id]?.avail!=='available').length===0
+                                ? '<div style="text-align:center;padding:16px;color:#10b981;font-weight:600;font-size:0.82rem;">✅ Tutti disponibili</div>'
+                                : athIds.filter(id=>athKPI[id]?.avail!=='available').map(id=>{
+                                    const ath=athMap[id], k=athKPI[id];
+                                    return '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05);">'
+                                        +availBadge(k.avail)
+                                        +'<div style="font-size:0.78rem;font-weight:600;">'+(ath?.surname||'')+' '+(ath?.name||'')+'</div>'
+                                        +'</div>';
+                                  }).join('')
+                            }
+                        </div>
+                        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">👥 Disponibilità Ruolo</div>
+                            ${Object.entries(roleGroups).sort((a,b)=>a[0].localeCompare(b[0])).map(([ruolo,ids])=>{
+                                const av=ids.filter(id=>athKPI[id]?.avail==='available').length, tot=ids.length;
+                                const perc=Math.round(av/tot*100);
+                                const col=perc===100?'#10b981':perc>=70?'#0ea5e9':perc>=40?'#f59e0b':'#ef4444';
+                                return '<div style="margin-bottom:8px;">'
+                                    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">'
+                                    +'<span style="font-size:0.75rem;font-weight:600;">'+ruolo+'</span>'
+                                    +'<span style="font-size:0.7rem;font-weight:700;color:'+col+';">'+av+'/'+tot+'</span></div>'
+                                    +'<div style="background:rgba(0,0,0,0.06);border-radius:99px;height:5px;overflow:hidden;">'
+                                    +'<div style="height:100%;width:'+perc+'%;background:'+col+';border-radius:99px;"></div></div></div>';
+                            }).join('')}
                         </div>
                     </div>
-                    <div id="resp-sess-list" style="max-height:280px;overflow-y:auto;">
-                        ${window._resp_renderSessList(7)}
-                    </div>
-                    <div style="font-size:0.65rem;color:var(--text-muted);margin-top:8px;text-align:right;">${trainSessions.length} sessioni totali</div>
-                </div>
-            </div>
-        </div>
 
+                </div>
             </div>
 
             <!-- Ranking giocatori -->
@@ -10414,7 +10416,8 @@ function _applyTabFilterVisibility() {
     catSelects.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.style.display = isTeamScoped ? 'none' : '';
+        // Mostra categorie per tutti i ruoli (anche team-scoped: responsabile vede più categorie)
+        el.style.display = '';
     });
     teamSelects.forEach(id => {
         const el = document.getElementById(id);
