@@ -8422,28 +8422,31 @@ async function _renderVistaAllenatore() {
                 </div>
             </div>
 
-            <!-- ROW 2: Prossimo impegno + Alerts -->
-            <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:14px;margin-bottom:16px;">
+            <!-- ROW 2: Prossimo impegno | Sessioni | Alerts (3-col grid) -->
+            <div style="display:grid;grid-template-columns:280px 1fr 320px;gap:14px;margin-bottom:16px;align-items:start;">
+
+                <!-- COL 1: Prossimo impegno -->
                 <div>
                     ${nextMatchHTML}
-                    <!-- Carico allenamenti — tutte le sessioni, con filtro -->
-                    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:12px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
-                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">⚡ Sessioni — presenze</div>
-                            <div style="display:flex;gap:4px;">
-                                <button onclick="window._filterSess(7,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--primary);background:var(--primary);color:white;font-size:0.68rem;font-weight:700;cursor:pointer;" id="sess-btn-7">7gg</button>
-                                <button onclick="window._filterSess(30,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:700;cursor:pointer;" id="sess-btn-30">30gg</button>
-                                <button onclick="window._filterSess(0,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:700;cursor:pointer;" id="sess-btn-all">Tutte</button>
-                            </div>
-                        </div>
-                        <div id="sess-list" style="max-height:280px;overflow-y:auto;padding-right:2px;">
-                        ${window._renderSessList(7)}
-                        </div>
-                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:8px;text-align:right;">${recentTrain.length} sessioni totali in archivio</div>
-                    </div>
                 </div>
 
-                <!-- ALERTS -->
+                <!-- COL 2: Sessioni — presenze (si espande liberamente) -->
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+                        <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">⚡ Sessioni — presenze</div>
+                        <div style="display:flex;gap:4px;">
+                            <button onclick="window._filterSess(7,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--primary);background:var(--primary);color:white;font-size:0.68rem;font-weight:700;cursor:pointer;" id="sess-btn-7">7gg</button>
+                            <button onclick="window._filterSess(30,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:700;cursor:pointer;" id="sess-btn-30">30gg</button>
+                            <button onclick="window._filterSess(0,this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.68rem;font-weight:700;cursor:pointer;" id="sess-btn-all">Tutte</button>
+                        </div>
+                    </div>
+                    <div id="sess-list" style="padding-right:2px;">
+                    ${window._renderSessList(7)}
+                    </div>
+                    <div style="font-size:0.65rem;color:var(--text-muted);margin-top:8px;text-align:right;">${recentTrain.length} sessioni totali in archivio</div>
+                </div>
+
+                <!-- COL 3: Alerts -->
                 <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
                     <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">🚨 Alert Squadra</div>
                     ${alerts.length === 0
