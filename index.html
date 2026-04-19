@@ -2762,7 +2762,7 @@ window.handleDeleteStaff = async function(id) {
             client.from('teams').select('id, name, category_id, society_id').eq('season_id', activeSeasonId).order('name')
         ]);
 
-        const ruoliValidi = ['Allenatore', 'Vice Allenatore', 'Collaboratore Tecnico', 'Preparatore Portieri', 'Preparatore Atletico', 'Dirigente', 'Fisioterapista', 'Responsabile'];
+        const ruoliValidi = ['Allenatore', 'Vice Allenatore', 'Collaboratore Tecnico', 'Preparatore Portieri', 'Preparatore Atletico', 'Dirigente', 'Fisioterapista'];
 
         modal.open(isEdit ? 'Modifica Staff' : 'Nuova Assegnazione Staff', `
             <div style="margin-bottom: 15px; padding: 10px; background: var(--primary-subtle); border-radius: 5px; color: var(--primary-mid); border: 1px solid var(--border-accent); font-size: 0.85em;">
@@ -2773,75 +2773,32 @@ window.handleDeleteStaff = async function(id) {
                 <option value="">-- Seleziona Staff --</option>
                 ${uRes.data?.map(u => `<option value="${u.id}" ${isEdit && editData.user_id === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
             </select>
+            <label>Squadra (Team)</label>
+            <select id="as-team">
+                <option value="">-- Seleziona Squadra --</option>
+                ${tRes.data?.map(t => `<option value="${t.id}" data-cat="${t.category_id}" data-soc="${t.society_id}" ${isEdit && editData.team_id === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+            </select>
             <label>Ruolo Tecnico</label>
-            <select id="as-role" onchange="window._toggleAssignmentFields(this.value)">
+            <select id="as-role">
                 ${ruoliValidi.map(r => `<option value="${r}" ${isEdit && editData.role === r ? 'selected' : ''}>${r}</option>`).join('')}
             </select>
-            <!-- Squadra: visibile per tutti tranne Responsabile -->
-            <div id="as-team-wrap">
-                <label>Squadra (Team)</label>
-                <select id="as-team">
-                    <option value="">-- Seleziona Squadra --</option>
-                    ${tRes.data?.map(t => `<option value="${t.id}" data-cat="${t.category_id}" data-soc="${t.society_id}" ${isEdit && editData.team_id === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
-                </select>
-            </div>
-            <!-- Categorie multiple: solo per Responsabile -->
-            <div id="as-cat-wrap" style="display:none;">
-                <label>Categoria (può selezionarne più di una con Ctrl+Click)</label>
-                <select id="as-cat-multi" multiple style="height:120px;">
-                    ${[...new Map(tRes.data?.map(t => [t.category_id, t]) || []).values()].map(t => `<option value="${t.category_id}" data-soc="${t.society_id}" ${isEdit && editData.category_id === t.category_id ? 'selected' : ''}>${t.name?.split(' — ')[0] || t.category_id}</option>`).join('')}
-                </select>
-                <small style="color:var(--text-muted);font-size:0.72rem;">Seleziona una o più categorie. Verranno create assegnazioni separate per ognuna.</small>
-            </div>
         `);
 
-        // Toggle campi in base al ruolo selezionato
-        window._toggleAssignmentFields = (role) => {
-            const isResp = role === 'Responsabile';
-            document.getElementById('as-team-wrap').style.display = isResp ? 'none' : '';
-            document.getElementById('as-cat-wrap').style.display  = isResp ? ''     : 'none';
-        };
-        // Applica stato iniziale
-        window._toggleAssignmentFields(document.getElementById('as-role').value);
-
         document.getElementById('btn-modal-save').onclick = async () => {
-            const userId  = document.getElementById('as-user').value;
-            const role    = document.getElementById('as-role').value;
-            if (!userId) return alert("Seleziona un membro staff!");
-
-            if (role === 'Responsabile') {
-                // Salva una riga per ogni categoria selezionata
-                const catSel = document.getElementById('as-cat-multi');
-                const selected = [...catSel.selectedOptions];
-                if (!selected.length) return alert("Seleziona almeno una categoria!");
-                const payloads = selected.map(opt => ({
-                    user_id: userId,
-                    team_id: null,
-                    category_id: opt.value,
-                    society_id: opt.getAttribute('data-soc'),
-                    season_id: activeSeasonId,
-                    role: 'Responsabile'
-                }));
-                const { error } = isEdit
-                    ? await client.from('user_category_seasons').update(payloads[0]).eq('id', editData.id)
-                    : await client.from('user_category_seasons').insert(payloads);
-                if (!error) { modal.close(); _fetchData(); } else { alert(error.message); }
-            } else {
-                const teamSelect = document.getElementById('as-team');
-                const payload = {
-                    user_id: userId,
-                    team_id: teamSelect.value,
-                    category_id: teamSelect.options[teamSelect.selectedIndex]?.getAttribute('data-cat'),
-                    society_id: teamSelect.options[teamSelect.selectedIndex]?.getAttribute('data-soc'),
-                    season_id: activeSeasonId,
-                    role
-                };
-                if (!payload.team_id) return alert("Seleziona una squadra!");
-                const { error } = isEdit
-                    ? await client.from('user_category_seasons').update(payload).eq('id', editData.id)
-                    : await client.from('user_category_seasons').insert(payload);
-                if (!error) { modal.close(); _fetchData(); } else { alert(error.message); }
-            }
+            const teamSelect = document.getElementById('as-team');
+            const payload = {
+                user_id: document.getElementById('as-user').value,
+                team_id: teamSelect.value,
+                category_id: teamSelect.options[teamSelect.selectedIndex]?.getAttribute('data-cat'),
+                society_id: teamSelect.options[teamSelect.selectedIndex]?.getAttribute('data-soc'),
+                season_id: activeSeasonId,
+                role: document.getElementById('as-role').value
+            };
+            if (!payload.user_id || !payload.team_id) return alert("Compila tutti i campi!");
+            const { error } = isEdit 
+                ? await client.from('user_category_seasons').update(payload).eq('id', editData.id)
+                : await client.from('user_category_seasons').insert(payload);
+            if (!error) { modal.close(); _fetchData(); } else { alert(error.message); }
         };
     };
 
@@ -5800,7 +5757,7 @@ window.templateDashboard = function() {
     const userRole = (window._userRole || '').toLowerCase();
     const roleLabels = {
         admin: 'Amministratore', manager: 'Manager', presidente: 'Presidente',
-        segretario: 'Segretario', responsabile: 'Responsabile Categorie',
+        segretario: 'Segretario', responsabile: 'Responsabile',
         dirigente: 'Dirigente', allenatore: 'Allenatore', genitore: 'Genitore'
     };
     const roleName = roleLabels[userRole] || userRole;
@@ -6260,13 +6217,6 @@ window.templateDashboard = function() {
             <div id="pres-allenatore-section" style="display:none;">
                 <div id="allenatore-dash-content">
                     <div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento dashboard allenatore...</div>
-                </div>
-            </div>
-
-            <!-- VISTA RESPONSABILE MULTI-SQUADRA -->
-            <div id="pres-responsabile-section" style="display:none;">
-                <div id="responsabile-dash-content">
-                    <div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento dashboard responsabile...</div>
                 </div>
             </div>
 
@@ -7595,11 +7545,6 @@ window.loadDashPresidenza = async function() {
             await _renderVistaAllenatore();
         }
 
-        // ── VISTA RESPONSABILE MULTI-SQUADRA ─────────────────────────────────
-        if (role === 'responsabile') {
-            await _renderVistaResponsabile();
-        }
-
     } catch(err) { console.error('loadDashPresidenza error:', err); }
 };
 
@@ -8447,575 +8392,6 @@ async function _renderVistaAllenatore() {
     }
 }
 
-async function _renderVistaResponsabile() {
-    const container = document.getElementById('responsabile-dash-content');
-    if (!container) return;
-    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento...</div>';
-
-    try {
-        const teamIds = window._userAssignedTeamIds || await window.loadUserAssignedTeams() || [];
-        if (!teamIds.length) {
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">Nessuna squadra/categoria assegnata.</div>';
-            return;
-        }
-
-        const activeSeason = (window._dashData._seasons || []).find(s => s.is_active);
-        const sid = activeSeason?.id || null;
-        const today = new Date();
-        const fmtDate = d => d.toISOString().split('T')[0];
-
-        // ── Fetch tutti i dati in parallelo ──────────────────────────────────
-        const [sessRes, attRes, matchStatsRes, matchDetRes, teamAthRes, testResRes, testSessRes] = await Promise.all([
-            client.from('sessions')
-                .select('id, session_date, title, type_id, session_types(name), team_id, teams!inner(id,name)')
-                .in('team_id', teamIds)
-                .order('session_date', { ascending: false }),
-            client.from('attendances')
-                .select('athlete_id, status, performance_data, is_called_up, sessions!inner(id, session_date, type_id, team_id, session_types(name))')
-                .in('sessions.team_id', teamIds),
-            client.from('match_stats')
-                .select('athlete_id, goals, yellow_cards, red_cards, minutes_played, is_starter, sessions!inner(session_date, team_id)')
-                .in('sessions.team_id', teamIds),
-            client.from('match_details')
-                .select('session_id, goals_for, goals_against, match_status, is_friendly, sessions!inner(session_date, team_id)')
-                .in('sessions.team_id', teamIds)
-                .eq('is_friendly', false),
-            client.from('athlete_team_seasons')
-                .select('athlete_id, jersey_number, role, team_id, athletes!inner(id, name, surname), teams!inner(id, name, categories(name))')
-                .in('team_id', teamIds)
-                .eq('season_id', sid),
-            client.from('test_results')
-                .select('athlete_id, value, performance_id, test_session_id, test_performances!inner(name, unit, lower_is_better, test_definitions!inner(name))')
-                .in('test_sessions.team_id', teamIds),
-            client.from('test_sessions')
-                .select('id, session_date, team_id, test_definitions!inner(name)')
-                .in('team_id', teamIds)
-                .order('session_date', { ascending: false })
-        ]);
-
-        const sessions    = sessRes.data || [];
-        const attendances = attRes.data || [];
-        const matchStats  = matchStatsRes.data || [];
-        const matchDetails= matchDetRes.data || [];
-        const roster      = teamAthRes.data || [];
-        const testResults = testResRes.data || [];
-        const testSessions= testSessRes.data || [];
-
-        // ── Mappa atleti (deduplica cross-team) ───────────────────────────────
-        const athMap = {};
-        roster.forEach(r => {
-            if (!athMap[r.athlete_id]) {
-                athMap[r.athlete_id] = {
-                    ...r.athletes,
-                    jersey: r.jersey_number,
-                    role: r.role,
-                    team: r.teams?.name || '',
-                    category: r.teams?.categories?.name || ''
-                };
-            }
-        });
-        const athIds = Object.keys(athMap);
-
-        // ── Sessioni allenamento ───────────────────────────────────────────────
-        const trainSessions = sessions.filter(s => {
-            const n = s.session_types?.name?.toLowerCase() || '';
-            return !n.includes('gara') && !n.includes('partita');
-        });
-
-        // ── Presenze per atleta ────────────────────────────────────────────────
-        const trainAttMap = {};
-        attendances.forEach(a => {
-            const n = a.sessions?.session_types?.name?.toLowerCase() || '';
-            if (n.includes('gara') || n.includes('partita')) return;
-            if (!trainAttMap[a.athlete_id]) trainAttMap[a.athlete_id] = [];
-            const pd = a.performance_data || {};
-            trainAttMap[a.athlete_id].push({
-                date: a.sessions?.session_date,
-                status: a.status,
-                isCalled: a.is_called_up,
-                VEL: pd.VEL||0, TEC: pd.TEC||0,
-                FIS: pd.FIS||0, RES: pd.RES||0, COM: pd.COM||0
-            });
-        });
-
-        // Presenze partite (convocazioni)
-        const matchAttMap = {};
-        attendances.forEach(a => {
-            const n = a.sessions?.session_types?.name?.toLowerCase() || '';
-            if (!n.includes('gara') && !n.includes('partita')) return;
-            if (!matchAttMap[a.athlete_id]) matchAttMap[a.athlete_id] = [];
-            matchAttMap[a.athlete_id].push({ date: a.sessions?.session_date, status: a.status, isCalled: a.is_called_up });
-        });
-
-        // ── Test results per atleta ────────────────────────────────────────────
-        const testMap = {}; // athlete_id → [{perf, value, date}]
-        testResults.forEach(r => {
-            if (!testMap[r.athlete_id]) testMap[r.athlete_id] = [];
-            const sessDate = testSessions.find(s => s.id === r.test_session_id)?.session_date;
-            testMap[r.athlete_id].push({
-                perf: r.test_performances?.name,
-                unit: r.test_performances?.unit,
-                lowerIsBetter: r.test_performances?.lower_is_better,
-                testName: r.test_performances?.test_definitions?.name,
-                value: r.value,
-                date: sessDate,
-                perfId: r.performance_id
-            });
-        });
-
-        // ── KPI per atleta ─────────────────────────────────────────────────────
-        const avgAttr = (arr, key) => {
-            const vals = arr.filter(x => (x[key]||0) > 0);
-            return vals.length ? vals.reduce((s,x) => s+(x[key]||0), 0) / vals.length : 0;
-        };
-
-        const athKPI = {};
-        athIds.forEach(aid => {
-            const att     = (trainAttMap[aid] || []).sort((a,b) => b.date?.localeCompare(a.date));
-            const mAtt    = matchAttMap[aid] || [];
-            const mStats  = matchStats.filter(s => s.athlete_id === aid);
-
-            // Presenze allenamento
-            const presAllen  = att.filter(a => a.status === 'presente').length;
-            const totAllen   = att.length;
-            const presPercAllen = totAllen > 0 ? Math.round(presAllen/totAllen*100) : null;
-
-            // Convocazioni e presenze partita
-            const convocazioni = mAtt.filter(a => a.isCalled).length;
-            const presPartita  = mAtt.filter(a => a.status === 'presente').length;
-            const affRel = convocazioni > 0 ? Math.round(presPartita/convocazioni*100) : null;
-
-            // Infortuni e squalifiche
-            const infortuni   = att.filter(a => a.status === 'infortunato').length + mAtt.filter(a => a.status === 'infortunato').length;
-            const squalifiche = mStats.reduce((s,x) => s+(x.red_cards||0), 0);
-            const ammonizioni = mStats.reduce((s,x) => s+(x.yellow_cards||0), 0);
-
-            // Stats partita
-            const goals  = mStats.reduce((s,x) => s+(x.goals||0), 0);
-            const min    = mStats.reduce((s,x) => s+(x.minutes_played||0), 0);
-            const starts = mStats.filter(x => x.is_starter).length;
-            const apps   = mStats.length;
-
-            // Medie attributi (tutte le sessioni)
-            const vel = avgAttr(att,'VEL'), tec = avgAttr(att,'TEC');
-            const fis = avgAttr(att,'FIS'), res = avgAttr(att,'RES');
-            const com = avgAttr(att,'COM');
-            const attrMean = [vel,tec,fis,res,com].filter(v=>v>0);
-            const attrAvg = attrMean.length ? attrMean.reduce((s,v)=>s+v,0)/attrMean.length : 0;
-
-            // Trend (prima vs seconda metà delle sessioni)
-            const half = Math.floor(att.length/2);
-            const oldH = att.slice(half), newH = att.slice(0,half);
-            const trendScore = att.length >= 4
-                ? (['VEL','TEC','FIS','RES','COM'].reduce((s,k)=>s+avgAttr(newH.filter(x=>x[k]),k),0)/5)
-                  - (['VEL','TEC','FIS','RES','COM'].reduce((s,k)=>s+avgAttr(oldH.filter(x=>x[k]),k),0)/5)
-                : 0;
-
-            // Test score (media normalizzata su tutti i test eseguiti)
-            const tests = testMap[aid] || [];
-            const testAvg = tests.length ? tests.reduce((s,t)=>s+(t.value||0),0)/tests.length : null;
-
-            // Indice performance complessivo (0-100)
-            const iPres  = presPercAllen !== null ? presPercAllen : 50;
-            const iAttr  = attrAvg > 0 ? Math.min(attrAvg/5*100, 100) : 50;
-            const iMatch = apps > 0 ? Math.min((goals*10 + min/90*5 + starts*3)/apps*3, 100) : 50;
-            const iTest  = testAvg !== null ? Math.min(testAvg/5*100, 100) : 50;
-            const perfIndex = Math.round((iPres*0.3 + iAttr*0.35 + iMatch*0.2 + iTest*0.15));
-
-            // Disponibilità
-            const lastStatus = att[0]?.status || 'presente';
-            const avail = infortuni === 0 ? 'available' : lastStatus === 'infortunato' ? 'injured' : 'monitor';
-
-            athKPI[aid] = {
-                presAllen, totAllen, presPercAllen,
-                convocazioni, presPartita, affRel,
-                infortuni, squalifiche, ammonizioni,
-                goals, min, starts, apps,
-                vel, tec, fis, res, com, attrAvg,
-                trendScore, testAvg, tests,
-                perfIndex, avail,
-                trainHistory: att
-            };
-        });
-
-        // ── Ranking per indice performance ────────────────────────────────────
-        const ranked = athIds
-            .map(aid => ({ aid, ...athKPI[aid] }))
-            .sort((a,b) => b.perfIndex - a.perfIndex);
-
-        // ── Helpers UI ────────────────────────────────────────────────────────
-        const trendIcon = t => t > 0.3
-            ? '<span style="color:#10b981;font-size:0.9rem;">▲</span>'
-            : t < -0.3 ? '<span style="color:#ef4444;font-size:0.9rem;">▼</span>'
-            : '<span style="color:#94a3b8;font-size:0.8rem;">●</span>';
-
-        const availBadge = v => ({
-            available: '<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:99px;font-size:0.65rem;font-weight:700;">✅ Disponibile</span>',
-            injured:   '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:99px;font-size:0.65rem;font-weight:700;">🩹 Infortunato</span>',
-            monitor:   '<span style="background:rgba(245,158,11,0.12);color:#d97706;padding:2px 8px;border-radius:99px;font-size:0.65rem;font-weight:700;">⚠️ Monitorare</span>'
-        })[v] || '';
-
-        const perfBar = (val, color='var(--primary)') => {
-            const w = Math.min(Math.max(val||0, 0), 100);
-            const col = w >= 75 ? '#10b981' : w >= 50 ? '#0ea5e9' : w >= 30 ? '#f59e0b' : '#ef4444';
-            return '<div style="display:flex;align-items:center;gap:6px;">'
-                + '<div style="flex:1;background:rgba(0,0,0,0.06);border-radius:99px;height:6px;overflow:hidden;min-width:60px;">'
-                + '<div style="height:100%;width:' + w + '%;background:' + col + ';border-radius:99px;transition:width 0.4s;"></div></div>'
-                + '<span style="font-size:0.7rem;font-weight:700;color:' + col + ';width:28px;text-align:right;">' + w + '</span></div>';
-        };
-
-        const miniSparkline = (history) => {
-            if (!history || history.length < 2) return '<span style="color:var(--text-muted);font-size:0.65rem;">—</span>';
-            const vals = history.slice(0,12).reverse().map(h => {
-                const attrs = ['VEL','TEC','FIS','RES','COM'].filter(k=>(h[k]||0)>0);
-                return attrs.length ? attrs.reduce((s,k)=>s+(h[k]||0),0)/attrs.length : null;
-            }).filter(v=>v!==null);
-            if (!vals.length) return '';
-            const max = Math.max(...vals,1), min2 = Math.min(...vals,0);
-            const range = max-min2 || 1;
-            const W=60, H=20;
-            const pts = vals.map((v,i)=>{
-                const x = i/(vals.length-1)*W;
-                const y = H - ((v-min2)/range*H);
-                return x.toFixed(1)+','+y.toFixed(1);
-            }).join(' ');
-            const lastTrend = vals.length>=2 ? vals[vals.length-1]-vals[vals.length-2] : 0;
-            const lineCol = lastTrend >= 0.1 ? '#10b981' : lastTrend <= -0.1 ? '#ef4444' : '#0ea5e9';
-            return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:60px;height:20px;overflow:visible;">'
-                + '<polyline points="' + pts + '" fill="none" stroke="' + lineCol + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
-                + '</svg>';
-        };
-
-        // ── Ruoli distinti per disponibilità per ruolo ─────────────────────────
-        const roleGroups = {};
-        athIds.forEach(aid => {
-            const r = athMap[aid]?.role || 'N/D';
-            if (!roleGroups[r]) roleGroups[r] = [];
-            roleGroups[r].push(aid);
-        });
-
-        // ── RENDER ────────────────────────────────────────────────────────────
-        container.innerHTML = `
-        <style>
-        .resp-tab-btn { padding:7px 16px;border-radius:7px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.8rem;font-weight:600;background:transparent;color:var(--text-muted);transition:all 0.15s; }
-        .resp-tab-btn.active { background:var(--primary);color:white;border-color:var(--primary); }
-        .resp-section { display:none; }
-        .resp-section.active { display:block; }
-        .resp-ath-row { display:grid;grid-template-columns:28px 1fr 80px 100px 60px 60px 60px 60px 70px 90px;gap:6px;align-items:center;padding:8px 12px;border-radius:8px;transition:background 0.12s;cursor:pointer; }
-        .resp-ath-row:hover { background:rgba(37,99,235,0.04); }
-        .resp-hover:hover { background:#eef2ff !important; }
-        </style>
-
-        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-            <button class="resp-tab-btn active" onclick="window._respTab('dashboard')">📊 Dashboard</button>
-            <button class="resp-tab-btn" onclick="window._respTab('kpi')">📈 KPI</button>
-            <button class="resp-tab-btn" onclick="window._respTab('drilldown')">🔍 Drill-down</button>
-        </div>
-
-        <!-- ══ TAB DASHBOARD ══════════════════════════════════════════════════ -->
-        <div id="resp-tab-dashboard" class="resp-section active">
-
-            <!-- RANKING -->
-            <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:16px;">
-                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:14px;">🏆 Ranking Giocatori — Indice Performance Complessivo</div>
-                <div style="display:grid;grid-template-columns:28px 1fr 80px 100px 60px 60px 60px 60px 70px 90px;gap:6px;padding:6px 12px;border-bottom:1px solid var(--border);margin-bottom:4px;">
-                    ${['#','Atleta','Squadra','Score','Allen.%','Conv.','Infort.','Squal.','Trend','Stato'].map(h=>'<div style="font-size:0.6rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">'+h+'</div>').join('')}
-                </div>
-                ${ranked.map((r,i) => {
-                    const ath = athMap[r.aid];
-                    const presCol = r.presPercAllen===null?'#94a3b8':r.presPercAllen>=80?'#10b981':r.presPercAllen>=60?'#0ea5e9':'#ef4444';
-                    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-                    return '<div class="resp-ath-row" onclick="window._respDrilldown(\'' + r.aid + '\')">'
-                        + '<div style="font-size:0.75rem;font-weight:800;color:var(--text-muted);">' + (medal||('#'+(i+1))) + '</div>'
-                        + '<div><div style="font-size:0.82rem;font-weight:700;">' + (ath?.surname||'') + ' ' + (ath?.name||'') + '</div>'
-                        + '<div style="font-size:0.65rem;color:var(--text-muted);">' + (ath?.role||'') + ' · ' + (ath?.team||'') + '</div></div>'
-                        + '<div style="font-size:0.72rem;color:var(--text-muted);">' + (ath?.category||'—') + '</div>'
-                        + '<div>' + perfBar(r.perfIndex) + '</div>'
-                        + '<div style="text-align:center;font-size:0.78rem;font-weight:700;color:' + presCol + ';">' + (r.presPercAllen!==null?r.presPercAllen+'%':'—') + '</div>'
-                        + '<div style="text-align:center;font-size:0.78rem;">' + (r.affRel!==null?'<span style="font-weight:700;color:#0ea5e9;">'+r.affRel+'%</span>':'—') + '</div>'
-                        + '<div style="text-align:center;font-size:0.78rem;color:' + (r.infortuni>0?'#dc2626':'var(--text-muted)') + ';font-weight:' + (r.infortuni>0?'700':'400') + ';">' + r.infortuni + '</div>'
-                        + '<div style="text-align:center;font-size:0.78rem;color:' + (r.squalifiche>0?'#dc2626':'var(--text-muted)') + ';font-weight:' + (r.squalifiche>0?'700':'400') + ';">' + r.squalifiche + '</div>'
-                        + '<div style="text-align:center;">' + miniSparkline(r.trainHistory) + '</div>'
-                        + '<div>' + availBadge(r.avail) + '</div>'
-                        + '</div>';
-                }).join('')}
-            </div>
-
-            <!-- RIGA: STATO FISICO + DISPONIBILITA PER RUOLO -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-
-                <!-- Stato fisico squadra -->
-                <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;">
-                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:14px;">🏥 Stato Fisico Squadra</div>
-                    ${(()=>{
-                        const avail    = athIds.filter(id=>athKPI[id]?.avail==='available').length;
-                        const monitor  = athIds.filter(id=>athKPI[id]?.avail==='monitor').length;
-                        const injured  = athIds.filter(id=>athKPI[id]?.avail==='injured').length;
-                        const tot      = athIds.length;
-                        return '<div style="display:flex;gap:8px;margin-bottom:16px;">'
-                            + '<div style="flex:1;text-align:center;background:#dcfce7;border-radius:10px;padding:12px 8px;"><div style="font-size:1.6rem;font-weight:900;color:#16a34a;">' + avail + '</div><div style="font-size:0.62rem;font-weight:700;color:#16a34a;">DISPONIBILI</div></div>'
-                            + '<div style="flex:1;text-align:center;background:rgba(245,158,11,0.12);border-radius:10px;padding:12px 8px;"><div style="font-size:1.6rem;font-weight:900;color:#d97706;">' + monitor + '</div><div style="font-size:0.62rem;font-weight:700;color:#d97706;">MONITORARE</div></div>'
-                            + '<div style="flex:1;text-align:center;background:#fee2e2;border-radius:10px;padding:12px 8px;"><div style="font-size:1.6rem;font-weight:900;color:#dc2626;">' + injured + '</div><div style="font-size:0.62rem;font-weight:700;color:#dc2626;">INFORTUNATI</div></div>'
-                            + '</div>'
-                            + athIds.filter(id=>athKPI[id]?.avail!=='available').map(id=>{
-                                const ath=athMap[id], k=athKPI[id];
-                                return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.05);">'
-                                    + availBadge(k.avail)
-                                    + '<div style="font-size:0.8rem;font-weight:600;">' + (ath?.surname||'') + ' ' + (ath?.name||'') + '</div>'
-                                    + '<div style="font-size:0.65rem;color:var(--text-muted);margin-left:auto;">' + (ath?.role||'') + ' · ' + (ath?.team||'') + '</div>'
-                                    + '</div>';
-                            }).join('') || '<div style="text-align:center;padding:16px;color:#10b981;font-weight:600;">✅ Tutti disponibili</div>';
-                    })()}
-                </div>
-
-                <!-- Disponibilità per ruolo -->
-                <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;">
-                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:14px;">👥 Disponibilità per Ruolo</div>
-                    ${Object.entries(roleGroups).sort((a,b)=>a[0].localeCompare(b[0])).map(([ruolo, ids])=>{
-                        const avail   = ids.filter(id=>athKPI[id]?.avail==='available').length;
-                        const tot     = ids.length;
-                        const perc    = Math.round(avail/tot*100);
-                        const col     = perc===100?'#10b981':perc>=70?'#0ea5e9':perc>=40?'#f59e0b':'#ef4444';
-                        return '<div style="margin-bottom:10px;">'
-                            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
-                            + '<span style="font-size:0.78rem;font-weight:600;">' + ruolo + '</span>'
-                            + '<span style="font-size:0.72rem;font-weight:700;color:' + col + ';">' + avail + '/' + tot + ' disponibili</span>'
-                            + '</div>'
-                            + '<div style="background:rgba(0,0,0,0.06);border-radius:99px;height:7px;overflow:hidden;">'
-                            + '<div style="height:100%;width:' + perc + '%;background:' + col + ';border-radius:99px;transition:width 0.4s;"></div></div>'
-                            + '</div>';
-                    }).join('')}
-                </div>
-            </div>
-
-            <!-- ANDAMENTO INDIVIDUALE NEL TEMPO (sparkline table) -->
-            <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;">
-                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:14px;">📈 Andamento Individuale nel Tempo</div>
-                <div style="overflow-x:auto;">
-                    <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
-                        <thead><tr style="background:rgba(0,0,0,0.03);">
-                            <th style="padding:8px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Atleta</th>
-                            <th style="padding:8px;text-align:center;font-size:0.62rem;font-weight:700;color:#3b82f6;text-transform:uppercase;">VEL</th>
-                            <th style="padding:8px;text-align:center;font-size:0.62rem;font-weight:700;color:#8b5cf6;text-transform:uppercase;">TEC</th>
-                            <th style="padding:8px;text-align:center;font-size:0.62rem;font-weight:700;color:#f59e0b;text-transform:uppercase;">FIS</th>
-                            <th style="padding:8px;text-align:center;font-size:0.62rem;font-weight:700;color:#10b981;text-transform:uppercase;">RES</th>
-                            <th style="padding:8px;text-align:center;font-size:0.62rem;font-weight:700;color:#ec4899;text-transform:uppercase;">COM</th>
-                            <th style="padding:8px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Media</th>
-                            <th style="padding:8px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Trend (12 sess.)</th>
-                        </tr></thead>
-                        <tbody>
-                        ${ranked.map(r => {
-                            const ath = athMap[r.aid];
-                            const k   = athKPI[r.aid];
-                            const star = (v,c) => v>0 ? '<span style="color:'+c+';font-weight:700;">'+v.toFixed(1)+'★</span>' : '<span style="color:var(--text-muted);">—</span>';
-                            const mean = k.attrAvg > 0 ? k.attrAvg.toFixed(1) : '—';
-                            return '<tr class="resp-hover" style="border-bottom:1px solid rgba(0,0,0,0.05);cursor:pointer;" onclick="window._respDrilldown(\\' + r.aid + '\\')">'
-                                + '<td style="padding:8px 12px;font-weight:600;white-space:nowrap;">' + (ath?.surname||'') + ' ' + (ath?.name||'') + '<span style="font-size:0.62rem;color:var(--text-muted);margin-left:4px;">' + (ath?.team||'') + '</span></td>'
-                                + '<td style="padding:8px;text-align:center;">' + star(k.vel,'#3b82f6') + '</td>'
-                                + '<td style="padding:8px;text-align:center;">' + star(k.tec,'#8b5cf6') + '</td>'
-                                + '<td style="padding:8px;text-align:center;">' + star(k.fis,'#f59e0b') + '</td>'
-                                + '<td style="padding:8px;text-align:center;">' + star(k.res,'#10b981') + '</td>'
-                                + '<td style="padding:8px;text-align:center;">' + star(k.com,'#ec4899') + '</td>'
-                                + '<td style="padding:8px;text-align:center;font-weight:800;font-family:monospace;color:var(--primary);">' + mean + '</td>'
-                                + '<td style="padding:8px;text-align:center;">' + miniSparkline(r.trainHistory) + ' ' + trendIcon(k.trendScore) + '</td>'
-                                + '</tr>';
-                        }).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- ══ TAB KPI ════════════════════════════════════════════════════════ -->
-        <div id="resp-tab-kpi" class="resp-section">
-            <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
-                <thead><tr style="background:rgba(0,0,0,0.03);">
-                    <th style="padding:10px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Atleta</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--primary);text-transform:uppercase;" title="Indice Performance Complessivo">🎯 IPC</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#3b82f6;text-transform:uppercase;" title="Presenze allenamenti">🏃 Pres.</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#8b5cf6;text-transform:uppercase;" title="Media attributi">⭐ Media</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#0ea5e9;text-transform:uppercase;" title="Convocazioni rispettate">📋 Affid.</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#10b981;text-transform:uppercase;" title="Gol in partita">⚽ Gol</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;" title="Minuti giocati">⏱ Min</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#f59e0b;text-transform:uppercase;" title="Test atletici (media valori)">🧪 Test</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#dc2626;text-transform:uppercase;" title="Infortuni">🩹 Inf.</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#dc2626;text-transform:uppercase;" title="Squalifiche">🟥 Sq.</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:#d97706;text-transform:uppercase;" title="Ammonizioni">🟨 Amm.</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Trend</th>
-                </tr></thead>
-                <tbody>
-                ${ranked.map(r => {
-                    const ath = athMap[r.aid];
-                    const k   = athKPI[r.aid];
-                    const ipcCol = r.perfIndex>=75?'#10b981':r.perfIndex>=50?'#0ea5e9':r.perfIndex>=30?'#f59e0b':'#ef4444';
-                    const presCol= k.presPercAllen===null?'#94a3b8':k.presPercAllen>=80?'#10b981':k.presPercAllen>=60?'#0ea5e9':'#ef4444';
-                    return '<tr class="resp-hover" style="border-bottom:1px solid rgba(0,0,0,0.05);cursor:pointer;" onclick="window._respDrilldown(\\' + r.aid + '\\')">'
-                        + '<td style="padding:8px 12px;font-weight:600;white-space:nowrap;">'
-                        + (ath?.jersey?'<span style="color:var(--primary);margin-right:6px;font-weight:700;">'+ath.jersey+'</span>':'')
-                        + (ath?.surname||'') + ' ' + (ath?.name||'')
-                        + '<div style="font-size:0.62rem;color:var(--text-muted);">' + (ath?.role||'') + ' · ' + (ath?.team||'') + '</div></td>'
-                        + '<td style="padding:8px;text-align:center;"><span style="font-size:1rem;font-weight:900;font-family:monospace;color:' + ipcCol + ';">' + r.perfIndex + '</span></td>'
-                        + '<td style="padding:8px;text-align:center;font-weight:700;color:' + presCol + ';">' + (k.presPercAllen!==null?k.presPercAllen+'%':'—') + '</td>'
-                        + '<td style="padding:8px;text-align:center;font-weight:700;color:#8b5cf6;">' + (k.attrAvg>0?k.attrAvg.toFixed(1)+'★':'—') + '</td>'
-                        + '<td style="padding:8px;text-align:center;font-weight:700;color:#0ea5e9;">' + (k.affRel!==null?k.affRel+'%':'—') + '</td>'
-                        + '<td style="padding:8px;text-align:center;font-weight:700;color:#10b981;">' + k.goals + '</td>'
-                        + '<td style="padding:8px;text-align:center;color:var(--primary);">' + k.min + "'</td>"
-                        + '<td style="padding:8px;text-align:center;font-weight:700;color:#f59e0b;">' + (k.testAvg!==null?k.testAvg.toFixed(1):'—') + '</td>'
-                        + '<td style="padding:8px;text-align:center;font-weight:700;color:' + (k.infortuni>0?'#dc2626':'var(--text-muted)') + ';">' + k.infortuni + '</td>'
-                        + '<td style="padding:8px;text-align:center;font-weight:700;color:' + (k.squalifiche>0?'#dc2626':'var(--text-muted)') + ';">' + k.squalifiche + '</td>'
-                        + '<td style="padding:8px;text-align:center;font-weight:700;color:' + (k.ammonizioni>0?'#d97706':'var(--text-muted)') + ';">' + k.ammonizioni + '</td>'
-                        + '<td style="padding:8px;text-align:center;">' + trendIcon(k.trendScore) + '</td>'
-                        + '</tr>';
-                }).join('')}
-                </tbody>
-            </table>
-            </div>
-
-            <!-- Legenda IPC -->
-            <div style="margin-top:14px;padding:12px 16px;background:rgba(37,99,235,0.04);border:1px solid rgba(37,99,235,0.1);border-radius:10px;">
-                <div style="font-size:0.65rem;font-weight:700;color:var(--text-muted);margin-bottom:6px;">ℹ️ Come si calcola l'IPC (Indice Performance Complessivo)</div>
-                <div style="font-size:0.68rem;color:var(--text-sub);line-height:1.6;">
-                    <strong style="color:var(--primary);">IPC = Presenze allenamento</strong> (30%) + <strong style="color:#8b5cf6;">Attributi medi</strong> (35%) + <strong style="color:#0ea5e9;">Contributo partite</strong> (20%) + <strong style="color:#f59e0b;">Score test</strong> (15%)
-                </div>
-            </div>
-        </div>
-
-        <!-- ══ TAB DRILL-DOWN ═════════════════════════════════════════════════ -->
-        <div id="resp-tab-drilldown" class="resp-section">
-            <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;">
-                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:14px;">🔍 Seleziona un atleta per la scheda completa</div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-                    ${ranked.map(r => {
-                        const ath = athMap[r.aid];
-                        return '<button class="resp-hover" onclick="window._respDrilldown(\'' + r.aid + '\')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-family:inherit;font-size:0.78rem;font-weight:600;color:var(--text-main);transition:all 0.15s;">'
-                            + (ath?.surname||'') + ' ' + (ath?.name||'').charAt(0) + '.'
-                            + '</button>';
-                    }).join('')}
-                </div>
-                <div id="resp-drilldown-content" style="color:var(--text-sub);text-align:center;padding:32px;">
-                    👆 Clicca su un atleta o su una riga della tabella per vedere la scheda completa
-                </div>
-            </div>
-        </div>
-        `;
-
-        // ── Tab switcher ─────────────────────────────────────────────────────
-        window._respTab = (tab) => {
-            document.querySelectorAll('.resp-tab-btn').forEach((b,i) => {
-                b.classList.toggle('active', ['dashboard','kpi','drilldown'][i] === tab);
-            });
-            document.querySelectorAll('.resp-section').forEach(s => s.classList.remove('active'));
-            const el = document.getElementById('resp-tab-' + tab);
-            if (el) el.classList.add('active');
-            if (tab === 'drilldown' && window._lastRespAthlete) {
-                window._respDrilldown(window._lastRespAthlete);
-            }
-        };
-
-        // ── Drill-down atleta ─────────────────────────────────────────────────
-        window._respDrilldown = (aid) => {
-            window._lastRespAthlete = aid;
-            window._respTab('drilldown');
-            const el = document.getElementById('resp-drilldown-content');
-            if (!el) return;
-
-            const ath  = athMap[aid];
-            const k    = athKPI[aid];
-            if (!ath || !k) { el.innerHTML = '<div style="color:var(--text-sub);">Atleta non trovato.</div>'; return; }
-
-            const ipcCol = k.perfIndex>=75?'#10b981':k.perfIndex>=50?'#0ea5e9':k.perfIndex>=30?'#f59e0b':'#ef4444';
-
-            // Storico allenamenti (ultimi 20)
-            const histRows = k.trainHistory.slice(0,20).map(h => {
-                const col = h.status==='presente'?'#10b981':h.status==='infortunato'?'#dc2626':'#f59e0b';
-                const attrs = ['VEL','TEC','FIS','RES','COM'];
-                return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">'
-                    + '<td style="padding:6px 10px;font-size:0.72rem;color:var(--text-sub);white-space:nowrap;">' + (h.date||'—') + '</td>'
-                    + '<td style="padding:6px 10px;"><span style="font-size:0.68rem;font-weight:700;color:' + col + ';">' + (h.status||'—') + '</span></td>'
-                    + attrs.map(k2 => '<td style="padding:6px 10px;text-align:center;font-size:0.72rem;font-weight:' + (h[k2]>0?'700':'400') + ';color:' + (h[k2]>0?'var(--text-main)':'var(--text-muted)') + ';">' + (h[k2]>0?h[k2].toFixed(1):'—') + '</td>').join('')
-                    + '</tr>';
-            }).join('');
-
-            // Statistiche partita
-            const mStatsAth = matchStats.filter(s => s.athlete_id === aid);
-            const mRows = mStatsAth.slice(0,15).map(m => {
-                const d = m.sessions?.session_date || '—';
-                return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">'
-                    + '<td style="padding:6px 10px;font-size:0.72rem;color:var(--text-sub);">' + d + '</td>'
-                    + '<td style="padding:6px 10px;text-align:center;font-size:0.72rem;">' + (m.is_starter?'<span style="color:#10b981;font-weight:700;">Titolare</span>':'Subentrato') + '</td>'
-                    + '<td style="padding:6px 10px;text-align:center;font-weight:700;color:#10b981;">' + (m.goals||0) + '</td>'
-                    + '<td style="padding:6px 10px;text-align:center;font-size:0.72rem;">' + (m.minutes_played||0) + "'" + '</td>'
-                    + '<td style="padding:6px 10px;text-align:center;">' + (m.yellow_cards?'🟨':'') + (m.red_cards?'🟥':'') + '</td>'
-                    + '</tr>';
-            }).join('') || '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-muted);">Nessuna statistica partita</td></tr>';
-
-            // Progressione test
-            const testRows = (testMap[aid]||[]).slice(0,20).map(t => {
-                return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">'
-                    + '<td style="padding:6px 10px;font-size:0.72rem;color:var(--text-sub);">' + (t.date||'—') + '</td>'
-                    + '<td style="padding:6px 10px;font-size:0.72rem;font-weight:600;">' + (t.testName||'') + '</td>'
-                    + '<td style="padding:6px 10px;font-size:0.72rem;">' + (t.perf||'—') + '</td>'
-                    + '<td style="padding:6px 10px;text-align:center;font-weight:700;color:#f59e0b;">' + (t.value||'—') + ' <span style="font-size:0.62rem;color:var(--text-muted);">' + (t.unit||'') + '</span></td>'
-                    + '</tr>';
-            }).join('') || '<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text-muted);">Nessun dato test</td></tr>';
-
-            el.innerHTML = '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);">'
-                + '<div style="width:48px;height:48px;border-radius:50%;background:rgba(37,99,235,0.1);display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:900;color:var(--primary);">' + (ath?.jersey||'?') + '</div>'
-                + '<div><div style="font-size:1.1rem;font-weight:800;font-family:'Syne',sans-serif;">' + (ath?.surname||'') + ' ' + (ath?.name||'') + '</div>'
-                + '<div style="font-size:0.72rem;color:var(--text-muted);">' + (ath?.role||'') + ' · ' + (ath?.team||'') + ' · ' + (ath?.category||'') + '</div></div>'
-                + '<div style="margin-left:auto;text-align:center;"><div style="font-size:0.6rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">IPC</div>'
-                + '<div style="font-size:2rem;font-weight:900;font-family:'DM Mono',monospace;color:' + ipcCol + ';line-height:1;">' + k.perfIndex + '</div></div>'
-                + '</div>'
-                // KPI mini cards
-                + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:20px;">'
-                + [
-                    ['🏃 Presenze', k.presPercAllen!==null?k.presPercAllen+'%':'—', k.totAllen+' sess.'],
-                    ['📋 Affidabilità', k.affRel!==null?k.affRel+'%':'—', k.convocazioni+' conv.'],
-                    ['⭐ Media attr.', k.attrAvg>0?k.attrAvg.toFixed(1)+'★':'—', 'allenamenti'],
-                    ['🩹 Infortuni', k.infortuni, 'registrati'],
-                    ['🟥 Squalifiche', k.squalifiche, 'partite'],
-                    ['⚽ Gol', k.goals, k.min+"' giocati"],
-                    ['🧪 Test', k.testAvg!==null?k.testAvg.toFixed(1):'—', (testMap[aid]||[]).length+' test'],
-                ].map(([lbl,val,sub])=>
-                    '<div style="background:rgba(37,99,235,0.04);border:1px solid rgba(37,99,235,0.08);border-radius:10px;padding:10px 12px;">'
-                    + '<div style="font-size:0.6rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">' + lbl + '</div>'
-                    + '<div style="font-size:1.2rem;font-weight:900;font-family:'DM Mono',monospace;color:var(--primary);">' + val + '</div>'
-                    + '<div style="font-size:0.62rem;color:var(--text-sub);">' + sub + '</div>'
-                    + '</div>'
-                ).join('')
-                + '</div>'
-                // Storico allenamenti
-                + '<div style="margin-bottom:16px;">'
-                + '<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">📅 Storico Allenamenti (ultimi 20)</div>'
-                + '<div style="overflow-x:auto;max-height:240px;overflow-y:auto;">'
-                + '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">'
-                + '<thead><tr style="background:rgba(0,0,0,0.03);"><th style="padding:6px 10px;text-align:left;font-size:0.6rem;font-weight:700;color:var(--text-muted);">Data</th><th style="padding:6px 10px;font-size:0.6rem;font-weight:700;color:var(--text-muted);">Stato</th><th style="padding:6px 10px;text-align:center;font-size:0.6rem;font-weight:700;color:#3b82f6;">VEL</th><th style="padding:6px 10px;text-align:center;font-size:0.6rem;font-weight:700;color:#8b5cf6;">TEC</th><th style="padding:6px 10px;text-align:center;font-size:0.6rem;font-weight:700;color:#f59e0b;">FIS</th><th style="padding:6px 10px;text-align:center;font-size:0.6rem;font-weight:700;color:#10b981;">RES</th><th style="padding:6px 10px;text-align:center;font-size:0.6rem;font-weight:700;color:#ec4899;">COM</th></tr></thead>'
-                + '<tbody>' + histRows + '</tbody></table></div></div>'
-                // Statistiche partite
-                + '<div style="margin-bottom:16px;">'
-                + '<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">⚽ Statistiche Partite</div>'
-                + '<div style="overflow-x:auto;">'
-                + '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">'
-                + '<thead><tr style="background:rgba(0,0,0,0.03);"><th style="padding:6px 10px;text-align:left;font-size:0.6rem;font-weight:700;color:var(--text-muted);">Data</th><th style="padding:6px 10px;text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-muted);">Ruolo</th><th style="padding:6px 10px;text-align:center;font-size:0.6rem;font-weight:700;color:#10b981;">Gol</th><th style="padding:6px 10px;text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-muted);">Min</th><th style="padding:6px 10px;text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-muted);">Card</th></tr></thead>'
-                + '<tbody>' + mRows + '</tbody></table></div></div>'
-                // Progressione test
-                + '<div>'
-                + '<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">🧪 Progressione Test Atletici</div>'
-                + '<div style="overflow-x:auto;">'
-                + '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">'
-                + '<thead><tr style="background:rgba(0,0,0,0.03);"><th style="padding:6px 10px;text-align:left;font-size:0.6rem;font-weight:700;color:var(--text-muted);">Data</th><th style="padding:6px 10px;text-align:left;font-size:0.6rem;font-weight:700;color:var(--text-muted);">Test</th><th style="padding:6px 10px;text-align:left;font-size:0.6rem;font-weight:700;color:var(--text-muted);">Performance</th><th style="padding:6px 10px;text-align:center;font-size:0.6rem;font-weight:700;color:#f59e0b;">Valore</th></tr></thead>'
-                + '<tbody>' + testRows + '</tbody></table></div></div>';
-        };
-
-    } catch(err) {
-        console.error('_renderVistaResponsabile error:', err);
-        const container = document.getElementById('responsabile-dash-content');
-        if (container) container.innerHTML = '<div style="color:#ef4444;padding:16px;">Errore caricamento: ' + err.message + '</div>';
-    }
-}
-
-
 async function _initGenitoreTeamScope() {
     if (window._genitoreTeamIds !== undefined) return;
     const userId = window._currentUserId;
@@ -9723,48 +9099,20 @@ window.renderDashAthletes = function() {
 window._userAssignedTeamIds = null; // cache
 
 window.loadUserAssignedTeams = async function() {
-    // Restituisce array di team_id assegnati all'utente corrente via user_category_seasons.
-    // - dirigente/allenatore: team_id diretto dalla riga
-    // - responsabile: risolve le category_id assegnate → tutti i team di quelle categorie
+    // Restituisce array di team_id assegnati all'utente corrente via user_category_seasons
+    // Solo per ruoli scoped (dirigente, allenatore); per altri restituisce null (= nessun filtro)
     const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
     const isScopedStaff = ['dirigente','allenatore','responsabile'].includes(effRole);
     if (!isScopedStaff) { window._userAssignedTeamIds = null; return null; }
-    if (window._userAssignedTeamIds !== null) return window._userAssignedTeamIds; // cache
+    if (window._userAssignedTeamIds !== null) return window._userAssignedTeamIds; // usa cache
 
     const userId = window._currentUserId;
     if (!userId) { window._userAssignedTeamIds = []; return []; }
 
-    if (effRole === 'responsabile') {
-        // Carica categorie assegnate (team_id può essere null per il responsabile)
-        const { data: ucs } = await client.from('user_category_seasons')
-            .select('category_id, team_id')
-            .eq('user_id', userId);
-
-        // Raccoglie category_id + eventuali team_id diretti
-        const catIds  = [...new Set((ucs||[]).map(r => r.category_id).filter(Boolean))];
-        const direct  = (ucs||[]).map(r => r.team_id).filter(Boolean);
-
-        let catTeamIds = [];
-        if (catIds.length) {
-            // Recupera tutti i team attivi che appartengono a quelle categorie
-            const activeSeason = (window._dashData?._seasons || []).find(s => s.is_active);
-            let tq = client.from('teams').select('id').in('category_id', catIds);
-            if (activeSeason) tq = tq.eq('season_id', activeSeason.id);
-            const { data: teams } = await tq;
-            catTeamIds = (teams||[]).map(t => t.id);
-        }
-
-        const ids = [...new Set([...direct, ...catTeamIds])];
-        window._userAssignedTeamIds = ids;
-        // Expose assigned categories for UI use
-        window._userAssignedCatIds = catIds;
-        return ids;
-    }
-
-    // dirigente / allenatore: team_id diretto
     const { data } = await client.from('user_category_seasons')
         .select('team_id')
         .eq('user_id', userId);
+
     const ids = [...new Set((data||[]).map(r => r.team_id).filter(Boolean))];
     window._userAssignedTeamIds = ids;
     return ids;
@@ -9860,12 +9208,9 @@ function _applyTabFilterVisibility() {
     // ── Visibilità sezioni generiche KPI presidenza vs vista allenatore ──
     const presGenericSections = document.getElementById('pres-generic-sections');
     const allenatoreSectionWrap = document.getElementById('pres-allenatore-section');
-    const _isAllDirView  = (role === 'allenatore' || role === 'dirigente');
-    const _isRespView    = (role === 'responsabile');
-    if (presGenericSections)   presGenericSections.style.display   = (_isAllDirView || _isRespView) ? 'none' : '';
-    if (allenatoreSectionWrap) allenatoreSectionWrap.style.display  = _isAllDirView ? '' : 'none';
-    const respSectionWrap = document.getElementById('pres-responsabile-section');
-    if (respSectionWrap) respSectionWrap.style.display = _isRespView ? '' : 'none';
+    const _isAllDirView = (role === 'allenatore' || role === 'dirigente');
+    if (presGenericSections)  presGenericSections.style.display  = _isAllDirView ? 'none' : '';
+    if (allenatoreSectionWrap) allenatoreSectionWrap.style.display = _isAllDirView ? '' : 'none';
 
     // ── Filtri nei tab generali (0-5) ──
     const socSelects  = ['dash-stats-soc','dash-match-soc','dash-pres-soc','dash-ath-soc','dash-monthly-soc'];
