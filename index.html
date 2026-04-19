@@ -6693,40 +6693,51 @@ window.refreshDashboard = async function() {
 /* Handler stagione per i singoli tab — ricarica i filtri categoria/team */
 window.onDashStatsSeasonChange = function() {
     const seasonId = document.getElementById('dash-stats-season')?.value || '';
-    // Reset cat/team e ripopola
+    const socId = window._dashData._forcedSocietyId || document.getElementById('dash-stats-soc')?.value || null;
     const catSel = document.getElementById('dash-stats-cat');
     const teamSel = document.getElementById('dash-stats-team');
     if (catSel) catSel.innerHTML = '<option value="">Tutte le categorie</option>';
     if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>';
-    if (seasonId) _repopulateCatTeamForSeason('dash-stats-cat', 'dash-stats-team', seasonId);
-    window.renderDashStats();
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isScoped = ['dirigente','allenatore','responsabile'].includes(effRole);
+    const scopedIds = isScoped ? (window._userAssignedTeamIds || null) : null;
+    window.loadDashStats(seasonId || null, socId || 'all', scopedIds);
 };
 window.onDashMatchSeasonChange = function() {
     const seasonId = document.getElementById('dash-match-season')?.value || '';
+    const socId = window._dashData._forcedSocietyId || document.getElementById('dash-match-soc')?.value || null;
     const catSel = document.getElementById('dash-match-cat');
     const teamSel = document.getElementById('dash-match-team');
     if (catSel) catSel.innerHTML = '<option value="">Tutte le categorie</option>';
     if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>';
-    if (seasonId) _repopulateCatTeamForSeason('dash-match-cat', 'dash-match-team', seasonId);
-    window.renderDashMatches();
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isScoped = ['dirigente','allenatore','responsabile'].includes(effRole);
+    const scopedIds = isScoped ? (window._userAssignedTeamIds || null) : null;
+    window.loadDashMatches(seasonId || null, socId || 'all', scopedIds);
 };
 window.onDashPresSeasonChange = function() {
     const seasonId = document.getElementById('dash-pres-season')?.value || '';
+    const socId = window._dashData._forcedSocietyId || document.getElementById('dash-pres-soc')?.value || null;
     const catSel = document.getElementById('dash-pres-cat');
     const teamSel = document.getElementById('dash-pres-team');
     if (catSel) catSel.innerHTML = '<option value="">Tutte le categorie</option>';
     if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>';
-    if (seasonId) _repopulateCatTeamForSeason('dash-pres-cat', 'dash-pres-team', seasonId);
-    window.renderDashPresenze();
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isScoped = ['dirigente','allenatore','responsabile'].includes(effRole);
+    const scopedIds = isScoped ? (window._userAssignedTeamIds || null) : null;
+    window.loadDashPresenze(seasonId || null, socId || 'all', scopedIds);
 };
 window.onDashAthSeasonChange = function() {
     const seasonId = document.getElementById('dash-ath-season')?.value || '';
+    const socId = window._dashData._forcedSocietyId || document.getElementById('dash-ath-soc')?.value || null;
     const catSel = document.getElementById('dash-ath-cat');
     const teamSel = document.getElementById('dash-ath-team');
     if (catSel) catSel.innerHTML = '<option value="">Tutte le categorie</option>';
     if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>';
-    if (seasonId) _repopulateCatTeamForSeason('dash-ath-cat', 'dash-ath-team', seasonId);
-    window.renderDashAthletes();
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isScoped = ['dirigente','allenatore','responsabile'].includes(effRole);
+    const scopedIds = isScoped ? (window._userAssignedTeamIds || null) : null;
+    window.loadDashAthletes(seasonId || null, socId || 'all', scopedIds);
 };
 
 /* Ripopola cat e team filtrati per stagione */
@@ -8925,7 +8936,7 @@ window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
         const validIds = (types||[]).filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara')).map(t => t.id);
 
         let q = client.from('sessions')
-            .select('id, title, session_date, society_id, team_id, teams(name, category_id, categories(id, name)), societies(name)')
+            .select('id, title, session_date, society_id, season_id, team_id, teams(name, category_id, categories(id, name)), societies(name)')
             .order('session_date', { ascending: false });
 
         if (validIds.length > 0) q = q.in('type_id', validIds);
@@ -9033,7 +9044,7 @@ window._dashSessions = [];
 window.loadDashPresenze = async function(seasonId, socId, scopedTeamIds) {
     try {
         let q = client.from('sessions')
-            .select('id, title, session_date, team_id, society_id, type_id, teams(name, category_id, categories(id, name)), societies(name), attendances(status)')
+            .select('id, title, session_date, team_id, society_id, season_id, type_id, teams(name, category_id, categories(id, name)), societies(name), attendances(status)')
             .order('session_date', { ascending: false })
             .limit(50);
 
@@ -10022,10 +10033,20 @@ async function _renderVistaResponsabile() {
         </style>
 
         <!-- TABS -->
-        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-            <button class="resp-tab-btn2 active" onclick="window._respTab('dashboard')">📊 Dashboard</button>
-            <button class="resp-tab-btn2" onclick="window._respTab('kpi')">📈 KPI</button>
-            <button class="resp-tab-btn2" onclick="window._respTab('drilldown')">🔍 Drill-down</button>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;justify-content:space-between;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="resp-tab-btn2 active" onclick="window._respTab('dashboard')">📊 Dashboard</button>
+                <button class="resp-tab-btn2" onclick="window._respTab('kpi')">📈 KPI</button>
+                <button class="resp-tab-btn2" onclick="window._respTab('drilldown')">🔍 Drill-down</button>
+            </div>
+            ${myTeams.length > 1 ? `
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">Squadra</span>
+                <select id="resp-sel-team" onchange="window._resp_applyTeamFilter()" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem;color:var(--text-main);background:var(--card);cursor:pointer;">
+                    <option value="all">Tutte le squadre</option>
+                    ${myTeams.map(t => `<option value="${t.id}">${t.name}${t.categories?.name ? ' · '+t.categories.name : ''}</option>`).join('')}
+                </select>
+            </div>` : ''}
         </div>
 
         <!-- ══ TAB: DASHBOARD ══════════════════════════════════════════════ -->
@@ -10070,6 +10091,7 @@ async function _renderVistaResponsabile() {
                     <!-- Alert squadra -->
                     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
                         <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">🚨 Alert Squadra</div>
+                        <div id="resp-alert-box">
                         ${alerts.length===0
                             ? '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;color:#10b981;gap:6px;"><span style="font-size:1.5rem;">✅</span><span style="font-size:0.82rem;font-weight:600;">Nessun alert</span></div>'
                             : alerts.slice(0,6).map(al=>{
@@ -10081,6 +10103,7 @@ async function _renderVistaResponsabile() {
                                     +'</div>';
                               }).join('')
                         }
+                        </div>
                     </div>
 
                     <!-- Stato fisico + Disponibilità side by side -->
@@ -10272,11 +10295,99 @@ async function _renderVistaResponsabile() {
             });
         };
 
-        window._resp_applyTeamFilter = async () => {
-            const sel=document.getElementById('resp-sel-team')?.value||'all';
-            const filtered=sel==='all'?teamIds:[sel];
-            window._userAssignedTeamIds=filtered;
-            await _renderVistaResponsabile();
+        window._resp_applyTeamFilter = () => {
+            const sel = document.getElementById('resp-sel-team')?.value || 'all';
+            // Filtra in memoria senza ricaricare da DB
+            const filteredRoster = sel === 'all' ? roster : roster.filter(r => String(r.team_id) === String(sel));
+            const filteredAthIds = filteredRoster.map(r => r.athlete_id);
+            const filteredTrainSess = sel === 'all' ? trainSessions : trainSessions.filter(s => String(s.team_id) === String(sel));
+            const filteredMatchDet = sel === 'all' ? matchDetails : matchDetails.filter(d => String(d.sessions?.team_id) === String(sel));
+
+            // Ricalcola KPI per gli atleti filtrati
+            const fW = filteredMatchDet.filter(d=>d.match_status==='vittoria').length;
+            const fD = filteredMatchDet.filter(d=>d.match_status==='pareggio').length;
+            const fL = filteredMatchDet.filter(d=>d.match_status==='sconfitta').length;
+            const fGF = filteredMatchDet.reduce((s,d)=>s+(d.goals_for||0),0);
+            const fGS = filteredMatchDet.reduce((s,d)=>s+(d.goals_against||0),0);
+
+            const fAvail = filteredAthIds.filter(id=>athKPI[id]?.avail==='available').length;
+            const fInj   = filteredAthIds.filter(id=>athKPI[id]?.avail==='injured').length;
+            const fMon   = filteredAthIds.filter(id=>athKPI[id]?.avail==='monitor').length;
+
+            // Aggiorna KPI mini cards
+            const kpiGrid = document.querySelector('#resp-tab-dashboard > div:first-child');
+            if (kpiGrid) kpiGrid.innerHTML =
+                kpiMini('📅', filteredMatchDet.length, 'Partite ufficiali','var(--primary)')
+                +kpiMini('⚽', fGF+' — '+fGS, 'GF — GS','#10b981')
+                +kpiMini('🏆', fW+'V · '+fD+'P · '+fL+'S', 'Record stagione','#0ea5e9')
+                +kpiMini('👥', fAvail+' / '+filteredAthIds.length, 'Disponibili','#10b981')
+                +kpiMini('🩹', fInj, 'Infortunati','#ef4444')
+                +kpiMini('⚠️', fMon, 'Da monitorare','#d97706');
+
+            // Aggiorna lista sessioni
+            window._resp_renderSessListFiltered = (days) => {
+                const cutoff = days>0 ? fmtDate(new Date(Date.now()-days*86400000)) : null;
+                const fsess = cutoff ? filteredTrainSess.filter(s=>s.session_date>=cutoff) : filteredTrainSess;
+                if (!fsess.length) return '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessuna sessione.</div>';
+                return fsess.map(s=>{
+                    const d=new Date(s.session_date);
+                    const pC=attendances.filter(a=>a.sessions?.id===s.id&&a.status==='presente').length;
+                    const tC=attendances.filter(a=>a.sessions?.id===s.id).length;
+                    const perc=tC>0?Math.round(pC/tC*100):0;
+                    const col=perc>=80?'#10b981':perc>=60?'#0ea5e9':'#f59e0b';
+                    return '<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05);">'
+                        +'<div style="font-size:0.7rem;color:var(--text-sub);white-space:nowrap;width:58px;">'+d.toLocaleDateString('it-IT',{day:'2-digit',month:'short'})+'</div>'
+                        +'<div style="font-size:0.65rem;color:var(--text-muted);white-space:nowrap;width:80px;overflow:hidden;text-overflow:ellipsis;">'+(teamNameMap[s.team_id]||'—')+'</div>'
+                        +'<div style="flex:1;background:rgba(0,0,0,0.05);border-radius:99px;height:7px;overflow:hidden;"><div style="height:100%;width:'+perc+'%;background:'+col+';border-radius:99px;"></div></div>'
+                        +'<div style="font-size:0.72rem;font-weight:700;color:'+col+';width:34px;text-align:right;">'+perc+'%</div>'
+                        +'<div style="font-size:0.68rem;color:var(--text-muted);width:38px;text-align:right;">'+pC+'/'+tC+'</div>'
+                        +'</div>';
+                }).join('');
+            };
+            const sessList = document.getElementById('resp-sess-list');
+            if (sessList) sessList.innerHTML = (window._resp_renderSessListFiltered||window._resp_renderSessList)(7);
+
+            // Aggiorna tabella forma
+            const tbody = document.getElementById('resp-forma-tbody');
+            if (tbody) tbody.innerHTML = filteredRoster
+                .sort((a,b)=>(athMap[a.athlete_id]?.surname||'').localeCompare(athMap[b.athlete_id]?.surname||''))
+                .map(r => {
+                    const aid=r.athlete_id, ath=athMap[aid], k=athKPI[aid]||{};
+                    const pp=k.tot7>0?Math.round(k.pres7/k.tot7*100):null;
+                    const pc=pp===null?'#94a3b8':pp>=80?'#10b981':pp>=60?'#0ea5e9':'#ef4444';
+                    return '<div class="resp-ath-row" onclick="window._resp_drillAthlete(\''+aid+'\');window._respTab(\'drilldown\')" style="cursor:pointer;">'
+                        +'<div style="font-size:0.78rem;font-weight:700;color:var(--primary);">'+(ath?.jersey||'—')+'</div>'
+                        +'<div style="font-size:0.82rem;font-weight:600;">'+(ath?.surname||'')+' '+(ath?.name||'')+'<span style="font-size:0.65rem;color:var(--text-muted);margin-left:4px;">'+(ath?.role||'')+'</span><br><span style="font-size:0.62rem;color:var(--text-muted);">'+(ath?.teamName||'')+'</span></div>'
+                        +'<div style="text-align:center;font-size:0.78rem;font-weight:700;color:'+pc+';">'+(pp!==null?pp+'%':'—')+'</div>'
+                        +'<div style="text-align:center;"><span style="background:rgba(139,92,246,0.1);color:#8b5cf6;border-radius:99px;padding:2px 8px;font-size:0.72rem;font-weight:700;">'+(k.loadWeek||0)+'</span></div>'
+                        +'<div style="text-align:center;">'+trendIcon(k.trend||0)+'</div>'
+                        +'<div style="text-align:center;font-size:0.8rem;">'+(k.com7>0?k.com7.toFixed(1)+'★':'—')+'</div>'
+                        +'<div style="text-align:center;font-size:0.78rem;color:'+(k.inj>0?'#dc2626':'var(--text-muted)')+';">'+(k.inj||0)+'</div>'
+                        +'<div style="text-align:center;">'+availBadge(k.avail||'available')+'</div>'
+                        +'</div>';
+                }).join('');
+
+            // Aggiorna alerts
+            const fAlerts = [];
+            filteredAthIds.forEach(aid => {
+                const kpi=athKPI[aid], ath=athMap[aid];
+                const name=ath?`${ath.surname} ${ath.name}`:aid;
+                if (!kpi) return;
+                if (kpi.inj>0)                alerts.find(a=>a.aid===aid) && fAlerts.push({type:'injury',aid,name,teamName:ath?.teamName||'',msg:`${kpi.inj} sess. come infortunato`});
+                if (kpi.trend<-0.5)           fAlerts.push({type:'perf',aid,name,teamName:ath?.teamName||'',msg:`Calo prestazioni −${Math.abs(kpi.trend).toFixed(1)}★`});
+                if (kpi.com7>0&&kpi.com7<2.5) fAlerts.push({type:'behav',aid,name,teamName:ath?.teamName||'',msg:`Comportamento basso (${kpi.com7.toFixed(1)}★)`});
+                if (kpi.tot7>=3&&kpi.pres7/kpi.tot7<0.5) fAlerts.push({type:'absent',aid,name,teamName:ath?.teamName||'',msg:`Bassa presenza ${kpi.pres7}/${kpi.tot7}`});
+            });
+            const alertBox = document.querySelector('#resp-alert-box');
+            if (alertBox) alertBox.innerHTML = fAlerts.length===0
+                ? '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;color:#10b981;gap:6px;"><span style="font-size:1.5rem;">✅</span><span style="font-size:0.82rem;font-weight:600;">Nessun alert</span></div>'
+                : fAlerts.slice(0,6).map(al=>{
+                    const [bg,col]=alertColor(al.type);
+                    return '<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;margin-bottom:5px;background:'+bg+';border-radius:8px;">'
+                        +'<span style="font-size:1rem;flex-shrink:0;">'+alertIcon(al.type)+'</span>'
+                        +'<div><div style="font-size:0.78rem;font-weight:700;color:'+col+';">'+al.name+'<span style="font-size:0.62rem;font-weight:400;color:var(--text-muted);margin-left:4px;">'+al.teamName+'</span></div>'
+                        +'<div style="font-size:0.7rem;color:var(--text-sub);">'+al.msg+'</div></div></div>';
+                }).join('');
         };
 
     } catch(err) {
@@ -10440,12 +10551,15 @@ function _applyTabFilterVisibility() {
     if (presViewTeam) presViewTeam.style.display = isGenitore ? 'none' : '';
 }
 
-/* ── Handlers cascata Tab 0: Stats Gare ── */
+/* ── Helpers cascata Tab 0: Stats Gare ── */
 window.onDashStatsSocChange = function() {
+    const seasonId = document.getElementById('dash-stats-season')?.value || null;
     const socId = document.getElementById('dash-stats-soc')?.value || null;
-    _populateTabCatFilter('dash-stats-cat', window._dashMatchStats, socId);
-    _populateTabTeamFilter('dash-stats-team', window._dashMatchStats, socId, null);
-    window.renderDashStats();
+    document.getElementById('dash-stats-cat').innerHTML = '<option value="">Tutte le categorie</option>';
+    document.getElementById('dash-stats-team').innerHTML = '<option value="">Tutte le squadre</option>';
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const scopedIds = ['dirigente','allenatore','responsabile'].includes(effRole) ? (window._userAssignedTeamIds || null) : null;
+    window.loadDashStats(seasonId, socId || 'all', scopedIds);
 };
 window.onDashStatsCatChange = function() {
     const socId = document.getElementById('dash-stats-soc')?.value || null;
@@ -10456,10 +10570,13 @@ window.onDashStatsCatChange = function() {
 
 /* ── Handlers cascata Tab 1: Partite ── */
 window.onDashMatchSocChange = function() {
+    const seasonId = document.getElementById('dash-match-season')?.value || null;
     const socId = document.getElementById('dash-match-soc')?.value || null;
-    _populateTabCatFilter('dash-match-cat', window._dashMatches, socId);
-    _populateTabTeamFilter('dash-match-team', window._dashMatches, socId, null);
-    window.renderDashMatches();
+    document.getElementById('dash-match-cat').innerHTML = '<option value="">Tutte le categorie</option>';
+    document.getElementById('dash-match-team').innerHTML = '<option value="">Tutte le squadre</option>';
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const scopedIds = ['dirigente','allenatore','responsabile'].includes(effRole) ? (window._userAssignedTeamIds || null) : null;
+    window.loadDashMatches(seasonId, socId || 'all', scopedIds);
 };
 window.onDashMatchCatChange = function() {
     const socId = document.getElementById('dash-match-soc')?.value || null;
@@ -10470,10 +10587,13 @@ window.onDashMatchCatChange = function() {
 
 /* ── Handlers cascata Tab 2: Presenze ── */
 window.onDashPresSocChange = function() {
+    const seasonId = document.getElementById('dash-pres-season')?.value || null;
     const socId = document.getElementById('dash-pres-soc')?.value || null;
-    _populateTabCatFilter('dash-pres-cat', window._dashSessions, socId);
-    _populateTabTeamFilter('dash-pres-team', window._dashSessions, socId, null);
-    window.renderDashPresenze();
+    document.getElementById('dash-pres-cat').innerHTML = '<option value="">Tutte le categorie</option>';
+    document.getElementById('dash-pres-team').innerHTML = '<option value="">Tutte le squadre</option>';
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const scopedIds = ['dirigente','allenatore','responsabile'].includes(effRole) ? (window._userAssignedTeamIds || null) : null;
+    window.loadDashPresenze(seasonId, socId || 'all', scopedIds);
 };
 window.onDashPresCatChange = function() {
     const socId = document.getElementById('dash-pres-soc')?.value || null;
@@ -10484,10 +10604,13 @@ window.onDashPresCatChange = function() {
 
 /* ── Handlers cascata Tab 3: Atleti ── */
 window.onDashAthSocChange = function() {
+    const seasonId = document.getElementById('dash-ath-season')?.value || null;
     const socId = document.getElementById('dash-ath-soc')?.value || null;
-    _populateTabCatFilter('dash-ath-cat', window._dashAthletes, socId);
-    _populateTabTeamFilter('dash-ath-team', window._dashAthletes, socId, null);
-    window.renderDashAthletes();
+    document.getElementById('dash-ath-cat').innerHTML = '<option value="">Tutte le categorie</option>';
+    document.getElementById('dash-ath-team').innerHTML = '<option value="">Tutte le squadre</option>';
+    const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const scopedIds = ['dirigente','allenatore','responsabile'].includes(effRole) ? (window._userAssignedTeamIds || null) : null;
+    window.loadDashAthletes(seasonId, socId || 'all', scopedIds);
 };
 window.onDashAthCatChange = function() {
     const socId = document.getElementById('dash-ath-soc')?.value || null;
