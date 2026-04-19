@@ -8989,10 +8989,10 @@ window.renderDashMatches = function() {
     const filterDateTo   = document.getElementById('dash-match-date-to')?.value;
 
     const filtered = window._dashMatches.filter(m => {
-        if (filterSeason && m.season_id   !== filterSeason)  return false;
-        if (filterTeam && m.team_id    !== filterTeam)    return false;
-        if (filterSoc  && m.society_id !== filterSoc)     return false;
-        if (filterCat  && m.category_id !== filterCat)    return false;
+        if (filterSeason && String(m.season_id)   !== String(filterSeason))  return false;
+        if (filterTeam && String(m.team_id)    !== String(filterTeam))    return false;
+        if (filterSoc  && String(m.society_id) !== String(filterSoc))     return false;
+        if (filterCat  && String(m.category_id) !== String(filterCat))    return false;
         const d = m.session_date?.split('T')[0];
         if (filterDateFrom && d < filterDateFrom)         return false;
         if (filterDateTo   && d > filterDateTo)           return false;
@@ -9076,10 +9076,10 @@ window.renderDashPresenze = function() {
 
     const filtered = window._dashSessions
         .filter(s =>
-            (!filterSeason || s.season_id   === filterSeason) &&
-            (!filterTeam || s.team_id     === filterTeam) &&
-            (!filterSoc  || s.society_id  === filterSoc)  &&
-            (!filterCat  || s.category_id === filterCat)
+            (!filterSeason || String(s.season_id)   === String(filterSeason)) &&
+            (!filterTeam || String(s.team_id)     === String(filterTeam)) &&
+            (!filterSoc  || String(s.society_id)  === String(filterSoc))  &&
+            (!filterCat  || String(s.category_id) === String(filterCat))
         )
         .slice(0, 15);
 
@@ -9206,10 +9206,10 @@ window.renderDashStats = function() {
 
     const filtered = window._dashMatchStats
         .filter(t =>
-            (!filterSeason || t.season_id  === filterSeason) &&
-            (!filterSoc  || t.society_id  === filterSoc) &&
-            (!filterCat  || t.category_id === filterCat) &&
-            (!filterTeam || t.team_id     === filterTeam)
+            (!filterSeason || String(t.season_id)  === String(filterSeason)) &&
+            (!filterSoc  || String(t.society_id)  === String(filterSoc)) &&
+            (!filterCat  || String(t.category_id) === String(filterCat)) &&
+            (!filterTeam || String(t.team_id)     === String(filterTeam))
         )
         .sort((a,b) => b.pts - a.pts);
 
@@ -9406,10 +9406,10 @@ window.renderDashAthletes = function() {
     const sortDir = window._dashAthSortDir || -1;
 
     let filtered = window._dashAthletes.filter(a =>
-        (!filterSeason || a.season_id  === filterSeason) &&
-        (!filterSoc  || a.society_id  === filterSoc)  &&
-        (!filterCat  || a.category_id === filterCat)  &&
-        (!filterTeam || a.team_id     === filterTeam) &&
+        (!filterSeason || String(a.season_id)  === String(filterSeason)) &&
+        (!filterSoc  || String(a.society_id)  === String(filterSoc))  &&
+        (!filterCat  || String(a.category_id) === String(filterCat))  &&
+        (!filterTeam || String(a.team_id)     === String(filterTeam)) &&
         (!search || a.name.toLowerCase().includes(search))
     );
 
@@ -10318,10 +10318,10 @@ window.loadDashResponsabile = function() {
 function _populateTabCatFilter(selId, items, socId) {
     const sel = document.getElementById(selId);
     if (!sel) return;
-    const filtered = socId ? items.filter(i => i.society_id === socId) : items;
+    const filtered = socId ? items.filter(i => String(i.society_id) === String(socId)) : items;
     const cats = [...new Map(
         filtered.filter(i => i.category_id)
-                .map(i => [i.category_id, i.category_name || i.category_id])
+                .map(i => [String(i.category_id), i.category_name || i.category_id])
     ).entries()].sort((a,b) => (a[1]||'').localeCompare(b[1]||''));
     sel.innerHTML = '<option value="">Tutte le categorie</option>' +
         cats.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
@@ -10332,13 +10332,13 @@ function _populateTabTeamFilter(selId, items, socId, catId) {
     const sel = document.getElementById(selId);
     if (!sel) return;
     let filtered = items;
-    if (socId) filtered = filtered.filter(i => i.society_id === socId);
-    if (catId) filtered = filtered.filter(i => i.category_id === catId);
+    if (socId) filtered = filtered.filter(i => String(i.society_id) === String(socId));
+    if (catId) filtered = filtered.filter(i => String(i.category_id) === String(catId));
     // Deduplica per team_id — supporta sia {team_id, name} (stats) sia {team_id, team} (atleti) sia {team_id, teams{name}} (sessioni)
     // NOTA: per gli atleti usiamo .team (nome squadra), non .name (nome atleta)
     const teams = [...new Map(
         filtered.filter(i => i.team_id)
-                .map(i => [i.team_id, i.team || i.teams?.name || (typeof i.name === 'string' && !i.surname ? i.name : null) || i.team_id])
+                .map(i => [String(i.team_id), i.team || i.teams?.name || (typeof i.name === 'string' && !i.surname ? i.name : null) || i.team_id])
     ).entries()].sort((a,b) => (a[1]||'').localeCompare(b[1]||''));
     sel.innerHTML = '<option value="">Tutte le squadre</option>' +
         teams.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
