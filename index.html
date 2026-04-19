@@ -1216,6 +1216,7 @@
                     scopedTeams: [],
                     initialized: false,
                 };
+                window._userScopeData = null; // reset store scope condiviso (forza ricarico fresco)
                 initSessioni();
                 break;
 
@@ -9521,6 +9522,26 @@ window.loadUserAssignedTeams = async function() {
 
     const ids = [...new Set([...directTeamIds, ...catTeamIds])];
     window._userAssignedTeamIds = ids;
+
+    // ── Carica dettagli teams/categorie e salva nello store condiviso ──
+    // Usato da Vista Responsabile e tab dashboard per evitare query duplicate
+    if (ids.length > 0 && !window._userScopeData) {
+        const catIdsForStore = [...new Set((data||[]).filter(r => r.category_id).map(r => r.category_id))];
+        const [{ data: teamsDetail }, { data: catsDetail }] = await Promise.all([
+            client.from('teams')
+                .select('id, name, category_id, categories(id, name)')
+                .in('id', ids)
+                .order('name'),
+            catIdsForStore.length > 0
+                ? client.from('categories').select('id, name').in('id', catIdsForStore).order('name')
+                : Promise.resolve({ data: [] })
+        ]);
+        window._userScopeData = {
+            teams:      teamsDetail || [],
+            categories: catsDetail  || [],
+        };
+    }
+
     return ids;
 };
 
@@ -10400,6 +10421,7 @@ async function _renderVistaResponsabile() {
 
 window.loadDashResponsabile = function() {
     window._userAssignedTeamIds = null; // forza reload squadre
+    window._userScopeData = null;       // forza reload store categorie/team
     // Popola il filtro stagione della Vista (condiviso con pres-view-season)
     const presSeaSel = document.getElementById('pres-view-season');
     if (presSeaSel && presSeaSel.options.length <= 1 && window._dashData?._seasons?.length) {
@@ -10549,6 +10571,25 @@ function _applyTabFilterVisibility() {
     if (presViewCat)  presViewCat.style.display  = (isGlobal || isSocScoped || role === 'responsabile') ? '' : 'none';
     // Squadra: nascosta per genitore (forzata automaticamente sui figli), visibile per tutti gli altri
     if (presViewTeam) presViewTeam.style.display = isGenitore ? 'none' : '';
+
+    // ── Per responsabile: popola i select cat/team nei tab 0-5 dallo store condiviso ──
+    // Evita che i filtri restino vuoti nei tab generali quando lo scope è già noto
+    if (role === 'responsabile' && window._userScopeData) {
+        const scopeCats  = window._userScopeData.categories || [];
+        const scopeTeams = window._userScopeData.teams      || [];
+        catSelects.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = '<option value="">Tutte le categorie</option>' +
+                scopeCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        });
+        teamSelects.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = '<option value="">Tutte le squadre</option>' +
+                scopeTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        });
+    }
 }
 
 /* ── Helpers cascata Tab 0: Stats Gare ── */
@@ -10701,6 +10742,12 @@ async function _presPopulateCat() {
 
     // Per responsabile: limita alle categorie delle sue squadre assegnate
     if (role === 'responsabile') {
+        // ── Riusa store condiviso se disponibile (evita query duplicata) ──
+        if (window._userScopeData?.categories?.length) {
+            catSel.innerHTML = '<option value="all">Tutte le categorie</option>' +
+                window._userScopeData.categories.map(c => '<option value="'+c.id+'">'+c.name+'</option>').join('');
+            return;
+        }
         const assigned = await window.loadUserAssignedTeams();
         if (assigned && assigned.length > 0) {
             const { data: assignedTeams } = await client.from('teams')
@@ -10742,6 +10789,16 @@ async function _presPopulateTeam() {
 
     // Per ruoli team-scoped: mostra solo le squadre assegnate
     if (isTeamScoped) {
+        // ── Riusa store condiviso se disponibile (evita query duplicata) ──
+        if (window._userScopeData?.teams?.length) {
+            const catId2 = document.getElementById('pres-view-cat')?.value || 'all';
+            const filtered = catId2 && catId2 !== 'all'
+                ? window._userScopeData.teams.filter(t => String(t.category_id) === String(catId2))
+                : window._userScopeData.teams;
+            teamSel.innerHTML = '<option value="all">Tutte le squadre</option>' +
+                filtered.map(t => '<option value="'+t.id+'">'+t.name+'</option>').join('');
+            return;
+        }
         const assigned = await window.loadUserAssignedTeams();
         if (assigned && assigned.length > 0) q = q.in('id', assigned);
     }
