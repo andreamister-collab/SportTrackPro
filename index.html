@@ -1216,6 +1216,7 @@
                     scopedTeams: [],
                     initialized: false,
                 };
+                window._userScopeData = null; // forza ricarico store scope
                 initSessioni();
                 break;
 
@@ -7282,17 +7283,58 @@ function _buildAthFullLineChart(months, W, H) {
 }
 
 async function _populateAthMonthlyFilters() {
+    const role = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isScoped = ['dirigente','allenatore','responsabile'].includes(role);
+
+    // Stagioni
     const selSeason = document.getElementById('dash-ath-monthly-season');
     if (selSeason && selSeason.options.length <= 1) {
         (window._dashData?._seasons || []).forEach(s => {
             selSeason.innerHTML += `<option value="${s.id}">${s.name}${s.is_active?' ✓':''}</option>`;
         });
     }
+
+    // Società: nascosta per ruoli scoped
     const selSoc = document.getElementById('dash-ath-monthly-soc');
-    if (selSoc && selSoc.options.length <= 1) {
-        (window._dashData?._societies || []).forEach(s => {
-            selSoc.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-        });
+    if (selSoc) {
+        if (isScoped) {
+            selSoc.style.display = 'none';
+        } else if (selSoc.options.length <= 1) {
+            (window._dashData?._societies || []).forEach(s => {
+                selSoc.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+            });
+        }
+    }
+
+    const selCat  = document.getElementById('dash-ath-monthly-cat');
+    const selTeam = document.getElementById('dash-ath-monthly-team');
+
+    // Per ruoli scoped: usa _userScopeData per cat e team
+    if (isScoped && window._userScopeData) {
+        const scopeCats  = window._userScopeData.categories || [];
+        const scopeTeams = window._userScopeData.teams      || [];
+        if (selCat && selCat.options.length <= 1) {
+            selCat.innerHTML = '<option value="">Tutte le categorie</option>' +
+                scopeCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+        if (selTeam && selTeam.options.length <= 1) {
+            selTeam.innerHTML = '<option value="">Tutte le squadre</option>' +
+                scopeTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        }
+        return;
+    }
+
+    // Ruoli globali: ricava cat e team dagli atleti già caricati
+    const athletes = window._dashAthletes || [];
+    if (selCat && selCat.options.length <= 1) {
+        const cats = [...new Map(athletes.filter(a=>a.category_id).map(a=>[a.category_id, a.category_name])).entries()];
+        selCat.innerHTML = '<option value="">Tutte le categorie</option>' +
+            cats.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+    }
+    if (selTeam && selTeam.options.length <= 1) {
+        const teams = [...new Map(athletes.filter(a=>a.team_id).map(a=>[a.team_id, a.team])).entries()];
+        selTeam.innerHTML = '<option value="">Tutte le squadre</option>' +
+            teams.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
     }
 }
 
@@ -8083,50 +8125,79 @@ async function _renderVistaAllenatore() {
     container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento...</div>';
 
     try {
-        const teamIds = window._userAssignedTeamIds || await window.loadUserAssignedTeams() || [];
-        if (!teamIds.length) {
+        // ── Legge filtri UI della Vista Specializzata ─────────────────────────
+        const allAssignedTeamIds = window._userAssignedTeamIds || await window.loadUserAssignedTeams() || [];
+        if (!allAssignedTeamIds.length) {
             container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">Nessuna squadra assegnata.</div>';
             return;
         }
 
+        // Stagione: preferisce il filtro UI, poi la stagione attiva
+        const uiSeasonId = document.getElementById('pres-view-season')?.value;
         const activeSeason = (window._dashData._seasons || []).find(s => s.is_active);
-        const sid = activeSeason?.id || null;
+        const sid = (uiSeasonId && uiSeasonId !== 'all') ? uiSeasonId : (activeSeason?.id || null);
+
+        // Squadra: se selezionata una specifica nel filtro UI, usa solo quella
+        const uiTeamId = document.getElementById('pres-view-team')?.value;
+        const teamIds = (uiTeamId && uiTeamId !== 'all' && allAssignedTeamIds.includes(uiTeamId))
+            ? [uiTeamId]
+            : allAssignedTeamIds;
+
         const today = new Date();
         const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 7);
         const monthAgo = new Date(today); monthAgo.setDate(today.getDate() - 30);
         const fmtDate = d => d.toISOString().split('T')[0];
 
-        // ── Carica dati in parallelo ──────────────────────────────────────────
+        // ── Carica dati in parallelo — match_stats→sessions via join inner ────
         const [
             sessRes, attRes, matchStatsRes, matchDetRes, teamAthRes, nextMatchRes
         ] = await Promise.all([
-            // Sessioni allenamento (tutta la stagione)
-            client.from('sessions')
-                .select('id, session_date, title, type_id, session_types(name)')
-                .in('team_id', teamIds)
-                .order('session_date', { ascending: false }),
+            // Sessioni filtrate per team e stagione
+            (() => {
+                let q = client.from('sessions')
+                    .select('id, session_date, title, type_id, session_types(name)')
+                    .in('team_id', teamIds)
+                    .order('session_date', { ascending: false });
+                if (sid) q = q.eq('season_id', sid);
+                return q;
+            })(),
 
-            // Presenze con valutazioni (tutta la stagione)
-            client.from('attendances')
-                .select('athlete_id, status, performance_data, is_called_up, sessions!inner(id, session_date, type_id, team_id, session_types(name))')
-                .in('sessions.team_id', teamIds),
+            // Presenze filtrate per team e stagione via join sessions
+            (() => {
+                let q = client.from('attendances')
+                    .select('athlete_id, status, performance_data, is_called_up, sessions!inner(id, session_date, type_id, team_id, session_types(name))')
+                    .in('sessions.team_id', teamIds);
+                if (sid) q = q.eq('sessions.season_id', sid);
+                return q;
+            })(),
 
-            // Stats partite stagione corrente
-            client.from('match_stats')
-                .select('athlete_id, goals, yellow_cards, red_cards, minutes_played, is_starter, sessions!inner(session_date, team_id)')
-                .in('sessions.team_id', teamIds),
+            // match_stats → sessions (join): filtra per team e stagione
+            (() => {
+                let q = client.from('match_stats')
+                    .select('athlete_id, goals, yellow_cards, red_cards, minutes_played, is_starter, sessions!inner(id, session_date, team_id, season_id)')
+                    .in('sessions.team_id', teamIds);
+                if (sid) q = q.eq('sessions.season_id', sid);
+                return q;
+            })(),
 
-            // Dettagli partite stagione corrente
-            client.from('match_details')
-                .select('session_id, goals_for, goals_against, match_status, is_friendly, sessions!inner(session_date, team_id)')
-                .in('sessions.team_id', teamIds)
-                .eq('is_friendly', false),
+            // match_details → sessions (join)
+            (() => {
+                let q = client.from('match_details')
+                    .select('session_id, goals_for, goals_against, match_status, is_friendly, sessions!inner(session_date, team_id, season_id)')
+                    .in('sessions.team_id', teamIds)
+                    .eq('is_friendly', false);
+                if (sid) q = q.eq('sessions.season_id', sid);
+                return q;
+            })(),
 
-            // Rosa squadra
-            client.from('athlete_team_seasons')
-                .select('athlete_id, jersey_number, role, athletes!inner(id, name, surname)')
-                .in('team_id', teamIds)
-                .eq('season_id', sid),
+            // Rosa squadra filtrata per stagione
+            (() => {
+                let q = client.from('athlete_team_seasons')
+                    .select('athlete_id, jersey_number, role, athletes!inner(id, name, surname)')
+                    .in('team_id', teamIds);
+                if (sid) q = q.eq('season_id', sid);
+                return q;
+            })(),
 
             // Prossima partita
             client.from('sessions')
@@ -8971,8 +9042,20 @@ window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
             selSoc.innerHTML = '<option value="">Tutte le società</option>' +
                 matchSocs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
         }
-        _populateTabCatFilter('dash-match-cat', window._dashMatches, null);
-        _populateTabTeamFilter('dash-match-team', window._dashMatches, null, null);
+        // Per ruoli scoped: usa _userScopeData per cat e team
+        if (scopedTeamIds && scopedTeamIds.length > 0 && window._userScopeData) {
+            const scopeCats  = window._userScopeData.categories || [];
+            const scopeTeams = window._userScopeData.teams      || [];
+            const catSel  = document.getElementById('dash-match-cat');
+            const teamSel = document.getElementById('dash-match-team');
+            if (catSel)  catSel.innerHTML  = '<option value="">Tutte le categorie</option>' +
+                scopeCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>' +
+                scopeTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        } else {
+            _populateTabCatFilter('dash-match-cat', window._dashMatches, null);
+            _populateTabTeamFilter('dash-match-team', window._dashMatches, null, null);
+        }
 
         // Imposta date di default: ultimo mese → oggi
         const today = new Date();
@@ -9070,8 +9153,20 @@ window.loadDashPresenze = async function(seasonId, socId, scopedTeamIds) {
             const pressSocs = [...new Map(window._dashSessions.filter(s=>s.society_id).map(s=>[s.society_id, s.societies?.name || '—'])).entries()];
             selSoc.innerHTML = '<option value="">Tutte le società</option>' + pressSocs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
         }
-        _populateTabCatFilter('dash-pres-cat', window._dashSessions, null);
-        _populateTabTeamFilter('dash-pres-team', window._dashSessions, null, null);
+        // Per ruoli scoped: usa _userScopeData per cat e team
+        if (scopedTeamIds && scopedTeamIds.length > 0 && window._userScopeData) {
+            const scopeCats  = window._userScopeData.categories || [];
+            const scopeTeams = window._userScopeData.teams      || [];
+            const catSel  = document.getElementById('dash-pres-cat');
+            const teamSel = document.getElementById('dash-pres-team');
+            if (catSel)  catSel.innerHTML  = '<option value="">Tutte le categorie</option>' +
+                scopeCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            if (teamSel) teamSel.innerHTML = '<option value="">Tutte le squadre</option>' +
+                scopeTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        } else {
+            _populateTabCatFilter('dash-pres-cat', window._dashSessions, null);
+            _populateTabTeamFilter('dash-pres-team', window._dashSessions, null, null);
+        }
 
         window.renderDashPresenze();
     } catch(err) { console.error('loadDashPresenze error:', err); }
@@ -9164,7 +9259,7 @@ window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
             if (det && det.is_friendly === true) return; // salta amichevoli
             if (!teamMap[s.team_id]) teamMap[s.team_id] = {
                 team_id: s.team_id,
-                season_id: s.season_id || null,          // ← FIX: necessario per renderDashStats filterSeason
+                season_id: s.season_id || null,          // ← necessario per filtrare lato client se serve
                 name: s.teams?.name || '-',
                 soc: s.societies?.name || '-',
                 society_id: s.society_id,
@@ -9201,8 +9296,7 @@ window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
             const socs = [...new Map(window._dashMatchStats.map(t=>[t.society_id, t.soc])).entries()];
             selSoc.innerHTML = '<option value="">Tutte le società</option>' + socs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
         }
-        // Se l'utente ha uno scope (responsabile/dirigente/allenatore), popola i filtri
-        // cat e team usando solo i dati dello scope — non tutte le opzioni DB
+        // Per ruoli scoped: usa _userScopeData per cat e team
         if (scopedTeamIds && scopedTeamIds.length > 0 && window._userScopeData) {
             const scopeCats  = window._userScopeData.categories || [];
             const scopeTeams = window._userScopeData.teams      || [];
@@ -9224,10 +9318,8 @@ window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
 window.renderDashStats = function() {
     const tbody = document.getElementById('dash-stats-body');
     if (!tbody) return;
-    // NOTA: filterSeason NON viene applicato qui perché loadDashStats filtra già la
-    // stagione a livello di query DB. Filtrare sul client causerebbe "nessun dato"
-    // perché teamMap salva un solo season_id per squadra (il primo trovato).
-    // Il cambio stagione richiama onDashStatsSeasonChange → loadDashStats che ricarica tutto.
+    // season_id NON filtrato lato client: loadDashStats lo applica già a livello DB.
+    // Il cambio del select stagione chiama onDashStatsSeasonChange → loadDashStats (ricarica dal DB).
     const filterSoc  = document.getElementById('dash-stats-soc')?.value;
     const filterCat  = document.getElementById('dash-stats-cat')?.value;
     const filterTeam = document.getElementById('dash-stats-team')?.value;
@@ -9406,6 +9498,23 @@ function _populateAthFilters(athletes) {
     const selTeam = document.getElementById('dash-ath-team');
     if (!selSoc || !selTeam) return;
 
+    const role = (window._effectiveRole || window._userRole || '').toLowerCase();
+    const isScoped = ['dirigente','allenatore','responsabile'].includes(role);
+
+    // Per ruoli scoped usa _userScopeData (già caricato) per evitare
+    // che i select rimangano vuoti quando la query atleti non trova dati
+    if (isScoped && window._userScopeData) {
+        const scopeCats  = window._userScopeData.categories || [];
+        const scopeTeams = window._userScopeData.teams      || [];
+        selSoc.style.display = 'none'; // società nascosta per ruoli scoped
+        if (selCat) selCat.innerHTML = '<option value="">Tutte le categorie</option>' +
+            scopeCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        selTeam.innerHTML = '<option value="">Tutte le squadre</option>' +
+            scopeTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        return;
+    }
+
+    // Ruoli globali: ricava dai dati degli atleti
     const socs  = [...new Map(athletes.filter(a=>a.society_id).map(a=>[a.society_id, a.society])).entries()];
     const cats  = [...new Map(athletes.filter(a=>a.category_id).map(a=>[a.category_id, a.category_name])).entries()];
     const teams = [...new Map(athletes.filter(a=>a.team_id).map(a=>[a.team_id, a.team])).entries()];
@@ -9424,7 +9533,6 @@ window.renderDashAthletes = function() {
     const tbody = document.getElementById('dash-athletes-body');
     if (!tbody) return;
 
-    const filterSeason = document.getElementById('dash-ath-season')?.value;
     const filterSoc  = document.getElementById('dash-ath-soc')?.value;
     const filterCat  = document.getElementById('dash-ath-cat')?.value;
     const filterTeam = document.getElementById('dash-ath-team')?.value;
@@ -9433,7 +9541,9 @@ window.renderDashAthletes = function() {
     const sortDir = window._dashAthSortDir || -1;
 
     let filtered = window._dashAthletes.filter(a =>
-        (!filterSeason || String(a.season_id)  === String(filterSeason)) &&
+        // NOTA: season_id NON viene filtrato qui — loadDashAthletes lo applica già
+        // a livello DB. Filtrarlo sul client causerebbe "nessun atleta trovato"
+        // perché athleteMap non salva season_id (aggregazione per athlete_id).
         (!filterSoc  || String(a.society_id)  === String(filterSoc))  &&
         (!filterCat  || String(a.category_id) === String(filterCat))  &&
         (!filterTeam || String(a.team_id)     === String(filterTeam)) &&
@@ -9537,6 +9647,26 @@ window.loadUserAssignedTeams = async function() {
 
     const ids = [...new Set([...directTeamIds, ...catTeamIds])];
     window._userAssignedTeamIds = ids;
+
+    // ── Carica dettagli teams/categorie e salva nello store condiviso ──
+    // Riusato da tutti i tab dashboard per evitare query duplicate
+    if (ids.length > 0 && !window._userScopeData) {
+        const catIdsForStore = [...new Set((data||[]).filter(r => r.category_id).map(r => r.category_id))];
+        const [{ data: teamsDetail }, { data: catsDetail }] = await Promise.all([
+            client.from('teams')
+                .select('id, name, category_id, categories(id, name)')
+                .in('id', ids)
+                .order('name'),
+            catIdsForStore.length > 0
+                ? client.from('categories').select('id, name').in('id', catIdsForStore).order('name')
+                : Promise.resolve({ data: [] })
+        ]);
+        window._userScopeData = {
+            teams:      teamsDetail || [],
+            categories: catsDetail  || [],
+        };
+    }
+
     return ids;
 };
 
@@ -9552,21 +9682,43 @@ async function _renderVistaResponsabile() {
     container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento...</div>';
 
     try {
-        const teamIds = window._userAssignedTeamIds || await window.loadUserAssignedTeams() || [];
-        if (!teamIds.length) {
+        // ── Legge filtri UI della Vista Specializzata ─────────────────────────
+        const allAssignedTeamIds = window._userAssignedTeamIds || await window.loadUserAssignedTeams() || [];
+        if (!allAssignedTeamIds.length) {
             container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">Nessuna squadra/categoria assegnata.</div>';
             return;
         }
 
+        // Stagione: preferisce il filtro UI, poi la stagione attiva
+        const uiSeasonId = document.getElementById('pres-view-season')?.value;
         const activeSeason = (window._dashData._seasons || []).find(s => s.is_active);
-        const sid     = activeSeason?.id || null;
+        const sid = (uiSeasonId && uiSeasonId !== 'all') ? uiSeasonId : (activeSeason?.id || null);
+
+        // Categoria/squadra: restringe i teamIds assegnati in base ai filtri UI
+        const uiCatId  = document.getElementById('pres-view-cat')?.value;
+        const uiTeamId = document.getElementById('pres-view-team')?.value;
+
+        let teamIds = allAssignedTeamIds;
+        if (uiTeamId && uiTeamId !== 'all' && allAssignedTeamIds.includes(uiTeamId)) {
+            teamIds = [uiTeamId];
+        } else if (uiCatId && uiCatId !== 'all') {
+            const { data: catTeams } = await client.from('teams')
+                .select('id').eq('category_id', uiCatId).in('id', allAssignedTeamIds);
+            const filtered = (catTeams || []).map(t => t.id);
+            if (filtered.length) teamIds = filtered;
+        }
+        if (!teamIds.length) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">Nessuna squadra trovata per i filtri selezionati.</div>';
+            return;
+        }
+
         const today   = new Date();
         const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 7);
         const fmtDate = d => d.toISOString().split('T')[0];
         const weekAgoStr = fmtDate(weekAgo);
 
         // ── Info squadre ─────────────────────────────────────────────────────
-        let teamsQ = client.from('teams').select('id, name, categories(name)').in('id', teamIds);
+        let teamsQ = client.from('teams').select('id, name, categories(name), category_id').in('id', teamIds);
         if (sid) teamsQ = teamsQ.eq('season_id', sid);
         const { data: teamsData } = await teamsQ;
         const myTeams     = teamsData || [];
@@ -9574,8 +9726,8 @@ async function _renderVistaResponsabile() {
         const teamCatMap  = {};
         myTeams.forEach(t => { teamNameMap[t.id] = t.name; teamCatMap[t.id] = t.categories?.name || ''; });
 
-        // ── Query principali ─────────────────────────────────────────────────
-        // Fix roster query: applica season_id solo se non null (null causa 400)
+        // ── Query principali: match_stats, sessions, attendances ─────────────
+        // match_stats.session_id → sessions.id (join inner), stagione filtrata via sessions.season_id
         const rosterQ = (() => {
             let q = client.from('athlete_team_seasons')
                 .select('athlete_id, jersey_number, role, team_id, athletes!inner(id, name, surname, born_date)')
@@ -9585,30 +9737,53 @@ async function _renderVistaResponsabile() {
         })();
 
         const [sessRes, attRes, matchStatsRes, matchDetRes, rosterRes, testSessRes, nextMatchRes] = await Promise.all([
-            client.from('sessions')
-                .select('id, session_date, title, type_id, session_types(name), team_id')
-                .in('team_id', teamIds).order('session_date', { ascending: false }),
-            client.from('attendances')
-                .select('athlete_id, status, performance_data, is_called_up, sessions!inner(id, session_date, type_id, team_id, session_types(name))')
-                .in('sessions.team_id', teamIds),
-            client.from('match_stats')
-                .select('athlete_id, goals, yellow_cards, red_cards, minutes_played, is_starter, sessions!inner(session_date, team_id)')
-                .in('sessions.team_id', teamIds),
-            client.from('match_details')
-                .select('session_id, goals_for, goals_against, match_status, is_friendly, sessions!inner(session_date, team_id)')
-                .in('sessions.team_id', teamIds).eq('is_friendly', false),
+            (() => {
+                let q = client.from('sessions')
+                    .select('id, session_date, title, type_id, session_types(name), team_id')
+                    .in('team_id', teamIds).order('session_date', { ascending: false });
+                if (sid) q = q.eq('season_id', sid);
+                return q;
+            })(),
+            (() => {
+                let q = client.from('attendances')
+                    .select('athlete_id, status, performance_data, is_called_up, sessions!inner(id, session_date, type_id, team_id, session_types(name))')
+                    .in('sessions.team_id', teamIds);
+                if (sid) q = q.eq('sessions.season_id', sid);
+                return q;
+            })(),
+            (() => {
+                let q = client.from('match_stats')
+                    .select('athlete_id, goals, yellow_cards, red_cards, minutes_played, is_starter, sessions!inner(id, session_date, team_id, season_id)')
+                    .in('sessions.team_id', teamIds);
+                if (sid) q = q.eq('sessions.season_id', sid);
+                return q;
+            })(),
+            (() => {
+                let q = client.from('match_details')
+                    .select('session_id, goals_for, goals_against, match_status, is_friendly, sessions!inner(session_date, team_id, season_id)')
+                    .in('sessions.team_id', teamIds).eq('is_friendly', false);
+                if (sid) q = q.eq('sessions.season_id', sid);
+                return q;
+            })(),
             rosterQ,
-            client.from('test_sessions')
-                .select('id, session_date, team_id, test_definitions!inner(name)')
-                .in('team_id', teamIds).order('session_date', { ascending: false }),
-            client.from('sessions')
-                .select('id, session_date, title, session_types(name), team_id')
-                .in('team_id', teamIds).gte('session_date', fmtDate(today))
-                .order('session_date', { ascending: true }).limit(1)
+            (() => {
+                let q = client.from('test_sessions')
+                    .select('id, session_date, team_id, test_definitions!inner(name)')
+                    .in('team_id', teamIds).order('session_date', { ascending: false });
+                if (sid) q = q.eq('season_id', sid);
+                return q;
+            })(),
+            (() => {
+                let q = client.from('sessions')
+                    .select('id, session_date, title, session_types(name), team_id')
+                    .in('team_id', teamIds).gte('session_date', fmtDate(today))
+                    .order('session_date', { ascending: true }).limit(1);
+                if (sid) q = q.eq('season_id', sid);
+                return q;
+            })()
         ]);
 
         // Fix test_results: filtra per test_session_id ottenuti dalle test_sessions già caricate
-        // (Supabase non supporta filtri su tabelle non in select, es. test_sessions.team_id)
         const testSessions = testSessRes.data || [];
         const testSessIds = testSessions.map(s => s.id);
         let testResults = [];
@@ -9624,7 +9799,6 @@ async function _renderVistaResponsabile() {
         const matchStats   = matchStatsRes.data || [];
         const matchDetails = matchDetRes.data   || [];
         const roster       = rosterRes.data     || [];
-        // testResults e testSessions già definiti sopra con le query corrette
         const nextMatch    = nextMatchRes.data?.[0] || null;
 
         // ── Mappa atleti ─────────────────────────────────────────────────────
@@ -10416,6 +10590,7 @@ async function _renderVistaResponsabile() {
 
 window.loadDashResponsabile = function() {
     window._userAssignedTeamIds = null; // forza reload squadre
+    window._userScopeData = null;       // forza ricarico store categorie/team
     // Popola il filtro stagione della Vista (condiviso con pres-view-season)
     const presSeaSel = document.getElementById('pres-view-season');
     if (presSeaSel && presSeaSel.options.length <= 1 && window._dashData?._seasons?.length) {
