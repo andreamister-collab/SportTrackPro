@@ -4752,6 +4752,26 @@ window.openTabellino = async function(sessionId) {
         return na - nb || (a.athletes?.surname||'').localeCompare(b.athletes?.surname||'');
     });
 
+    // ── Sezione marcatori (costruita prima del template per evitare backtick annidati) ──
+    const marcatoriHtml = (() => {
+        const scorers = sortedConv.filter(att => (statsMap[att.athlete_id]?.goals || 0) > 0);
+        if (!scorers.length) return '<div id="marcatori-row" style="display:none;"></div>';
+        const pills = scorers.map(att => {
+            const surname = att.athletes?.surname || '';
+            const name    = att.athletes?.name    || '';
+            const fullName = (surname + ' ' + name).trim();
+            const g = statsMap[att.athlete_id]?.goals || 0;
+            const badge = g > 1
+                ? '<span style="background:#047857;color:white;border-radius:50%;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:800;">' + g + '</span>'
+                : '';
+            return '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);color:#047857;padding:4px 10px;border-radius:99px;font-size:0.75rem;font-weight:700;">&#x26BD; ' + fullName + (badge ? ' ' + badge : '') + '</span>';
+        }).join('');
+        return '<div id="marcatori-row" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:10px 14px;">'
+            + '<div style="font-size:0.62rem;font-weight:700;color:#047857;text-transform:uppercase;letter-spacing:0.09em;margin-bottom:8px;">&#x26BD; Marcatori</div>'
+            + '<div id="marcatori-pills" style="display:flex;flex-wrap:wrap;gap:6px;">' + pills + '</div>'
+            + '</div>';
+    })();
+
     container.innerHTML = `
     <div style="background:var(--card); border-radius:14px; box-shadow:0 4px 24px rgba(0,0,0,0.10); color:var(--text-main); font-family:'Outfit',sans-serif; overflow:hidden; border:1px solid var(--border);">
 
@@ -4833,6 +4853,9 @@ window.openTabellino = async function(sessionId) {
                     <input type="number" id="tab-gs" value="${d.goals_against ?? 0}" min="0" style="width:80px; text-align:center; font-size:2.4rem; font-weight:900; border:none; background:transparent; color:#f87171; font-family:'DM Mono','Outfit',sans-serif;">
                 </div>
             </div>
+
+            <!-- ROW 3b: Marcatori -->
+            ${marcatoriHtml}
 
             <!-- ROW 4: Griglia convocati con statistiche individuali -->
             <div style="background:rgba(0,0,0,0.03); border-radius:12px; border:1px solid var(--border); overflow:hidden;">
@@ -4934,6 +4957,33 @@ window._adjustStat = function(btn, delta) {
     let val = parseInt(span.textContent) + delta;
     if (val < 0) val = 0;
     span.textContent = val;
+    if (field === 'goals') window._refreshMarcatori();
+};
+
+window._refreshMarcatori = function() {
+    const row = document.getElementById('marcatori-row');
+    const pillsEl = document.getElementById('marcatori-pills');
+    if (!row) return;
+    const scorers = [];
+    document.querySelectorAll('.stat-val[data-field="goals"]').forEach(span => {
+        const g = parseInt(span.textContent) || 0;
+        if (g > 0) {
+            const aid = span.getAttribute('data-id');
+            const nameEl = span.closest('tr')?.querySelector('td:nth-child(2) span:first-child');
+            const name = nameEl?.textContent?.trim() || aid;
+            scorers.push({ name, g });
+        }
+    });
+    if (!scorers.length) { row.style.display = 'none'; return; }
+    row.style.display = '';
+    if (pillsEl) {
+        pillsEl.innerHTML = scorers.map(s => {
+            const badge = s.g > 1
+                ? ` <span style="background:#047857;color:white;border-radius:50%;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:800;">${s.g}</span>`
+                : '';
+            return `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);color:#047857;padding:4px 10px;border-radius:99px;font-size:0.75rem;font-weight:700;">&#x26BD; ${s.name}${badge}</span>`;
+        }).join('');
+    }
 };
 
 window.saveFullTabellino = async function(sessionId, detailId) {
@@ -9110,15 +9160,91 @@ window.renderDashMatches = function() {
         const d = m.detail;
         const risultato = d ? `${d.goals_for ?? '-'} - ${d.goals_against ?? '-'}` : '- -';
         const vs = d?.opponent_name ? `vs ${d.opponent_name}` : (m.title || 'Gara');
+        const hasResult = d && (d.goals_for !== null && d.goals_for !== undefined);
+        const risultatoCell = hasResult
+            ? `<span onclick="window.showScorerPopup('${m.id}', event)"
+                    style="cursor:pointer;font-weight:700;font-family:'DM Mono','Outfit',sans-serif;
+                           padding:3px 8px;border-radius:6px;background:rgba(37,99,235,0.07);
+                           border:1px solid rgba(37,99,235,0.15);transition:all 0.15s;display:inline-block;"
+                    title="Clicca per vedere i marcatori"
+                    onmouseover="this.style.background='rgba(37,99,235,0.14)'"
+                    onmouseout="this.style.background='rgba(37,99,235,0.07)'">${risultato} ⚽</span>`
+            : `<span style="font-weight:700;font-family:'DM Mono','Outfit',sans-serif;color:var(--text-muted);">${risultato}</span>`;
         return `
         <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:9px 12px; color:var(--text-muted); white-space:nowrap;">${new Date(m.session_date).toLocaleDateString('it-IT')}</td>
             <td style="padding:9px 12px; font-weight:600;">${vs}</td>
             <td style="padding:9px 12px; color:var(--primary);">${m.teams?.name || '-'}</td>
-            <td style="padding:9px 12px; text-align:center; font-weight:700; font-family:'DM Mono','Outfit',sans-serif;">${risultato}</td>
+            <td style="padding:9px 12px; text-align:center;">${risultatoCell}</td>
             <td style="padding:9px 12px; text-align:center;">${esitoBadge(d?.match_status)}</td>
         </tr>`;
     }).join('');
+};
+
+/* ── POPUP MARCATORI (clic sul risultato nel tab Partite) ── */
+window.showScorerPopup = async function(sessionId, event) {
+    window.closeScorerPopup();
+    const { data: stats } = await client.from('match_stats')
+        .select('athlete_id, goals, athletes!inner(name, surname)')
+        .eq('session_id', sessionId).gt('goals', 0).order('goals', { ascending: false });
+    const { data: det } = await client.from('match_details')
+        .select('opponent_name, goals_for, goals_against, match_status')
+        .eq('session_id', sessionId).maybeSingle();
+    const scorers = stats || [];
+    const vs = det?.opponent_name ? `vs ${det.opponent_name}` : 'Partita';
+    const score = det ? `${det.goals_for} - ${det.goals_against}` : '';
+    const pillsHtml = scorers.length
+        ? scorers.map(s => {
+            const name = `${s.athletes?.surname || ''} ${s.athletes?.name || ''}`.trim();
+            const g = s.goals;
+            const badge = g > 1 ? ` <span style="background:#047857;color:white;border-radius:50%;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:800;">${g}</span>` : '';
+            return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05);">
+                <span style="font-size:0.92rem;">&#x26BD;</span>
+                <span style="font-weight:700;font-size:0.82rem;flex:1;">${name}</span>
+                ${g > 1 ? `<span style="background:rgba(16,185,129,0.12);color:#047857;border-radius:99px;padding:1px 8px;font-size:0.72rem;font-weight:800;">${g} gol</span>` : ''}
+            </div>`;
+        }).join('')
+        : '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:8px 0;">Nessun marcatore registrato</div>';
+    const popup = document.createElement('div');
+    popup.id = 'scorer-popup';
+    popup.style.cssText = 'position:fixed;z-index:9999;background:white;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.18),0 2px 8px rgba(0,0,0,0.1);border:1px solid rgba(0,0,0,0.1);min-width:220px;max-width:300px;font-family:\'Outfit\',sans-serif;animation:popupIn 0.18s cubic-bezier(.34,1.36,.64,1);';
+    popup.innerHTML = `
+        <div style="padding:12px 14px;border-bottom:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <div>
+                <div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;">${vs}</div>
+                <div style="font-size:1rem;font-weight:900;font-family:'DM Mono','Outfit',sans-serif;color:var(--text-main);margin-top:1px;">${score}</div>
+            </div>
+            <button onclick="window.closeScorerPopup()" style="background:rgba(0,0,0,0.05);border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:12px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;">&#x2715;</button>
+        </div>
+        <div style="padding:10px 14px;">
+            <div style="font-size:0.62rem;font-weight:700;color:#047857;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">&#x26BD; Marcatori</div>
+            ${pillsHtml}
+        </div>`;
+    document.body.appendChild(popup);
+    const rect = event.target.getBoundingClientRect();
+    const popupW = 260;
+    const popupH = popup.offsetHeight || 180;
+    let left = rect.left + rect.width / 2 - popupW / 2;
+    let top  = rect.bottom + 8;
+    if (left + popupW > window.innerWidth - 10) left = window.innerWidth - popupW - 10;
+    if (left < 8) left = 8;
+    if (top + popupH > window.innerHeight - 10) top = rect.top - popupH - 8;
+    popup.style.left = left + 'px';
+    popup.style.top  = top + 'px';
+    setTimeout(() => {
+        document.addEventListener('click', window._scorerPopupOutside = (e) => {
+            if (!document.getElementById('scorer-popup')?.contains(e.target)) window.closeScorerPopup();
+        }, { once: true });
+    }, 50);
+};
+
+window.closeScorerPopup = function() {
+    const el = document.getElementById('scorer-popup');
+    if (el) el.remove();
+    if (window._scorerPopupOutside) {
+        document.removeEventListener('click', window._scorerPopupOutside);
+        window._scorerPopupOutside = null;
+    }
 };
 
 /* ── PRESENZE SESSIONI ── */
