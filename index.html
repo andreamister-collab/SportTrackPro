@@ -968,6 +968,8 @@
             effectiveRole = mgmtRole || 'user';
         }
 
+        // Normalizza ruoli con spazio (es. 'preparatore atletico') → chiave usabile
+        if (effectiveRole === 'preparatore atletico') effectiveRole = 'preparatore atletico';
         // Salva il ruolo effettivo globalmente (utile per la dashboard e altri moduli)
         window._effectiveRole = effectiveRole;
 
@@ -993,6 +995,7 @@
             responsabile: ['nav-anagrafica-pura','nav-atleti','nav-group-admin'],
             dirigente:    ['nav-atleti','nav-sessioni','nav-partite','nav-test','nav-import'],
             allenatore:   ['nav-atleti','nav-sessioni','nav-partite','nav-test','nav-import'],
+            'preparatore atletico': ['nav-atleti','nav-test'],
             genitore:     [],
         };
 
@@ -2773,21 +2776,20 @@ window.handleDeleteStaff = async function(id) {
                    (!team || a.team_id     == team);
         });
 
-        // Raggruppa le righe Responsabile (stesso user+stagione) in una riga unica
+        // Raggruppa le righe multi-team (Responsabile, Preparatore Atletico, Preparatore Portieri) in una riga unica
+        const _multiTeamRolesTable = ['Responsabile', 'Preparatore Atletico', 'Preparatore Portieri'];
         const rows = [];
-        const respGroups = {}; // key: userId+seasonId
+        const respGroups = {}; // key: userId+seasonId+role
         filtered.forEach(a => {
-            if (a.role === 'Responsabile') {
-                const key = `${a.user_id}_${a.season_id}`;
+            if (_multiTeamRolesTable.includes(a.role)) {
+                const key = `${a.user_id}_${a.season_id}_${a.role}`;
                 if (!respGroups[key]) {
                     respGroups[key] = { ...a, _cats: [], _teams: [] };
-                    rows.push({ _type: 'responsabile', key });
+                    rows.push({ _type: 'multiTeam', key });
                 }
                 if (a.team_id) {
-                    // Riga con squadra diretta
                     respGroups[key]._teams.push({ name: a.teams?.name || '-', id: a.id });
                 } else {
-                    // Riga con categoria (senza squadra specifica)
                     respGroups[key]._cats.push({ name: a.categories?.name || _lookupCats[a.category_id] || '-', id: a.id });
                 }
             } else {
@@ -2801,8 +2803,9 @@ window.handleDeleteStaff = async function(id) {
         if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7">Nessuna assegnazione trovata.</td></tr>'; return; }
 
         tbody.innerHTML = rows.map(row => {
-            if (row._type === 'responsabile') {
+            if (row._type === 'multiTeam') {
                 const a = respGroups[row.key];
+                const isResp = a.role === 'Responsabile';
                 const catBadges = a._cats.map(c =>
                     `<span style="background:rgba(99,102,241,0.1);color:#4f46e5;padding:2px 7px;border-radius:5px;font-size:0.78em;font-weight:600;white-space:nowrap;">📂 ${c.name}</span>`
                 ).join(' ');
@@ -2810,18 +2813,20 @@ window.handleDeleteStaff = async function(id) {
                     `<span style="background:rgba(14,165,233,0.1);color:#0369a1;padding:2px 7px;border-radius:5px;font-size:0.78em;font-weight:600;white-space:nowrap;">🛡️ ${t.name}</span>`
                 ).join(' ');
                 const allBadges = [catBadges, teamBadges].filter(Boolean).join(' ') || '<span style="color:var(--text-muted);font-size:0.82em;">—</span>';
-                // Per edit/delete usiamo il primo id del gruppo
                 const firstId = (a._cats[0] || a._teams[0])?.id || a.id;
+                const roleBg  = isResp ? '#ede9fe' : 'rgba(5,150,105,0.12)';
+                const roleClr = isResp ? '#6d28d9' : '#047857';
+                const roleIco = isResp ? '📂' : a.role === 'Preparatore Atletico' ? '🏋️' : '🧤';
                 return `
-                <tr style="background:rgba(99,102,241,0.03);">
+                <tr style="background:${isResp ? 'rgba(99,102,241,0.03)' : 'rgba(5,150,105,0.02)'};">
                     <td><strong>${a.users?.name || 'N/D'}</strong></td>
                     <td><span style="color:var(--primary-mid);font-weight:500;">${_lookupSocs[a.society_id] || '-'}</span></td>
                     <td>${_lookupSeas[a.season_id] || '-'}</td>
                     <td style="max-width:280px;" colspan="2"><div style="display:flex;flex-wrap:wrap;gap:4px;">${allBadges}</div></td>
-                    <td><span style="background:#ede9fe;color:#6d28d9;padding:4px 8px;border-radius:6px;font-size:0.85em;font-weight:600;">📂 Responsabile</span></td>
+                    <td><span style="background:${roleBg};color:${roleClr};padding:4px 8px;border-radius:6px;font-size:0.85em;font-weight:600;">${roleIco} ${a.role}</span></td>
                     <td style="text-align:right">
                         <button class="btn-sm btn-warning" onclick="handleEditAssignment('${firstId}')">✏️</button>
-                        <button class="btn-sm btn-danger" onclick="deleteResponsabile('${a.user_id}','${a.season_id}')">🗑️</button>
+                        <button class="btn-sm btn-danger" onclick="deleteMultiTeamRole('${a.user_id}','${a.season_id}','${a.role}')">🗑️</button>
                     </td>
                 </tr>`;
             } else {
@@ -2843,20 +2848,22 @@ window.handleDeleteStaff = async function(id) {
         }).join('');
     };
 
-    // Elimina TUTTE le righe Responsabile per un dato user+stagione
-    window.deleteResponsabile = async function(userId, seasonId) {
-        if (!confirm("Rimuovere tutte le assegnazioni Responsabile per questo membro?")) return;
+    // Elimina TUTTE le righe per un dato user+stagione+role (multi-team)
+    window.deleteMultiTeamRole = async function(userId, seasonId, role) {
+        if (!confirm(`Rimuovere tutte le assegnazioni "${role}" per questo membro?`)) return;
         const { data: existing } = await client.from('user_category_seasons')
             .select('id')
             .eq('user_id', userId)
             .eq('season_id', seasonId)
-            .eq('role', 'Responsabile');
+            .eq('role', role);
         if (existing?.length) {
             const ids = existing.map(r => r.id);
             const { error } = await client.from('user_category_seasons').delete().in('id', ids);
             if (!error) _fetchData(); else alert(error.message);
         }
     };
+    // Alias retrocompatibilità
+    window.deleteResponsabile = (userId, seasonId) => window.deleteMultiTeamRole(userId, seasonId, 'Responsabile');
 
     // --- LOGICA MODALE ---
     window.openAssignmentModal = async function(activeSeasonId, editData = null) {
@@ -2880,14 +2887,15 @@ window.handleDeleteStaff = async function(id) {
             ? (cRes.data || [])
             : (cRes.data || []).filter(c => !_mySocIdForCat || String(c.society_id) === String(_mySocIdForCat));
 
-        // Se in edit, recupera tutte le righe del responsabile (stesso user + stagione + role=Responsabile)
+        // Se in edit, recupera tutte le righe del responsabile/preparatore (stesso user + stagione + role)
+        const _multiTeamRoles = ['Responsabile', 'Preparatore Atletico', 'Preparatore Portieri'];
         let editCatIds = [], editTeamIds = [];
-        if (isEdit && editData.role === 'Responsabile') {
+        if (isEdit && _multiTeamRoles.includes(editData.role)) {
             const { data: siblings } = await client.from('user_category_seasons')
                 .select('category_id, team_id')
                 .eq('user_id', editData.user_id)
                 .eq('season_id', activeSeasonId)
-                .eq('role', 'Responsabile');
+                .eq('role', editData.role);
             editCatIds  = (siblings || []).filter(r => r.category_id && !r.team_id).map(r => String(r.category_id));
             editTeamIds = (siblings || []).filter(r => r.team_id).map(r => String(r.team_id));
         }
@@ -2915,10 +2923,11 @@ window.handleDeleteStaff = async function(id) {
                     </select>
                 </div>
 
-                <!-- BLOCCO RESPONSABILE: multi-categoria + multi-squadra diretta -->
+                <!-- BLOCCO MULTI-SQUADRA: Responsabile (cat+team), Preparatore Atletico/Portieri (solo team) -->
                 <div id="as-block-responsabile" style="display:none;">
 
-                    <!-- Categorie -->
+                    <!-- Categorie (solo Responsabile) -->
+                    <div id="as-cat-section">
                     <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                         📂 Categorie di competenza
                         <span style="font-size:0.72rem; color:var(--text-muted); font-weight:400;">(tutte le squadre della categoria)</span>
@@ -2934,11 +2943,12 @@ window.handleDeleteStaff = async function(id) {
                             </label>
                         `).join('')}
                     </div>
+                    </div><!-- /as-cat-section -->
 
                     <!-- Squadre dirette -->
-                    <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                    <label id="as-team-checkboxes-label" style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                         🛡️ Squadre specifiche
-                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:400;">(assegnazione diretta a singole squadre)</span>
+                        <span id="as-team-checkboxes-sub" style="font-size:0.72rem; color:var(--text-muted); font-weight:400;">(assegnazione diretta a singole squadre)</span>
                     </label>
                     <div id="as-team-checkboxes" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:8px; padding:12px; background:rgba(0,0,0,0.025); border:1px solid var(--border); border-radius:8px;">
                         ${allTeams.map(t => `
@@ -2969,11 +2979,23 @@ window.handleDeleteStaff = async function(id) {
         `);
 
         // Gestione visibilità blocchi al cambio ruolo
+        const _multiTeamRolesUI = ['Responsabile', 'Preparatore Atletico', 'Preparatore Portieri'];
         window._onAssignmentRoleChange = function() {
             const role = document.getElementById('as-role').value;
-            const isResp = role === 'Responsabile';
-            document.getElementById('as-block-responsabile').style.display = isResp ? 'block' : 'none';
-            document.getElementById('as-block-team').style.display        = isResp ? 'none'  : 'block';
+            const isResp      = role === 'Responsabile';
+            const isMultiTeam = _multiTeamRolesUI.includes(role);
+            document.getElementById('as-block-responsabile').style.display = isMultiTeam ? 'block' : 'none';
+            document.getElementById('as-block-team').style.display         = isMultiTeam ? 'none'  : 'block';
+            // Mostra sezione categorie solo per Responsabile
+            const catSec = document.getElementById('as-cat-section');
+            if (catSec) catSec.style.display = isResp ? '' : 'none';
+            // Aggiorna label squadre
+            const lbl = document.getElementById('as-team-checkboxes-label');
+            const sub = document.getElementById('as-team-checkboxes-sub');
+            if (lbl) lbl.childNodes[0].textContent = isResp ? '🛡️ Squadre specifiche ' : '🛡️ Squadre assegnate ';
+            if (sub) sub.textContent = isResp
+                ? '(assegnazione diretta a singole squadre)'
+                : 'Seleziona tutte le squadre di competenza';
         };
         window._onAssignmentRoleChange(); // applica subito
 
@@ -2982,31 +3004,33 @@ window.handleDeleteStaff = async function(id) {
             const role   = document.getElementById('as-role').value;
             if (!userId || !role) return alert("Seleziona Staff e Ruolo!");
 
-            if (role === 'Responsabile') {
-                // Raccoglie categorie e squadre spuntate
-                const checkedCats  = [...document.querySelectorAll('#as-cat-checkboxes input[type=checkbox]:checked')];
+            if (_multiTeamRolesUI.includes(role)) {
+                // Raccoglie categorie (solo Responsabile) e squadre spuntate
+                const checkedCats  = role === 'Responsabile'
+                    ? [...document.querySelectorAll('#as-cat-checkboxes input[type=checkbox]:checked')]
+                    : [];
                 const checkedTeams = [...document.querySelectorAll('#as-team-checkboxes input[type=checkbox]:checked')];
                 if (!checkedCats.length && !checkedTeams.length)
-                    return alert("Seleziona almeno una categoria o una squadra per il Responsabile!");
+                    return alert(`Seleziona almeno una ${role === 'Responsabile' ? 'categoria o ' : ''}squadra!`);
 
-                // In edit: rimuovi PRIMA tutte le righe esistenti come Responsabile per questo user+stagione
+                // In edit: rimuovi PRIMA tutte le righe esistenti per questo user+stagione+role
                 if (isEdit) {
                     const { data: existing } = await client.from('user_category_seasons')
                         .select('id')
                         .eq('user_id', userId)
                         .eq('season_id', activeSeasonId)
-                        .eq('role', 'Responsabile');
+                        .eq('role', role);
                     if (existing?.length) {
                         const ids = existing.map(r => r.id);
                         await client.from('user_category_seasons').delete().in('id', ids);
                     }
                 }
 
-                // Righe per categoria (team_id null → il Responsabile vede tutte le squadre della cat.)
+                // Righe per categoria (solo Responsabile, team_id null)
                 const catRows = checkedCats.map(cb => ({
                     user_id:     userId,
                     season_id:   activeSeasonId,
-                    role:        'Responsabile',
+                    role:        role,
                     category_id: cb.value,
                     society_id:  cb.getAttribute('data-soc') || null,
                     team_id:     null
@@ -3016,7 +3040,7 @@ window.handleDeleteStaff = async function(id) {
                 const teamRows = checkedTeams.map(cb => ({
                     user_id:     userId,
                     season_id:   activeSeasonId,
-                    role:        'Responsabile',
+                    role:        role,
                     category_id: cb.getAttribute('data-cat') || null,
                     society_id:  cb.getAttribute('data-soc') || null,
                     team_id:     cb.value
@@ -5180,7 +5204,7 @@ window.printTabellinoMatchPDF = async function(sessionId) {
         padding: 6px 10px;
     }
     .info-label { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 2px; }
-    .info-value { font-size: 10pt; font-weight: 700; color: #111; }
+    .info-value { font-size: 10pt; font-weight: 700; color: #111; word-break: break-word; overflow-wrap: break-word; white-space: normal; }
     .info-box.wide { grid-column: span 2; }
 
     /* ── SCORE BOX ── */
@@ -5594,7 +5618,7 @@ window.exportConvocazioniIMG = async function(sessionId) {
                         <!-- Luogo -->
                         <div style="flex:1.4; min-width:0; padding-right:14px;">
                             <div style="font-size:9px; color:#7a5c00; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; font-weight:700;">Luogo</div>
-                            <div style="font-size:11px; font-weight:600; color:#1a2240; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${detail?.address || '---'}</div>
+                            <div style="font-size:11px; font-weight:600; color:#1a2240; white-space:normal; overflow-wrap:break-word; word-break:break-word;">${detail?.address || '---'}</div>
                         </div>
                         <div style="width:1px; background:rgba(26,34,64,0.15); align-self:stretch; margin:0 14px;"></div>
                         <!-- Orari -->
@@ -6048,6 +6072,11 @@ async function initImportAtleti() {
 
 window.templateDashboard = function() {
     const userName = window.CURRENT_USER ? window.CURRENT_USER.name : "Utente";
+    // Calcola iniziali dal nome (es. "Onofrio D'Amico" → "OD")
+    const nameParts = userName.trim().split(/\s+/);
+    const initials = nameParts.length >= 2
+        ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+        : userName.slice(0, 2).toUpperCase();
     // Usa _effectiveRole (già risolto da applyRoleVisibility) per mostrare il ruolo corretto
     const userRole = (window._effectiveRole || window._userRole || '').toLowerCase();
     const roleLabels = {
@@ -6061,23 +6090,26 @@ window.templateDashboard = function() {
     return `
     <div id="dashboard-wrap" style="width:100%;">
 
-        <!-- HEADER DASHBOARD -->
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; flex-wrap:wrap; gap:12px;">
-            <div>
-                <h2 style="font-family:'Syne','Outfit',sans-serif; font-size:1.35rem; font-weight:800; letter-spacing:-0.02em; margin-bottom:4px;">Dashboard ${roleName}</h2>
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <span style="color:var(--text-muted); font-size:0.82rem;">Panoramica globale ·</span>
-                    <span id="dash-season-label" style="color:var(--primary); font-size:0.82rem; font-weight:600;">⏳ Caricamento...</span>
-                    <span style="color:var(--text-muted); font-size:0.82rem;">· ${today}</span>
+        <!-- HERO DASHBOARD (stile genitore) -->
+        <div class="g-hero" style="margin-bottom:1.5rem;">
+            <div class="g-hero-row">
+                <div class="g-hero-avatar">${initials}</div>
+                <div style="position:relative;z-index:1;">
+                    <div class="g-hero-name">${userName}</div>
+                    <div class="g-hero-meta">
+                        ${roleName} · Panoramica globale ·
+                        <span id="dash-season-label" style="opacity:1;font-weight:700;color:rgba(255,255,255,0.9);">⏳ Caricamento...</span>
+                        · ${today}
+                    </div>
                 </div>
-            </div>
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                <select id="dash-season-filter" onchange="window.refreshDashboard()" style="padding:7px 12px; border:1.5px solid var(--primary); border-radius:8px; font-weight:600; color:var(--primary); background:var(--primary-subtle); font-size:0.82rem; cursor:pointer; width:auto; margin:0;">
-                    <option value="all">Tutte le stagioni</option>
-                </select>
-                <select id="dash-soc-filter" onchange="window.refreshDashboard()" style="padding:7px 12px; border:1.5px solid rgba(0,0,0,0.1); border-radius:8px; font-weight:500; color:var(--text-sub); background:var(--card); font-size:0.82rem; cursor:pointer; width:auto; margin:0;">
-                    <option value="all">Tutte le società</option>
-                </select>
+                <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:relative;z-index:1;">
+                    <select id="dash-season-filter" onchange="window.refreshDashboard()" style="padding:7px 12px; border:1.5px solid rgba(255,255,255,0.3); border-radius:8px; font-weight:600; color:white; background:rgba(255,255,255,0.12); font-size:0.82rem; cursor:pointer; width:auto; margin:0; backdrop-filter:blur(4px);">
+                        <option value="all" style="color:#1a2240;background:white;">Tutte le stagioni</option>
+                    </select>
+                    <select id="dash-soc-filter" onchange="window.refreshDashboard()" style="padding:7px 12px; border:1.5px solid rgba(255,255,255,0.2); border-radius:8px; font-weight:500; color:rgba(255,255,255,0.85); background:rgba(255,255,255,0.08); font-size:0.82rem; cursor:pointer; width:auto; margin:0; backdrop-filter:blur(4px);">
+                        <option value="all" style="color:#1a2240;background:white;">Tutte le società</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -6539,6 +6571,13 @@ window.templateDashboard = function() {
                 </div>
             </div><!-- /pres-responsabile-section -->
 
+            <!-- VISTA PREPARATORE ATLETICO -->
+            <div id="pres-preparatore-section" style="display:none;">
+                <div id="preparatore-dash-content">
+                    <div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento...</div>
+                </div>
+            </div><!-- /pres-preparatore-section -->
+
             <!-- SEZIONE DETTAGLIO ATLETA (solo Genitore) -->
             <div id="pres-genitore-section" style="display:none; margin-top:20px;">
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border);">
@@ -6617,9 +6656,11 @@ window.switchDashTab = function(idx) {
         const _initAndLoad = async () => {
             if (_r6 === 'genitore')    await _initGenitoreTeamScope();
             if (_r6 === 'responsabile') {
-                // Popola i filtri cat/team con le assegnazioni del responsabile, poi carica la vista
                 await _presPopulateCatTeam();
                 await window.loadDashResponsabile();
+            } else if (_r6 === 'preparatore atletico') {
+                await _presPopulateCatTeam();
+                await window.loadDashPreparatore();
             } else {
                 await _presPopulateCatTeam();
                 window.loadDashPresidenza();
@@ -6691,7 +6732,7 @@ window.initDashboard = async function() {
 
         // Posiziona automaticamente sulla vista specializzata al primo accesso
         const _initRole = (window._effectiveRole || window._userRole || '').toLowerCase();
-        const _strategicRoles = ['admin','manager','presidente','segretario','responsabile','dirigente','allenatore','genitore'];
+        const _strategicRoles = ['admin','manager','presidente','segretario','responsabile','dirigente','allenatore','genitore','preparatore atletico'];
         if (_strategicRoles.includes(_initRole)) {
             if (_initRole === 'genitore') {
                 _initGenitoreTeamScope().then(() => {
@@ -6791,13 +6832,15 @@ window.onDashAthSeasonChange = function() {
     window.loadDashAthletes(seasonId || null, socId || 'all', scopedIds);
 };
 
-/* Ripopola cat e team filtrati per stagione */
-async function _repopulateCatTeamForSeason(catSelId, teamSelId, seasonId) {
+/* Ripopola cat e team filtrati per stagione (e opzionalmente per società) */
+async function _repopulateCatTeamForSeason(catSelId, teamSelId, seasonId, socId) {
     const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
     const isScoped = ['dirigente','allenatore','responsabile'].includes(effRole);
     const scopedIds = isScoped ? (window._userAssignedTeamIds || []) : null;
 
-    let tq = client.from('teams').select('id, name, category_id').eq('season_id', seasonId).order('name');
+    let tq = client.from('teams').select('id, name, category_id').order('name');
+    if (seasonId) tq = tq.eq('season_id', seasonId);
+    if (socId && socId !== 'all') tq = tq.eq('society_id', socId);
     if (scopedIds && scopedIds.length) tq = tq.in('id', scopedIds);
     const { data: teams } = await tq;
 
@@ -7715,13 +7758,34 @@ window.loadDashPresidenza = async function() {
         const isTeamScoped = ['responsabile','dirigente','allenatore'].includes(role);
         const isGenitore  = role === 'genitore';
 
+        // ── Popola i select PRIMA di leggerli (evita race condition al primo render) ──
+        const presSeaSel = document.getElementById('pres-view-season');
+        if (presSeaSel && presSeaSel.options.length <= 1 && window._dashData._seasons?.length) {
+            window._dashData._seasons.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s.id;
+                o.textContent = s.name + (s.is_active ? ' \u2713' : '');
+                if (s.is_active) o.selected = true;
+                presSeaSel.appendChild(o);
+            });
+        }
+        const presSocSel = document.getElementById('pres-view-soc');
+        if (presSocSel && presSocSel.options.length <= 1 && window._dashData._societies?.length) {
+            window._dashData._societies.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s.id;
+                o.textContent = s.name;
+                presSocSel.appendChild(o);
+            });
+        }
+
         const seasonId = document.getElementById('pres-view-season')?.value || 'all';
         const catId    = document.getElementById('pres-view-cat')?.value  || 'all';
 
         // ── Calcola socId (rispettando forced scope) ──
         const socId = window._dashData._forcedSocietyId ||
-                      (document.getElementById('pres-view-soc')?.style.display !== 'none'
-                         ? document.getElementById('pres-view-soc')?.value
+                      (presSocSel && presSocSel.style.display !== 'none'
+                         ? presSocSel.value
                          : 'all') || 'all';
 
         // ── Calcola teamId: per team-scoped viene forzato alle squadre assegnate ──
@@ -7745,38 +7809,37 @@ window.loadDashPresidenza = async function() {
             }
         }
 
-        // Sync season selector con main dashboard
-        const presSeaSel = document.getElementById('pres-view-season');
-        if (presSeaSel && presSeaSel.options.length <= 1 && window._dashData._seasons?.length) {
-            window._dashData._seasons.forEach(s => {
-                const o = document.createElement('option');
-                o.value = s.id;
-                o.textContent = s.name + (s.is_active ? ' \u2713' : '');
-                if (s.is_active) o.selected = true;
-                presSeaSel.appendChild(o);
-            });
+        // ── Pre-carica team IDs filtrati per società/categoria/stagione ──
+        // Questo risolve il problema di sessions.society_id potenzialmente NULL:
+        // invece di filtrare le sessioni per society_id diretto, filtriamo per team_id
+        // dei team appartenenti alla società selezionata.
+        let scopedTeamIdsForSoc = null; // null = nessun filtro aggiuntivo
+        if (!forcedTeamIds) {
+            // Applica il filtro per società tramite teams (più affidabile di sessions.society_id)
+            const needSocFilter  = socId    && socId    !== 'all';
+            const needCatFilter  = catId    && catId    !== 'all';
+            const needTeamFilter = teamId   && teamId   !== 'all';
+            if (needTeamFilter) {
+                scopedTeamIdsForSoc = [teamId];
+            } else if (needSocFilter || needCatFilter) {
+                let tq = client.from('teams').select('id');
+                if (needSocFilter)  tq = tq.eq('society_id', socId);
+                if (needCatFilter)  tq = tq.eq('category_id', catId);
+                if (seasonId && seasonId !== 'all') tq = tq.eq('season_id', seasonId);
+                const { data: filteredTeams } = await tq;
+                scopedTeamIdsForSoc = (filteredTeams || []).map(t => t.id);
+                if (scopedTeamIdsForSoc.length === 0) scopedTeamIdsForSoc = ['__no_match__'];
+            }
         }
-        const presSocSel = document.getElementById('pres-view-soc');
-        if (presSocSel && presSocSel.options.length <= 1 && window._dashData._societies?.length) {
-            window._dashData._societies.forEach(s => {
-                const o = document.createElement('option');
-                o.value = s.id;
-                o.textContent = s.name;
-                presSocSel.appendChild(o);
-            });
-        }
+
+        // teamIds effettivi da usare nelle query
+        const effectiveTeamIds = forcedTeamIds || scopedTeamIdsForSoc;
 
         // ── Helper per applicare filtri alle query ──
         function applyScope(q, tbl) {
-            // tbl: prefisso colonne ('sessions.' per join, '' per dirette)
             if (seasonId && seasonId !== 'all') q = q.eq(`${tbl}season_id`, seasonId);
-            if (!isGlobal && socId && socId !== 'all') q = q.eq(`${tbl}society_id`, socId);
-            if (forcedTeamIds) {
-                q = q.in(`${tbl}team_id`, forcedTeamIds);
-            } else if (teamId && teamId !== 'all') {
-                q = q.eq(`${tbl}team_id`, teamId);
-            } else if (catId && catId !== 'all') {
-                // cat filter applicato solo se non c'è team specifico
+            if (effectiveTeamIds) {
+                q = q.in(`${tbl}team_id`, effectiveTeamIds);
             }
             return q;
         }
@@ -7785,37 +7848,26 @@ window.loadDashPresidenza = async function() {
         let mdQ = client.from('match_details')
             .select('session_id, goals_for, goals_against, match_status, is_friendly, sessions!inner(session_date, team_id, society_id, season_id, teams!inner(category_id))');
         if (seasonId && seasonId !== 'all') mdQ = mdQ.eq('sessions.season_id', seasonId);
-        if (!isGlobal && socId && socId !== 'all') mdQ = mdQ.eq('sessions.society_id', socId);
-        if (forcedTeamIds) mdQ = mdQ.in('sessions.team_id', forcedTeamIds);
-        else if (teamId && teamId !== 'all') mdQ = mdQ.eq('sessions.team_id', teamId);
-        else if (catId && catId !== 'all') mdQ = mdQ.eq('sessions.teams.category_id', catId);
+        if (effectiveTeamIds) mdQ = mdQ.in('sessions.team_id', effectiveTeamIds);
 
         // Query match_stats
         let msQ = client.from('match_stats')
             .select('session_id, yellow_cards, red_cards, sessions!inner(session_date, team_id, society_id, season_id, teams!inner(category_id))');
         if (seasonId && seasonId !== 'all') msQ = msQ.eq('sessions.season_id', seasonId);
-        if (!isGlobal && socId && socId !== 'all') msQ = msQ.eq('sessions.society_id', socId);
-        if (forcedTeamIds) msQ = msQ.in('sessions.team_id', forcedTeamIds);
-        else if (teamId && teamId !== 'all') msQ = msQ.eq('sessions.team_id', teamId);
-        else if (catId && catId !== 'all') msQ = msQ.eq('sessions.teams.category_id', catId);
+        if (effectiveTeamIds) msQ = msQ.in('sessions.team_id', effectiveTeamIds);
 
         // Query presenze
         let attQ = client.from('attendances')
             .select('status, athlete_id, sessions!inner(session_date, team_id, society_id, season_id, teams!inner(category_id))');
         if (seasonId && seasonId !== 'all') attQ = attQ.eq('sessions.season_id', seasonId);
-        if (!isGlobal && socId && socId !== 'all') attQ = attQ.eq('sessions.society_id', socId);
-        if (forcedTeamIds) attQ = attQ.in('sessions.team_id', forcedTeamIds);
-        else if (teamId && teamId !== 'all') attQ = attQ.eq('sessions.team_id', teamId);
-        else if (catId && catId !== 'all') attQ = attQ.eq('sessions.teams.category_id', catId);
+        if (effectiveTeamIds) attQ = attQ.in('sessions.team_id', effectiveTeamIds);
 
         // Query atleti
         let athQ = client.from('athlete_team_seasons')
             .select('athlete_id, team_id, athletes!inner(id, name, surname)');
-        if (!isGlobal && socId && socId !== 'all') athQ = athQ.eq('society_id', socId);
+        if (socId && socId !== 'all') athQ = athQ.eq('society_id', socId);
         if (seasonId && seasonId !== 'all') athQ = athQ.eq('season_id', seasonId);
-        if (forcedTeamIds) athQ = athQ.in('team_id', forcedTeamIds);
-        else if (teamId && teamId !== 'all') athQ = athQ.eq('team_id', teamId);
-        else if (catId && catId !== 'all') athQ = athQ.eq('category_id', catId);
+        if (effectiveTeamIds) athQ = athQ.in('team_id', effectiveTeamIds);
 
         const [mdRes, msRes, attRes, athRes] = await Promise.all([mdQ, msQ, attQ, athQ]);
 
@@ -9089,8 +9141,18 @@ window.loadDashMatches = async function(seasonId, socId, scopedTeamIds) {
         const selSoc = document.getElementById('dash-match-soc');
         if (selSoc) {
             const matchSocs = [...new Map((sessions||[]).filter(s=>s.societies).map(s=>[s.society_id,{id:s.society_id,name:s.societies.name}])).values()];
-            selSoc.innerHTML = '<option value="">Tutte le società</option>' +
-                matchSocs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+            // Salva la lista completa delle società solo quando NON si sta già filtrando per società
+            if (!socId || socId === 'all') {
+                window._dashMatchSocieties = matchSocs;
+                selSoc.innerHTML = '<option value="">Tutte le società</option>' +
+                    matchSocs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+            } else {
+                // Filtro società attivo: ripristina la lista completa e riseleziona il valore corrente
+                const allSocs = window._dashMatchSocieties || matchSocs;
+                selSoc.innerHTML = '<option value="">Tutte le società</option>' +
+                    allSocs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+                selSoc.value = socId;
+            }
         }
         // Per ruoli scoped: usa _userScopeData per cat e team
         if (scopedTeamIds && scopedTeamIds.length > 0 && window._userScopeData) {
@@ -9277,7 +9339,16 @@ window.loadDashPresenze = async function(seasonId, socId, scopedTeamIds) {
         const selSoc = document.getElementById('dash-pres-soc');
         if (selSoc) {
             const pressSocs = [...new Map(window._dashSessions.filter(s=>s.society_id).map(s=>[s.society_id, s.societies?.name || '—'])).entries()];
-            selSoc.innerHTML = '<option value="">Tutte le società</option>' + pressSocs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
+            // Salva la lista completa delle società solo quando NON si sta già filtrando per società
+            if (!socId || socId === 'all') {
+                window._dashPresSocieties = pressSocs;
+                selSoc.innerHTML = '<option value="">Tutte le società</option>' + pressSocs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
+            } else {
+                // Filtro società attivo: ripristina la lista completa e riseleziona il valore corrente
+                const allSocs = window._dashPresSocieties || pressSocs;
+                selSoc.innerHTML = '<option value="">Tutte le società</option>' + allSocs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
+                selSoc.value = socId;
+            }
         }
         // Per ruoli scoped: usa _userScopeData per cat e team
         if (scopedTeamIds && scopedTeamIds.length > 0 && window._userScopeData) {
@@ -9419,8 +9490,17 @@ window.loadDashStats = async function(seasonId, socId, scopedTeamIds) {
         // Popola filtri soc → cat → team in cascata
         const selSoc = document.getElementById('dash-stats-soc');
         if (selSoc) {
-            const socs = [...new Map(window._dashMatchStats.map(t=>[t.society_id, t.soc])).entries()];
-            selSoc.innerHTML = '<option value="">Tutte le società</option>' + socs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
+            // Salva la lista completa delle società solo quando NON si sta già filtrando per società
+            if (!socId || socId === 'all') {
+                const socs = [...new Map(window._dashMatchStats.map(t=>[t.society_id, t.soc])).entries()];
+                window._dashStatsSocieties = socs;
+                selSoc.innerHTML = '<option value="">Tutte le società</option>' + socs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
+            } else {
+                // Filtro società attivo: ripristina la lista completa e riseleziona il valore corrente
+                const socs = window._dashStatsSocieties || [...new Map(window._dashMatchStats.map(t=>[t.society_id, t.soc])).entries()];
+                selSoc.innerHTML = '<option value="">Tutte le società</option>' + socs.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
+                selSoc.value = socId;
+            }
         }
         // Per ruoli scoped: usa _userScopeData per cat e team
         if (scopedTeamIds && scopedTeamIds.length > 0 && window._userScopeData) {
@@ -9513,7 +9593,7 @@ window.loadDashAthletes = async function(seasonId, socId, scopedTeamIds) {
         const { data: assignments } = await athQ;
         if (!assignments || assignments.length === 0) {
             window._dashAthletes = [];
-            _populateAthFilters([]);
+            _populateAthFilters([], socId);
             window.renderDashAthletes();
             return;
         }
@@ -9612,13 +9692,13 @@ window.loadDashAthletes = async function(seasonId, socId, scopedTeamIds) {
         window._dashAthletes = Object.values(athleteMap);
 
         // Popola filtri
-        _populateAthFilters(window._dashAthletes);
+        _populateAthFilters(window._dashAthletes, socId);
         window.renderDashAthletes();
 
     } catch(err) { console.error('loadDashAthletes error:', err); }
 };
 
-function _populateAthFilters(athletes) {
+function _populateAthFilters(athletes, activeSocId) {
     const selSoc  = document.getElementById('dash-ath-soc');
     const selCat  = document.getElementById('dash-ath-cat');
     const selTeam = document.getElementById('dash-ath-team');
@@ -9645,8 +9725,18 @@ function _populateAthFilters(athletes) {
     const cats  = [...new Map(athletes.filter(a=>a.category_id).map(a=>[a.category_id, a.category_name])).entries()];
     const teams = [...new Map(athletes.filter(a=>a.team_id).map(a=>[a.team_id, a.team])).entries()];
 
-    selSoc.innerHTML = '<option value="">Tutte le società</option>' +
-        socs.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+    // Salva la lista completa delle società solo quando NON si sta già filtrando per società
+    if (!activeSocId || activeSocId === 'all') {
+        window._dashAthSocieties = socs;
+        selSoc.innerHTML = '<option value="">Tutte le società</option>' +
+            socs.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+    } else {
+        // Filtro società attivo: ripristina la lista completa e riseleziona il valore corrente
+        const allSocs = window._dashAthSocieties || socs;
+        selSoc.innerHTML = '<option value="">Tutte le società</option>' +
+            allSocs.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+        selSoc.value = activeSocId;
+    }
 
     if (selCat) selCat.innerHTML = '<option value="">Tutte le categorie</option>' +
         cats.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
@@ -10714,6 +10804,429 @@ async function _renderVistaResponsabile() {
 }
 
 
+/* ════════════════════════════════════════════════════════════
+   VISTA PREPARATORE ATLETICO
+   Dashboard test fisici: progressi, KPI, drill-down per atleta
+════════════════════════════════════════════════════════════ */
+window.loadDashPreparatore = async function() {
+    window._userAssignedTeamIds = null;
+    window._userScopeData = null;
+    const presSeaSel = document.getElementById('pres-view-season');
+    if (presSeaSel && presSeaSel.options.length <= 1 && window._dashData?._seasons?.length) {
+        window._dashData._seasons.forEach(s => {
+            const o = document.createElement('option');
+            o.value = s.id; o.textContent = s.name + (s.is_active ? ' ✓' : '');
+            if (s.is_active) o.selected = true;
+            presSeaSel.appendChild(o);
+        });
+    }
+    _renderVistaPreparatore();
+};
+
+async function _renderVistaPreparatore() {
+    const container = document.getElementById('preparatore-dash-content');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">⏳ Caricamento dati test atletici...</div>';
+
+    try {
+        const allTeamIds = window._userAssignedTeamIds || await window.loadUserAssignedTeams() || [];
+        if (!allTeamIds.length) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sub);">Nessuna squadra assegnata.</div>';
+            return;
+        }
+        const uiSeasonId = document.getElementById('pres-view-season')?.value;
+        const activeSeason = (window._dashData._seasons || []).find(s => s.is_active);
+        const sid = (uiSeasonId && uiSeasonId !== 'all') ? uiSeasonId : (activeSeason?.id || null);
+        const uiTeamId = document.getElementById('pres-view-team')?.value;
+        const uiCatId  = document.getElementById('pres-view-cat')?.value;
+
+        let teamIds = allTeamIds;
+        if (uiTeamId && uiTeamId !== 'all' && allTeamIds.includes(uiTeamId)) {
+            teamIds = [uiTeamId];
+        } else if (uiCatId && uiCatId !== 'all') {
+            const { data: ct } = await client.from('teams').select('id').eq('category_id', uiCatId).in('id', allTeamIds);
+            if (ct?.length) teamIds = ct.map(t => t.id);
+        }
+
+        const fmtDate = d => d.toISOString().split('T')[0];
+        const today = new Date();
+
+        // ── Carica test sessions + results + roster ────────────────────────
+        const [testSessRes, rosterRes] = await Promise.all([
+            (() => {
+                let q = client.from('test_sessions')
+                    .select('id, session_date, team_id, test_definitions!inner(id, name)')
+                    .in('team_id', teamIds)
+                    .order('session_date', { ascending: false });
+                if (sid) q = q.eq('season_id', sid);
+                return q;
+            })(),
+            (() => {
+                let q = client.from('athlete_team_seasons')
+                    .select('athlete_id, jersey_number, role, team_id, athletes!inner(id, name, surname)')
+                    .in('team_id', teamIds);
+                if (sid) q = q.eq('season_id', sid);
+                return q;
+            })()
+        ]);
+
+        const testSessions = testSessRes.data || [];
+        const roster = rosterRes.data || [];
+
+        // Mappa atleti
+        const athMap = {};
+        roster.forEach(r => {
+            if (!athMap[r.athlete_id]) athMap[r.athlete_id] = {
+                id: r.athlete_id, surname: r.athletes?.surname || '', name: r.athletes?.name || '',
+                jersey: r.jersey_number, role: r.role, teamId: r.team_id
+            };
+        });
+        const athIds = Object.keys(athMap);
+
+        let testResults = [];
+        if (testSessions.length > 0) {
+            const sessIds = testSessions.map(s => s.id);
+            const { data: tr } = await client.from('test_results')
+                .select('athlete_id, value, performance_id, test_session_id, test_performances!inner(id, name, unit, lower_is_better, test_def_id)')
+                .in('test_session_id', sessIds);
+            testResults = tr || [];
+        }
+
+        // Mappa: athlete_id → perf_id → [{date, value, lowerIsBetter, perfName, unit, testDefId}]
+        const athPerfMap = {};
+        testResults.forEach(r => {
+            const sessDate = testSessions.find(s => s.id === r.test_session_id)?.session_date || '';
+            const aid = r.athlete_id;
+            const pid = r.performance_id;
+            if (!athPerfMap[aid]) athPerfMap[aid] = {};
+            if (!athPerfMap[aid][pid]) athPerfMap[aid][pid] = [];
+            athPerfMap[aid][pid].push({
+                date: sessDate, value: r.value,
+                lowerIsBetter: r.test_performances?.lower_is_better || false,
+                perfName: r.test_performances?.name || '',
+                unit: r.test_performances?.unit || '',
+                testDefId: r.test_performances?.test_def_id || ''
+            });
+        });
+
+        // ── Calcola KPI per atleta ─────────────────────────────────────────
+        // Per ogni atleta e performance: prende prima e ultima sessione → delta %
+        const athKPI = {};
+        athIds.forEach(aid => {
+            const perfs = athPerfMap[aid] || {};
+            let totalDelta = 0, deltaCount = 0;
+            const regressions = [];
+            const perfDetails = [];
+
+            Object.entries(perfs).forEach(([pid, vals]) => {
+                if (vals.length < 2) return;
+                const sorted = [...vals].sort((a, b) => a.date.localeCompare(b.date));
+                const first = sorted[0].value, last = sorted[sorted.length - 1].value;
+                const lowerIsBetter = sorted[0].lowerIsBetter;
+                // Miglioramento: se lower is better → first > last è positivo; altrimenti last > first
+                const improvement = lowerIsBetter ? (first - last) / (first || 1) * 100 : (last - first) / (first || 1) * 100;
+                totalDelta += improvement;
+                deltaCount++;
+                if (improvement < -5) {
+                    regressions.push({ perfName: sorted[0].perfName, delta: improvement.toFixed(1) });
+                }
+                perfDetails.push({
+                    perfName: sorted[0].perfName, unit: sorted[0].unit,
+                    first: first, last: last, lowerIsBetter,
+                    improvement: improvement.toFixed(1),
+                    dates: { first: sorted[0].date, last: sorted[sorted.length-1].date }
+                });
+            });
+
+            const avgDelta = deltaCount > 0 ? (totalDelta / deltaCount).toFixed(1) : null;
+            athKPI[aid] = { avgDelta, regressions, perfDetails, hasData: deltaCount > 0 };
+        });
+
+        // ── Test per tipo (per drilldown) ──────────────────────────────────
+        const testDefMap = {};
+        testSessions.forEach(s => {
+            const defId = s.test_definitions?.id;
+            const defName = s.test_definitions?.name;
+            if (!defId) return;
+            if (!testDefMap[defId]) testDefMap[defId] = { id: defId, name: defName, sessions: [] };
+            testDefMap[defId].sessions.push(s);
+        });
+
+        // ── RENDER ─────────────────────────────────────────────────────────
+        const tabs = [
+            { id: 'prep-tab-dashboard', label: '📊 Dashboard' },
+            { id: 'prep-tab-kpi',       label: '📈 KPI' },
+            { id: 'prep-tab-drilldown', label: '🔍 Drill-down' }
+        ];
+
+        const tabBtns = tabs.map((t, i) => `
+            <button class="prep-tab-btn ${i===0?'active':''}" onclick="window._prepTab('${t.id.replace('prep-tab-','')}')"
+                style="padding:7px 16px;border-radius:7px;border:1px solid ${i===0?'var(--primary)':'var(--border)'};cursor:pointer;font-family:inherit;font-size:0.8rem;font-weight:600;background:${i===0?'var(--primary)':'transparent'};color:${i===0?'white':'var(--text-muted)'};transition:all 0.15s;">
+                ${t.label}
+            </button>`).join('');
+
+        // Dashboard: top miglioratori, alert regressioni, ultima sessione per tipo test
+        const sorted = athIds
+            .filter(aid => athKPI[aid]?.hasData)
+            .sort((a, b) => parseFloat(athKPI[b]?.avgDelta || 0) - parseFloat(athKPI[a]?.avgDelta || 0));
+
+        const regressionAlerts = athIds.flatMap(aid => {
+            return (athKPI[aid]?.regressions || []).map(r => ({
+                ...r, name: athMap[aid] ? `${athMap[aid].surname} ${athMap[aid].name}` : aid
+            }));
+        });
+
+        const topImprovers = sorted.slice(0, 8).map(aid => {
+            const ath = athMap[aid];
+            const kpi = athKPI[aid];
+            const name = ath ? `${ath.surname} ${ath.name}` : aid;
+            const delta = parseFloat(kpi.avgDelta);
+            const col = delta >= 5 ? '#059669' : delta >= 0 ? '#0ea5e9' : '#ef4444';
+            const icon = delta >= 5 ? '▲' : delta >= 0 ? '→' : '▼';
+            return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(0,0,0,0.05);">
+                <span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);width:18px;text-align:right;">${ath?.jersey||'—'}</span>
+                <span style="flex:1;font-size:0.82rem;font-weight:600;">${name}</span>
+                <span style="font-weight:800;font-size:0.88rem;color:${col};font-family:'DM Mono',monospace;">${icon} ${Math.abs(delta)}%</span>
+            </div>`;
+        }).join('') || '<span style="color:var(--text-muted);font-size:0.8rem;">Dati insufficienti (serve almeno 2 sessioni per performance)</span>';
+
+        const alertRows = regressionAlerts.slice(0, 6).map(r =>
+            `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;background:rgba(239,68,68,0.07);border-left:3px solid #ef4444;margin-bottom:4px;">
+                <span style="font-size:0.9rem;">⚠️</span>
+                <span style="font-size:0.8rem;font-weight:700;flex:1;">${r.name}</span>
+                <span style="font-size:0.72rem;color:#dc2626;font-weight:700;">${r.perfName}: ${r.delta}%</span>
+            </div>`
+        ).join('') || '<span style="color:var(--text-muted);font-size:0.8rem;">Nessuna regressione rilevata ✅</span>';
+
+        // Ultima sessione per tipo test
+        const lastSessions = Object.values(testDefMap).map(td => {
+            const last = td.sessions[0]; // già ordinate DESC
+            return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.05);">
+                <span style="font-size:0.72rem;color:var(--text-muted);white-space:nowrap;">${new Date(last.session_date).toLocaleDateString('it-IT')}</span>
+                <span style="font-size:0.82rem;font-weight:600;flex:1;">${td.name}</span>
+                <span style="font-size:0.7rem;color:var(--primary);font-weight:700;">${td.sessions.length} sess.</span>
+            </div>`;
+        }).join('') || '<span style="color:var(--text-muted);font-size:0.8rem;">Nessuna sessione test trovata</span>';
+
+        // KPI tab: tabella atleti con delta per performance
+        // Raccoglie tutte le performance unique
+        const allPerfs = {};
+        testResults.forEach(r => {
+            const pid = r.performance_id;
+            if (!allPerfs[pid]) allPerfs[pid] = { name: r.test_performances?.name || '', unit: r.test_performances?.unit || '', lowerIsBetter: r.test_performances?.lower_is_better || false };
+        });
+        const perfList = Object.entries(allPerfs).slice(0, 8); // max 8 colonne
+
+        const kpiHeaders = perfList.map(([, p]) =>
+            `<th style="padding:8px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">${p.name}<br><span style="font-weight:400;">(${p.unit})</span></th>`
+        ).join('');
+
+        const kpiRows = sorted.map(aid => {
+            const ath = athMap[aid];
+            if (!ath) return '';
+            const kpi = athKPI[aid];
+            const cells = perfList.map(([pid, p]) => {
+                const detail = kpi.perfDetails?.find(d => d.perfName === p.name);
+                if (!detail) return '<td style="padding:8px;text-align:center;color:var(--text-muted);">—</td>';
+                const delta = parseFloat(detail.improvement);
+                const col = delta >= 5 ? '#059669' : delta >= 0 ? '#0ea5e9' : '#ef4444';
+                return `<td style="padding:8px;text-align:center;">
+                    <div style="font-weight:800;font-size:0.82rem;color:${col};font-family:'DM Mono',monospace;">${delta > 0 ? '+' : ''}${delta}%</div>
+                    <div style="font-size:0.62rem;color:var(--text-muted);">${detail.first} → ${detail.last}</div>
+                </td>`;
+            }).join('');
+            const avgD = parseFloat(kpi.avgDelta);
+            const avgCol = avgD >= 5 ? '#059669' : avgD >= 0 ? '#0ea5e9' : '#ef4444';
+            return `<tr style="border-bottom:1px solid rgba(0,0,0,0.05);cursor:pointer;" onclick="window._prepDrillAthlete('${aid}')">
+                <td style="padding:8px 10px;white-space:nowrap;font-weight:700;font-size:0.8rem;">${ath.jersey||'—'} ${ath.surname} ${ath.name}</td>
+                <td style="padding:8px;text-align:center;font-weight:800;font-size:0.88rem;color:${avgCol};font-family:'DM Mono',monospace;">${avgD > 0 ? '+' : ''}${kpi.avgDelta}%</td>
+                ${cells}
+            </tr>`;
+        }).join('') || `<tr><td colspan="${perfList.length + 2}" style="text-align:center;padding:24px;color:var(--text-sub);">Dati insufficienti (servono almeno 2 sessioni per performance)</td></tr>`;
+
+        // Drill-down tab: per atleta selezionato, mostra tutti i test nel tempo
+        const athOptions = sorted.map(aid => {
+            const ath = athMap[aid];
+            if (!ath) return '';
+            return `<option value="${aid}">${ath.surname} ${ath.name} (#${ath.jersey||'—'})</option>`;
+        }).join('');
+
+        container.innerHTML = `
+        <style>
+        .prep-tab-btn { transition: all 0.15s; }
+        .prep-tab-btn.active { background: var(--primary) !important; color: white !important; border-color: var(--primary) !important; }
+        .prep-section { display: none; }
+        .prep-section.active { display: block; }
+        </style>
+
+        <!-- TAB NAV -->
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">${tabBtns}</div>
+
+        <!-- ═══ TAB DASHBOARD ═══ -->
+        <div id="prep-tab-dashboard" class="prep-section active">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px;">
+
+                <!-- Top Miglioratori -->
+                <div class="card" style="padding:18px;">
+                    <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);margin-bottom:12px;">🏆 Top Miglioratori</div>
+                    ${topImprovers}
+                </div>
+
+                <!-- Alert Regressioni -->
+                <div class="card" style="padding:18px;">
+                    <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#dc2626;margin-bottom:12px;">⚠️ Alert Regressioni</div>
+                    ${alertRows}
+                </div>
+
+                <!-- Sessioni Test -->
+                <div class="card" style="padding:18px;">
+                    <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);margin-bottom:12px;">📅 Ultime Sessioni Test</div>
+                    ${lastSessions}
+                </div>
+            </div>
+
+            <!-- Riepilogo numerico -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+                ${[
+                    { icon:'🧪', label:'Sessioni Test', val: testSessions.length, col:'var(--primary)' },
+                    { icon:'👥', label:'Atleti testati', val: sorted.length, col:'#10b981' },
+                    { icon:'⚠️', label:'Alert regressioni', val: regressionAlerts.length, col:'#ef4444' },
+                    { icon:'📈', label:'Media miglioramento', val: (sorted.length > 0 ? (sorted.reduce((s,aid)=>s+parseFloat(athKPI[aid]?.avgDelta||0),0)/sorted.length).toFixed(1)+'%' : '—'), col:'#0ea5e9' }
+                ].map(k => `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
+                    <div style="font-size:1.4rem;margin-bottom:4px;">${k.icon}</div>
+                    <div style="font-size:1.4rem;font-weight:900;font-family:'DM Mono',monospace;color:${k.col};">${k.val}</div>
+                    <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:3px;">${k.label}</div>
+                </div>`).join('')}
+            </div>
+        </div>
+
+        <!-- ═══ TAB KPI ═══ -->
+        <div id="prep-tab-kpi" class="prep-section">
+            <div class="card" style="padding:18px;">
+                <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:14px;">📊 Delta Test per Atleta — Prima vs Ultima Sessione</div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+                        <thead><tr style="background:rgba(0,0,0,0.03);">
+                            <th style="padding:8px 10px;text-align:left;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Atleta</th>
+                            <th style="padding:8px;text-align:center;font-size:0.65rem;font-weight:700;color:var(--primary);text-transform:uppercase;">Δ Medio</th>
+                            ${kpiHeaders}
+                        </tr></thead>
+                        <tbody>${kpiRows}</tbody>
+                    </table>
+                </div>
+                <div style="font-size:0.68rem;color:var(--text-muted);margin-top:10px;">Clicca su un atleta per il dettaglio · % = variazione prima vs ultima sessione registrata</div>
+            </div>
+        </div>
+
+        <!-- ═══ TAB DRILL-DOWN ═══ -->
+        <div id="prep-tab-drilldown" class="prep-section">
+            <div class="card" style="padding:18px;margin-bottom:14px;">
+                <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px;">🔍 Dettaglio Atleta</div>
+                <select id="prep-drill-athlete" onchange="window._prepDrillRender()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit;min-width:220px;">
+                    <option value="">— Seleziona atleta —</option>
+                    ${athOptions}
+                </select>
+            </div>
+            <div id="prep-drill-content" style="color:var(--text-muted);text-align:center;padding:24px;">Seleziona un atleta per vedere il dettaglio dei test nel tempo.</div>
+        </div>`;
+
+        // Store data for drill-down
+        window._prepAthPerfMap = athPerfMap;
+        window._prepAthMap = athMap;
+        window._prepAthKPI = athKPI;
+
+        // ── Tab switching ──────────────────────────────────────────────────
+        window._prepTab = function(tab) {
+            document.querySelectorAll('.prep-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.prep-section').forEach(s => s.classList.remove('active'));
+            const btn = [...document.querySelectorAll('.prep-tab-btn')].find(b => b.getAttribute('onclick')?.includes(tab));
+            if (btn) btn.classList.add('active');
+            const sec = document.getElementById('prep-tab-' + tab);
+            if (sec) sec.classList.add('active');
+        };
+
+        // ── Drill-down per atleta ──────────────────────────────────────────
+        window._prepDrillAthlete = function(aid) {
+            const sel = document.getElementById('prep-drill-athlete');
+            if (sel) sel.value = aid;
+            window._prepTab('drilldown');
+            window._prepDrillRender();
+        };
+
+        window._prepDrillRender = function() {
+            const aid = document.getElementById('prep-drill-athlete')?.value;
+            const el = document.getElementById('prep-drill-content');
+            if (!aid || !el) return;
+
+            const ath = window._prepAthMap?.[aid];
+            const perfs = window._prepAthPerfMap?.[aid] || {};
+            const name = ath ? `${ath.surname} ${ath.name}` : aid;
+
+            if (!Object.keys(perfs).length) {
+                el.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:24px;">Nessun dato test per questo atleta.</div>';
+                return;
+            }
+
+            const cards = Object.entries(perfs).map(([, vals]) => {
+                if (!vals.length) return '';
+                const sorted = [...vals].sort((a, b) => a.date.localeCompare(b.date));
+                const perfName = sorted[0].perfName, unit = sorted[0].unit;
+                const lowerIsBetter = sorted[0].lowerIsBetter;
+                const maxVal = Math.max(...sorted.map(v => v.value), 0.01);
+                // Sparkline SVG
+                const W = 260, H = 56, padL = 4, padR = 4, padT = 8, padB = 18;
+                const n = sorted.length;
+                const xP = i => padL + (n === 1 ? (W-padL-padR)/2 : i * (W-padL-padR) / (n-1));
+                const yP = v => padT + (H-padT-padB) * (1 - v / maxVal);
+                const pts = sorted.map((v, i) => `${xP(i).toFixed(1)},${yP(v.value).toFixed(1)}`).join(' ');
+                const dots = sorted.map((v, i) => {
+                    const isLast = i === n - 1;
+                    const improvement = lowerIsBetter ? sorted[0].value - v.value : v.value - sorted[0].value;
+                    const col = isLast ? (improvement >= 0 ? '#059669' : '#ef4444') : '#94a3b8';
+                    return `<circle cx="${xP(i).toFixed(1)}" cy="${yP(v.value).toFixed(1)}" r="3.5" fill="${col}" stroke="white" stroke-width="1.5"/>`;
+                }).join('');
+                const lbls = sorted.map((v, i) => (n <= 5 || i === 0 || i === n-1)
+                    ? `<text x="${xP(i).toFixed(1)}" y="${H-2}" text-anchor="middle" font-size="7.5" fill="rgba(90,100,128,0.7)" font-family="Outfit,sans-serif">${new Date(v.date).toLocaleDateString('it-IT',{day:'2-digit',month:'short'})}</text>` : ''
+                ).join('');
+                const spark = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible;"><polyline points="${pts}" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${dots}${lbls}</svg>`;
+
+                const first = sorted[0].value, last = sorted[n-1].value;
+                const delta = lowerIsBetter ? (first - last) / (first || 1) * 100 : (last - first) / (first || 1) * 100;
+                const deltaCol = delta >= 5 ? '#059669' : delta >= 0 ? '#0ea5e9' : '#ef4444';
+                const trendLbl = lowerIsBetter ? 'meno = meglio' : 'più = meglio';
+
+                return `<div class="card" style="padding:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <div>
+                            <div style="font-size:0.82rem;font-weight:700;color:var(--text-main);">${perfName}</div>
+                            <div style="font-size:0.65rem;color:var(--text-muted);">${unit} · ${trendLbl}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:1.2rem;font-weight:900;font-family:'DM Mono',monospace;color:${deltaCol};">${delta > 0 ? '+' : ''}${delta.toFixed(1)}%</div>
+                            <div style="font-size:0.65rem;color:var(--text-muted);">${first} → ${last} ${unit}</div>
+                        </div>
+                    </div>
+                    ${spark}
+                    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+                        ${sorted.map(v => `<span style="background:rgba(0,0,0,0.04);border-radius:6px;padding:2px 8px;font-size:0.68rem;font-family:'DM Mono',monospace;color:var(--text-sub);">${new Date(v.date).toLocaleDateString('it-IT',{day:'2-digit',month:'short'})}: <b>${v.value}</b></span>`).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+
+            el.innerHTML = `
+                <div style="font-size:0.82rem;font-weight:700;color:var(--text-main);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+                    📋 ${name} — Progressione Test Fisici
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${cards}</div>`;
+        };
+
+    } catch(err) {
+        console.error('_renderVistaPreparatore error:', err);
+        const c = document.getElementById('preparatore-dash-content');
+        if (c) c.innerHTML = `<div style="color:#ef4444;padding:24px;">Errore caricamento: ${err.message}</div>`;
+    }
+}
+
 window.loadDashResponsabile = function() {
     window._userAssignedTeamIds = null; // forza reload squadre
     window._userScopeData = null;       // forza ricarico store categorie/team
@@ -10796,6 +11309,7 @@ function _applyTabFilterVisibility() {
         dirigente:    { icon:'👔',  title:'Vista Dirigente',         subtitle:'Statistiche delle squadre di cui sei dirigente',        badge:'Dirigente' },
         allenatore:   { icon:'⚽',  title:'Vista Allenatore',        subtitle:'Statistiche della tua squadra',                        badge:'Allenatore' },
         genitore:     { icon:'👨‍👩‍👧', title:'Vista Genitore',         subtitle:'Dati della squadra e dettaglio del tuo atleta',       badge:'Genitore' },
+        'preparatore atletico': { icon:'🏋️', title:'Vista Preparatore Atletico', subtitle:'Analisi test fisici, progressi e alert atleti', badge:'Preparatore' },
     };
     const lbl = roleLabels[role] || { icon:'📊', title:'Vista Dashboard', subtitle:'', badge:role };
     const titleEl    = document.getElementById('pres-view-title');
@@ -10812,8 +11326,12 @@ function _applyTabFilterVisibility() {
     // ── Mostra Vista Specializzata per tutti i ruoli nominati ──
     const presTabBtn = document.getElementById('dash-tab-btn-6');
     const presDivider = document.getElementById('dash-pres-divider');
+    const _isAllDirView = (role === 'allenatore' || role === 'dirigente');
+    const _isRespView   = (role === 'responsabile');
+    const _isPrepView   = (role === 'preparatore atletico');
+
     if (presTabBtn) {
-        const canSeePresView = isGlobal || isSocScoped || isTeamScoped || isGenitore;
+        const canSeePresView = isGlobal || isSocScoped || isTeamScoped || isGenitore || _isPrepView;
         presTabBtn.style.display = canSeePresView ? '' : 'none';
         if (presDivider) presDivider.style.display = canSeePresView ? '' : 'none';
     }
@@ -10826,11 +11344,11 @@ function _applyTabFilterVisibility() {
     const presGenericSections    = document.getElementById('pres-generic-sections');
     const allenatoreSectionWrap  = document.getElementById('pres-allenatore-section');
     const responsabileSectionWrap = document.getElementById('pres-responsabile-section');
-    const _isAllDirView = (role === 'allenatore' || role === 'dirigente');
-    const _isRespView   = (role === 'responsabile');
-    if (presGenericSections)       presGenericSections.style.display     = (_isAllDirView || _isRespView) ? 'none' : '';
+    if (presGenericSections)       presGenericSections.style.display     = (_isAllDirView || _isRespView || _isPrepView) ? 'none' : '';
     if (allenatoreSectionWrap)     allenatoreSectionWrap.style.display   = _isAllDirView ? '' : 'none';
     if (responsabileSectionWrap)   responsabileSectionWrap.style.display = _isRespView   ? '' : 'none';
+    const preparatoreSectionWrap = document.getElementById('pres-preparatore-section');
+    if (preparatoreSectionWrap)    preparatoreSectionWrap.style.display  = _isPrepView   ? '' : 'none';
 
     // ── Filtri nei tab generali (0-5) ──
     const seasonSelects = ['dash-stats-season','dash-match-season','dash-pres-season','dash-ath-season'];
@@ -11014,7 +11532,8 @@ async function _presPopulateCat() {
     if (!catSel) return;
 
     let q = client.from('categories').select('id, name').order('name');
-    if (!isGlobal && socId && socId !== 'all') q = q.eq('society_id', socId);
+    // Applica filtro società per tutti i ruoli (incluso admin/manager quando scelgono una società)
+    if (socId && socId !== 'all') q = q.eq('society_id', socId);
 
     // Per responsabile: limita alle categorie delle sue squadre assegnate
     if (role === 'responsabile') {
@@ -11026,8 +11545,10 @@ async function _presPopulateCat() {
             if (catIds.length) q = q.in('id', catIds);
         }
     } else if (seasonId && seasonId !== 'all') {
-        // Per altri ruoli: filtra per stagione
-        const { data: teams } = await client.from('teams').select('category_id').eq('season_id', seasonId);
+        // Per altri ruoli: filtra per stagione (rispettando anche la società già applicata)
+        let tq = client.from('teams').select('category_id').eq('season_id', seasonId);
+        if (socId && socId !== 'all') tq = tq.eq('society_id', socId);
+        const { data: teams } = await tq;
         const catIds = [...new Set((teams||[]).map(t=>t.category_id).filter(Boolean))];
         if (catIds.length) q = q.in('id', catIds);
     }
@@ -11053,7 +11574,8 @@ async function _presPopulateTeam() {
     if (!teamSel) return;
 
     let q = client.from('teams').select('id, name').order('name');
-    if (!isGlobal && socId && socId !== 'all') q = q.eq('society_id', socId);
+    // Applica filtro società per tutti i ruoli (incluso admin/manager quando scelgono una società)
+    if (socId    && socId    !== 'all') q = q.eq('society_id', socId);
     if (seasonId && seasonId !== 'all') q = q.eq('season_id', seasonId);
     if (catId    && catId    !== 'all') q = q.eq('category_id', catId);
 
@@ -11312,472 +11834,6 @@ window.deleteGenitore = async function(genitoreId) {
         await window.initGenitori();
     } catch(err) { alert('Errore eliminazione: ' + err.message); }
 };
-
-/* ============================================================
-   VISTA GENITORE — Dashboard personale figlio/i
-   ============================================================ */
-window.initGenitoreView = async function() {
-    const contentEl = document.getElementById('content');
-    if (!contentEl) return;
-    const userId = window._currentUserId;
-    contentEl.innerHTML = '<div class="card"><p style="color:var(--text-sub);text-align:center;padding:20px;">⏳ Caricamento...</p></div>';
-
-    try {
-        // 1. Atleti del genitore
-        const { data: links } = await client.from('parent_athletes')
-            .select('athlete_id, athletes(id,name,surname,born_date)')
-            .eq('parent_id', userId);
-
-        if (!links || links.length === 0) {
-            contentEl.innerHTML = `<div class="card" style="text-align:center;padding:40px;">
-                <div style="font-size:3rem;margin-bottom:12px;">👶</div>
-                <h2 style="font-family:'DM Mono','Outfit',sans-serif;">Nessun atleta associato</h2>
-                <p style="color:var(--text-sub);">Contatta l'amministratore per associare il tuo figlio all'account.</p>
-            </div>`;
-            return;
-        }
-
-        const athletes = links.map(l => l.athletes).filter(Boolean);
-
-        // 2. Dati comuni
-        const { data: sessionTypes } = await client.from('session_types').select('id,name');
-        const garaTypeIds = new Set((sessionTypes||[])
-            .filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara'))
-            .map(t => t.id));
-        const garaIdsArr = [...garaTypeIds];
-
-        const activeSeason = (await client.from('seasons').select('id,name').eq('is_active',true).maybeSingle()).data;
-        const sid = activeSeason?.id || null;
-
-        // 3. Dati per ogni atleta
-        const athIds = athletes.map(a => a.id);
-
-        const [tsRes, msRes, attRes] = await Promise.all([
-            client.from('athlete_team_seasons')
-                .select('athlete_id,season_id,team_id,seasons(id,name,is_active),teams(id,name,categories(name))')
-                .in('athlete_id', athIds),
-            client.from('match_stats')
-                .select('athlete_id,goals,yellow_cards,red_cards,minutes_played,sessions!inner(season_id,type_id,team_id)')
-                .in('athlete_id', athIds),
-            client.from('attendances')
-                .select('athlete_id,status,is_called_up,sessions!inner(season_id,type_id,team_id)')
-                .in('athlete_id', athIds),
-        ]);
-
-        const teamSeasons = tsRes.data || [];
-        const matchStats  = msRes.data || [];
-        const attendances = attRes.data || [];
-
-        // Aggrega stats per atleta+stagione
-        const statsBy = {};
-        matchStats.forEach(st => {
-            const s = st.sessions?.season_id;
-            if (!garaTypeIds.has(st.sessions?.type_id)) return;
-            if (!statsBy[st.athlete_id]) statsBy[st.athlete_id] = {};
-            if (!statsBy[st.athlete_id][s]) statsBy[st.athlete_id][s] = {goals:0,yc:0,rc:0,min:0};
-            statsBy[st.athlete_id][s].goals += st.goals||0;
-            statsBy[st.athlete_id][s].yc    += st.yellow_cards||0;
-            statsBy[st.athlete_id][s].rc    += st.red_cards||0;
-            statsBy[st.athlete_id][s].min   += st.minutes_played||0;
-        });
-        const presBy = {};
-        attendances.forEach(att => {
-            const s = att.sessions?.season_id;
-            if (!s || !garaTypeIds.has(att.sessions?.type_id)) return;
-            const aid = att.athlete_id;
-            if (!presBy[aid]) presBy[aid] = {};
-            if (!presBy[aid][s]) presBy[aid][s] = {pres:0,tot:0,conv:0};
-            presBy[aid][s].tot++;
-            if (att.is_called_up) presBy[aid][s].conv++;
-            if ((att.status||'').toLowerCase()==='presente') presBy[aid][s].pres++;
-        });
-
-        // Helper
-        const pill = (val, label, color, bg='rgba(0,0,0,0.06)', border='rgba(0,0,0,0.1)') =>
-            `<div style="text-align:center;background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 16px;min-width:72px;">
-                <div style="font-family:'DM Mono','Outfit',sans-serif;font-size:1.4rem;font-weight:800;color:${color};line-height:1;">${val}</div>
-                <div style="font-size:0.62rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:0.06em;margin-top:3px;">${label}</div>
-            </div>`;
-
-        const esitoBadge = s => {
-            const m = {vittoria:['rgba(6,214,160,0.12)','#06d6a0','VITTORIA'],sconfitta:['rgba(239,68,68,0.12)','#f87171','SCONFITTA'],pareggio:['rgba(255,209,102,0.12)','#ffd166','PAREGGIO']};
-            const [bg,col,lbl] = m[(s||'').toLowerCase()] || ['rgba(0,0,0,0.06)','var(--text-sub)',(s||'DA DISPUTARE').toUpperCase()];
-            return `<span style="background:${bg};color:${col};padding:2px 10px;border-radius:99px;font-size:0.7rem;font-weight:700;">${lbl}</span>`;
-        };
-
-        // Genera pagina per ogni atleta
-        const renderAthletePage = async (ath) => {
-            const athTeamSeasons = teamSeasons.filter(ts => ts.athlete_id === ath.id && ts.seasons?.is_active);
-            const teamIds = [...new Set(athTeamSeasons.map(ts => ts.team_id).filter(Boolean))];
-            const activeTsSeason = athTeamSeasons[0];
-            const teamName = activeTsSeason?.teams?.name || '—';
-            const catName  = activeTsSeason?.teams?.categories?.name || '';
-            const seasonName = activeTsSeason?.seasons?.name || activeSeason?.name || '—';
-
-            // Dati squadra
-            let matchSessions = [], matchDetailsMap = {}, presSessions = [], teamGaraStats = {};
-            if (teamIds.length > 0) {
-                const sixMonthsAgo = new Date(); sixMonthsAgo.setMonth(sixMonthsAgo.getMonth()-6);
-                const fromDate = sixMonthsAgo.toISOString().split('T')[0];
-
-                // Partite recenti (ultimi 6 mesi, filtrabili per data lato client)
-                let mq = client.from('sessions')
-                    .select('id,title,session_date,team_id,teams(name)')
-                    .in('team_id', teamIds)
-                    .gte('session_date', fromDate)
-                    .order('session_date', {ascending:false});
-                if (garaIdsArr.length > 0) mq = mq.in('type_id', garaIdsArr);
-                if (sid) mq = mq.eq('season_id', sid);
-                const { data: ms } = await mq;
-                matchSessions = ms || [];
-
-                const matchSessIds = matchSessions.map(s => s.id);
-                if (matchSessIds.length > 0) {
-                    const { data: mds } = await client.from('match_details').select('*').in('session_id', matchSessIds);
-                    (mds||[]).forEach(d => matchDetailsMap[d.session_id] = d);
-                }
-
-                // Presenze sessioni (allenamenti)
-                let pq = client.from('sessions')
-                    .select('id,title,session_date,team_id,teams(name),attendances(athlete_id,status)')
-                    .in('team_id', teamIds)
-                    .order('session_date', {ascending:false})
-                    .limit(8);
-                if (garaIdsArr.length > 0) pq = pq.not('type_id', 'in', `(${garaIdsArr.join(',')})`);
-                if (sid) pq = pq.eq('season_id', sid);
-                const { data: ps } = await pq;
-                presSessions = ps || [];
-
-                // Stats gare squadra
-                if (matchSessIds.length > 0) {
-                    const { data: mdetails } = await client.from('match_details')
-                        .select('session_id,goals_for,goals_against,match_status,is_friendly,is_home')
-                        .in('session_id', matchSessIds)
-                        .eq('is_friendly', false);
-                    (mdetails||[]).forEach(d => {
-                        const sess = matchSessions.find(s => s.id === d.session_id);
-                        if (!sess) return;
-                        const tid = sess.team_id;
-                        if (!teamGaraStats[tid]) teamGaraStats[tid] = {name:sess.teams?.name||'',p:0,w:0,dr:0,l:0,gf:0,gs:0,casa:0,trasf:0,pts:0};
-                        const t = teamGaraStats[tid];
-                        t.p++; t.gf+=d.goals_for||0; t.gs+=d.goals_against||0;
-                        if (d.is_home===true) t.casa++; else t.trasf++;
-                        if (d.match_status==='vittoria') { t.w++; t.pts+=3; }
-                        else if (d.match_status==='pareggio') { t.dr++; t.pts+=1; }
-                        else if (d.match_status==='sconfitta') { t.l++; }
-                    });
-                }
-            }
-
-            // Stats atleta stagione attiva
-            const stAct = statsBy[ath.id]?.[sid] || {};
-            const prAct = presBy[ath.id]?.[sid] || {};
-            const convPerc = prAct.tot > 0 ? Math.round(prAct.conv/prAct.tot*100) : null;
-            const percColor = convPerc === null ? '#94a3b8' : convPerc>=75 ? '#10b981' : convPerc>=50 ? '#0ea5e9' : '#ef4444';
-
-            // Totali carriera
-            const totGoals = Object.values(statsBy[ath.id]||{}).reduce((s,x)=>s+(x.goals||0),0);
-            const totMin   = Object.values(statsBy[ath.id]||{}).reduce((s,x)=>s+(x.min||0),0);
-            const totYC    = Object.values(statsBy[ath.id]||{}).reduce((s,x)=>s+(x.yc||0),0);
-            const totConv  = Object.values(presBy[ath.id]||{}).reduce((s,x)=>s+(x.conv||0),0);
-            const totPres  = Object.values(presBy[ath.id]||{}).reduce((s,x)=>s+(x.pres||0),0);
-            const totPts   = Object.values(teamGaraStats).reduce((s,t)=>s+(t.pts||0),0);
-
-            // HTML partite con filtro date
-            const athIdKey = String(ath.id).replace(/[^a-z0-9_]/gi, '_');
-            const matchTableId  = 'match-table-'  + athIdKey;
-            const matchCountId  = 'mf-count-'     + athIdKey;
-            const matchFromId   = 'mf-from-'      + athIdKey;
-            const matchToId     = 'mf-to-'        + athIdKey;
-
-            const allMatchRows = matchSessions.map(s => {
-                const d = matchDetailsMap[s.id];
-                return {
-                    date: s.session_date,
-                    opponent: d?.opponent_name ? 'vs ' + d.opponent_name : s.title,
-                    score: d ? (d.goals_for ?? '-') + ' - ' + (d.goals_against ?? '-') : '— —',
-                    esito: esitoBadge(d?.match_status),
-                    dateLabel: new Date(s.session_date).toLocaleDateString('it-IT')
-                };
-            });
-
-            // Salva i dati nel global store (sicuro, nessun JSON inline in funzioni)
-            if (!window._matchStore) window._matchStore = {};
-            window._matchStore[athIdKey] = allMatchRows;
-
-            // Default: ultimo mese
-            const defaultFrom = new Date(); defaultFrom.setMonth(defaultFrom.getMonth() - 1);
-            const defaultFromStr = defaultFrom.toISOString().split('T')[0];
-            const defaultToStr   = new Date().toISOString().split('T')[0];
-
-            // Helper per costruire la tabella (usato sia per render iniziale che per filtro)
-            const buildMatchTable = (rows) => {
-                if (rows.length === 0) return '<p style="color:var(--text-sub);text-align:center;padding:16px 0;">Nessuna partita nel periodo selezionato.</p>';
-                return `<table style="width:100%;border-collapse:collapse;">
-                    <thead><tr style="border-bottom:1px solid var(--border);">
-                        <th style="padding:8px 10px;text-align:left;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Data</th>
-                        <th style="padding:8px 10px;text-align:left;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Partita</th>
-                        <th style="padding:8px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Risultato</th>
-                        <th style="padding:8px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Esito</th>
-                    </tr></thead>
-                    <tbody>${rows.map(r => `<tr style="border-bottom:1px solid var(--border);">
-                        <td style="padding:9px 10px;color:var(--text-muted);font-size:0.82rem;white-space:nowrap;">${r.dateLabel}</td>
-                        <td style="padding:9px 10px;font-weight:600;">${r.opponent}</td>
-                        <td style="padding:9px 10px;text-align:center;font-weight:800;font-family:'DM Mono','Outfit',sans-serif;">${r.score}</td>
-                        <td style="padding:9px 10px;text-align:center;">${r.esito}</td>
-                    </tr>`).join('')}</tbody>
-                </table>`;
-            };
-
-            const initialRows = allMatchRows.filter(r => r.date >= defaultFromStr && r.date <= defaultToStr);
-
-            const matchesHTML = `
-                <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;padding:10px 14px;background:rgba(0,0,0,0.03);border:1px solid var(--border);border-radius:10px;flex-wrap:nowrap;overflow-x:auto;">
-                    <div style="display:flex;align-items:center;gap:8px;white-space:nowrap;flex-shrink:0;">
-                        <span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">DA DATA</span>
-                        <input type="date" id="${matchFromId}" value="${defaultFromStr}"
-                            style="border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:0.8rem;font-family:inherit;color:var(--text-main);background:var(--card);cursor:pointer;min-width:140px;"
-                            onchange="window._gfm(this, '${athIdKey}')">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:8px;white-space:nowrap;flex-shrink:0;">
-                        <span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">A DATA</span>
-                        <input type="date" id="${matchToId}" value="${defaultToStr}"
-                            style="border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:0.8rem;font-family:inherit;color:var(--text-main);background:var(--card);cursor:pointer;min-width:140px;"
-                            onchange="window._gfm(this, '${athIdKey}')">
-                    </div>
-                    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0;">
-                        <span id="${matchCountId}" style="font-size:0.75rem;color:var(--text-sub);white-space:nowrap;">${initialRows.length} partita${initialRows.length !== 1 ? 'e' : ''}</span>
-                        <button onclick="window._grm('${athIdKey}')"
-                            style="font-size:0.72rem;font-weight:600;color:var(--text-muted);background:var(--card);border:1px solid var(--border);border-radius:7px;padding:5px 12px;cursor:pointer;font-family:inherit;white-space:nowrap;">
-                            ↺ Reimposta
-                        </button>
-                    </div>
-                </div>
-                <div id="${matchTableId}">${buildMatchTable(initialRows)}</div>`;
-
-            // HTML presenze sessioni
-            const presHTML = presSessions.length === 0
-                ? `<p style="color:var(--text-sub);text-align:center;padding:16px 0;">Nessuna sessione trovata.</p>`
-                : `<table style="width:100%;border-collapse:collapse;">
-                    <thead><tr style="border-bottom:1px solid var(--border);">
-                        <th style="padding:7px 10px;text-align:left;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Sessione</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#10b981;">P</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#ef4444;">A</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#0ea5e9;">G</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);">%</th>
-                    </tr></thead>
-                    <tbody>${presSessions.map(s => {
-                        const att = s.attendances||[];
-                        const p = att.filter(a=>(a.status||'').toLowerCase()==='presente').length;
-                        const ab = att.filter(a=>(a.status||'').toLowerCase()==='assente').length;
-                        const g = att.filter(a=>(a.status||'').toLowerCase()==='giustificato').length;
-                        const tot = att.length;
-                        const perc = tot>0 ? Math.round(p/tot*100) : 0;
-                        const pc = perc>=75?'#10b981':perc>=50?'#0ea5e9':'#ef4444';
-                        return `<tr style="border-bottom:1px solid var(--border);">
-                            <td style="padding:8px 10px;">
-                                <div style="font-weight:600;font-size:0.8rem;">${s.title||'Sessione'}</div>
-                                <div style="font-size:0.7rem;color:var(--text-sub);">${new Date(s.session_date).toLocaleDateString('it-IT')} · ${s.teams?.name||''}</div>
-                            </td>
-                            <td style="padding:8px 10px;text-align:center;color:#10b981;font-weight:700;">${p}</td>
-                            <td style="padding:8px 10px;text-align:center;color:#ef4444;font-weight:700;">${ab}</td>
-                            <td style="padding:8px 10px;text-align:center;color:#0ea5e9;font-weight:700;">${g}</td>
-                            <td style="padding:8px 10px;text-align:center;font-weight:700;color:${pc};">${perc}%</td>
-                        </tr>`;
-                    }).join('')}</tbody>
-                </table>`;
-
-            // HTML stats gara squadra
-            const statsGaraList = Object.values(teamGaraStats).sort((a,b) => b.pts - a.pts);
-            const statsGaraHTML = statsGaraList.length === 0
-                ? `<p style="color:var(--text-sub);text-align:center;padding:16px 0;">Nessuna partita ufficiale registrata.</p>`
-                : `<table style="width:100%;border-collapse:collapse;">
-                    <thead><tr style="border-bottom:1px solid var(--border);">
-                        <th style="padding:7px 10px;text-align:left;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Squadra</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#0ea5e9;" title="Punti">Pts</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-sub);">P</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--primary);" title="Casa">🏠</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#8b5cf6;" title="Trasferta">🚌</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#10b981;">GF</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:#ef4444;">GS</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);">V/P/S</th>
-                        <th style="padding:7px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--primary);">%V</th>
-                    </tr></thead>
-                    <tbody>${statsGaraList.map(t => `<tr style="border-bottom:1px solid var(--border);">
-                        <td style="padding:8px 10px;font-weight:600;font-size:0.82rem;">${t.name}</td>
-                        <td style="padding:8px 10px;text-align:center;font-weight:800;font-family:'DM Mono','Outfit',sans-serif;font-size:1rem;color:#0ea5e9;">${t.pts}</td>
-                        <td style="padding:8px 10px;text-align:center;font-weight:700;color:var(--text-main);">${t.p}</td>
-                        <td style="padding:8px 10px;text-align:center;font-weight:700;color:var(--primary);">${t.casa}</td>
-                        <td style="padding:8px 10px;text-align:center;font-weight:700;color:#8b5cf6;">${t.trasf}</td>
-                        <td style="padding:8px 10px;text-align:center;font-weight:700;color:#10b981;">${t.gf}</td>
-                        <td style="padding:8px 10px;text-align:center;font-weight:700;color:#ef4444;">${t.gs}</td>
-                        <td style="padding:8px 10px;text-align:center;font-size:0.8rem;">
-                            <span style="color:#10b981;font-weight:700;">${t.w}V</span> · <span style="color:var(--text-muted);font-weight:700;">${t.dr}P</span> · <span style="color:#ef4444;font-weight:700;">${t.l}S</span>
-                        </td>
-                        <td style="padding:8px 10px;text-align:center;font-weight:800;font-family:'DM Mono','Outfit',sans-serif;color:var(--primary);">${t.p>0?Math.round(t.w/t.p*100):0}%</td>
-                    </tr>`).join('')}</tbody>
-                </table>`;
-
-            return `
-            <!-- 1. CARD SQUADRA -->
-            <div style="background:linear-gradient(135deg,var(--card) 0%,var(--bg-alt) 100%);border-radius:16px;border:1px solid var(--border-accent);padding:22px 26px;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:var(--shadow-md);">
-                <div>
-                    <div style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:4px;">🏟️ Squadra</div>
-                    <div style="font-family:'DM Mono','Outfit',sans-serif;font-size:1.4rem;font-weight:800;color:var(--text-main);letter-spacing:-0.3px;">${teamName}</div>
-                    ${catName ? `<div style="font-size:0.75rem;color:var(--text-sub);margin-top:3px;">${catName} · ${seasonName}</div>` : `<div style="font-size:0.75rem;color:var(--text-sub);margin-top:3px;">${seasonName}</div>`}
-                </div>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                    <div style="background:rgba(5,150,105,0.08);border-radius:12px;padding:10px 18px;text-align:center;border:1px solid rgba(5,150,105,0.18);">
-                        <div style="font-size:1.4rem;font-weight:800;color:#059669;line-height:1;">${totGoals}</div>
-                        <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;margin-top:3px;">⚽ Gol</div>
-                    </div>
-                    <div style="background:rgba(37,99,235,0.07);border-radius:12px;padding:10px 18px;text-align:center;border:1px solid rgba(37,99,235,0.15);">
-                        <div style="font-size:1.4rem;font-weight:800;color:var(--primary);line-height:1;">${totMin}'</div>
-                        <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;margin-top:3px;">⏱ Min</div>
-                    </div>
-                    <div style="background:rgba(245,158,11,0.08);border-radius:12px;padding:10px 18px;text-align:center;border:1px solid rgba(245,158,11,0.18);">
-                        <div style="font-size:1.4rem;font-weight:800;color:#d97706;line-height:1;">${totConv}</div>
-                        <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;margin-top:3px;">Convoc.</div>
-                    </div>
-                    <div style="background:rgba(245,158,11,0.08);border-radius:12px;padding:10px 18px;text-align:center;border:1px solid rgba(245,158,11,0.18);">
-                        <div style="font-size:1.4rem;font-weight:800;color:#d97706;line-height:1;">${totPts}</div>
-                        <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;margin-top:3px;">🏆 Punti</div>
-                    </div>
-                    ${totYC>0 ? `<div style="background:rgba(245,158,11,0.08);border-radius:12px;padding:10px 18px;text-align:center;border:1px solid rgba(245,158,11,0.18);">
-                        <div style="font-size:1.4rem;font-weight:800;color:#d97706;line-height:1;">${totYC}</div>
-                        <div style="font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;margin-top:3px;">🟨 Amm</div>
-                    </div>` : ''}
-                </div>
-            </div>
-
-            <!-- 2. STATISTICHE ATLETA -->
-            <div class="card" style="margin-bottom:1rem;">
-                <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;">📊 Statistiche del tuo atleta — ${seasonName}</div>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                    ${pill(stAct.goals||0,'⚽ Gol','#059669','rgba(5,150,105,0.1)','rgba(5,150,105,0.2)')}
-                    ${pill(stAct.min||0,'⏱ Min','var(--primary)','rgba(37,99,235,0.08)','rgba(37,99,235,0.2)')}
-                    ${pill(stAct.yc||0,'🟨 Amm','#ffd166')}
-                    ${pill(stAct.rc||0,'🟥 Esp','#ef4444','rgba(239,68,68,0.1)','rgba(239,68,68,0.25)')}
-                    <div style="width:1px;background:rgba(0,0,0,0.08);margin:0 4px;"></div>
-                    ${pill(totPts,'🏆 Punti','#ffd166')}
-                    <div style="width:1px;background:rgba(0,0,0,0.08);margin:0 4px;"></div>
-                    ${pill(prAct.pres||0,'Presenze','#059669','rgba(5,150,105,0.1)','rgba(5,150,105,0.2)')}
-                    ${pill(prAct.conv||0,'Convoc.','var(--primary)','rgba(37,99,235,0.08)','rgba(37,99,235,0.2)')}
-                    ${pill(prAct.tot||0,'Partite','#64748b')}
-                    ${convPerc !== null ? pill(convPerc+'%','Conv%',percColor) : ''}
-                </div>
-            </div>
-
-            <!-- 3. PARTITE RECENTI -->
-            <div class="card" style="margin-bottom:1rem;">
-                <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;">🏆 Partite recenti</div>
-                ${matchesHTML}
-            </div>
-
-            <!-- 4. PRESENZE SESSIONI + STATS GARA -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-                <div class="card">
-                    <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;">📅 Presenze Sessioni</div>
-                    ${presHTML}
-                </div>
-                <div class="card">
-                    <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">⚽ Statistiche Gare per Squadra</div>
-                    <div style="font-size:0.68rem;color:var(--text-sub);margin-bottom:14px;">Solo partite ufficiali · Amichevoli escluse</div>
-                    ${statsGaraHTML}
-                </div>
-            </div>`;
-        };
-
-        // Genera tutte le pagine
-        const pages = await Promise.all(athletes.map(ath => renderAthletePage(ath)));
-
-        // Costruisci HTML finale
-        const multiChild = athletes.length > 1;
-        const tabsHTML = multiChild ? `
-            <div style="display:flex;gap:4px;margin-bottom:1.5rem;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:5px;width:fit-content;">
-                ${athletes.map((ath,i) => `
-                    <button id="child-tab-btn-${i}" onclick="window._switchChild(${i})"
-                        style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:0.85rem;font-weight:600;
-                        ${i===0 ? 'background:var(--primary);color:var(--text-main);' : 'background:transparent;color:var(--text-muted);'}">
-                        👤 ${ath.surname} ${ath.name}
-                    </button>`).join('')}
-            </div>` : '';
-
-        const pagesHTML = pages.map((html,i) =>
-            `<div id="child-page-${i}" style="${i===0?'':'display:none;'}">${html}</div>`
-        ).join('');
-
-        contentEl.innerHTML = `
-        <div style="font-family:'Outfit',sans-serif;padding:0;">
-            <div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;">
-                <div>
-                    <h2 style="font-family:'DM Mono','Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:var(--text-main);margin:0;">👨‍👩‍👧 Benvenuto, ${window.CURRENT_USER?.name || 'Genitore'}</h2>
-                    <div style="font-size:0.82rem;color:var(--text-sub);margin-top:4px;">🌐 Stagione: ${activeSeason?.name || '—'} · ${new Date().toLocaleDateString('it-IT',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
-                </div>
-                <div style="font-size:0.78rem;color:var(--text-muted);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 14px;">
-                    ${athletes.length} figlio${athletes.length!==1?'i':''}  associato${athletes.length!==1?'i':''}
-                </div>
-            </div>
-            ${tabsHTML}
-            ${pagesHTML}
-        </div>`;
-
-        // ── FILTRO PARTITE GENITORE ─────────────────────────────────
-        // _gfm = filter  |  _grm = reset
-        if (!window._gfm) {
-            window._gfm = function(el, key) {
-                const store = (window._matchStore || {})[key] || [];
-                const from  = document.getElementById('mf-from-' + key)?.value || '';
-                const to    = document.getElementById('mf-to-'   + key)?.value || '';
-                const filtered = store.filter(function(r){ return (!from || r.date >= from) && (!to || r.date <= to); });
-                const tableDiv = document.getElementById('match-table-' + key);
-                const countEl  = document.getElementById('mf-count-'   + key);
-                if (countEl) countEl.textContent = filtered.length + ' partita' + (filtered.length !== 1 ? 'e' : '');
-                if (!tableDiv) return;
-                if (filtered.length === 0) {
-                    tableDiv.innerHTML = '<p style="color:var(--text-sub);text-align:center;padding:16px 0;">Nessuna partita nel periodo selezionato.</p>';
-                    return;
-                }
-                var thead = '<table style="width:100%;border-collapse:collapse;"><thead><tr style="border-bottom:1px solid var(--border);"><th style="padding:8px 10px;text-align:left;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Data</th><th style="padding:8px 10px;text-align:left;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Partita</th><th style="padding:8px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Risultato</th><th style="padding:8px 10px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-sub);text-transform:uppercase;">Esito</th></tr></thead><tbody>';
-                var rows = filtered.map(function(r){
-                    return '<tr style="border-bottom:1px solid var(--border);">' +
-                        '<td style="padding:9px 10px;color:var(--text-muted);font-size:0.82rem;white-space:nowrap;">' + r.dateLabel + '</td>' +
-                        '<td style="padding:9px 10px;font-weight:600;">' + r.opponent + '</td>' +
-                        '<td style="padding:9px 10px;text-align:center;font-weight:800;font-family:\'DM Mono\',sans-serif;">' + r.score + '</td>' +
-                        '<td style="padding:9px 10px;text-align:center;">' + r.esito + '</td>' +
-                        '</tr>';
-                }).join('');
-                tableDiv.innerHTML = thead + rows + '</tbody></table>';
-            };
-            window._grm = function(key) {
-                var defFrom = new Date(); defFrom.setMonth(defFrom.getMonth() - 1);
-                var fi = document.getElementById('mf-from-' + key);
-                var ti = document.getElementById('mf-to-'   + key);
-                if (fi) fi.value = defFrom.toISOString().split('T')[0];
-                if (ti) ti.value = new Date().toISOString().split('T')[0];
-                window._gfm(null, key);
-            };
-        }
-
-        // Switcher tra figli
-        window._switchChild = function(idx) {
-            athletes.forEach((_,i) => {
-                const page = document.getElementById('child-page-'+i);
-                const btn  = document.getElementById('child-tab-btn-'+i);
-                if (page) page.style.display = i===idx ? '' : 'none';
-                if (btn) {
-                    btn.style.background = i===idx ? 'var(--primary)' : 'transparent';
-                    btn.style.color      = i===idx ? 'white'   : '#64748b';
-                }
-            });
-        };
-
-    } catch(err) {
-        console.error('initGenitoreView error:', err);
-        contentEl.innerHTML = `<div class="card"><p style="color:#ef4444;">Errore caricamento dati: ${err.message}</p></div>`;
-    }
-};
-
 
 /* ============================================================
    MODULO TEST ATLETICI
@@ -12831,6 +12887,714 @@ window.openTestGrafico = async function(sessId) {
 
 window.templateTest   = window.templateTest;
 window.initTest       = window.initTest;
+
+/* ============================================================
+   VISTA GENITORE — Dashboard del figlio
+   Caricata automaticamente quando effectiveRole === 'genitore'
+   ============================================================ */
+
+// CSS aggiuntivo per la vista genitore (iniettato una sola volta)
+(function injectGenitoreStyles() {
+    if (document.getElementById('genitore-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'genitore-styles';
+    style.textContent = `
+        /* ── GENITORE: HERO ── */
+        .g-hero {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 45%, #0369a1 100%);
+            border-radius: var(--r-xl);
+            padding: 1.8rem 2rem;
+            color: white;
+            margin-bottom: 1.5rem;
+            position: relative; overflow: hidden;
+            box-shadow: 0 8px 40px rgba(37,99,235,0.3);
+            animation: contentIn 0.35s cubic-bezier(.4,0,.2,1) both;
+        }
+        .g-hero::before {
+            content: '';
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 50% 80% at 85% 50%, rgba(255,255,255,0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 60% at 10% 20%, rgba(255,255,255,0.05) 0%, transparent 50%);
+        }
+        .g-hero::after {
+            content: '⚽';
+            position: absolute; right: 2rem; top: 50%;
+            transform: translateY(-50%) rotate(-15deg);
+            font-size: 5rem; opacity: 0.08; pointer-events:none;
+        }
+        .g-hero-row { display: flex; align-items: center; gap: 1.5rem; position: relative; z-index: 1; flex-wrap:wrap; }
+        .g-hero-avatar {
+            width: 60px; height: 60px; border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 800;
+            font-family: 'Syne', sans-serif; flex-shrink: 0;
+        }
+        .g-hero-name { font-family: 'Syne', sans-serif; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; }
+        .g-hero-meta { font-size: 0.78rem; opacity: 0.7; margin-top: 2px; }
+        .g-hero-stats { display: flex; gap: 2rem; margin-left: auto; }
+        .g-hero-stat { text-align: center; }
+        .g-hero-stat-val { font-family: 'DM Mono', monospace; font-size: 1.55rem; font-weight: 500; }
+        .g-hero-stat-lab { font-size: 0.62rem; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.08em; }
+        .g-hero-status { margin-top: 1rem; position: relative; z-index: 1; }
+
+        /* ── STATUS PILLS ── */
+        .g-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 0.28rem 0.75rem; border-radius: 999px;
+            font-size: 0.72rem; font-weight: 700;
+        }
+        .g-pill-ok   { background: rgba(5,150,105,0.15); color: #059669; }
+        .g-pill-warn { background: rgba(217,119,6,0.15); color: #d97706; }
+        .g-pill-err  { background: rgba(220,38,38,0.15); color: #dc2626; }
+        .g-pill-dot  { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink:0; }
+
+        /* ── KPI ROW ── */
+        .g-kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .g-kpi {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--r-lg); padding: 1.1rem 1.3rem;
+            transition: all 0.2s;
+            animation: contentIn 0.35s cubic-bezier(.4,0,.2,1) both;
+        }
+        .g-kpi:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .g-kpi-label {
+            font-size: 0.63rem; font-weight: 700; letter-spacing: 0.12em;
+            text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.45rem;
+        }
+        .g-kpi-val {
+            font-family: 'DM Mono', monospace; font-size: 1.85rem; font-weight: 500;
+            color: var(--text-main); line-height: 1;
+        }
+        .g-kpi-val span { font-size: 1rem; font-weight: 400; color: var(--text-muted); }
+        .g-kpi-sub { font-size: 0.71rem; color: var(--text-sub); margin-top: 0.3rem; }
+
+        /* ── SECTION HEADER ── */
+        .g-sec-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem; font-weight: 800;
+            color: var(--text-main); letter-spacing: -0.02em;
+            margin-bottom: 1rem; margin-top: 0.2rem;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .g-sec-dot { width: 4px; height: 18px; border-radius: 3px; flex-shrink: 0; }
+
+        /* ── GRID LAYOUTS ── */
+        .g-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.5rem; }
+        .g-grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 1.2rem; margin-bottom: 1.5rem; }
+
+        /* ── SKILL BARS ── */
+        .g-skill { margin-bottom: 0.85rem; }
+        .g-skill-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .g-skill-name { font-size: 0.8rem; font-weight: 600; color: var(--text-main); }
+        .g-skill-info { font-size: 0.72rem; font-family: 'DM Mono', monospace; color: var(--text-sub); display:flex; align-items:center; gap:8px; }
+        .g-skill-track { height: 7px; background: rgba(0,0,0,0.06); border-radius: 999px; overflow: hidden; }
+        .g-skill-bar { height: 100%; border-radius: 999px; width: 0%; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+
+        /* ── TREND CHIPS ── */
+        .g-trend { display: inline-flex; align-items: center; gap: 3px; padding: 0.12rem 0.45rem; border-radius: 999px; font-size: 0.62rem; font-weight: 700; }
+        .g-trend-up   { background: rgba(5,150,105,0.12); color: #059669; }
+        .g-trend-same { background: rgba(217,119,6,0.12);  color: #d97706; }
+        .g-trend-down { background: rgba(220,38,38,0.12);  color: #dc2626; }
+
+        /* ── FEEDBACK ROWS ── */
+        .g-feedback {
+            display: flex; gap: 0.5rem; align-items: flex-start;
+            padding: 0.75rem; background: rgba(0,0,0,0.02);
+            border-radius: var(--r-md); margin-bottom: 0.6rem;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .g-feedback-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+        .g-feedback-text { font-size: 0.82rem; line-height: 1.5; color: var(--text-sub); }
+        .g-feedback-text strong { color: var(--text-main); }
+
+        /* ── DOT RATING ── */
+        .g-qual-row { display: flex; justify-content: space-between; align-items: center; padding: 0.55rem 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .g-qual-row:last-child { border-bottom: none; }
+        .g-qual-name { font-size: 0.82rem; font-weight: 500; color: var(--text-sub); }
+        .g-dots { display: flex; gap: 4px; }
+        .g-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(0,0,0,0.1); }
+        .g-dot.ok { background: #059669; }
+        .g-dot.pri { background: #2563eb; }
+
+        /* ── MATCH ROWS ── */
+        .g-match-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.75rem 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .g-match-row:last-child { border-bottom: none; }
+        .g-match-date { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text-muted); min-width: 54px; }
+        .g-match-opp { font-size: 0.85rem; font-weight: 600; flex: 1; }
+        .g-match-result { font-family: 'DM Mono', monospace; font-size: 0.78rem; font-weight: 700; min-width: 40px; text-align:center; }
+        .g-match-min { font-size: 0.72rem; color: var(--text-muted); min-width: 44px; text-align: right; }
+        .g-event { display: inline-flex; align-items: center; gap: 3px; padding: 0.1rem 0.4rem; border-radius: 999px; font-size: 0.62rem; font-weight: 700; margin-left:3px; }
+        .g-event-goal { background: #fef9c3; color: #854d0e; }
+        .g-event-amm  { background: #fef3c7; color: #92400e; }
+        .g-absent { color: var(--text-muted) !important; text-decoration: line-through; }
+
+        /* ── TEST BOXES ── */
+        .g-test-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; }
+
+        /* ── CHART WRAPPER ── */
+        .g-chart-wrap { position: relative; width: 100%; height: 160px; }
+
+        /* Responsive */
+        @media(max-width:900px) {
+            .g-kpi-grid { grid-template-columns: repeat(2,1fr); }
+            .g-grid-2, .g-grid-3 { grid-template-columns: 1fr; }
+            .g-hero-stats { display: none; }
+            .g-test-grid { grid-template-columns: repeat(2,1fr); }
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
+/* ── Chart.js loader (lazy, una sola volta) ── */
+function loadChartJs(cb) {
+    if (window.Chart) { cb(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+    s.onload = cb;
+    document.head.appendChild(s);
+}
+
+/* ── Template HTML genitore ── */
+function templateGenitoreView(athlete, stats, trainings, matches, assessments, presenzeRows, statsGareRows) {
+    const initials = `${(athlete.name||'?')[0]}${(athlete.surname||'?')[0]}`.toUpperCase();
+    const fullName = `${athlete.name||''} ${athlete.surname||''}`.trim() || 'Atleta';
+
+    // Stato fisico
+    const statoFisico = athlete.physical_status === 'infortunato'
+        ? `<span class="g-pill g-pill-err"><span class="g-pill-dot"></span>Infortunato</span>${athlete.injury_note ? `<span style="font-size:0.78rem;color:white;opacity:0.7;margin-left:8px;">${athlete.injury_note}</span>` : ''}`
+        : `<span class="g-pill g-pill-ok"><span class="g-pill-dot"></span>Disponibile</span><span style="font-size:0.78rem;color:white;opacity:0.75;margin-left:8px;">Nessun problema fisico</span>`;
+
+    const presenzaPerc = stats.totalTrainings > 0
+        ? Math.round((stats.attendedTrainings / stats.totalTrainings) * 100) : 0;
+
+    // Righe partite recenti
+    const matchRows = (matches || []).slice(0, 10).map(m => {
+        const isPresent = m.participated;
+        const resultColor = m.result === 'win' ? 'var(--success)' : m.result === 'loss' ? 'var(--danger)' : 'var(--warning)';
+        const resultLabel = m.result === 'win' ? 'VITTORIA' : m.result === 'loss' ? 'SCONFITTA' : 'PAREGGIO';
+        const resultBg = m.result === 'win' ? 'rgba(5,150,105,0.1)' : m.result === 'loss' ? 'rgba(220,38,38,0.1)' : 'rgba(217,119,6,0.1)';
+        return `
+        <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 10px;font-size:0.78rem;color:var(--text-sub);">${m.date_fmt}</td>
+            <td style="padding:8px 10px;font-weight:600;font-size:0.82rem;">vs ${m.opponent}</td>
+            <td style="padding:8px 10px;text-align:center;font-family:'DM Mono',monospace;font-weight:700;">${isPresent ? m.score : '—'}</td>
+            <td style="padding:8px 10px;text-align:center;">
+                ${isPresent
+                    ? `<span style="padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:${resultBg};color:${resultColor};">${resultLabel}</span>`
+                    : `<span style="font-size:0.72rem;color:var(--text-muted);">—</span>`}
+            </td>
+        </tr>`;
+    }).join('') || `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-sub);">Nessuna partita registrata</td></tr>`;
+
+    // Prossima partita
+    const nextMatch = stats.nextMatch
+        ? (() => {
+            const nm = stats.nextMatch;
+            const isHome = nm.isHome;
+            const locationIcon = isHome === true ? '🏠' : isHome === false ? '✈️' : '📍';
+            const locationLabel = isHome === true ? 'Casa' : isHome === false ? 'Trasferta' : '—';
+            const convBadge = nm.isConvoked
+                ? `<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(5,150,105,0.12);border:1px solid rgba(5,150,105,0.3);color:#059669;padding:4px 10px;border-radius:99px;font-size:0.7rem;font-weight:700;letter-spacing:0.04em;">
+                       <span style="width:6px;height:6px;border-radius:50%;background:#059669;display:inline-block;"></span> ✓ CONVOCATO
+                   </div>`
+                : `<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(156,163,175,0.12);border:1px solid rgba(156,163,175,0.25);color:#9ca3af;padding:4px 10px;border-radius:99px;font-size:0.7rem;font-weight:700;letter-spacing:0.04em;">
+                       <span style="width:6px;height:6px;border-radius:50%;background:#9ca3af;display:inline-block;"></span> Non convocato
+                   </div>`;
+
+            const orariRow = (nm.meetTime || nm.startTime)
+                ? `<div style="display:flex;align-items:center;gap:16px;padding-top:0.55rem;border-top:1px solid rgba(37,99,235,0.1);flex-wrap:wrap;">
+                       <div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">Orari</div>
+                       ${nm.meetTime ? `<div style="display:flex;align-items:center;gap:5px;">
+                           <span style="font-size:0.68rem;color:var(--text-sub);font-weight:600;">⏰ RITROVO</span>
+                           <span style="font-size:0.92rem;font-weight:800;font-family:'DM Mono',monospace;color:var(--text-main);">${nm.meetTime}</span>
+                       </div>` : ''}
+                       ${nm.meetTime && nm.startTime ? `<span style="color:var(--border-strong);font-size:0.8rem;">|</span>` : ''}
+                       ${nm.startTime ? `<div style="display:flex;align-items:center;gap:5px;">
+                           <span style="font-size:0.68rem;color:var(--text-sub);font-weight:600;">🏁 INIZIO</span>
+                           <span style="font-size:0.92rem;font-weight:800;font-family:'DM Mono',monospace;color:var(--text-main);">${nm.startTime}</span>
+                       </div>` : ''}
+                   </div>`
+                : '';
+
+            const luogoRow = nm.address
+                ? `<div style="display:flex;align-items:flex-start;gap:8px;padding-top:0.55rem;border-top:1px solid rgba(37,99,235,0.1);">
+                       <div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);padding-top:1px;white-space:nowrap;">Luogo</div>
+                       <div style="font-size:0.78rem;color:var(--text-sub);font-weight:500;">📌 ${nm.address}</div>
+                   </div>`
+                : '';
+
+            const officialBadge = nm.isOfficial === true
+                ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(6,214,160,0.12);border:1px solid rgba(6,214,160,0.3);color:#06d6a0;padding:3px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;">🏆 Ufficiale</span>`
+                : nm.isOfficial === false
+                    ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,209,102,0.15);border:1px solid rgba(255,209,102,0.35);color:#d97706;padding:3px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;">🤝 Amichevole</span>`
+                    : '';
+
+            return `<div style="background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.15);border-radius:var(--r-md);padding:1rem;display:flex;flex-direction:column;gap:0.6rem;">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+                    <div style="font-size:0.63rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--primary);font-weight:700;">Prossima partita · ${nm.date}</div>
+                    ${convBadge}
+                </div>
+                <div style="font-size:0.95rem;font-weight:700;color:var(--text-main);">vs. ${nm.opponent}</div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(37,99,235,0.08);padding:3px 9px;border-radius:99px;font-size:0.73rem;font-weight:600;color:var(--primary);">
+                        ${locationIcon} ${locationLabel}
+                    </span>
+                    ${officialBadge}
+                </div>
+                ${luogoRow}
+                ${orariRow}
+            </div>`;
+        })()
+        : `<p style="color:var(--text-muted);font-size:0.82rem;">Nessuna partita programmata</p>`;
+
+    return `
+    <!-- HERO -->
+    <div class="g-hero">
+        <div class="g-hero-row">
+            <div class="g-hero-avatar">${initials}</div>
+            <div>
+                <div class="g-hero-name">${fullName}</div>
+                <div class="g-hero-meta">${athlete.team_name || '—'} · #${athlete.jersey || '—'}</div>
+            </div>
+            <div class="g-hero-stats">
+                <div class="g-hero-stat">
+                    <div class="g-hero-stat-val">${stats.attendedTrainings}<span style="font-size:1rem;">/${stats.totalTrainings}</span></div>
+                    <div class="g-hero-stat-lab">Allenamenti</div>
+                </div>
+                <div class="g-hero-stat">
+                    <div class="g-hero-stat-val">${stats.matchesPlayed}<span style="font-size:1rem;">/${stats.matchesConvoked}</span></div>
+                    <div class="g-hero-stat-lab">Partite</div>
+                </div>
+                <div class="g-hero-stat">
+                    <div class="g-hero-stat-val">${presenzaPerc}<span style="font-size:1rem;">%</span></div>
+                    <div class="g-hero-stat-lab">Presenze</div>
+                </div>
+            </div>
+        </div>
+        <div class="g-hero-status">${statoFisico}</div>
+    </div>
+
+    <!-- KPI ROW -->
+    <div class="g-kpi-grid">
+        <div class="g-kpi">
+            <div class="g-kpi-label">🏃 Presenze allenamenti</div>
+            <div class="g-kpi-val">${presenzaPerc}<span>%</span></div>
+            <div class="g-kpi-sub" style="color:${presenzaPerc>=75?'var(--success)':'var(--warning)'};font-weight:600;">${presenzaPerc>=75?'↑ In linea col gruppo':'⚠ Sotto la media'}</div>
+        </div>
+        <div class="g-kpi">
+            <div class="g-kpi-label">📋 Partite giocate</div>
+            <div class="g-kpi-val">${stats.matchesPlayed}<span>/${stats.matchesConvoked}</span></div>
+            <div class="g-kpi-sub" style="color:var(--text-sub);">convocazioni stagione</div>
+        </div>
+        <div class="g-kpi">
+            <div class="g-kpi-label">⚽ Gol</div>
+            <div class="g-kpi-val">${stats.goals || 0}</div>
+            <div class="g-kpi-sub" style="color:var(--text-sub);">stagione corrente</div>
+        </div>
+        <div class="g-kpi">
+            <div class="g-kpi-label">⏱ Minuti giocati</div>
+            <div class="g-kpi-val">${stats.totalMinutes || 0}</div>
+            <div class="g-kpi-sub" style="color:var(--text-sub);">totale stagione</div>
+        </div>
+    </div>
+
+    <!-- ① PARTITE RECENTI -->
+    <div class="g-sec-title"><div class="g-sec-dot" style="background:#0ea5e9;"></div> Partite recenti</div>
+    <div class="g-grid-2" style="margin-bottom:1.5rem;">
+        <div class="card">
+            <div style="padding:1.4rem;">
+                <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:1rem;display:flex;align-items:center;gap:6px;">
+                    <span style="background:rgba(14,165,233,0.1);border-radius:5px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;">⚽</span>
+                    Ultimi incontri
+                </div>
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:2px solid var(--border);">
+                            <th style="padding:4px 10px;text-align:left;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">Data</th>
+                            <th style="padding:4px 10px;text-align:left;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">Partita</th>
+                            <th style="padding:4px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">Risultato</th>
+                            <th style="padding:4px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">Esito</th>
+                        </tr>
+                    </thead>
+                    <tbody>${matchRows}</tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card">
+            <div style="padding:1.4rem;">
+                <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:1rem;display:flex;align-items:center;gap:6px;">
+                    <span style="background:rgba(37,99,235,0.1);border-radius:5px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;">📣</span>
+                    Prossimo appuntamento
+                </div>
+                ${nextMatch}
+            </div>
+        </div>
+    </div>
+
+    <!-- ② STATISTICHE GARE PER SQUADRA -->
+    <div class="g-sec-title"><div class="g-sec-dot" style="background:#059669;"></div> Statistiche gare per squadra</div>
+    <div class="card" style="margin-bottom:1.5rem;">
+        <div style="padding:1.4rem;">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.4rem;display:flex;align-items:center;gap:6px;">
+                <span style="background:rgba(5,150,105,0.1);border-radius:5px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;">📊</span>
+                Solo partite ufficiali · Amichevoli escluse
+            </div>
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;min-width:600px;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border);">
+                        <th style="padding:6px 10px;text-align:left;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">Squadra</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#0ea5e9;font-weight:600;">PTS</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">P</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--primary);font-weight:600;" title="Casa">🏠</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#8b5cf6;font-weight:600;" title="Trasferta">✈️</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#10b981;font-weight:600;">GF</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#ef4444;font-weight:600;">GS</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">V/P/S</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">%V</th>
+                    </tr>
+                </thead>
+                <tbody id="g-stats-gare-body">
+                    ${statsGareRows || '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-sub);">Nessun dato disponibile</td></tr>'}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ③ PRESENZE SESSIONI -->
+    <div class="g-sec-title"><div class="g-sec-dot" style="background:#2563eb;"></div> Presenze sessioni</div>
+    <div class="card" style="margin-bottom:2.5rem;">
+        <div style="padding:1.4rem;">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:1rem;display:flex;align-items:center;gap:6px;">
+                <span style="background:rgba(37,99,235,0.1);border-radius:5px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;">🗓️</span>
+                Allenamenti &amp; sessioni
+            </div>
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border);">
+                        <th style="padding:6px 10px;text-align:left;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">Sessione</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#10b981;font-weight:600;">P</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#ef4444;font-weight:600;">A</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#0ea5e9;font-weight:600;">G</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">%</th>
+                    </tr>
+                </thead>
+                <tbody id="g-pres-sessioni-body">
+                    ${presenzeRows || '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-sub);">Nessuna sessione disponibile</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+    </div>`;
+}
+
+/* ── Funzione principale: carica dati reali da Supabase ── */
+window.initGenitoreView = async function() {
+    const content = document.getElementById('content');
+    if (!content) return;
+
+    content.innerHTML = `<div class="card" style="padding:2rem;text-align:center;">
+        <div style="font-size:1.5rem;margin-bottom:8px;">⏳</div>
+        <div style="color:var(--text-sub);font-size:0.9rem;">Caricamento dati in corso...</div>
+    </div>`;
+
+    try {
+        const userId = window._currentUserId;
+        if (!userId) throw new Error('Utente non identificato');
+
+        // 1. Recupera il figlio collegato dalla tabella parent_athletes
+        const { data: link } = await client
+            .from('parent_athletes')
+            .select('athlete_id')
+            .eq('parent_id', userId)
+            .maybeSingle();
+
+        let athleteId = link?.athlete_id;
+
+        if (!athleteId) {
+            content.innerHTML = `<div class="card" style="padding:2rem;text-align:center;">
+                <div style="font-size:2rem;margin-bottom:8px;">👨‍👩‍👧</div>
+                <div style="font-weight:700;font-size:1rem;color:var(--text-main);margin-bottom:6px;">Nessun atleta collegato</div>
+                <div style="color:var(--text-sub);font-size:0.85rem;">Contatta lo staff per collegare il profilo del tuo figlio a questo account.</div>
+            </div>`;
+            return;
+        }
+
+        // 2. Dati atleta da public.athletes (colonne reali: name, surname, born_date, society_id)
+        const { data: athlete } = await client
+            .from('athletes')
+            .select('id, name, surname, born_date')
+            .eq('id', athleteId)
+            .maybeSingle();
+
+        // Assegnazione squadra attiva
+        // Prendi il teamSeason con stagione attiva, altrimenti il più recente
+        const { data: teamSeasons } = await client
+            .from('athlete_team_seasons')
+            .select('jersey_number, team_id, teams(name), seasons(is_active)')
+            .eq('athlete_id', athleteId)
+            .order('id', { ascending: false })
+            .limit(10);
+        const activeTeamSeason = (teamSeasons || []).find(ts => ts.seasons?.is_active) || (teamSeasons || [])[0] || null;
+
+        const athleteData = {
+            id:        athlete?.id || athleteId,
+            name:      athlete?.name || '',
+            surname:   athlete?.surname || '',
+            born_date: athlete?.born_date || null,
+            // campi extra usati nel template con fallback sicuri
+            role:            activeTeamSeason ? '—' : '—',
+            physical_status: 'disponibile',
+            injury_note:     null,
+            jersey:          activeTeamSeason?.jersey_number || '—',
+            team_name:       activeTeamSeason?.teams?.name || '—',
+        };
+
+        // 3. Presenze agli allenamenti (ultime 60 sessioni)
+        // Usa la tabella reale: attendances + sessions
+        const { data: attendances } = await client
+            .from('attendances')
+            .select('session_id, status, is_called_up, sessions!inner(id, session_date, type_id, session_types(name))')
+            .eq('athlete_id', athleteId)
+            .order('session_id', { ascending: false })
+            .limit(60);
+
+        const attended = (attendances || []).filter(a => a.status === 'presente').length;
+        const totalTrainings = (attendances || []).length;
+
+        // 4. Partite: usa match_stats + sessions + match_details (schema reale)
+        const { data: rawMatchStats } = await client
+            .from('match_stats')
+            .select(`
+                athlete_id, goals, yellow_cards, red_cards, minutes_played, is_starter,
+                sessions!inner(id, session_date, title, team_id,
+                    match_details(opponent_name, is_home, goals_for, goals_against, match_status))
+            `)
+            .eq('athlete_id', athleteId)
+            .order('sessions(session_date)', { ascending: false })
+            .limit(10);
+
+        const matchesData = (rawMatchStats || []).map(ms => {
+            const s = ms.sessions;
+            const md = s?.match_details?.[0] || s?.match_details || null;
+            const goalsFor     = md?.goals_for     ?? '?';
+            const goalsAgainst = md?.goals_against ?? '?';
+            const isHome       = md?.is_home ?? true;
+            const myScore      = isHome ? goalsFor     : goalsAgainst;
+            const theirScore   = isHome ? goalsAgainst : goalsFor;
+            let result = 'draw';
+            if (typeof myScore === 'number' && typeof theirScore === 'number') {
+                if (myScore > theirScore) result = 'win';
+                if (myScore < theirScore) result = 'loss';
+            }
+            const d = s?.session_date ? new Date(s.session_date) : null;
+            const played = ms.minutes_played > 0 || ms.is_starter;
+            return {
+                participated: played,
+                minutes_played: ms.minutes_played || 0,
+                goals: ms.goals || 0,
+                yellow_cards: ms.yellow_cards || 0,
+                opponent: md?.opponent_name || s?.title || '?',
+                score: `${goalsFor}–${goalsAgainst}`,
+                result,
+                date_fmt: d ? d.toLocaleDateString('it-IT', {day:'2-digit', month:'short'}) : '—',
+            };
+        });
+
+        const matchesPlayed    = matchesData.filter(m => m.participated).length;
+        const matchesConvoked  = matchesData.length;
+        const totalGoals       = matchesData.reduce((s,m) => s + (m.goals||0), 0);
+        const totalYellow      = matchesData.reduce((s,m) => s + (m.yellow_cards||0), 0);
+        const totalMinutes     = matchesData.filter(m=>m.participated).reduce((s,m)=>s+(m.minutes_played||0),0);
+
+        // 5. Prossima partita: query da match_details (tutti i campi diretti) + inner join sessions
+        let nextMatch = null;
+        try {
+            let nmQ = client
+                .from('match_details')
+                .select('id, session_id, opponent_name, is_home, is_friendly, address, match_status, meet_time, match_start_time, sessions!inner(id, session_date, title, team_id)')
+                .eq('match_status', 'da disputare')
+                .order('sessions(session_date)', { ascending: true })
+                .limit(5); // prendi le prime 5 e filtra lato client per sicurezza
+
+            if (activeTeamSeason?.team_id) nmQ = nmQ.eq('sessions.team_id', activeTeamSeason.team_id);
+
+            const { data: nmRows } = await nmQ;
+
+            // Filtra solo quelle future
+            const today = new Date().toISOString().split('T')[0];
+            const nmRow = (nmRows || []).find(r => {
+                const sd = r.sessions?.session_date || r.sessions?.[0]?.session_date;
+                return sd && sd > today;
+            });
+
+            if (nmRow) {
+                const sess = nmRow.sessions?.[0] || nmRow.sessions;
+                const nd = new Date(sess.session_date);
+                const sessionId = nmRow.session_id || sess.id;
+
+                // Controlla se l'atleta è convocato per questa partita
+                let isConvoked = false;
+                try {
+                    const { data: convRow } = await client
+                        .from('attendances')
+                        .select('status')
+                        .eq('session_id', sessionId)
+                        .eq('athlete_id', athleteData.id)
+                        .maybeSingle();
+                    isConvoked = convRow?.status === 'convocato' || convRow?.status === 'presente';
+                } catch(e) { console.warn('convocazione check error', e); }
+
+                nextMatch = {
+                    date: nd.toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long'}),
+                    opponent: nmRow.opponent_name || sess.title || '?',
+                    isHome: nmRow.is_home ?? null,
+                    isOfficial: nmRow.is_friendly === false,
+                    address: nmRow.address || null,
+                    meetTime: nmRow.meet_time ? nmRow.meet_time.substring(0,5) : null,
+                    startTime: nmRow.match_start_time ? nmRow.match_start_time.substring(0,5) : null,
+                    isConvoked,
+                };
+            }
+        } catch(e) { console.warn('nextMatch error', e); }
+
+        // Assembla dati stats
+        const stats = {
+            attendedTrainings: attended,
+            totalTrainings,
+            matchesPlayed,
+            matchesConvoked,
+            totalMatches: matchesData.length,
+            totalMinutes,
+            goals: totalGoals,
+            yellowCards: totalYellow,
+            nextMatch,
+        };
+
+        // 6. PRESENZE SESSIONI — carica sessioni della squadra dell'atleta (solo allenamenti)
+        let presenzeRows = '';
+        try {
+            const { data: sessionTypes } = await client.from('session_types').select('id, name');
+            const garaTypeIds = new Set((sessionTypes||[])
+                .filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara'))
+                .map(t => t.id));
+
+            let presQ = client.from('sessions')
+                .select('id, title, session_date, teams(name, categories(name)), attendances(status)')
+                .order('session_date', { ascending: false })
+                .limit(20);
+            if (activeTeamSeason?.team_id) presQ = presQ.eq('team_id', activeTeamSeason.team_id);
+
+            const { data: sessions } = await presQ;
+            const trainingSessions = (sessions || []).filter(s => !garaTypeIds.has(s.type_id));
+
+            presenzeRows = trainingSessions.map(s => {
+                const att = s.attendances || [];
+                const p = att.filter(a => (a.status||'').toLowerCase() === 'presente').length;
+                const ab = att.filter(a => (a.status||'').toLowerCase() === 'assente').length;
+                const g = att.filter(a => (a.status||'').toLowerCase() === 'giustificato').length;
+                const tot = att.length;
+                const perc = tot > 0 ? Math.round((p / tot) * 100) : 0;
+                const percColor = perc >= 75 ? '#10b981' : perc >= 50 ? '#0ea5e9' : '#ef4444';
+                const teamName = s.teams?.name || '';
+                const catName  = s.teams?.categories?.name || '';
+                return `<tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:8px 10px;">
+                        <div style="font-weight:600;font-size:0.8rem;">${s.title || 'Sessione'}</div>
+                        <div style="font-size:0.7rem;color:var(--text-sub);">${new Date(s.session_date).toLocaleDateString('it-IT')}${teamName ? ' · ' + teamName : ''}${catName ? ' · ' + catName : ''}</div>
+                    </td>
+                    <td style="padding:8px 10px;text-align:center;color:#10b981;font-weight:700;">${p}</td>
+                    <td style="padding:8px 10px;text-align:center;color:#ef4444;font-weight:700;">${ab}</td>
+                    <td style="padding:8px 10px;text-align:center;color:#0ea5e9;font-weight:700;">${g}</td>
+                    <td style="padding:8px 10px;text-align:center;font-weight:700;color:${percColor};">${perc}%</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-sub);">Nessuna sessione trovata</td></tr>';
+        } catch(e) { console.warn('presenze sessioni error', e); }
+
+        // 7. STATISTICHE GARE PER SQUADRA — aggrega per team_id dell'atleta
+        let statsGareRows = '';
+        try {
+            const { data: sessionTypes2 } = await client.from('session_types').select('id, name');
+            const matchTypeIds = (sessionTypes2||[])
+                .filter(t => t.name.toLowerCase().includes('partita') || t.name.toLowerCase().includes('gara'))
+                .map(t => t.id);
+
+            if (matchTypeIds.length > 0) {
+                let msQ = client.from('sessions')
+                    .select('id, team_id, teams(name, categories(name))')
+                    .in('type_id', matchTypeIds);
+                if (activeTeamSeason?.team_id) msQ = msQ.eq('team_id', activeTeamSeason.team_id);
+
+                const { data: matchSessions } = await msQ;
+                const msIds = (matchSessions || []).map(s => s.id);
+
+                if (msIds.length > 0) {
+                    const [detRes, stRes] = await Promise.all([
+                        client.from('match_details').select('session_id, goals_for, goals_against, match_status, is_friendly, is_home').in('session_id', msIds),
+                        client.from('match_stats').select('session_id, yellow_cards, red_cards').in('session_id', msIds)
+                    ]);
+
+                    const detMap = {};
+                    (detRes.data || []).forEach(d => detMap[d.session_id] = d);
+
+                    const teamMap = {};
+                    (matchSessions || []).forEach(s => {
+                        if (!s.team_id) return;
+                        const det = detMap[s.id];
+                        if (det?.is_friendly === true) return;
+                        if (!teamMap[s.team_id]) teamMap[s.team_id] = {
+                            name: s.teams?.name || '—',
+                            cat:  s.teams?.categories?.name || '',
+                            p:0, casa:0, trasf:0, gf:0, gs:0, w:0, d:0, l:0, pts:0
+                        };
+                        const t = teamMap[s.team_id];
+                        t.p++;
+                        if (det) {
+                            if (det.is_home === true) t.casa++;
+                            else if (det.is_home === false) t.trasf++;
+                            t.gf += det.goals_for || 0;
+                            t.gs += det.goals_against || 0;
+                            if (det.match_status === 'vittoria')   { t.w++; t.pts += 3; }
+                            else if (det.match_status === 'pareggio') { t.d++; t.pts += 1; }
+                            else if (det.match_status === 'sconfitta') t.l++;
+                        }
+                    });
+
+                    statsGareRows = Object.values(teamMap).sort((a,b) => b.pts - a.pts).map(t => {
+                        const winPerc = t.p > 0 ? Math.round((t.w / t.p) * 100) : 0;
+                        return `<tr style="border-bottom:1px solid var(--border);">
+                            <td style="padding:8px 10px;font-weight:600;font-size:0.82rem;">${t.name}${t.cat ? `<br><span style="font-size:0.7rem;color:var(--text-sub);">${t.cat}</span>` : ''}</td>
+                            <td style="padding:8px 10px;text-align:center;font-weight:800;font-family:'DM Mono',monospace;font-size:1rem;color:#0ea5e9;">${t.pts}</td>
+                            <td style="padding:8px 10px;text-align:center;color:var(--text-muted);font-weight:700;">${t.p}</td>
+                            <td style="padding:8px 10px;text-align:center;color:var(--primary);font-weight:700;">${t.casa}</td>
+                            <td style="padding:8px 10px;text-align:center;color:#8b5cf6;font-weight:700;">${t.trasf}</td>
+                            <td style="padding:8px 10px;text-align:center;color:#10b981;font-weight:700;">${t.gf}</td>
+                            <td style="padding:8px 10px;text-align:center;color:#ef4444;font-weight:700;">${t.gs}</td>
+                            <td style="padding:8px 10px;text-align:center;font-size:0.78rem;white-space:nowrap;">
+                                <span style="color:#10b981;">${t.w}V</span> · <span style="color:var(--text-muted);">${t.d}P</span> · <span style="color:#ef4444;">${t.l}S</span>
+                            </td>
+                            <td style="padding:8px 10px;text-align:center;font-weight:700;color:${winPerc>=50?'#10b981':'var(--text-sub)'};">${winPerc}%</td>
+                        </tr>`;
+                    }).join('') || '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-sub);">Nessun dato partite ufficiali</td></tr>';
+                }
+            }
+        } catch(e) { console.warn('stats gare error', e); }
+
+        // Render
+        content.innerHTML = templateGenitoreView(athleteData, stats, attendances, matchesData, null, presenzeRows, statsGareRows);
+
+    } catch(err) {
+        console.error('initGenitoreView error:', err);
+        content.innerHTML = `<div class="card" style="padding:2rem;text-align:center;">
+            <div style="font-size:1.5rem;margin-bottom:8px;">⚠️</div>
+            <div style="font-weight:700;font-size:0.9rem;color:var(--text-main);margin-bottom:6px;">Errore nel caricamento</div>
+            <div style="color:var(--text-sub);font-size:0.82rem;">${err.message}</div>
+        </div>`;
+    }
+};
 </script>
 </body>
 </html>
