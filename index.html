@@ -10397,7 +10397,7 @@ async function _renderVistaResponsabile() {
             }).join('');
 
             // Storico presenze
-            const attRows=attList.slice(0,15).map(a=>{
+            const attRows=attList.slice(0,50).map(a=>{
                 const st=(a.status||'').toLowerCase();
                 const col=st==='presente'?'#10b981':st==='assente'?'#ef4444':st==='infortunato'?'#f59e0b':'#94a3b8';
                 const icon=st==='presente'?'✅':st==='assente'?'❌':st==='infortunato'?'🩺':st==='squalificato'?'🟥':'➖';
@@ -10499,7 +10499,106 @@ async function _renderVistaResponsabile() {
                     +'</div>';
             }).join('')||'<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun dato test.</div>';
 
+            // ── Helper: rende le sezioni filtrate per data ────────────────────
+            const renderDrillSections = (fromDate, toDate) => {
+                const inRange = date => {
+                    if (!date) return true;
+                    if (fromDate && date < fromDate) return false;
+                    if (toDate   && date > toDate)   return false;
+                    return true;
+                };
+
+                // Storico presenze filtrato
+                const filtAtt = attList.filter(a => inRange(a.sessions?.session_date));
+                const filtAttRows = filtAtt.slice(0,50).map(a=>{
+                    const st=(a.status||'').toLowerCase();
+                    const col=st==='presente'?'#10b981':st==='assente'?'#ef4444':st==='infortunato'?'#f59e0b':'#94a3b8';
+                    const icon=st==='presente'?'✅':st==='assente'?'❌':st==='infortunato'?'🩺':st==='squalificato'?'🟥':'➖';
+                    const pd=a.performance_data||{};
+                    const attrs=['VEL','TEC','FIS','RES','COM'].filter(k=>(pd[k]||0)>0).map(k=>'<span style="font-size:0.62rem;background:rgba(0,0,0,0.05);padding:1px 4px;border-radius:3px;margin-right:2px;">'+k+' '+pd[k]+'</span>').join('');
+                    return '<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">'
+                        +'<td style="padding:5px 8px;font-size:0.75rem;color:var(--text-muted);">'+(a.sessions?.session_date||'—')+'</td>'
+                        +'<td style="padding:5px 8px;font-size:0.75rem;">'+(a.sessions?.teams?.name||'—')+'</td>'
+                        +'<td style="padding:5px 8px;font-size:0.72rem;color:var(--text-muted);">'+(a.sessions?.session_types?.name||'—')+'</td>'
+                        +'<td style="padding:5px 8px;text-align:center;">'+icon+' <span style="font-size:0.72rem;color:'+col+';">'+(a.status||'—')+'</span></td>'
+                        +'<td style="padding:5px 8px;">'+attrs+'</td>'
+                        +'</tr>';
+                }).join('')||'<tr><td colspan="5" style="text-align:center;padding:12px;color:var(--text-muted);">Nessuna sessione nel periodo.</td></tr>';
+
+                // Statistiche partita filtrate
+                const filtMatch = mList.filter(m => inRange(m.sessions?.session_date));
+                const filtMatchRows = filtMatch.map(m=>'<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">'
+                    +'<td style="padding:5px 8px;font-size:0.75rem;color:var(--text-muted);">'+(m.sessions?.session_date||'—')+'</td>'
+                    +'<td style="padding:5px 8px;font-size:0.75rem;">'+(m.sessions?.teams?.name||'—')+'</td>'
+                    +'<td style="padding:5px 8px;text-align:center;font-size:0.8rem;">'+(m.is_starter?'<span style="color:#10b981;font-weight:700;">Titolare</span>':'Sub.')+'</td>'
+                    +'<td style="padding:5px 8px;text-align:center;font-weight:700;color:#10b981;">'+(m.goals||0)+'</td>'
+                    +'<td style="padding:5px 8px;text-align:center;color:#f59e0b;">'+(m.yellow_cards||0)+'</td>'
+                    +'<td style="padding:5px 8px;text-align:center;color:#ef4444;">'+(m.red_cards||0)+'</td>'
+                    +'<td style="padding:5px 8px;text-align:center;color:var(--text-muted);font-size:0.75rem;">'+(m.minutes_played||'—')+"'</td>"
+                    +'</tr>'
+                ).join('')||'<tr><td colspan="7" style="text-align:center;padding:12px;color:var(--text-muted);">Nessuna partita nel periodo.</td></tr>';
+
+                // Test filtrati per data sessione
+                const filtTest = tList.filter(t => inRange(t.test_sessions?.session_date));
+                const testByDefF={};
+                filtTest.forEach(t=>{
+                    const defName=t.test_sessions?.test_definitions?.name||'Test';
+                    const perfName=t.test_performances?.name||'—';
+                    const unit=t.test_performances?.unit||'';
+                    const lib=t.test_performances?.lower_is_better||false;
+                    const date=t.test_sessions?.session_date||'';
+                    if(!testByDefF[defName]) testByDefF[defName]={};
+                    if(!testByDefF[defName][perfName]) testByDefF[defName][perfName]={unit,lib,vals:[]};
+                    testByDefF[defName][perfName].vals.push({date,val:t.value});
+                });
+                const filtTestBlocks = Object.entries(testByDefF).map(([defName, perfs])=>{
+                    const allDates=[...new Set(Object.values(perfs).flatMap(p=>p.vals.map(v=>v.date)))].filter(Boolean).sort((a,b)=>a.localeCompare(b));
+                    const dates=allDates.slice(-5);
+                    const dateCols=dates.map(d=>{
+                        const dd=new Date(d);
+                        const fmt=dd.toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
+                        return '<th style="padding:7px 10px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;min-width:72px;">'+fmt+'</th>';
+                    }).join('');
+                    const rows=Object.entries(perfs).map(([perfName,pd])=>{
+                        const valMap={};
+                        pd.vals.forEach(v=>{ if(v.date) valMap[v.date]=v.val; });
+                        const cells=dates.map((d,i)=>{
+                            const val=valMap[d];
+                            if(val==null) return '<td style="padding:7px 10px;text-align:center;color:var(--text-muted);font-size:0.75rem;">—</td>';
+                            let trendHtml='';
+                            const prevVal=dates.slice(0,i).reverse().map(pd2=>valMap[pd2]).find(v=>v!=null);
+                            if(prevVal!=null&&val!==prevVal){const better=pd.lib?(val<prevVal):(val>prevVal);trendHtml='<span style="font-size:0.6rem;margin-left:3px;color:'+(better?'#10b981':'#ef4444')+'">'+(val>prevVal?'▲':'▼')+'</span>';}
+                            const isLast=i===dates.length-1;
+                            return '<td style="padding:7px 10px;text-align:center;">'
+                                +'<span style="font-size:0.85rem;font-weight:'+(isLast?'800':'600')+';font-family:\'DM Mono\',monospace;color:'+(isLast?'var(--primary)':'var(--text-main)')+';">'+val+'</span>'
+                                +(pd.unit?'<span style="font-size:0.6rem;color:var(--text-muted);margin-left:2px;">'+pd.unit+'</span>':'')
+                                +trendHtml+'</td>';
+                        }).join('');
+                        return '<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">'
+                            +'<td style="padding:7px 12px;white-space:nowrap;">'
+                            +'<div style="font-size:0.8rem;font-weight:600;color:var(--text-main);">'+perfName+'</div>'
+                            +'<div style="font-size:0.62rem;color:var(--text-muted);">'+defName+'</div>'
+                            +'</td>'+cells+'</tr>';
+                    }).join('');
+                    return '<div style="margin-bottom:10px;">'
+                        +'<div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8b5cf6;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid rgba(139,92,246,0.15);">🧪 '+defName+'</div>'
+                        +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.8rem;">'
+                        +'<thead><tr style="background:rgba(0,0,0,0.025);">'
+                        +'<th style="padding:7px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">Misura</th>'
+                        +dateCols+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+                }).join('')||'<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun dato test nel periodo.</div>';
+
+                // Aggiorna i tbody/contenuti nelle sezioni già nel DOM
+                const presBody = cardEl.querySelector('#dd-att-tbody');
+                if (presBody) presBody.innerHTML = filtAttRows;
+                const matchBody = cardEl.querySelector('#dd-match-tbody');
+                if (matchBody) matchBody.innerHTML = filtMatchRows;
+                const testContainer = cardEl.querySelector('#dd-test-container');
+                if (testContainer) testContainer.innerHTML = filtTestBlocks;
+            };
+
             cardEl.innerHTML=
+                // ── Header atleta ──────────────────────────────────────────────
                 '<div class="card" style="padding:18px 20px;margin-bottom:12px;">'
                 +'<div style="display:flex;align-items:center;gap:14px;">'
                 +'<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#818cf8);display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:800;color:white;flex-shrink:0;">'+(ath?.jersey||'?')+'</div>'
@@ -10507,29 +10606,75 @@ async function _renderVistaResponsabile() {
                 +'<div style="font-size:0.78rem;color:var(--text-sub);margin-top:2px;">'+(ath?.role||'')+' · '+(ath?.teamName||'—')+' · '+(ath?.catName||'—')+(age?' · '+age+' anni':'')+'</div></div>'
                 +'<div style="text-align:center;"><div style="font-size:2rem;font-weight:800;font-family:\'DM Mono\',monospace;color:'+ippColor+';line-height:1;">'+(kpi.ipp||0)+'</div>'
                 +'<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.06em;">IPP</div></div></div>'
-                +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-top:14px;">'
+                // ── Filtri data (riga unica sotto header) ──────────────────────
+                +'<div style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap;">'
+                +'<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">📅 Periodo</span>'
+                +['7gg','30gg','90gg','Stagione','Tutto'].map((lbl,i)=>{
+                    const vals=['7','30','90','season','all'];
+                    const active=i===4;
+                    return '<button onclick="window._ddFilterPeriod(\''+vals[i]+'\',this)" style="padding:4px 10px;border-radius:6px;border:1px solid '+(active?'var(--primary)':'var(--border)')+';background:'+(active?'var(--primary)':'transparent')+';color:'+(active?'white':'var(--text-muted)')+';font-size:0.72rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.14s;">'+lbl+'</button>';
+                }).join('')
+                +'<span style="font-size:0.62rem;color:var(--text-muted);margin-left:4px;">o</span>'
+                +'<input type="date" id="dd-date-from" onchange="window._ddFilterCustom()" style="padding:3px 7px;border:1px solid var(--border);border-radius:6px;font-size:0.72rem;color:var(--text-main);background:var(--card);font-family:inherit;">'
+                +'<span style="font-size:0.68rem;color:var(--text-muted);">→</span>'
+                +'<input type="date" id="dd-date-to" onchange="window._ddFilterCustom()" style="padding:3px 7px;border:1px solid var(--border);border-radius:6px;font-size:0.72rem;color:var(--text-main);background:var(--card);font-family:inherit;">'
+                +'</div>'
+                // ── KPI mini cards ──────────────────────────────────────────────
+                +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-top:12px;">'
                 +[{l:'% Pres.',v:kpi.percPres+'%',c:'#3b82f6'},{l:'Aff. Conv.',v:kpi.affRel!==null?kpi.affRel+'%':'—',c:'#0ea5e9'},{l:'Gol',v:kpi.goals,c:'#10b981'},{l:'Min',v:kpi.totMin+"'",c:'var(--primary)'},{l:'Infort.',v:kpi.inj,c:'#f59e0b'},{l:'Squal.',v:kpi.squ,c:'#ef4444'},{l:'Test avg',v:kpi.testAvg!==null?kpi.testAvg.toFixed(1):'—',c:'#8b5cf6'}].map(k=>'<div style="text-align:center;padding:8px;background:rgba(0,0,0,0.03);border-radius:8px;"><div style="font-size:1.1rem;font-weight:700;color:'+k.c+';">'+k.v+'</div><div style="font-size:0.62rem;color:var(--text-muted);margin-top:2px;">'+k.l+'</div></div>').join('')
                 +'</div>'
                 +(last10.length?'<div style="margin-top:12px;"><div style="font-size:0.66rem;color:var(--text-muted);margin-bottom:4px;font-weight:700;text-transform:uppercase;">Ultime '+last10.length+' sessioni</div><div style="display:flex;gap:3px;">'+sparkBars+'</div></div>':'')
                 +'</div>'
-                // Storico presenze
+                // ── Storico presenze ────────────────────────────────────────────
                 +'<div class="card" style="padding:16px 18px;margin-bottom:10px;">'
                 +'<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);margin-bottom:10px;">📅 Storico Presenze e Valutazioni</div>'
                 +'<div style="overflow-x:auto;max-height:260px;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.78rem;">'
                 +'<thead><tr style="color:var(--text-muted);font-size:0.64rem;text-transform:uppercase;background:rgba(0,0,0,0.03);">'
                 +'<th style="padding:4px 8px;text-align:left;">Data</th><th style="padding:4px 8px;text-align:left;">Squadra</th><th style="padding:4px 8px;text-align:left;">Tipo</th><th style="padding:4px 8px;text-align:center;">Stato</th><th style="padding:4px 8px;text-align:left;">Attributi</th>'
-                +'</tr></thead><tbody>'+attRows+'</tbody></table></div></div>'
-                // Statistiche partita
+                +'</tr></thead><tbody id="dd-att-tbody">'+attRows+'</tbody></table></div></div>'
+                // ── Statistiche partita ─────────────────────────────────────────
                 +'<div class="card" style="padding:16px 18px;margin-bottom:10px;">'
                 +'<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);margin-bottom:10px;">⚽ Statistiche Partita</div>'
                 +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.78rem;">'
                 +'<thead><tr style="color:var(--text-muted);font-size:0.64rem;text-transform:uppercase;background:rgba(0,0,0,0.03);">'
                 +'<th style="padding:4px 8px;text-align:left;">Data</th><th style="padding:4px 8px;text-align:left;">Squadra</th><th style="padding:4px 8px;text-align:center;">Ruolo</th><th style="padding:4px 8px;text-align:center;color:#10b981;">Gol</th><th style="padding:4px 8px;text-align:center;color:#f59e0b;">🟨</th><th style="padding:4px 8px;text-align:center;color:#ef4444;">🟥</th><th style="padding:4px 8px;text-align:center;">Min</th>'
-                +'</tr></thead><tbody>'+matchRows+'</tbody></table></div></div>'
-                // Test
+                +'</tr></thead><tbody id="dd-match-tbody">'+matchRows+'</tbody></table></div></div>'
+                // ── Test ────────────────────────────────────────────────────────
                 +'<div class="card" style="padding:16px 18px;">'
                 +'<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);margin-bottom:10px;">🏃 Progressione Test Atletici</div>'
-                +testBlocks+'</div>';
+                +'<div id="dd-test-container">'+testBlocks+'</div></div>';
+
+            // ── Handler filtro per periodo rapido ──────────────────────────────
+            window._ddFilterPeriod = (period, btn) => {
+                // Highlight bottone attivo
+                cardEl.querySelectorAll('button[onclick*="_ddFilterPeriod"]').forEach(b=>{
+                    b.style.background='transparent'; b.style.color='var(--text-muted)'; b.style.borderColor='var(--border)';
+                });
+                btn.style.background='var(--primary)'; btn.style.color='white'; btn.style.borderColor='var(--primary)';
+                // Reset date inputs custom
+                const fromInput=cardEl.querySelector('#dd-date-from'), toInput=cardEl.querySelector('#dd-date-to');
+                if(fromInput) fromInput.value='';
+                if(toInput)   toInput.value='';
+
+                const today=new Date().toISOString().split('T')[0];
+                let fromDate=null, toDate=null;
+                if(period==='7'){   const d=new Date(); d.setDate(d.getDate()-7);  fromDate=d.toISOString().split('T')[0]; }
+                if(period==='30'){  const d=new Date(); d.setDate(d.getDate()-30); fromDate=d.toISOString().split('T')[0]; }
+                if(period==='90'){  const d=new Date(); d.setDate(d.getDate()-90); fromDate=d.toISOString().split('T')[0]; }
+                if(period==='season'){ const activeSid=(window._dashData?._seasons||[]).find(s=>s.is_active); fromDate=activeSid?.start_date||null; toDate=activeSid?.end_date||null; }
+                renderDrillSections(fromDate, toDate);
+            };
+
+            // ── Handler filtro date personalizzate ─────────────────────────────
+            window._ddFilterCustom = () => {
+                // De-highlight tutti i bottoni periodo
+                cardEl.querySelectorAll('button[onclick*="_ddFilterPeriod"]').forEach(b=>{
+                    b.style.background='transparent'; b.style.color='var(--text-muted)'; b.style.borderColor='var(--border)';
+                });
+                const fromDate=cardEl.querySelector('#dd-date-from')?.value||null;
+                const toDate  =cardEl.querySelector('#dd-date-to')?.value||null;
+                renderDrillSections(fromDate, toDate);
+            };
         };
 
         // ── RENDER HTML ──────────────────────────────────────────────────────
