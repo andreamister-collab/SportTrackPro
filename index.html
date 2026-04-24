@@ -6560,6 +6560,17 @@ window.templateDashboard = function() {
                 </div>
             </div>
 
+            <!-- PROGRESSIONE TEST ATLETICI -->
+            <div class="card" style="padding:18px 20px; margin-top:16px;">
+                <div style="font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:0.09em; color:#8b5cf6; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <span>🏃 Progressione Test Atletici</span>
+                    <span style="font-weight:400; color:var(--text-muted); font-size:0.62rem; text-transform:none; letter-spacing:0;">— tutte le sessioni nel periodo</span>
+                </div>
+                <div id="pres-test-atletici-content">
+                    <div style="text-align:center; padding:24px; color:var(--text-sub); font-size:0.85rem;">⏳ Caricamento...</div>
+                </div>
+            </div>
+
             </div><!-- /pres-generic-sections -->
 
             <!-- VISTA ALLENATORE DEDICATA -->
@@ -8147,6 +8158,51 @@ window.loadDashPresidenza = async function() {
                         '<td style="padding:8px 12px;text-align:center;font-size:0.78rem;white-space:nowrap;"><span style="color:#10b981;">'+m.w+'V</span>\u00b7<span style="color:var(--text-muted);">'+m.d+'P</span>\u00b7<span style="color:#ef4444;">'+m.l+'S</span></td>' +
                         '</tr>';
                 }).join('');
+        }
+
+        // ── PROGRESSIONE TEST ATLETICI (Admin/Presidente/Segretario/tutti i ruoli) ──
+        const presTestCont = document.getElementById('pres-test-atletici-content');
+        if (presTestCont && !isGenitore && !(role === 'allenatore' || role === 'dirigente')) {
+            try {
+                // Carica test_sessions filtrate per squadre nel periodo
+                let tsQ = client.from('test_sessions')
+                    .select('id, session_date, team_id, test_definitions!inner(id, name)')
+                    .order('session_date', { ascending: false });
+                if (effectiveTeamIds) tsQ = tsQ.in('team_id', effectiveTeamIds);
+
+                const { data: tSessions } = await tsQ;
+                const pSessions = tSessions || [];
+
+                let pResults = [];
+                if (pSessions.length > 0) {
+                    const pSessIds = pSessions.map(s => s.id);
+                    const { data: pTr } = await client.from('test_results')
+                        .select('athlete_id, value, performance_id, test_session_id, test_performances!inner(id, name, unit, lower_is_better)')
+                        .in('test_session_id', pSessIds);
+                    pResults = pTr || [];
+                }
+
+                if (!pResults.length) {
+                    presTestCont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:0.85rem;">Nessun dato test atletici nel periodo selezionato.</div>';
+                } else {
+                    // Normalizza al formato buildTestTable
+                    const pSessMap = {};
+                    pSessions.forEach(s => { pSessMap[s.id] = s; });
+                    const pTList = pResults.map(r => ({
+                        value: r.value,
+                        test_performances: r.test_performances,
+                        test_sessions: {
+                            session_date: pSessMap[r.test_session_id]?.session_date || '',
+                            id: r.test_session_id,
+                            test_definitions: pSessMap[r.test_session_id]?.test_definitions || { name: 'Test' }
+                        }
+                    }));
+                    presTestCont.innerHTML = window.buildTestTable(pTList);
+                }
+            } catch(e) {
+                console.warn('pres test atletici error', e);
+                presTestCont.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-sub);font-size:0.82rem;">Dati test non disponibili.</div>';
+            }
         }
 
         // ── SEZIONE DETTAGLIO GENITORE ──────────────────────────────────────────
