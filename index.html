@@ -6677,6 +6677,83 @@ window.switchDashTab = function(idx) {
     }
 };
 
+/* ── UTILITY GLOBALE: tabella progressione test atletici ─────────────────
+   Formato items atteso:
+   { value, test_performances: {name, unit, lower_is_better},
+     test_sessions: { session_date, id, test_definitions: {name} } }
+──────────────────────────────────────────────────────────────────────── */
+window.buildTestTable = function(items) {
+    if (!items || !items.length) return '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun dato test.</div>';
+
+    const byDef = {};
+    items.forEach(t => {
+        const defName  = t.test_sessions?.test_definitions?.name || 'Test';
+        const perfName = t.test_performances?.name || '—';
+        const unit     = t.test_performances?.unit || '';
+        const lib      = t.test_performances?.lower_is_better || false;
+        const date     = t.test_sessions?.session_date || '';
+        const sessId   = t.test_sessions?.id || date;
+        if (!byDef[defName]) byDef[defName] = { perfs: {}, sessions: {} };
+        if (!byDef[defName].perfs[perfName]) byDef[defName].perfs[perfName] = { unit, lib };
+        if (!byDef[defName].sessions[sessId]) byDef[defName].sessions[sessId] = { date, measures: {} };
+        byDef[defName].sessions[sessId].measures[perfName] = t.value;
+    });
+
+    return Object.entries(byDef).map(([defName, {perfs, sessions}]) => {
+        const perfNames = Object.keys(perfs).slice(0, 5);
+        const sessRows  = Object.values(sessions).sort((a,b) => b.date.localeCompare(a.date));
+
+        const headCols = perfNames.map(p =>
+            '<th style="padding:7px 10px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">'
+            + p + (perfs[p].unit ? '<span style="font-weight:400;opacity:0.7;"> ('+perfs[p].unit+')</span>' : '')
+            + '</th>'
+        ).join('');
+        const emptyHeadCols = Array(Math.max(0, 5 - perfNames.length)).fill(
+            '<th style="padding:7px 10px;border-left:1px solid rgba(0,0,0,0.05);"></th>'
+        ).join('');
+
+        const rows = sessRows.map((sess, ri) => {
+            const d   = new Date(sess.date);
+            const dt  = sess.date ? d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+            const rowBg = ri % 2 === 0 ? '' : 'background:rgba(0,0,0,0.018);';
+
+            const measureCells = perfNames.map(p => {
+                const val = sess.measures[p];
+                if (val == null) return '<td style="padding:7px 10px;text-align:center;color:var(--text-muted);font-size:0.78rem;border-left:1px solid rgba(0,0,0,0.05);">—</td>';
+                const unit = perfs[p].unit || '';
+                return '<td style="padding:7px 10px;text-align:center;border-left:1px solid rgba(0,0,0,0.05);">'
+                    + '<span style="font-size:0.88rem;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--primary);">'+val+'</span>'
+                    + (unit ? '<span style="font-size:0.6rem;color:var(--text-muted);margin-left:2px;">'+unit+'</span>' : '')
+                    + '</td>';
+            }).join('');
+            const emptyMeasureCells = Array(Math.max(0, 5 - perfNames.length)).fill(
+                '<td style="padding:7px 10px;border-left:1px solid rgba(0,0,0,0.05);color:var(--text-muted);text-align:center;font-size:0.75rem;">—</td>'
+            ).join('');
+
+            return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);'+rowBg+'">'
+                + '<td style="padding:7px 12px;white-space:nowrap;">'
+                +   '<span style="font-size:0.8rem;font-weight:600;color:var(--text-main);">'+defName+'</span>'
+                + '</td>'
+                + '<td style="padding:7px 10px;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">'
+                +   '<span style="font-size:0.78rem;font-weight:600;color:var(--text-sub);">'+dt+'</span>'
+                + '</td>'
+                + measureCells + emptyMeasureCells
+                + '</tr>';
+        }).join('');
+
+        return '<div style="margin-bottom:12px;">'
+            + '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;overflow:hidden;">'
+            + '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">'
+            + '<thead><tr style="background:rgba(0,0,0,0.03);border-bottom:1px solid var(--border);">'
+            +   '<th style="padding:8px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">Nome test</th>'
+            +   '<th style="padding:8px 10px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">Data</th>'
+            +   headCols + emptyHeadCols
+            + '</tr></thead>'
+            + '<tbody>' + rows + '</tbody>'
+            + '</table></div></div>';
+    }).join('');
+};
+
 /* ── DATI GLOBALI DASHBOARD ── */
 window._dashData = {};
 
@@ -10676,84 +10753,7 @@ async function _renderVistaResponsabile() {
             ).join('')||'<tr><td colspan="7" style="text-align:center;padding:12px;color:var(--text-muted);">Nessuna statistica partita</td></tr>';
 
             // Progressione test — funzione riutilizzabile
-            const buildTestTable = window.buildTestTable = (items) => {
-                if (!items.length) return '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun dato test.</div>';
-
-                // Raggruppa per tipo test (test_definition)
-                const byDef = {};
-                items.forEach(t => {
-                    const defName  = t.test_sessions?.test_definitions?.name || 'Test';
-                    const perfName = t.test_performances?.name || '—';
-                    const unit     = t.test_performances?.unit || '';
-                    const lib      = t.test_performances?.lower_is_better || false;
-                    const date     = t.test_sessions?.session_date || '';
-                    const sessId   = t.test_sessions?.id || date; // chiave sessione unica
-                    if (!byDef[defName]) byDef[defName] = { perfs: {}, sessions: {} };
-                    if (!byDef[defName].perfs[perfName]) byDef[defName].perfs[perfName] = { unit, lib };
-                    if (!byDef[defName].sessions[sessId]) byDef[defName].sessions[sessId] = { date, measures: {} };
-                    byDef[defName].sessions[sessId].measures[perfName] = t.value;
-                });
-
-                return Object.entries(byDef).map(([defName, {perfs, sessions}]) => {
-                    // Misure ordinate (max 5 colonne)
-                    const perfNames = Object.keys(perfs).slice(0, 5);
-                    // Sessioni ordinate per data desc
-                    const sessRows  = Object.values(sessions).sort((a,b) => b.date.localeCompare(a.date));
-
-                    // Intestazione: Nome test | Data | misura1 | misura2 | ...
-                    const headCols = perfNames.map(p =>
-                        '<th style="padding:7px 10px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">'
-                        + p + (perfs[p].unit ? '<span style="font-weight:400;opacity:0.7;"> ('+perfs[p].unit+')</span>' : '')
-                        + '</th>'
-                    ).join('');
-                    // Padding celle vuote se < 5 misure
-                    const emptyHeadCols = Array(Math.max(0, 5 - perfNames.length)).fill(
-                        '<th style="padding:7px 10px;border-left:1px solid rgba(0,0,0,0.05);"></th>'
-                    ).join('');
-
-                    const rows = sessRows.map((sess, ri) => {
-                        const d  = new Date(sess.date);
-                        const dt = sess.date ? d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
-                        const rowBg = ri % 2 === 0 ? '' : 'background:rgba(0,0,0,0.018);';
-
-                        const measureCells = perfNames.map(p => {
-                            const val = sess.measures[p];
-                            if (val == null) return '<td style="padding:7px 10px;text-align:center;color:var(--text-muted);font-size:0.78rem;border-left:1px solid rgba(0,0,0,0.05);">—</td>';
-                            const unit = perfs[p].unit || '';
-                            return '<td style="padding:7px 10px;text-align:center;border-left:1px solid rgba(0,0,0,0.05);">'
-                                + '<span style="font-size:0.88rem;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--primary);">'+val+'</span>'
-                                + (unit ? '<span style="font-size:0.6rem;color:var(--text-muted);margin-left:2px;">'+unit+'</span>' : '')
-                                + '</td>';
-                        }).join('');
-                        const emptyMeasureCells = Array(Math.max(0, 5 - perfNames.length)).fill(
-                            '<td style="padding:7px 10px;border-left:1px solid rgba(0,0,0,0.05);color:var(--text-muted);text-align:center;font-size:0.75rem;">—</td>'
-                        ).join('');
-
-                        return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);'+rowBg+'">'
-                            + '<td style="padding:7px 12px;white-space:nowrap;">'
-                            +   '<span style="font-size:0.8rem;font-weight:600;color:var(--text-main);">'+defName+'</span>'
-                            + '</td>'
-                            + '<td style="padding:7px 10px;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">'
-                            +   '<span style="font-size:0.78rem;font-weight:600;color:var(--text-sub);">'+dt+'</span>'
-                            + '</td>'
-                            + measureCells
-                            + emptyMeasureCells
-                            + '</tr>';
-                    }).join('');
-
-                    return '<div style="margin-bottom:12px;">'
-                        + '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;overflow:hidden;">'
-                        + '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">'
-                        + '<thead><tr style="background:rgba(0,0,0,0.03);border-bottom:1px solid var(--border);">'
-                        +   '<th style="padding:8px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">Nome test</th>'
-                        +   '<th style="padding:8px 10px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">Data</th>'
-                        +   headCols
-                        +   emptyHeadCols
-                        + '</tr></thead>'
-                        + '<tbody>' + rows + '</tbody>'
-                        + '</table></div></div>';
-                }).join('');
-            };
+            const buildTestTable = window.buildTestTable;
 
             const testBlocks = buildTestTable(tList);
 
