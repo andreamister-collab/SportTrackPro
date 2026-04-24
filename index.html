@@ -8925,17 +8925,17 @@ async function _renderVistaAllenatore() {
                 }
 
                 <!-- Storico sessioni (tabella) -->
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">🗓 Storico sessioni</div>
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <label style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">Dal</label>
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;gap:8px;margin-bottom:8px;min-width:0;">
+                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);white-space:nowrap;">🗓 Storico sessioni</div>
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;flex-shrink:0;">
+                        <label style="font-size:0.65rem;color:var(--text-muted);font-weight:600;white-space:nowrap;">Dal</label>
                         <input type="date" id="dd-date-from" oninput="window._allDrillFilter && window._allDrillFilter('${aid}')"
-                            style="padding:3px 7px;border:1px solid var(--border);border-radius:5px;font-size:0.73rem;background:var(--card);color:var(--text-main);cursor:pointer;">
-                        <label style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">Al</label>
+                            style="padding:2px 6px;border:1px solid var(--border);border-radius:5px;font-size:0.72rem;background:var(--card);color:var(--text-main);cursor:pointer;max-width:130px;">
+                        <label style="font-size:0.65rem;color:var(--text-muted);font-weight:600;white-space:nowrap;">Al</label>
                         <input type="date" id="dd-date-to" oninput="window._allDrillFilter && window._allDrillFilter('${aid}')"
-                            style="padding:3px 7px;border:1px solid var(--border);border-radius:5px;font-size:0.73rem;background:var(--card);color:var(--text-main);cursor:pointer;">
+                            style="padding:2px 6px;border:1px solid var(--border);border-radius:5px;font-size:0.72rem;background:var(--card);color:var(--text-main);cursor:pointer;max-width:130px;">
                         <button onclick="document.getElementById('dd-date-from').value='';document.getElementById('dd-date-to').value='';window._allDrillFilter && window._allDrillFilter('${aid}')"
-                            style="padding:3px 9px;border:1px solid var(--border);border-radius:5px;font-size:0.68rem;background:transparent;cursor:pointer;color:var(--text-muted);">Reset</button>
+                            style="padding:2px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.68rem;background:transparent;cursor:pointer;color:var(--text-muted);white-space:nowrap;">Reset</button>
                     </div>
                 </div>
                 <div id="dd-sess-table-wrap" style="overflow-x:auto;">
@@ -10044,13 +10044,9 @@ async function _renderVistaResponsabile() {
                 return q;
             })(),
             rosterQ,
-            (() => {
-                let q = client.from('test_sessions')
-                    .select('id, session_date, team_id, test_definitions!inner(name)')
-                    .in('team_id', teamIds).order('session_date', { ascending: false });
-                if (sid) q = q.eq('season_id', sid);
-                return q;
-            })(),
+            client.from('test_sessions')
+                .select('id, session_date, team_id, test_definitions!inner(name)')
+                .in('team_id', teamIds).order('session_date', { ascending: false }),
             (() => {
                 let q = client.from('sessions')
                     .select('id, session_date, title, session_types(name), team_id')
@@ -10967,14 +10963,10 @@ async function _renderVistaPreparatore() {
 
         // ── Carica test sessions + results + roster ────────────────────────
         const [testSessRes, rosterRes] = await Promise.all([
-            (() => {
-                let q = client.from('test_sessions')
-                    .select('id, session_date, team_id, test_definitions!inner(id, name)')
-                    .in('team_id', teamIds)
-                    .order('session_date', { ascending: false });
-                if (sid) q = q.eq('season_id', sid);
-                return q;
-            })(),
+            client.from('test_sessions')
+                .select('id, session_date, team_id, test_definitions!inner(id, name)')
+                .in('team_id', teamIds)
+                .order('session_date', { ascending: false }),
             (() => {
                 let q = client.from('athlete_team_seasons')
                     .select('athlete_id, jersey_number, role, team_id, athletes!inner(id, name, surname)')
