@@ -10424,29 +10424,78 @@ async function _renderVistaResponsabile() {
                 +'</tr>'
             ).join('')||'<tr><td colspan="7" style="text-align:center;padding:12px;color:var(--text-muted);">Nessuna statistica partita</td></tr>';
 
-            // Progressione test
-            const testByPerf={};
+            // Progressione test — raggruppa per tipo test (test_definition), poi per misura (performance)
+            // Struttura: { testName -> { perfName -> { unit, lowerIsBetter, vals:[{date,val}] } } }
+            const testByDef={};
             tList.forEach(t=>{
-                const key=(t.test_performances?.name||'')+'__'+(t.test_sessions?.test_definitions?.name||'');
-                if(!testByPerf[key]) testByPerf[key]={perf:t.test_performances?.name||'—',test:t.test_sessions?.test_definitions?.name||'—',unit:t.test_performances?.unit||'',vals:[]};
-                testByPerf[key].vals.push({date:t.test_sessions?.session_date||'',val:t.value});
+                const defName=t.test_sessions?.test_definitions?.name||'Test';
+                const perfName=t.test_performances?.name||'—';
+                const unit=t.test_performances?.unit||'';
+                const lib=t.test_performances?.lower_is_better||false;
+                const date=t.test_sessions?.session_date||'';
+                if(!testByDef[defName]) testByDef[defName]={};
+                if(!testByDef[defName][perfName]) testByDef[defName][perfName]={unit,lib,vals:[]};
+                testByDef[defName][perfName].vals.push({date,val:t.value});
             });
-            const testBlocks=Object.values(testByPerf).map(d=>{
-                const sorted=d.vals.sort((a,b)=>a.date.localeCompare(b.date));
-                const lastVal=sorted[sorted.length-1]?.val, firstVal=sorted[0]?.val;
-                const tr=sorted.length>1?(lastVal>firstVal?'↑':lastVal<firstVal?'↓':'→'):'—';
-                const tc=tr==='↑'?'#10b981':tr==='↓'?'#ef4444':'var(--text-muted)';
-                // Mini sparkline per test
-                const W=80,H=18;
-                const tvs=sorted.map(s=>s.val).filter(v=>v!=null);
-                let testSpark='';
-                if(tvs.length>1){const mx=Math.max(...tvs),mn=Math.min(...tvs),rng=mx-mn||1;const pts2=tvs.map((v,i)=>(((tvs.length>1?i/(tvs.length-1):0)*W).toFixed(1))+','+(H-((v-mn)/rng*H)).toFixed(1)).join(' ');testSpark='<svg viewBox="0 0 '+W+' '+H+'" style="width:80px;height:18px;overflow:visible;"><polyline points="'+pts2+'" fill="none" stroke="'+tc+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';}
-                return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(0,0,0,0.04);">'
-                    +'<div style="flex:1;"><div style="font-size:0.8rem;font-weight:600;">'+(d.perf)+'</div><div style="font-size:0.62rem;color:var(--text-muted);">'+(d.test)+'</div></div>'
-                    +'<div>'+testSpark+'</div>'
-                    +'<span style="font-size:0.78rem;color:var(--text-muted);">'+sorted.length+' mis.</span>'
-                    +'<span style="font-size:0.9rem;font-weight:700;font-family:\'DM Mono\',monospace;">'+lastVal+' <span style="font-size:0.68rem;color:var(--text-muted);">'+d.unit+'</span></span>'
-                    +'<span style="font-size:1rem;font-weight:700;color:'+tc+';">'+tr+'</span>'
+
+            // Costruisce tabella: una riga per ogni misura (performance), colonne = data delle sessioni (max 5 più recenti)
+            const testBlocks = Object.entries(testByDef).map(([defName, perfs])=>{
+                // Raccoglie tutte le date uniche per questo test, ordinate, max 5 più recenti
+                const allDates = [...new Set(
+                    Object.values(perfs).flatMap(p=>p.vals.map(v=>v.date))
+                )].filter(Boolean).sort((a,b)=>a.localeCompare(b));
+                const dates = allDates.slice(-5); // ultime 5 sessioni
+
+                // Intestazione colonne date
+                const dateCols = dates.map(d=>{
+                    const dd=new Date(d);
+                    const fmt=dd.toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
+                    return '<th style="padding:7px 10px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;min-width:72px;">'+fmt+'</th>';
+                }).join('');
+
+                // Righe: una per ogni misura
+                const rows = Object.entries(perfs).map(([perfName, pd])=>{
+                    const valMap={};
+                    pd.vals.forEach(v=>{ if(v.date) valMap[v.date]=v.val; });
+                    const cells = dates.map((d,i)=>{
+                        const val = valMap[d];
+                        if(val==null) return '<td style="padding:7px 10px;text-align:center;color:var(--text-muted);font-size:0.75rem;">—</td>';
+                        // Trend rispetto alla misura precedente disponibile
+                        let trendHtml='';
+                        const prevDates=dates.slice(0,i).reverse();
+                        const prevVal=prevDates.map(pd2=>valMap[pd2]).find(v=>v!=null);
+                        if(prevVal!=null && val!==prevVal){
+                            const better=pd.lib?(val<prevVal):(val>prevVal);
+                            trendHtml='<span style="font-size:0.6rem;margin-left:3px;color:'+(better?'#10b981':'#ef4444')+'">'+(val>prevVal?'▲':'▼')+'</span>';
+                        }
+                        const isLast=i===dates.length-1;
+                        return '<td style="padding:7px 10px;text-align:center;">'
+                            +'<span style="font-size:0.85rem;font-weight:'+(isLast?'800':'600')+';font-family:\'DM Mono\',monospace;color:'+(isLast?'var(--primary)':'var(--text-main)')+';">'+val+'</span>'
+                            +(pd.unit?'<span style="font-size:0.6rem;color:var(--text-muted);margin-left:2px;">'+pd.unit+'</span>':'')
+                            +trendHtml
+                            +'</td>';
+                    }).join('');
+
+                    return '<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">'
+                        +'<td style="padding:7px 12px;white-space:nowrap;">'
+                        +'<div style="font-size:0.8rem;font-weight:600;color:var(--text-main);">'+perfName+'</div>'
+                        +'<div style="font-size:0.62rem;color:var(--text-muted);">'+defName+'</div>'
+                        +'</td>'
+                        +cells
+                        +'</tr>';
+                }).join('');
+
+                return '<div style="margin-bottom:10px;">'
+                    +'<div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8b5cf6;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid rgba(139,92,246,0.15);">🧪 '+defName+'</div>'
+                    +'<div style="overflow-x:auto;">'
+                    +'<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">'
+                    +'<thead><tr style="background:rgba(0,0,0,0.025);">'
+                    +'<th style="padding:7px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">Misura</th>'
+                    +dateCols
+                    +'</tr></thead>'
+                    +'<tbody>'+rows+'</tbody>'
+                    +'</table>'
+                    +'</div>'
                     +'</div>';
             }).join('')||'<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun dato test.</div>';
 
