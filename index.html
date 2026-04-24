@@ -8819,8 +8819,19 @@ async function _renderVistaAllenatore() {
                     </div>
                 </div>
                 <!-- Detail panel -->
-                <div id="all-drill-detail" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;min-height:300px;">
-                    <div style="text-align:center;padding:40px;color:var(--text-sub);">👈 Seleziona un giocatore per vedere il dettaglio</div>
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                    <div id="all-drill-detail" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;min-height:300px;">
+                        <div style="text-align:center;padding:40px;color:var(--text-sub);">👈 Seleziona un giocatore per vedere il dettaglio</div>
+                    </div>
+                    <!-- Test Atletici nel drill-down -->
+                    <div id="all-drill-test-atletici-wrap" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px;">
+                            <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:#8b5cf6;">🧪 Progressione Test Atletici</span>
+                        </div>
+                        <div id="all-drill-test-atletici-content">
+                            <div style="text-align:center;padding:20px;color:var(--text-sub);font-size:0.82rem;">Seleziona un atleta per vedere la progressione dei test.</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -8833,7 +8844,7 @@ async function _renderVistaAllenatore() {
         </div>`;
 
         // ── Drill-down per singolo atleta ──────────────────────────────────
-        window._allDrillAthlete = function(aid) {
+        window._allDrillAthlete = async function(aid) {
             // Highlight sidebar
             document.querySelectorAll('[id^="dd-ath-"]').forEach(el => { el.style.background=''; el.classList.remove('dd-active'); });
             const activeEl = document.getElementById(`dd-ath-${aid}`);
@@ -9007,6 +9018,84 @@ async function _renderVistaAllenatore() {
                 </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--text-muted);">Nessuna sessione nel periodo selezionato.</td></tr>';
             };
             window._allDrillCurrentAid = String(aid);
+
+            // ── Carica Progressione Test Atletici per l'atleta selezionato ──
+            const ddTestWrap = document.getElementById('all-drill-test-atletici-wrap');
+            const ddTestCont = document.getElementById('all-drill-test-atletici-content');
+            if (ddTestWrap && ddTestCont) {
+                ddTestWrap.style.display = 'block';
+                ddTestCont.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-sub);font-size:0.82rem;">⏳ Caricamento test atletici...</div>';
+                try {
+                    const [ddSessRes] = await Promise.all([
+                        client.from('test_sessions')
+                            .select('id, session_date, test_definitions!inner(id, name)')
+                            .in('team_id', teamIds)
+                            .order('session_date', { ascending: false })
+                    ]);
+                    const ddSessions = ddSessRes.data || [];
+                    let ddResults = [];
+                    if (ddSessions.length > 0) {
+                        const ddSessIds = ddSessions.map(s => s.id);
+                        const { data: ddTr } = await client.from('test_results')
+                            .select('athlete_id, value, performance_id, test_session_id, test_performances!inner(id, name, unit, lower_is_better)')
+                            .in('test_session_id', ddSessIds)
+                            .eq('athlete_id', aid);
+                        ddResults = ddTr || [];
+                    }
+                    if (!ddResults.length) {
+                        ddTestCont.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-sub);font-size:0.82rem;">Nessun dato test atletici per questo atleta.</div>';
+                    } else {
+                        const ddPerfMap = {};
+                        ddResults.forEach(r => {
+                            const pid = r.performance_id;
+                            const sessDate = ddSessions.find(s => s.id === r.test_session_id)?.session_date || '';
+                            if (!ddPerfMap[pid]) ddPerfMap[pid] = { name: r.test_performances?.name||'', unit: r.test_performances?.unit||'', lowerIsBetter: r.test_performances?.lower_is_better||false, values: [] };
+                            ddPerfMap[pid].values.push({ date: sessDate, value: r.value });
+                        });
+                        const W = 220, H = 52, padT = 6, padB = 14;
+                        const ddCards = Object.values(ddPerfMap).map(p => {
+                            const sorted = p.values.slice().sort((a,b) => a.date.localeCompare(b.date));
+                            const first = sorted[0].value, last = sorted[sorted.length-1].value;
+                            const improvement = p.lowerIsBetter ? (first-last)/(first||1)*100 : (last-first)/(first||1)*100;
+                            const col = improvement >= 5 ? '#059669' : improvement >= 0 ? '#0ea5e9' : '#ef4444';
+                            const icon = improvement >= 5 ? '▲' : improvement >= 0 ? '→' : '▼';
+                            // sparkline
+                            let sparkHTML = '';
+                            if (sorted.length >= 2) {
+                                const maxV = Math.max(...sorted.map(v=>v.value), 0.01);
+                                const minV = Math.min(...sorted.map(v=>v.value));
+                                const range = maxV - minV || 1;
+                                const pts = sorted.map((v,i) =>
+                                    `${((i/(sorted.length-1))*(W-8)+4).toFixed(1)},${(H-padB-(((v.value-minV)/range)*(H-padT-padB))).toFixed(1)}`
+                                ).join(' ');
+                                sparkHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="40" style="display:block;margin:6px 0 2px;">
+                                    <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+                                    ${sorted.map((v,i) => {
+                                        const cx = ((i/(sorted.length-1))*(W-8)+4).toFixed(1);
+                                        const cy = (H-padB-(((v.value-minV)/range)*(H-padT-padB))).toFixed(1);
+                                        return `<circle cx="${cx}" cy="${cy}" r="3" fill="${col}" stroke="white" stroke-width="1.5"/>`;
+                                    }).join('')}
+                                    <text x="4" y="${H-2}" font-size="9" fill="#94a3b8">${new Date(sorted[0].date).toLocaleDateString('it-IT',{day:'2-digit',month:'short'})}</text>
+                                    <text x="${W-4}" y="${H-2}" font-size="9" fill="#94a3b8" text-anchor="end">${new Date(sorted[sorted.length-1].date).toLocaleDateString('it-IT',{day:'2-digit',month:'short'})}</text>
+                                </svg>`;
+                            }
+                            return `<div style="background:rgba(0,0,0,0.03);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:180px;">
+                                <div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#8b5cf6;margin-bottom:6px;">🧪 ${p.name} <span style="font-weight:400;color:var(--text-muted);">(${p.unit})</span></div>
+                                ${sparkHTML}
+                                <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px;">
+                                    <span style="font-family:'DM Mono',monospace;font-size:1.4rem;font-weight:800;color:var(--text-main);">${last}</span>
+                                    <span style="font-size:0.78rem;font-weight:700;color:${col};">${icon} ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)}%</span>
+                                </div>
+                                <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">Inizio: ${first} ${p.unit} · ${sorted.length} misurazioni</div>
+                                ${sorted.length >= 2 ? `<div style="margin-top:6px;height:4px;background:rgba(0,0,0,0.06);border-radius:99px;overflow:hidden;"><div style="height:100%;width:${Math.min(100,Math.max(0,(50+improvement/2)))}%;background:${col};border-radius:99px;transition:width 0.5s;"></div></div>` : ''}
+                            </div>`;
+                        }).join('');
+                        ddTestCont.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">${ddCards}</div>`;
+                    }
+                } catch(e) {
+                    if (ddTestCont) ddTestCont.innerHTML = `<div style="color:#ef4444;font-size:0.8rem;padding:12px;">Errore test atletici: ${e.message}</div>`;
+                }
+            }
         }; // end _allDrillAthlete
         window._allTab = function(tab) {
             document.querySelectorAll('.all-tab-btn').forEach((b,i) => {
@@ -13758,14 +13847,58 @@ function templateGenitoreView(athlete, stats, trainings, matches, assessments, p
         </div>
     </div>
 
-    <!-- ④ PROGRESSIONE TEST ATLETICI -->
+    <!-- ④ PROGRESSIONE TEST ATLETICI — TAB PANEL -->
     <div class="g-sec-title"><div class="g-sec-dot" style="background:#8b5cf6;"></div> Progressione Test Atletici</div>
     <div class="card" style="margin-bottom:2.5rem;">
         <div style="padding:1.4rem;">
-            <div id="g-test-atletici-content">
-                <div style="text-align:center;padding:30px;color:var(--text-sub);">
-                    <div style="font-size:1.5rem;margin-bottom:8px;">🧪</div>
-                    <div style="font-size:0.85rem;">Caricamento dati test atletici...</div>
+            <!-- Sub-tabs: Dashboard | KPI | Drill-down -->
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                <button id="g-test-tab-btn-dashboard" onclick="window._gTestTab('dashboard')"
+                    style="padding:6px 14px;border-radius:7px;border:1px solid var(--primary);background:var(--primary);color:white;font-family:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s;">
+                    📊 Riepilogo
+                </button>
+                <button id="g-test-tab-btn-kpi" onclick="window._gTestTab('kpi')"
+                    style="padding:6px 14px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-family:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s;">
+                    📈 KPI
+                </button>
+                <button id="g-test-tab-btn-drilldown" onclick="window._gTestTab('drilldown')"
+                    style="padding:6px 14px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-family:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s;">
+                    🔍 Dettaglio Misurazioni
+                </button>
+            </div>
+
+            <!-- TAB: DASHBOARD/RIEPILOGO -->
+            <div id="g-test-tab-dashboard">
+                <!-- Indicatore progresso globale -->
+                <div id="g-test-progress-bar-wrap" style="display:none;background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.18);border-radius:10px;padding:14px 16px;margin-bottom:14px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8b5cf6;">📈 Progresso Complessivo</div>
+                        <div id="g-test-progress-pct" style="font-size:1.1rem;font-weight:900;font-family:'DM Mono',monospace;color:#8b5cf6;">—</div>
+                    </div>
+                    <div style="height:8px;background:rgba(139,92,246,0.12);border-radius:99px;overflow:hidden;">
+                        <div id="g-test-progress-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#8b5cf6,#a78bfa);border-radius:99px;transition:width 0.7s ease;"></div>
+                    </div>
+                    <div id="g-test-progress-sub" style="font-size:0.68rem;color:var(--text-muted);margin-top:5px;"></div>
+                </div>
+                <div id="g-test-atletici-content">
+                    <div style="text-align:center;padding:30px;color:var(--text-sub);">
+                        <div style="font-size:1.5rem;margin-bottom:8px;">🧪</div>
+                        <div style="font-size:0.85rem;">Caricamento dati test atletici...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: KPI -->
+            <div id="g-test-tab-kpi" style="display:none;">
+                <div id="g-test-kpi-content">
+                    <div style="text-align:center;padding:24px;color:var(--text-sub);font-size:0.82rem;">Caricamento KPI...</div>
+                </div>
+            </div>
+
+            <!-- TAB: DRILL-DOWN (dettaglio misurazioni nel tempo) -->
+            <div id="g-test-tab-drilldown" style="display:none;">
+                <div id="g-test-drill-content">
+                    <div style="text-align:center;padding:24px;color:var(--text-sub);font-size:0.82rem;">Dati non ancora caricati.</div>
                 </div>
             </div>
         </div>
@@ -14095,20 +14228,30 @@ window.initGenitoreView = async function() {
                 '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-sub);">Nessuna sessione corrisponde ai filtri</td></tr>';
         };
 
+        // ── Tab switching per test atletici (genitore) ──
+        window._gTestTab = function(tab) {
+            ['dashboard','kpi','drilldown'].forEach(t => {
+                const btn = document.getElementById('g-test-tab-btn-' + t);
+                const sec = document.getElementById('g-test-tab-' + t);
+                const isActive = t === tab;
+                if (btn) {
+                    btn.style.background = isActive ? 'var(--primary)' : 'transparent';
+                    btn.style.color = isActive ? 'white' : 'var(--text-muted)';
+                    btn.style.borderColor = isActive ? 'var(--primary)' : 'var(--border)';
+                }
+                if (sec) sec.style.display = isActive ? 'block' : 'none';
+            });
+        };
+
         // ── Progressione Test Atletici (genitore) ──
         const gTestCont = document.getElementById('g-test-atletici-content');
         if (gTestCont && activeTeamSeason?.team_id) {
             try {
                 const gTeamId = activeTeamSeason.team_id;
-                const [gTestSessRes, gRosterRes] = await Promise.all([
-                    client.from('test_sessions')
-                        .select('id, session_date, team_id, test_definitions!inner(id, name)')
-                        .eq('team_id', gTeamId)
-                        .order('session_date', { ascending: false }),
-                    client.from('athlete_team_seasons')
-                        .select('athlete_id, jersey_number, athletes!inner(id, name, surname)')
-                        .eq('team_id', gTeamId)
-                ]);
+                const gTestSessRes = await client.from('test_sessions')
+                    .select('id, session_date, team_id, test_definitions!inner(id, name)')
+                    .eq('team_id', gTeamId)
+                    .order('session_date', { ascending: false });
                 const gTestSessions = gTestSessRes.data || [];
                 let gTestResults = [];
                 if (gTestSessions.length > 0) {
@@ -14119,8 +14262,13 @@ window.initGenitoreView = async function() {
                         .eq('athlete_id', athleteData.id);
                     gTestResults = gTr || [];
                 }
+
                 if (!gTestResults.length) {
                     gTestCont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:0.85rem;">Nessun dato test atletici disponibile per questo atleta.</div>';
+                    const kpiC = document.getElementById('g-test-kpi-content');
+                    const drC = document.getElementById('g-test-drill-content');
+                    if (kpiC) kpiC.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:0.82rem;">Nessun dato disponibile.</div>';
+                    if (drC) drC.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:0.82rem;">Nessun dato disponibile.</div>';
                 } else {
                     // Raggruppa per performance
                     const gPerfMap = {};
@@ -14130,28 +14278,154 @@ window.initGenitoreView = async function() {
                         if (!gPerfMap[pid]) gPerfMap[pid] = { name: r.test_performances?.name||'', unit: r.test_performances?.unit||'', lowerIsBetter: r.test_performances?.lower_is_better||false, values: [] };
                         gPerfMap[pid].values.push({ date: sessDate, value: r.value });
                     });
-                    const perfCards = Object.values(gPerfMap).map(p => {
-                        const sorted = p.values.slice().sort((a,b)=>a.date.localeCompare(b.date));
-                        if (sorted.length < 2) {
-                            return `<div class="card" style="padding:14px;">
-                                <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:6px;">🧪 ${p.name}</div>
-                                <div style="font-size:0.82rem;color:var(--text-sub);">Solo una misurazione disponibile (${sorted[0]?.value} ${p.unit})</div>
-                            </div>`;
-                        }
+
+                    // Calcola miglioramento per ogni perf
+                    const perfDetails = Object.values(gPerfMap).map(p => {
+                        const sorted = p.values.slice().sort((a,b) => a.date.localeCompare(b.date));
+                        if (sorted.length < 2) return { ...p, sorted, improvement: null };
                         const first = sorted[0].value, last = sorted[sorted.length-1].value;
                         const improvement = p.lowerIsBetter ? (first-last)/(first||1)*100 : (last-first)/(first||1)*100;
-                        const col = improvement>=5?'#059669':improvement>=0?'#0ea5e9':'#ef4444';
-                        const icon = improvement>=5?'▲':improvement>=0?'→':'▼';
-                        return `<div class="card" style="padding:14px;">
-                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:8px;">🧪 ${p.name} <span style="font-weight:400;">(${p.unit})</span></div>
-                            <div style="display:flex;align-items:baseline;gap:8px;">
-                                <span style="font-family:'DM Mono',monospace;font-size:1.5rem;font-weight:800;color:var(--text-main);">${last}</span>
-                                <span style="font-size:0.78rem;font-weight:700;color:${col};">${icon} ${improvement>0?'+':''}${improvement.toFixed(1)}%</span>
-                            </div>
-                            <div style="font-size:0.68rem;color:var(--text-muted);margin-top:4px;">Prima: ${first} ${p.unit} · (${new Date(sorted[0].date).toLocaleDateString('it-IT')} → ${new Date(sorted[sorted.length-1].date).toLocaleDateString('it-IT')})</div>
-                        </div>`;
+                        return { ...p, sorted, improvement };
+                    });
+
+                    // Progress bar globale
+                    const withImprov = perfDetails.filter(p => p.improvement !== null);
+                    const avgImprov = withImprov.length > 0
+                        ? withImprov.reduce((s,p) => s + p.improvement, 0) / withImprov.length
+                        : null;
+                    const pbWrap = document.getElementById('g-test-progress-bar-wrap');
+                    const pbPct = document.getElementById('g-test-progress-pct');
+                    const pbFill = document.getElementById('g-test-progress-fill');
+                    const pbSub = document.getElementById('g-test-progress-sub');
+                    if (pbWrap && avgImprov !== null) {
+                        pbWrap.style.display = 'block';
+                        const sign = avgImprov > 0 ? '+' : '';
+                        pbPct.textContent = sign + avgImprov.toFixed(1) + '%';
+                        pbPct.style.color = avgImprov >= 5 ? '#059669' : avgImprov >= 0 ? '#8b5cf6' : '#ef4444';
+                        const fillW = Math.min(100, Math.max(5, 50 + avgImprov));
+                        pbFill.style.width = fillW + '%';
+                        pbFill.style.background = avgImprov >= 5
+                            ? 'linear-gradient(90deg,#059669,#34d399)'
+                            : avgImprov >= 0
+                                ? 'linear-gradient(90deg,#8b5cf6,#a78bfa)'
+                                : 'linear-gradient(90deg,#dc2626,#f87171)';
+                        pbSub.textContent = 'Variazione media prima \u2192 ultima sessione \u00b7 ' + withImprov.length + ' performance monitorate';
+                    }
+
+                    // ── TAB DASHBOARD: cards ──
+                    const perfCards = perfDetails.map(p => {
+                        const sorted = p.sorted;
+                        if (sorted.length < 2) {
+                            return '<div class="card" style="padding:14px;">'
+                                + '<div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:6px;">\uD83E\uDDEA ' + p.name + '</div>'
+                                + '<div style="font-size:0.82rem;color:var(--text-sub);">Solo una misurazione disponibile (' + (sorted[0]?.value) + ' ' + p.unit + ')</div>'
+                                + '</div>';
+                        }
+                        const first = sorted[0].value, last = sorted[sorted.length-1].value;
+                        const improvement = p.improvement;
+                        const col = improvement >= 5 ? '#059669' : improvement >= 0 ? '#0ea5e9' : '#ef4444';
+                        const icon = improvement >= 5 ? '\u25b2' : improvement >= 0 ? '\u2192' : '\u25bc';
+                        const fillW2 = Math.min(100, Math.max(5, 50 + improvement));
+                        return '<div class="card" style="padding:14px;">'
+                            + '<div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:8px;">\uD83E\uDDEA ' + p.name + ' <span style="font-weight:400;">(' + p.unit + ')</span></div>'
+                            + '<div style="display:flex;align-items:baseline;gap:8px;">'
+                            + '<span style="font-family:\'DM Mono\',monospace;font-size:1.5rem;font-weight:800;color:var(--text-main);">' + last + '</span>'
+                            + '<span style="font-size:0.78rem;font-weight:700;color:' + col + ';">' + icon + ' ' + (improvement > 0 ? '+' : '') + improvement.toFixed(1) + '%</span>'
+                            + '</div>'
+                            + '<div style="font-size:0.68rem;color:var(--text-muted);margin-top:4px;">Prima: ' + first + ' ' + p.unit + ' \u00b7 (' + new Date(sorted[0].date).toLocaleDateString('it-IT') + ' \u2192 ' + new Date(sorted[sorted.length-1].date).toLocaleDateString('it-IT') + ')</div>'
+                            + '<div style="margin-top:8px;height:4px;background:rgba(0,0,0,0.07);border-radius:99px;overflow:hidden;"><div style="height:100%;width:' + Math.min(100, Math.max(5, 50 + improvement)) + '%;background:' + col + ';border-radius:99px;"></div></div>'
+                            + '</div>';
                     }).join('');
-                    gTestCont.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">${perfCards}</div>`;
+                    gTestCont.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">' + perfCards + '</div>';
+
+                    // ── TAB KPI: tabella delta per performance ──
+                    const kpiCont = document.getElementById('g-test-kpi-content');
+                    if (kpiCont) {
+                        const kpiRows = perfDetails.filter(p => p.improvement !== null).map(p => {
+                            const sorted = p.sorted;
+                            const delta = p.improvement;
+                            const col = delta >= 5 ? '#059669' : delta >= 0 ? '#0ea5e9' : '#ef4444';
+                            const sign = delta > 0 ? '+' : '';
+                            return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">'
+                                + '<td style="padding:9px 10px;font-weight:600;font-size:0.82rem;">\uD83E\uDDEA ' + p.name + ' <span style="font-weight:400;color:var(--text-muted);font-size:0.72rem;">(' + p.unit + ')</span></td>'
+                                + '<td style="padding:9px 10px;text-align:center;font-family:\'DM Mono\',monospace;font-weight:800;font-size:0.95rem;color:' + col + ';">' + sign + delta.toFixed(1) + '%</td>'
+                                + '<td style="padding:9px 10px;text-align:center;font-size:0.8rem;color:var(--text-sub);">' + sorted[0].value + ' \u2192 ' + sorted[sorted.length-1].value + ' ' + p.unit + '</td>'
+                                + '<td style="padding:9px 10px;text-align:center;font-size:0.72rem;color:var(--text-muted);">' + sorted.length + ' misurazioni</td>'
+                                + '</tr>';
+                        }).join('') || '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-sub);">Dati insufficienti (servono almeno 2 sessioni per performance)</td></tr>';
+
+                        kpiCont.innerHTML = '<div style="overflow-x:auto;">'
+                            + '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">'
+                            + '<thead><tr style="background:rgba(0,0,0,0.03);">'
+                            + '<th style="padding:8px 10px;text-align:left;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Performance</th>'
+                            + '<th style="padding:8px;text-align:center;font-size:0.65rem;font-weight:700;color:var(--primary);text-transform:uppercase;">\u0394 Progresso</th>'
+                            + '<th style="padding:8px;text-align:center;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Prima \u2192 Ultima</th>'
+                            + '<th style="padding:8px;text-align:center;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Sessioni</th>'
+                            + '</tr></thead>'
+                            + '<tbody>' + kpiRows + '</tbody>'
+                            + '</table>'
+                            + '</div>'
+                            + '<div style="font-size:0.68rem;color:var(--text-muted);margin-top:8px;">% = variazione dalla prima all\'ultima sessione registrata</div>';
+                    }
+
+                    // ── TAB DRILL-DOWN: storico misurazioni nel tempo con sparkline ──
+                    const drillCont = document.getElementById('g-test-drill-content');
+                    if (drillCont) {
+                        const W = 260, H = 56, padT = 6, padB = 14;
+                        const drillCards = perfDetails.map(p => {
+                            const sorted = p.sorted;
+                            const last = sorted[sorted.length-1];
+                            const col = p.improvement !== null
+                                ? (p.improvement >= 5 ? '#059669' : p.improvement >= 0 ? '#0ea5e9' : '#ef4444')
+                                : '#94a3b8';
+
+                            // Sparkline SVG
+                            let sparkHTML = '';
+                            if (sorted.length >= 2) {
+                                const maxV = Math.max(...sorted.map(v => v.value), 0.01);
+                                const minV = Math.min(...sorted.map(v => v.value));
+                                const range = maxV - minV || 1;
+                                const pts = sorted.map((v, i) =>
+                                    ((i / (sorted.length - 1)) * (W - 8) + 4).toFixed(1) + ',' + (H - padB - ((v.value - minV) / range) * (H - padT - padB)).toFixed(1)
+                                ).join(' ');
+                                const dots = sorted.map((v, i) => {
+                                    const cx = ((i / (sorted.length - 1)) * (W - 8) + 4).toFixed(1);
+                                    const cy = (H - padB - ((v.value - minV) / range) * (H - padT - padB)).toFixed(1);
+                                    return '<circle cx="' + cx + '" cy="' + cy + '" r="3.5" fill="' + col + '" stroke="white" stroke-width="1.5"/>';
+                                }).join('');
+                                sparkHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="50" style="display:block;margin:8px 0 4px;">'
+                                    + '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>'
+                                    + dots
+                                    + '<text x="4" y="' + (H - 2) + '" font-size="9" fill="#94a3b8">' + new Date(sorted[0].date).toLocaleDateString('it-IT', {day:'2-digit',month:'short'}) + '</text>'
+                                    + '<text x="' + (W - 4) + '" y="' + (H - 2) + '" font-size="9" fill="#94a3b8" text-anchor="end">' + new Date(sorted[sorted.length-1].date).toLocaleDateString('it-IT', {day:'2-digit',month:'short'}) + '</text>'
+                                    + '</svg>';
+                            }
+
+                            // Tabella storico misurazioni
+                            const histRows = sorted.slice().reverse().map(v =>
+                                '<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">'
+                                + '<td style="padding:5px 8px;font-size:0.75rem;color:var(--text-muted);">' + new Date(v.date).toLocaleDateString('it-IT', {day:'2-digit',month:'short',year:'2-digit'}) + '</td>'
+                                + '<td style="padding:5px 8px;text-align:right;font-family:\'DM Mono\',monospace;font-weight:700;font-size:0.85rem;color:var(--text-main);">' + v.value + ' <span style="font-size:0.68rem;font-weight:400;color:var(--text-muted);">' + p.unit + '</span></td>'
+                                + '</tr>'
+                            ).join('');
+
+                            const signLabel = p.improvement !== null ? (p.improvement > 0 ? '+' : '') + p.improvement.toFixed(1) + '%' : '—';
+
+                            return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;">'
+                                + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
+                                + '<div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#8b5cf6;">\uD83E\uDDEA ' + p.name + '</div>'
+                                + '<div style="font-size:0.72rem;font-weight:700;color:' + col + ';">' + signLabel + '</div>'
+                                + '</div>'
+                                + '<div style="font-size:0.65rem;color:var(--text-muted);margin-bottom:4px;">' + p.unit + ' · ' + sorted.length + ' misurazioni</div>'
+                                + sparkHTML
+                                + '<div style="max-height:160px;overflow-y:auto;margin-top:4px;">'
+                                + '<table style="width:100%;border-collapse:collapse;"><tbody>' + histRows + '</tbody></table>'
+                                + '</div>'
+                                + '</div>';
+                        }).join('');
+
+                        drillCont.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">' + drillCards + '</div>';
+                    }
                 }
             } catch(e) {
                 console.warn('genitore test atletici error', e);
