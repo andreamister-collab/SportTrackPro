@@ -10424,80 +10424,87 @@ async function _renderVistaResponsabile() {
                 +'</tr>'
             ).join('')||'<tr><td colspan="7" style="text-align:center;padding:12px;color:var(--text-muted);">Nessuna statistica partita</td></tr>';
 
-            // Progressione test — raggruppa per tipo test (test_definition), poi per misura (performance)
-            // Struttura: { testName -> { perfName -> { unit, lowerIsBetter, vals:[{date,val}] } } }
-            const testByDef={};
-            tList.forEach(t=>{
-                const defName=t.test_sessions?.test_definitions?.name||'Test';
-                const perfName=t.test_performances?.name||'—';
-                const unit=t.test_performances?.unit||'';
-                const lib=t.test_performances?.lower_is_better||false;
-                const date=t.test_sessions?.session_date||'';
-                if(!testByDef[defName]) testByDef[defName]={};
-                if(!testByDef[defName][perfName]) testByDef[defName][perfName]={unit,lib,vals:[]};
-                testByDef[defName][perfName].vals.push({date,val:t.value});
-            });
+            // Progressione test — funzione riutilizzabile
+            const buildTestTable = (items) => {
+                if (!items.length) return '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun dato test.</div>';
 
-            // Costruisce tabella: una riga per ogni misura (performance), colonne = data delle sessioni (max 5 più recenti)
-            const testBlocks = Object.entries(testByDef).map(([defName, perfs])=>{
-                // Raccoglie tutte le date uniche per questo test, ordinate, max 5 più recenti
-                const allDates = [...new Set(
-                    Object.values(perfs).flatMap(p=>p.vals.map(v=>v.date))
-                )].filter(Boolean).sort((a,b)=>a.localeCompare(b));
-                const dates = allDates.slice(-5); // ultime 5 sessioni
+                // Raggruppa per tipo test (test_definition)
+                const byDef = {};
+                items.forEach(t => {
+                    const defName  = t.test_sessions?.test_definitions?.name || 'Test';
+                    const perfName = t.test_performances?.name || '—';
+                    const unit     = t.test_performances?.unit || '';
+                    const lib      = t.test_performances?.lower_is_better || false;
+                    const date     = t.test_sessions?.session_date || '';
+                    const sessId   = t.test_sessions?.id || date; // chiave sessione unica
+                    if (!byDef[defName]) byDef[defName] = { perfs: {}, sessions: {} };
+                    if (!byDef[defName].perfs[perfName]) byDef[defName].perfs[perfName] = { unit, lib };
+                    if (!byDef[defName].sessions[sessId]) byDef[defName].sessions[sessId] = { date, measures: {} };
+                    byDef[defName].sessions[sessId].measures[perfName] = t.value;
+                });
 
-                // Intestazione colonne date
-                const dateCols = dates.map(d=>{
-                    const dd=new Date(d);
-                    const fmt=dd.toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
-                    return '<th style="padding:7px 10px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;min-width:72px;">'+fmt+'</th>';
-                }).join('');
+                return Object.entries(byDef).map(([defName, {perfs, sessions}]) => {
+                    // Misure ordinate (max 5 colonne)
+                    const perfNames = Object.keys(perfs).slice(0, 5);
+                    // Sessioni ordinate per data desc
+                    const sessRows  = Object.values(sessions).sort((a,b) => b.date.localeCompare(a.date));
 
-                // Righe: una per ogni misura
-                const rows = Object.entries(perfs).map(([perfName, pd])=>{
-                    const valMap={};
-                    pd.vals.forEach(v=>{ if(v.date) valMap[v.date]=v.val; });
-                    const cells = dates.map((d,i)=>{
-                        const val = valMap[d];
-                        if(val==null) return '<td style="padding:7px 10px;text-align:center;color:var(--text-muted);font-size:0.75rem;">—</td>';
-                        // Trend rispetto alla misura precedente disponibile
-                        let trendHtml='';
-                        const prevDates=dates.slice(0,i).reverse();
-                        const prevVal=prevDates.map(pd2=>valMap[pd2]).find(v=>v!=null);
-                        if(prevVal!=null && val!==prevVal){
-                            const better=pd.lib?(val<prevVal):(val>prevVal);
-                            trendHtml='<span style="font-size:0.6rem;margin-left:3px;color:'+(better?'#10b981':'#ef4444')+'">'+(val>prevVal?'▲':'▼')+'</span>';
-                        }
-                        const isLast=i===dates.length-1;
-                        return '<td style="padding:7px 10px;text-align:center;">'
-                            +'<span style="font-size:0.85rem;font-weight:'+(isLast?'800':'600')+';font-family:\'DM Mono\',monospace;color:'+(isLast?'var(--primary)':'var(--text-main)')+';">'+val+'</span>'
-                            +(pd.unit?'<span style="font-size:0.6rem;color:var(--text-muted);margin-left:2px;">'+pd.unit+'</span>':'')
-                            +trendHtml
-                            +'</td>';
+                    // Intestazione: Nome test | Data | misura1 | misura2 | ...
+                    const headCols = perfNames.map(p =>
+                        '<th style="padding:7px 10px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">'
+                        + p + (perfs[p].unit ? '<span style="font-weight:400;opacity:0.7;"> ('+perfs[p].unit+')</span>' : '')
+                        + '</th>'
+                    ).join('');
+                    // Padding celle vuote se < 5 misure
+                    const emptyHeadCols = Array(Math.max(0, 5 - perfNames.length)).fill(
+                        '<th style="padding:7px 10px;border-left:1px solid rgba(0,0,0,0.05);"></th>'
+                    ).join('');
+
+                    const rows = sessRows.map((sess, ri) => {
+                        const d  = new Date(sess.date);
+                        const dt = sess.date ? d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+                        const rowBg = ri % 2 === 0 ? '' : 'background:rgba(0,0,0,0.018);';
+
+                        const measureCells = perfNames.map(p => {
+                            const val = sess.measures[p];
+                            if (val == null) return '<td style="padding:7px 10px;text-align:center;color:var(--text-muted);font-size:0.78rem;border-left:1px solid rgba(0,0,0,0.05);">—</td>';
+                            const unit = perfs[p].unit || '';
+                            return '<td style="padding:7px 10px;text-align:center;border-left:1px solid rgba(0,0,0,0.05);">'
+                                + '<span style="font-size:0.88rem;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--primary);">'+val+'</span>'
+                                + (unit ? '<span style="font-size:0.6rem;color:var(--text-muted);margin-left:2px;">'+unit+'</span>' : '')
+                                + '</td>';
+                        }).join('');
+                        const emptyMeasureCells = Array(Math.max(0, 5 - perfNames.length)).fill(
+                            '<td style="padding:7px 10px;border-left:1px solid rgba(0,0,0,0.05);color:var(--text-muted);text-align:center;font-size:0.75rem;">—</td>'
+                        ).join('');
+
+                        return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);'+rowBg+'">'
+                            + '<td style="padding:7px 12px;white-space:nowrap;">'
+                            +   '<span style="font-size:0.8rem;font-weight:600;color:var(--text-main);">'+defName+'</span>'
+                            + '</td>'
+                            + '<td style="padding:7px 10px;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">'
+                            +   '<span style="font-size:0.78rem;font-weight:600;color:var(--text-sub);">'+dt+'</span>'
+                            + '</td>'
+                            + measureCells
+                            + emptyMeasureCells
+                            + '</tr>';
                     }).join('');
 
-                    return '<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">'
-                        +'<td style="padding:7px 12px;white-space:nowrap;">'
-                        +'<div style="font-size:0.8rem;font-weight:600;color:var(--text-main);">'+perfName+'</div>'
-                        +'<div style="font-size:0.62rem;color:var(--text-muted);">'+defName+'</div>'
-                        +'</td>'
-                        +cells
-                        +'</tr>';
+                    return '<div style="margin-bottom:12px;">'
+                        + '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;overflow:hidden;">'
+                        + '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">'
+                        + '<thead><tr style="background:rgba(0,0,0,0.03);border-bottom:1px solid var(--border);">'
+                        +   '<th style="padding:8px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">Nome test</th>'
+                        +   '<th style="padding:8px 10px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">Data</th>'
+                        +   headCols
+                        +   emptyHeadCols
+                        + '</tr></thead>'
+                        + '<tbody>' + rows + '</tbody>'
+                        + '</table></div></div>';
                 }).join('');
+            };
 
-                return '<div style="margin-bottom:10px;">'
-                    +'<div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8b5cf6;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid rgba(139,92,246,0.15);">🧪 '+defName+'</div>'
-                    +'<div style="overflow-x:auto;">'
-                    +'<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">'
-                    +'<thead><tr style="background:rgba(0,0,0,0.025);">'
-                    +'<th style="padding:7px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">Misura</th>'
-                    +dateCols
-                    +'</tr></thead>'
-                    +'<tbody>'+rows+'</tbody>'
-                    +'</table>'
-                    +'</div>'
-                    +'</div>';
-            }).join('')||'<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun dato test.</div>';
+            const testBlocks = buildTestTable(tList);
 
             // ── Helper: rende le sezioni filtrate per data ────────────────────
             const renderDrillSections = (fromDate, toDate) => {
@@ -10540,53 +10547,7 @@ async function _renderVistaResponsabile() {
 
                 // Test filtrati per data sessione
                 const filtTest = tList.filter(t => inRange(t.test_sessions?.session_date));
-                const testByDefF={};
-                filtTest.forEach(t=>{
-                    const defName=t.test_sessions?.test_definitions?.name||'Test';
-                    const perfName=t.test_performances?.name||'—';
-                    const unit=t.test_performances?.unit||'';
-                    const lib=t.test_performances?.lower_is_better||false;
-                    const date=t.test_sessions?.session_date||'';
-                    if(!testByDefF[defName]) testByDefF[defName]={};
-                    if(!testByDefF[defName][perfName]) testByDefF[defName][perfName]={unit,lib,vals:[]};
-                    testByDefF[defName][perfName].vals.push({date,val:t.value});
-                });
-                const filtTestBlocks = Object.entries(testByDefF).map(([defName, perfs])=>{
-                    const allDates=[...new Set(Object.values(perfs).flatMap(p=>p.vals.map(v=>v.date)))].filter(Boolean).sort((a,b)=>a.localeCompare(b));
-                    const dates=allDates.slice(-5);
-                    const dateCols=dates.map(d=>{
-                        const dd=new Date(d);
-                        const fmt=dd.toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
-                        return '<th style="padding:7px 10px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;min-width:72px;">'+fmt+'</th>';
-                    }).join('');
-                    const rows=Object.entries(perfs).map(([perfName,pd])=>{
-                        const valMap={};
-                        pd.vals.forEach(v=>{ if(v.date) valMap[v.date]=v.val; });
-                        const cells=dates.map((d,i)=>{
-                            const val=valMap[d];
-                            if(val==null) return '<td style="padding:7px 10px;text-align:center;color:var(--text-muted);font-size:0.75rem;">—</td>';
-                            let trendHtml='';
-                            const prevVal=dates.slice(0,i).reverse().map(pd2=>valMap[pd2]).find(v=>v!=null);
-                            if(prevVal!=null&&val!==prevVal){const better=pd.lib?(val<prevVal):(val>prevVal);trendHtml='<span style="font-size:0.6rem;margin-left:3px;color:'+(better?'#10b981':'#ef4444')+'">'+(val>prevVal?'▲':'▼')+'</span>';}
-                            const isLast=i===dates.length-1;
-                            return '<td style="padding:7px 10px;text-align:center;">'
-                                +'<span style="font-size:0.85rem;font-weight:'+(isLast?'800':'600')+';font-family:\'DM Mono\',monospace;color:'+(isLast?'var(--primary)':'var(--text-main)')+';">'+val+'</span>'
-                                +(pd.unit?'<span style="font-size:0.6rem;color:var(--text-muted);margin-left:2px;">'+pd.unit+'</span>':'')
-                                +trendHtml+'</td>';
-                        }).join('');
-                        return '<tr style="border-bottom:1px solid rgba(0,0,0,0.04);">'
-                            +'<td style="padding:7px 12px;white-space:nowrap;">'
-                            +'<div style="font-size:0.8rem;font-weight:600;color:var(--text-main);">'+perfName+'</div>'
-                            +'<div style="font-size:0.62rem;color:var(--text-muted);">'+defName+'</div>'
-                            +'</td>'+cells+'</tr>';
-                    }).join('');
-                    return '<div style="margin-bottom:10px;">'
-                        +'<div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8b5cf6;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid rgba(139,92,246,0.15);">🧪 '+defName+'</div>'
-                        +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.8rem;">'
-                        +'<thead><tr style="background:rgba(0,0,0,0.025);">'
-                        +'<th style="padding:7px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">Misura</th>'
-                        +dateCols+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-                }).join('')||'<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun dato test nel periodo.</div>';
+                const filtTestBlocks = buildTestTable(filtTest);
 
                 // Aggiorna i tbody/contenuti nelle sezioni già nel DOM
                 const presBody = cardEl.querySelector('#dd-att-tbody');
