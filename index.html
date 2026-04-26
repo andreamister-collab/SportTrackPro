@@ -6562,17 +6562,15 @@ window.templateDashboard = function() {
 
             <!-- PROGRESSIONE TEST ATLETICI -->
             <div class="card" style="padding:18px 20px; margin-top:16px;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
-                    <span style="font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:0.09em; color:#8b5cf6;">🏃 Progressione Test Atletici</span>
-                    <div style="display:flex; align-items:center; gap:6px; margin-left:auto; flex-wrap:wrap;">
-                        <select id="pres-test-filter-team" onchange="window._presTestFilter()" style="padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.72rem; color:var(--text-main); background:var(--card); font-family:inherit;">
-                            <option value="all">Tutte le squadre</option>
-                        </select>
-                        <input type="date" id="pres-test-filter-from" onchange="window._presTestFilter()" placeholder="Dal" style="padding:3px 7px; border:1px solid var(--border); border-radius:6px; font-size:0.72rem; color:var(--text-main); background:var(--card); font-family:inherit;">
-                        <span style="font-size:0.68rem; color:var(--text-muted);">→</span>
-                        <input type="date" id="pres-test-filter-to" onchange="window._presTestFilter()" placeholder="Al" style="padding:3px 7px; border:1px solid var(--border); border-radius:6px; font-size:0.72rem; color:var(--text-main); background:var(--card); font-family:inherit;">
-                        <button onclick="window._presTestFilterReset()" style="padding:4px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.7rem; color:var(--text-muted); background:transparent; cursor:pointer; font-family:inherit;">↺</button>
-                    </div>
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:nowrap; overflow-x:auto;">
+                    <span style="font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:0.09em; color:#8b5cf6; white-space:nowrap; flex-shrink:0;">🏃 Progressione Test Atletici</span>
+                    <select id="pres-test-filter-team" onchange="window._presTestFilter()" style="padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.72rem; color:var(--text-main); background:var(--card); font-family:inherit; min-width:140px; flex-shrink:0;">
+                        <option value="all">Tutte le squadre</option>
+                    </select>
+                    <input type="date" id="pres-test-filter-from" onchange="window._presTestFilter()" style="padding:3px 7px; border:1px solid var(--border); border-radius:6px; font-size:0.72rem; color:var(--text-main); background:var(--card); font-family:inherit; flex-shrink:0;">
+                    <span style="font-size:0.68rem; color:var(--text-muted); flex-shrink:0;">→</span>
+                    <input type="date" id="pres-test-filter-to" onchange="window._presTestFilter()" style="padding:3px 7px; border:1px solid var(--border); border-radius:6px; font-size:0.72rem; color:var(--text-main); background:var(--card); font-family:inherit; flex-shrink:0;">
+                    <button onclick="window._presTestFilterReset()" style="padding:4px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.7rem; color:var(--text-muted); background:transparent; cursor:pointer; font-family:inherit; flex-shrink:0;">↺</button>
                 </div>
                 <div id="pres-test-atletici-content">
                     <div style="text-align:center; padding:24px; color:var(--text-sub); font-size:0.85rem;">⏳ Caricamento...</div>
