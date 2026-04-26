@@ -6562,9 +6562,17 @@ window.templateDashboard = function() {
 
             <!-- PROGRESSIONE TEST ATLETICI -->
             <div class="card" style="padding:18px 20px; margin-top:16px;">
-                <div style="font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:0.09em; color:#8b5cf6; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-                    <span>🏃 Progressione Test Atletici</span>
-                    <span style="font-weight:400; color:var(--text-muted); font-size:0.62rem; text-transform:none; letter-spacing:0;">— tutte le sessioni nel periodo</span>
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+                    <span style="font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:0.09em; color:#8b5cf6;">🏃 Progressione Test Atletici</span>
+                    <div style="display:flex; align-items:center; gap:6px; margin-left:auto; flex-wrap:wrap;">
+                        <select id="pres-test-filter-team" onchange="window._presTestFilter()" style="padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.72rem; color:var(--text-main); background:var(--card); font-family:inherit;">
+                            <option value="all">Tutte le squadre</option>
+                        </select>
+                        <input type="date" id="pres-test-filter-from" onchange="window._presTestFilter()" placeholder="Dal" style="padding:3px 7px; border:1px solid var(--border); border-radius:6px; font-size:0.72rem; color:var(--text-main); background:var(--card); font-family:inherit;">
+                        <span style="font-size:0.68rem; color:var(--text-muted);">→</span>
+                        <input type="date" id="pres-test-filter-to" onchange="window._presTestFilter()" placeholder="Al" style="padding:3px 7px; border:1px solid var(--border); border-radius:6px; font-size:0.72rem; color:var(--text-main); background:var(--card); font-family:inherit;">
+                        <button onclick="window._presTestFilterReset()" style="padding:4px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.7rem; color:var(--text-muted); background:transparent; cursor:pointer; font-family:inherit;">↺</button>
+                    </div>
                 </div>
                 <div id="pres-test-atletici-content">
                     <div style="text-align:center; padding:24px; color:var(--text-sub); font-size:0.85rem;">⏳ Caricamento...</div>
@@ -8185,19 +8193,211 @@ window.loadDashPresidenza = async function() {
                 if (!pResults.length) {
                     presTestCont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:0.85rem;">Nessun dato test atletici nel periodo selezionato.</div>';
                 } else {
-                    // Normalizza al formato buildTestTable
+                    // Carica nomi squadre
+                    const teamIds = [...new Set(pSessions.map(s => s.team_id).filter(Boolean))];
+                    const { data: teamRows } = await client.from('teams').select('id, name').in('id', teamIds);
+                    const teamNameMap = {};
+                    (teamRows || []).forEach(t => { teamNameMap[t.id] = t.name; });
+
+                    // Popola select squadre
+                    const teamSel = document.getElementById('pres-test-filter-team');
+                    if (teamSel) {
+                        const prevVal = teamSel.value;
+                        teamSel.innerHTML = '<option value="all">Tutte le squadre</option>'
+                            + (teamRows || []).sort((a,b) => a.name.localeCompare(b.name))
+                                .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+                        if (prevVal && prevVal !== 'all') teamSel.value = prevVal;
+                    }
+
+                    // Mappa sessione -> { session_date, team_id, team_name, test_definitions }
                     const pSessMap = {};
-                    pSessions.forEach(s => { pSessMap[s.id] = s; });
-                    const pTList = pResults.map(r => ({
-                        value: r.value,
-                        test_performances: r.test_performances,
-                        test_sessions: {
-                            session_date: pSessMap[r.test_session_id]?.session_date || '',
-                            id: r.test_session_id,
-                            test_definitions: pSessMap[r.test_session_id]?.test_definitions || { name: 'Test' }
+                    pSessions.forEach(s => {
+                        pSessMap[s.id] = {
+                            session_date: s.session_date || '',
+                            team_id: s.team_id,
+                            team_name: teamNameMap[s.team_id] || '—',
+                            test_definitions: s.test_definitions || { name: 'Test' }
+                        };
+                    });
+
+                    // Raggruppa: per ogni (defName, perfName, sessId) -> accumula valori per media
+                    // Struttura: { defName -> { perfs: {perfName->{unit}}, sessions: { sessId -> {date, team_name, measures: {perfName -> {sum,count}}} } } }
+                    const byDef = {};
+                    pResults.forEach(r => {
+                        const sess = pSessMap[r.test_session_id];
+                        if (!sess) return;
+                        const defName  = sess.test_definitions?.name || 'Test';
+                        const perfName = r.test_performances?.name || '—';
+                        const unit     = r.test_performances?.unit || '';
+                        const sessKey  = r.test_session_id + '_' + (sess.team_id || '');
+
+                        if (!byDef[defName]) byDef[defName] = { perfs: {}, sessions: {} };
+                        if (!byDef[defName].perfs[perfName]) byDef[defName].perfs[perfName] = { unit };
+                        if (!byDef[defName].sessions[sessKey]) byDef[defName].sessions[sessKey] = {
+                            date: sess.session_date,
+                            team_name: sess.team_name,
+                            measures: {}
+                        };
+                        const m = byDef[defName].sessions[sessKey].measures;
+                        if (!m[perfName]) m[perfName] = { sum: 0, count: 0 };
+                        if (r.value != null && !isNaN(Number(r.value))) {
+                            m[perfName].sum   += Number(r.value);
+                            m[perfName].count += 1;
                         }
-                    }));
-                    presTestCont.innerHTML = window.buildTestTable(pTList);
+                    });
+
+                    // Render tabella per la vista Presidente: squadra | nome test | data | misura1 media | ...
+                    const tableHtml = Object.entries(byDef).map(([defName, {perfs, sessions}]) => {
+                        const perfNames = Object.keys(perfs).slice(0, 5);
+                        const sessRows  = Object.values(sessions).sort((a, b) =>
+                            (b.date || '').localeCompare(a.date || '') || (a.team_name || '').localeCompare(b.team_name || '')
+                        );
+
+                        const headCols = perfNames.map(p =>
+                            '<th style="padding:7px 10px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">'
+                            + p + (perfs[p].unit ? '<span style="font-weight:400;opacity:0.7;"> ('+perfs[p].unit+')</span>' : '')
+                            + '</th>'
+                        ).join('');
+                        const emptyHeadCols = Array(Math.max(0, 5 - perfNames.length)).fill(
+                            '<th style="padding:7px 10px;border-left:1px solid rgba(0,0,0,0.05);"></th>'
+                        ).join('');
+
+                        const rows = sessRows.map((sess, ri) => {
+                            const d   = new Date(sess.date);
+                            const dt  = sess.date ? d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+                            const rowBg = ri % 2 === 0 ? '' : 'background:rgba(0,0,0,0.018);';
+
+                            const measureCells = perfNames.map(p => {
+                                const mv = sess.measures[p];
+                                if (!mv || mv.count === 0) return '<td style="padding:7px 10px;text-align:center;color:var(--text-muted);font-size:0.78rem;border-left:1px solid rgba(0,0,0,0.05);">—</td>';
+                                const avg = (mv.sum / mv.count);
+                                const avgFmt = Number.isInteger(avg) ? avg : avg.toFixed(1);
+                                const unit = perfs[p].unit || '';
+                                return '<td style="padding:7px 10px;text-align:center;border-left:1px solid rgba(0,0,0,0.05);">'
+                                    + '<span style="font-size:0.88rem;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--primary);">'+avgFmt+'</span>'
+                                    + (unit ? '<span style="font-size:0.6rem;color:var(--text-muted);margin-left:2px;">'+unit+'</span>' : '')
+                                    + '<div style="font-size:0.58rem;color:var(--text-muted);margin-top:1px;">media '+mv.count+' atleti</div>'
+                                    + '</td>';
+                            }).join('');
+                            const emptyMeasureCells = Array(Math.max(0, 5 - perfNames.length)).fill(
+                                '<td style="padding:7px 10px;border-left:1px solid rgba(0,0,0,0.05);color:var(--text-muted);text-align:center;font-size:0.75rem;">—</td>'
+                            ).join('');
+
+                            return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);'+rowBg+'">'
+                                + '<td style="padding:7px 12px;white-space:nowrap;">'
+                                +   '<span style="font-size:0.75rem;font-weight:700;background:rgba(99,102,241,0.1);color:#6366f1;padding:2px 8px;border-radius:99px;">'+sess.team_name+'</span>'
+                                + '</td>'
+                                + '<td style="padding:7px 12px;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">'
+                                +   '<span style="font-size:0.8rem;font-weight:600;color:var(--text-main);">'+defName+'</span>'
+                                + '</td>'
+                                + '<td style="padding:7px 10px;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">'
+                                +   '<span style="font-size:0.78rem;font-weight:600;color:var(--text-sub);">'+dt+'</span>'
+                                + '</td>'
+                                + measureCells + emptyMeasureCells
+                                + '</tr>';
+                        }).join('');
+
+                        return '<div style="margin-bottom:12px;">'
+                            + '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;overflow:hidden;">'
+                            + '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">'
+                            + '<thead><tr style="background:rgba(0,0,0,0.03);border-bottom:1px solid var(--border);">'
+                            +   '<th style="padding:8px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">Squadra</th>'
+                            +   '<th style="padding:8px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">Nome test</th>'
+                            +   '<th style="padding:8px 10px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">Data</th>'
+                            +   headCols + emptyHeadCols
+                            + '</tr></thead>'
+                            + '<tbody>' + rows + '</tbody>'
+                            + '</table></div></div>';
+                    }).join('') || '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Nessun dato test.</div>';
+
+                    // Salva dati grezzi per il filtro client-side
+                    window._presTestRawData = { byDef, teamNameMap, pSessMap };
+                    presTestCont.innerHTML = tableHtml;
+
+                    // ── Funzione di render con filtri applicati ───────────────
+                    window._presTestRender = function(filterTeamId, filterFrom, filterTo) {
+                        const cont = document.getElementById('pres-test-atletici-content');
+                        if (!cont || !window._presTestRawData) return;
+                        const { byDef, teamNameMap } = window._presTestRawData;
+
+                        const html = Object.entries(byDef).map(([defName, {perfs, sessions}]) => {
+                            const perfNames = Object.keys(perfs).slice(0, 5);
+                            let sessRows = Object.values(sessions)
+                                .filter(sess => {
+                                    if (filterTeamId && filterTeamId !== 'all' && sess.team_id !== filterTeamId) return false;
+                                    if (filterFrom && sess.date < filterFrom) return false;
+                                    if (filterTo   && sess.date > filterTo)   return false;
+                                    return true;
+                                })
+                                .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (a.team_name || '').localeCompare(b.team_name || ''));
+
+                            if (!sessRows.length) return '';
+
+                            const headCols = perfNames.map(p =>
+                                '<th style="padding:7px 10px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">'
+                                + p + (perfs[p].unit ? '<span style="font-weight:400;opacity:0.7;"> ('+perfs[p].unit+')</span>' : '')
+                                + '</th>'
+                            ).join('');
+                            const emptyHeadCols = Array(Math.max(0, 5 - perfNames.length)).fill(
+                                '<th style="padding:7px 10px;border-left:1px solid rgba(0,0,0,0.05);"></th>'
+                            ).join('');
+
+                            const rows = sessRows.map((sess, ri) => {
+                                const d  = new Date(sess.date);
+                                const dt = sess.date ? d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+                                const rowBg = ri % 2 === 0 ? '' : 'background:rgba(0,0,0,0.018);';
+                                const measureCells = perfNames.map(p => {
+                                    const mv = sess.measures[p];
+                                    if (!mv || mv.count === 0) return '<td style="padding:7px 10px;text-align:center;color:var(--text-muted);font-size:0.78rem;border-left:1px solid rgba(0,0,0,0.05);">—</td>';
+                                    const avg = mv.sum / mv.count;
+                                    const avgFmt = Number.isInteger(avg) ? avg : avg.toFixed(1);
+                                    const unit = perfs[p].unit || '';
+                                    return '<td style="padding:7px 10px;text-align:center;border-left:1px solid rgba(0,0,0,0.05);">'
+                                        + '<span style="font-size:0.88rem;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--primary);">'+avgFmt+'</span>'
+                                        + (unit ? '<span style="font-size:0.6rem;color:var(--text-muted);margin-left:2px;">'+unit+'</span>' : '')
+                                        + '<div style="font-size:0.58rem;color:var(--text-muted);margin-top:1px;">media '+mv.count+' atleti</div>'
+                                        + '</td>';
+                                }).join('');
+                                const emptyMeasureCells = Array(Math.max(0, 5 - perfNames.length)).fill(
+                                    '<td style="padding:7px 10px;border-left:1px solid rgba(0,0,0,0.05);color:var(--text-muted);text-align:center;font-size:0.75rem;">—</td>'
+                                ).join('');
+                                return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);'+rowBg+'">'
+                                    + '<td style="padding:7px 12px;white-space:nowrap;"><span style="font-size:0.75rem;font-weight:700;background:rgba(99,102,241,0.1);color:#6366f1;padding:2px 8px;border-radius:99px;">'+sess.team_name+'</span></td>'
+                                    + '<td style="padding:7px 12px;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.8rem;font-weight:600;color:var(--text-main);">'+defName+'</span></td>'
+                                    + '<td style="padding:7px 10px;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);"><span style="font-size:0.78rem;font-weight:600;color:var(--text-sub);">'+dt+'</span></td>'
+                                    + measureCells + emptyMeasureCells + '</tr>';
+                            }).join('');
+
+                            return '<div style="margin-bottom:12px;">'
+                                + '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;overflow:hidden;">'
+                                + '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">'
+                                + '<thead><tr style="background:rgba(0,0,0,0.03);border-bottom:1px solid var(--border);">'
+                                + '<th style="padding:8px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;">Squadra</th>'
+                                + '<th style="padding:8px 12px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">Nome test</th>'
+                                + '<th style="padding:8px 10px;text-align:left;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;border-left:1px solid rgba(0,0,0,0.05);">Data</th>'
+                                + headCols + emptyHeadCols
+                                + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+                        }).join('') || '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:16px;">Nessun dato nel periodo/squadra selezionati.</div>';
+
+                        cont.innerHTML = html;
+                    };
+
+                    // ── Handler filtri ────────────────────────────────────────
+                    window._presTestFilter = function() {
+                        const teamId = document.getElementById('pres-test-filter-team')?.value || 'all';
+                        const from   = document.getElementById('pres-test-filter-from')?.value  || null;
+                        const to     = document.getElementById('pres-test-filter-to')?.value    || null;
+                        window._presTestRender(teamId, from, to);
+                    };
+                    window._presTestFilterReset = function() {
+                        const ts = document.getElementById('pres-test-filter-team');
+                        const tf = document.getElementById('pres-test-filter-from');
+                        const tt = document.getElementById('pres-test-filter-to');
+                        if (ts) ts.value = 'all';
+                        if (tf) tf.value = '';
+                        if (tt) tt.value = '';
+                        window._presTestRender('all', null, null);
+                    };
                 }
             } catch(e) {
                 console.warn('pres test atletici error', e);
