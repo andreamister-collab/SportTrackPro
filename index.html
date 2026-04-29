@@ -4818,7 +4818,7 @@ window.openTabellino = async function(sessionId) {
         <!-- BADGES ROW -->
         <div style="display:flex; gap:8px; padding:10px 24px; background:rgba(0,0,0,0.03); border-bottom:1px solid var(--border); flex-wrap:wrap;">
             <span style="background:${d.is_home !== false ? 'rgba(37,99,235,0.12)' : 'rgba(139,92,246,0.12)'}; color:${d.is_home !== false ? 'var(--primary-mid)' : '#a78bfa'}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${d.is_home !== false ? '🏠 Casa' : '🚌 Trasferta'}</span>
-            <span style="background:${!d.is_friendly ? 'rgba(6,214,160,0.12)' : 'rgba(255,209,102,0.1)'}; color:${!d.is_friendly ? '#06d6a0' : '#ffd166'}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${!d.is_friendly ? '🏆 Ufficiale' : '🤝 Amichevole'}</span>
+            <span style="background:${d.is_friendly === null ? 'rgba(168,85,247,0.12)' : d.is_friendly ? 'rgba(255,209,102,0.1)' : 'rgba(6,214,160,0.12)'}; color:${d.is_friendly === null ? '#a855f7' : d.is_friendly ? '#ffd166' : '#06d6a0'}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${d.is_friendly === null ? '🏅 Torneo' : d.is_friendly ? '🤝 Amichevole' : '🏆 Ufficiale'}</span>
             <span style="background:${ebg}; color:${efg}; padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">${elbl === 'V' ? '✅ Vittoria' : elbl === 'S' ? '❌ Sconfitta' : elbl === 'P' ? '🤝 Pareggio' : '⏳ Da giocare'}</span>
             <span style="background:var(--card-raised); color:var(--text-sub); padding:4px 10px; border-radius:99px; font-size:0.72rem; font-weight:700;">👥 ${sortedConv.length} convocati</span>
         </div>
@@ -4837,8 +4837,9 @@ window.openTabellino = async function(sessionId) {
                 <div>
                     <label style="display:block; font-size:0.65rem; font-weight:700; color:var(--text-sub); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px;">🏆 Tipo Gara</label>
                     <select id="tab-is-friendly" style="width:100%; padding:8px 10px; border:1.5px solid rgba(0,0,0,0.1); border-radius:8px; font-size:0.82rem; color:var(--text-main); font-family:inherit;">
-                        <option value="false" ${!d.is_friendly ? 'selected' : ''}>🏆 Ufficiale</option>
-                        <option value="true" ${d.is_friendly ? 'selected' : ''}>🤝 Amichevole</option>
+                        <option value="false" ${d.is_friendly === false ? 'selected' : ''}>🏆 Ufficiale</option>
+                        <option value="null" ${d.is_friendly === null ? 'selected' : ''}>🏅 Torneo</option>
+                        <option value="true" ${d.is_friendly === true ? 'selected' : ''}>🤝 Amichevole</option>
                     </select>
                 </div>
                 <div>
@@ -5027,7 +5028,7 @@ window.saveFullTabellino = async function(sessionId, detailId) {
         goals_for: parseInt(document.getElementById('tab-gf').value) || 0,
         goals_against: parseInt(document.getElementById('tab-gs').value) || 0,
         is_home: document.getElementById('tab-is-home').value === 'true',
-        is_friendly: document.getElementById('tab-is-friendly').value === 'true',
+        is_friendly: (() => { const v = document.getElementById('tab-is-friendly').value; return v === 'null' ? null : v === 'true'; })(),
     };
 
     // Build stats from the player grid (new format)
@@ -5087,7 +5088,9 @@ window.printTabellinoMatchPDF = async function(sessionId) {
     // Raccoglie i dati correnti dal form (già aperto nel popup)
     const opponent  = document.getElementById('tab-opponent')?.value || '—';
     const isHome    = document.getElementById('tab-is-home')?.value === 'true';
-    const isFriendly= document.getElementById('tab-is-friendly')?.value === 'true';
+    const _tabFriendlyVal = document.getElementById('tab-is-friendly')?.value;
+    const isFriendly = _tabFriendlyVal === 'true';
+    const isTorneo   = _tabFriendlyVal === 'null';
     const meetTime  = document.getElementById('tab-meet-time')?.value || '';
     const matchStart= document.getElementById('tab-match-start')?.value || '';
     const address   = document.getElementById('tab-address')?.value || '';
@@ -5131,7 +5134,7 @@ window.printTabellinoMatchPDF = async function(sessionId) {
 
     const statusLabel = { vittoria:'Vittoria ✅', sconfitta:'Sconfitta ❌', pareggio:'Pareggio 🤝', 'da disputare':'Da giocare ⏳' }[status] || status;
     const locationLabel = isHome ? '🏠 Casa' : '🚌 Trasferta';
-    const tipoLabel = isFriendly ? 'Amichevole' : 'Ufficiale';
+    const tipoLabel = isTorneo ? 'Torneo' : isFriendly ? 'Amichevole' : 'Ufficiale';
 
     // Genera n righe vuote per atleti non convocati (utile per annotazioni campo)
     const EXTRA_BLANK_ROWS = Math.max(0, 18 - rows.length);
@@ -5599,7 +5602,7 @@ window.exportConvocazioniIMG = async function(sessionId) {
                             <div style="margin-top:10px; display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap;">
                                 ${nomeCategoria ? `<span style="background:#ffe44d; color:#1a2240; padding:4px 14px; border-radius:5px; font-size:12px; font-weight:800; text-transform:uppercase;">${nomeCategoria}</span>` : ''}
                                 <span style="background:#ffe44d; color:#1a2240; padding:4px 14px; border-radius:5px; font-size:12px; font-weight:800; text-transform:uppercase;">${nomeSquadra}</span>
-                                <span style="background:${detail?.is_friendly ? 'rgba(255,209,102,0.25)' : 'rgba(6,214,160,0.18)'}; color:${detail?.is_friendly ? '#ffe44d' : '#06d6a0'}; border:1.5px solid ${detail?.is_friendly ? '#ffe44d' : '#06d6a0'}; padding:4px 14px; border-radius:5px; font-size:12px; font-weight:800; text-transform:uppercase; white-space:nowrap;">${detail?.is_friendly ? '🤝 Amichevole' : '🏆 Ufficiale'}</span>
+                                <span style="background:${detail?.is_friendly ? 'rgba(255,209,102,0.25)' : 'rgba(6,214,160,0.18)'}; color:${detail?.is_friendly ? '#ffe44d' : '#06d6a0'}; border:1.5px solid ${detail?.is_friendly ? '#ffe44d' : '#06d6a0'}; padding:4px 14px; border-radius:5px; font-size:12px; font-weight:800; text-transform:uppercase; white-space:nowrap;">${detail?.is_friendly === null ? '🏅 Torneo' : detail?.is_friendly ? '🤝 Amichevole' : '🏆 Ufficiale'}</span>
                             </div>
                         </div>
                         <div style="background:rgba(255,228,77,0.15); border:2px solid #ffe44d; border-radius:12px; padding:12px 18px; text-align:center; min-width:68px;">
