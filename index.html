@@ -981,7 +981,7 @@
         // GERARCHIA VISIBILITÀ MENU:
         // admin/manager      → tutto
         // presidente/segretario → dati società propria, può modificare legami
-        // responsabile       → categorie proprie, solo lettura
+        // responsabile       → atleti, sessioni, partite, test, tornei
         // dirigente/allenatore → squadre proprie, sessioni e partite
         // genitore           → solo dashboard figlio
         const visibility = {
@@ -993,7 +993,7 @@
             segretario:   ['nav-categoria','nav-squadra','nav-staff',
                            'nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
                            'nav-sessioni','nav-partite','nav-test','nav-tornei','nav-import','nav-group-admin'],
-            responsabile: ['nav-anagrafica-pura','nav-atleti','nav-group-admin'],
+            responsabile: ['nav-anagrafica-pura','nav-atleti','nav-sessioni','nav-partite','nav-test','nav-tornei','nav-group-admin'],
             dirigente:    ['nav-atleti','nav-sessioni','nav-partite','nav-test','nav-tornei','nav-import'],
             allenatore:   ['nav-atleti','nav-sessioni','nav-partite','nav-test','nav-tornei','nav-import'],
             'preparatore atletico': ['nav-atleti','nav-test'],
