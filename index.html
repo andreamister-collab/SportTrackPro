@@ -981,7 +981,7 @@
         // GERARCHIA VISIBILITÀ MENU:
         // admin/manager      → tutto
         // presidente/segretario → dati società propria, può modificare legami
-        // responsabile       → atleti, sessioni, partite, test, tornei
+        // responsabile       → categorie proprie, solo lettura
         // dirigente/allenatore → squadre proprie, sessioni e partite
         // genitore           → solo dashboard figlio
         const visibility = {
@@ -993,7 +993,7 @@
             segretario:   ['nav-categoria','nav-squadra','nav-staff',
                            'nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
                            'nav-sessioni','nav-partite','nav-test','nav-tornei','nav-import','nav-group-admin'],
-            responsabile: ['nav-anagrafica-pura','nav-atleti','nav-sessioni','nav-partite','nav-test','nav-tornei','nav-group-admin'],
+            responsabile: ['nav-anagrafica-pura','nav-atleti','nav-group-admin'],
             dirigente:    ['nav-atleti','nav-sessioni','nav-partite','nav-test','nav-tornei','nav-import'],
             allenatore:   ['nav-atleti','nav-sessioni','nav-partite','nav-test','nav-tornei','nav-import'],
             'preparatore atletico': ['nav-atleti','nav-test'],
@@ -14204,13 +14204,19 @@ window.initGenitoreView = async function() {
             const md = s?.match_details?.[0] || s?.match_details || null;
             const goalsFor     = md?.goals_for     ?? '?';
             const goalsAgainst = md?.goals_against ?? '?';
-            const isHome       = md?.is_home ?? true;
-            const myScore      = isHome ? goalsFor     : goalsAgainst;
-            const theirScore   = isHome ? goalsAgainst : goalsFor;
+            // Usa match_status dal DB come fonte di verità (già calcolato correttamente al salvataggio)
+            // Fallback: ricalcola da goals_for/goals_against (sempre squadra nostra vs avversario)
             let result = 'draw';
-            if (typeof myScore === 'number' && typeof theirScore === 'number') {
-                if (myScore > theirScore) result = 'win';
-                if (myScore < theirScore) result = 'loss';
+            const dbStatus = (md?.match_status || '').toLowerCase();
+            if (dbStatus === 'vittoria') {
+                result = 'win';
+            } else if (dbStatus === 'sconfitta') {
+                result = 'loss';
+            } else if (dbStatus === 'pareggio') {
+                result = 'draw';
+            } else if (typeof goalsFor === 'number' && typeof goalsAgainst === 'number') {
+                if (goalsFor > goalsAgainst) result = 'win';
+                else if (goalsFor < goalsAgainst) result = 'loss';
             }
             const d = s?.session_date ? new Date(s.session_date) : null;
             const played = ms.minutes_played > 0 || ms.is_starter;
