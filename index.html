@@ -1675,7 +1675,7 @@ async function initCategoria() {
     const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
     const isScoped = ['presidente','segretario','allenatore','dirigente'].includes(effRole);
 
-    let catQ = client.from('categories').select('id, name, sport, season_id, society_id, societies(name), seasons(name)');
+    let catQ = client.from('categories').select('id, name, sport, society_id, societies(name)');
     if (isScoped && mySocId) catQ = catQ.eq('society_id', mySocId);
 
     const { data, error } = await catQ;
