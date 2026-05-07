@@ -14332,7 +14332,7 @@ function templateGenitoreView(athlete, stats, trainings, matches, assessments, p
                 <button id="g-month-next" onclick="window._gMonthNav(1)"
                     style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;font-family:inherit;font-size:0.82rem;">▶</button>
             </div>
-            <div style="display:flex;gap:8px;font-size:0.7rem;flex-wrap:wrap;">
+            <div style="display:flex;gap:10px;font-size:0.7rem;flex-wrap:wrap;align-items:center;">
                 <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;"></span>Presente</span>
                 <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;"></span>Assente</span>
                 <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#2563eb;display:inline-block;"></span>Partita</span>
@@ -14341,13 +14341,17 @@ function templateGenitoreView(athlete, stats, trainings, matches, assessments, p
         </div>
 
         <!-- Griglia calendario -->
-        <div id="g-month-calendar" style="overflow-x:auto;"></div>
-
-        <!-- Riepilogo mese -->
-        <div id="g-month-summary" style="margin-top:14px;padding:12px 14px;background:rgba(0,0,0,0.03);border-radius:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;"></div>
+        <div id="g-month-calendar" style="overflow-x:auto;margin-bottom:16px;"></div>
 
         <!-- Dettaglio eventi del giorno selezionato -->
-        <div id="g-month-day-detail" style="margin-top:12px;display:none;padding:12px 14px;background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.15);border-radius:10px;"></div>
+        <div id="g-month-day-detail" style="margin-bottom:14px;display:none;padding:12px 14px;background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.15);border-radius:10px;"></div>
+
+        <!-- Riepilogo contatori mese -->
+        <div id="g-month-summary" style="margin-bottom:18px;padding:12px 14px;background:rgba(0,0,0,0.03);border-radius:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;"></div>
+
+        <!-- Grafici mese -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;" id="g-month-charts-top"></div>
+        <div id="g-month-charts-bottom" style="margin-bottom:6px;"></div>
     </div>
 
     `;  // end templateGenitoreView
@@ -14415,14 +14419,13 @@ window.initGenitoreView = async function() {
             team_name:       activeTeamSeason?.teams?.name || '—',
         };
 
-        // 3. Presenze agli allenamenti (ultime 60 sessioni)
-        // Usa la tabella reale: attendances + sessions
+        // 3. Presenze agli allenamenti (ultime 100 sessioni) + performance_data e rating
         const { data: attendances } = await client
             .from('attendances')
-            .select('session_id, status, is_called_up, sessions!inner(id, session_date, type_id, session_types(name))')
+            .select('session_id, status, is_called_up, rating, performance_data, sessions!inner(id, session_date, type_id, session_types(name))')
             .eq('athlete_id', athleteId)
             .order('session_id', { ascending: false })
-            .limit(60);
+            .limit(100);
 
         const attended = (attendances || []).filter(a => a.status === 'presente').length;
         const totalTrainings = (attendances || []).length;
@@ -14666,7 +14669,7 @@ window.initGenitoreView = async function() {
         content.innerHTML = templateGenitoreView(athleteData, stats, attendances, matchesData, null, presenzeRows, statsGareRows);
 
         // ── Vista Mensile Figlio ─────────────────────────────────────────────
-        // Costruisce mappa eventi per data: { 'YYYY-MM-DD': [{type, label, status}] }
+        // Costruisce mappa eventi per data con tutti i dati disponibili
         const eventsByDate = {};
         const addEvent = (date, ev) => {
             if (!date) return;
@@ -14675,161 +14678,333 @@ window.initGenitoreView = async function() {
             eventsByDate[d].push(ev);
         };
 
-        // Presenze sessioni del figlio
+        // Mappa presenze con valutazioni e performance
         (attendances || []).forEach(a => {
-            const date = a.sessions?.session_date;
-            const st   = (a.status || '').toLowerCase();
+            const date  = a.sessions?.session_date;
+            const st    = (a.status || '').toLowerCase();
             const typeN = (a.sessions?.session_types?.name || '').toLowerCase();
             const isGara = typeN.includes('gara') || typeN.includes('partita') || typeN.includes('torneo');
+            const pd    = a.performance_data || {};
             addEvent(date, {
                 type:   isGara ? 'partita' : (st === 'presente' ? 'allenamento' : 'assenza'),
                 status: st,
                 label:  a.sessions?.session_types?.name || 'Sessione',
-                isGara
+                isGara,
+                rating: a.rating || null,
+                perf:   pd,  // {VEL, TEC, FIS, RES, COM}
+                sessionDate: date
             });
         });
 
-        // Partite (match_stats)
-        (matchesData || []).forEach(m => {
-            // cerca la data dalle sessioni caricate in presenzeAllRows
-        });
-
-        // Test atletici del figlio — già caricati dopo dal blocco test
-        // Aggiungiamo i test dopo il render, con la funzione _gAddTestEvents
-
         let _gCurrentMonth = new Date().getMonth();
         let _gCurrentYear  = new Date().getFullYear();
-        let _gTestEvents   = {}; // { 'YYYY-MM-DD': [{label}] } – popolato dopo
+        let _gTestEvents   = {};
 
         const MONTH_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
                           'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
         const DOW_IT   = ['Lu','Ma','Me','Gi','Ve','Sa','Do'];
 
+        // ── Funzione helper: mini barra SVG ─────────────────────────────────
+        const miniBar = (val, max, color, w=60, h=8) => {
+            if (!val || val <= 0) return `<div style="width:${w}px;height:${h}px;background:rgba(0,0,0,0.06);border-radius:99px;"></div>`;
+            const pct = Math.min(100, Math.round((val/max)*100));
+            return `<div style="width:${w}px;height:${h}px;background:rgba(0,0,0,0.06);border-radius:99px;overflow:hidden;">
+                <div style="width:${pct}%;height:100%;background:${color};border-radius:99px;"></div></div>`;
+        };
+
+        // ── Render calendario ────────────────────────────────────────────────
         window._gRenderMonthCalendar = function() {
-            const cal  = document.getElementById('g-month-calendar');
-            const lbl  = document.getElementById('g-month-label');
-            const summ = document.getElementById('g-month-summary');
-            const det  = document.getElementById('g-month-day-detail');
+            const cal   = document.getElementById('g-month-calendar');
+            const lbl   = document.getElementById('g-month-label');
+            const summ  = document.getElementById('g-month-summary');
+            const det   = document.getElementById('g-month-day-detail');
+            const chartsTop = document.getElementById('g-month-charts-top');
+            const chartsBot = document.getElementById('g-month-charts-bottom');
             if (!cal) return;
 
             lbl.textContent = MONTH_IT[_gCurrentMonth] + ' ' + _gCurrentYear;
-            if (det) { det.style.display = 'none'; det.innerHTML = ''; }
+            if (det) { det.style.display='none'; det.innerHTML=''; }
 
             const firstDay = new Date(_gCurrentYear, _gCurrentMonth, 1);
-            const lastDay  = new Date(_gCurrentYear, _gCurrentMonth + 1, 0);
-            // Lunedì = 0 ... Domenica = 6
-            const startDow = (firstDay.getDay() + 6) % 7;
+            const lastDay  = new Date(_gCurrentYear, _gCurrentMonth+1, 0);
+            const startDow = (firstDay.getDay()+6)%7;
 
-            // Riepilogo mese
-            let mPresente = 0, mAssente = 0, mPartita = 0, mTest = 0;
+            // Filtra eventi del mese corrente
+            const monthStr = `${_gCurrentYear}-${String(_gCurrentMonth+1).padStart(2,'0')}`;
+            const monthEvs = Object.entries(eventsByDate).filter(([d]) => d.startsWith(monthStr));
+            const monthTestEvs = Object.entries(_gTestEvents||{}).filter(([d]) => d.startsWith(monthStr));
 
-            let html = '<table style="width:100%;border-collapse:collapse;min-width:420px;">';
+            // Contatori mese
+            let mPresente=0, mAssente=0, mPartita=0, mTest=0;
+            // Dati per grafici
+            const presenzaByWeek = {}; // settimana ISO → {p,tot}
+            const perfByDate     = []; // [{date, VEL, TEC, FIS, RES, COM, rating}]
+            const goleByDate     = []; // [{date, gol}]
+
+            monthEvs.forEach(([d, evs]) => {
+                const weekNum = Math.ceil((new Date(d).getDate() + startDow) / 7);
+                if (!presenzaByWeek[weekNum]) presenzaByWeek[weekNum] = {p:0, tot:0};
+                evs.forEach(e => {
+                    if (e.type === 'partita')  { mPartita++; }
+                    if (e.type === 'allenamento' && e.status === 'presente') { mPresente++; presenzaByWeek[weekNum].p++; }
+                    if (e.type === 'assenza' || (e.type==='allenamento' && e.status!=='presente')) mAssente++;
+                    if (e.type !== 'assenza') presenzaByWeek[weekNum].tot++;
+
+                    // Performance data
+                    if (e.perf && Object.keys(e.perf).length) {
+                        perfByDate.push({date:d, ...e.perf, rating:e.rating});
+                    }
+                    if (e.goals) goleByDate.push({date:d, gol:e.goals});
+                });
+            });
+            monthTestEvs.forEach(([d, evs]) => { mTest += evs.length; });
+
+            // ── Griglia calendario ───────────────────────────────────────────
+            let html = '<table style="width:100%;border-collapse:collapse;min-width:380px;">';
             html += '<thead><tr>';
             DOW_IT.forEach(d => {
-                html += `<th style="padding:4px 2px;text-align:center;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">${d}</th>`;
+                html += `<th style="padding:4px 2px;text-align:center;font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">${d}</th>`;
             });
             html += '</tr></thead><tbody><tr>';
-
-            // Empty cells before first day
-            for (let i = 0; i < startDow; i++) html += '<td></td>';
+            for (let i=0; i<startDow; i++) html += '<td style="padding:2px;"></td>';
 
             let dow = startDow;
-            for (let day = 1; day <= lastDay.getDate(); day++) {
-                const dateStr = `${_gCurrentYear}-${String(_gCurrentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                const evs = [...(eventsByDate[dateStr] || []), ...((_gTestEvents[dateStr] || []).map(e => ({...e, type:'test'})))];
+            for (let day=1; day<=lastDay.getDate(); day++) {
+                const dateStr = `${monthStr}-${String(day).padStart(2,'0')}`;
+                const evs = [...(eventsByDate[dateStr]||[]), ...((_gTestEvents[dateStr]||[]).map(e=>({...e,type:'test'})))];
+                const isToday = new Date().toISOString().slice(0,10)===dateStr;
 
-                const isToday = (new Date().toISOString().slice(0,10) === dateStr);
+                let dots='';
+                const hasP = evs.some(e=>e.type==='allenamento'&&e.status==='presente');
+                const hasA = evs.some(e=>e.type==='assenza'||(e.type==='allenamento'&&e.status!=='presente'));
+                const hasM = evs.some(e=>e.type==='partita');
+                const hasT = evs.some(e=>e.type==='test');
+                if (hasP) dots += '<span style="width:6px;height:6px;border-radius:50%;background:#10b981;display:inline-block;margin:0 1px;"></span>';
+                if (hasA) dots += '<span style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block;margin:0 1px;"></span>';
+                if (hasM) dots += '<span style="width:6px;height:6px;border-radius:50%;background:#2563eb;display:inline-block;margin:0 1px;"></span>';
+                if (hasT) dots += '<span style="width:6px;height:6px;border-radius:50%;background:#8b5cf6;display:inline-block;margin:0 1px;"></span>';
 
-                let dots = '';
-                let hasPresente = false, hasAssente = false, hasPartita = false, hasTest = false;
-                evs.forEach(e => {
-                    if (e.type === 'test')    { hasTest = true;    mTest++; }
-                    if (e.type === 'partita') { hasPartita = true; mPartita++; }
-                    if (e.type === 'allenamento' && e.status === 'presente') { hasPresente = true; mPresente++; }
-                    if (e.type === 'assenza'  || (e.type === 'allenamento' && e.status !== 'presente')) { hasAssente = true; mAssente++; }
-                });
-
-                if (hasPresente) dots += '<span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;margin:0 1px;"></span>';
-                if (hasAssente)  dots += '<span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;margin:0 1px;"></span>';
-                if (hasPartita)  dots += '<span style="width:7px;height:7px;border-radius:50%;background:#2563eb;display:inline-block;margin:0 1px;"></span>';
-                if (hasTest)     dots += '<span style="width:7px;height:7px;border-radius:50%;background:#8b5cf6;display:inline-block;margin:0 1px;"></span>';
-
-                const hasBg = evs.length > 0;
-                const bgStyle = isToday ? 'background:rgba(37,99,235,0.12);border-radius:8px;' : (hasBg ? 'background:rgba(0,0,0,0.02);border-radius:8px;' : '');
-                const cursor  = evs.length ? 'cursor:pointer;' : '';
-                const click   = evs.length ? `onclick="window._gShowDayDetail('${dateStr}')"` : '';
-
-                html += `<td style="padding:3px 2px;text-align:center;vertical-align:top;${cursor}" ${click}>
-                    <div style="${bgStyle}padding:4px 2px;">
-                        <div style="font-size:0.78rem;font-weight:${isToday?'800':'500'};color:${isToday?'var(--primary)':'var(--text-main)'};">${day}</div>
-                        <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:1px;margin-top:2px;min-height:8px;">${dots}</div>
-                    </div>
-                </td>`;
-
+                const bgS = isToday ? 'background:rgba(37,99,235,0.15);border-radius:8px;' : evs.length ? 'background:rgba(0,0,0,0.03);border-radius:8px;' : '';
+                html += `<td style="padding:2px;text-align:center;vertical-align:top;${evs.length?'cursor:pointer;':''}" ${evs.length?`onclick="window._gShowDayDetail('${dateStr}')"`:''}>`
+                      + `<div style="${bgS}padding:4px 2px;">`
+                      + `<div style="font-size:0.75rem;font-weight:${isToday?'800':'500'};color:${isToday?'var(--primary)':'var(--text-main)'};">${day}</div>`
+                      + `<div style="display:flex;justify-content:center;flex-wrap:wrap;gap:1px;margin-top:2px;min-height:7px;">${dots}</div>`
+                      + `</div></td>`;
                 dow++;
-                if (dow === 7 && day < lastDay.getDate()) { html += '</tr><tr>'; dow = 0; }
+                if (dow===7 && day<lastDay.getDate()) { html += '</tr><tr>'; dow=0; }
             }
-            // Fill remaining cells
-            while (dow > 0 && dow < 7) { html += '<td></td>'; dow++; }
+            while (dow>0 && dow<7) { html += '<td></td>'; dow++; }
             html += '</tr></tbody></table>';
             cal.innerHTML = html;
 
-            // Summary
+            // ── Contatori mese ───────────────────────────────────────────────
+            const percPres = (mPresente + mAssente) > 0 ? Math.round(mPresente/(mPresente+mAssente)*100) : 0;
             summ.innerHTML = [
-                { label:'Presenze', val: mPresente, color:'#10b981' },
-                { label:'Assenze',  val: mAssente,  color:'#ef4444' },
-                { label:'Partite',  val: mPartita,  color:'#2563eb' },
-                { label:'Test',     val: mTest,     color:'#8b5cf6' },
-            ].map(s => `<div style="text-align:center;">
-                <div style="font-size:1.4rem;font-weight:800;font-family:'DM Mono',monospace;color:${s.color};">${s.val}</div>
-                <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);font-weight:700;">${s.label}</div>
+                {label:'Presenze',   val:mPresente, color:'#10b981'},
+                {label:'Assenze',    val:mAssente,  color:'#ef4444'},
+                {label:'% Presenze', val:percPres+'%', color: percPres>=75?'#10b981':percPres>=50?'#f59e0b':'#ef4444'},
+                {label:'Partite',    val:mPartita,  color:'#2563eb'},
+                {label:'Test',       val:mTest,     color:'#8b5cf6'},
+            ].map(s=>`<div style="text-align:center;padding:8px;background:rgba(0,0,0,0.02);border-radius:8px;">
+                <div style="font-size:1.3rem;font-weight:800;font-family:'DM Mono',monospace;color:${s.color};">${s.val}</div>
+                <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);font-weight:700;margin-top:2px;">${s.label}</div>
             </div>`).join('');
+
+            // ── Grafici ──────────────────────────────────────────────────────
+            if (!chartsTop) return;
+
+            // 1. Grafico presenze settimanale (barre SVG)
+            const weeks = Object.entries(presenzaByWeek).sort((a,b)=>+a[0]-+b[0]);
+            const maxWeekTot = Math.max(...weeks.map(([,w])=>w.tot), 1);
+            const barW = 32, barGap = 10, barH = 80;
+            let weekBarsHtml = '';
+            weeks.forEach(([wn, w], i) => {
+                const pct = w.tot>0 ? Math.round(w.p/w.tot*100) : 0;
+                const h = Math.round((w.tot/maxWeekTot)*barH);
+                const hP = Math.round((w.p/maxWeekTot)*barH);
+                const x = i*(barW+barGap);
+                weekBarsHtml += `<g>
+                    <rect x="${x}" y="${barH-h}" width="${barW}" height="${h}" rx="4" fill="rgba(16,185,129,0.15)"/>
+                    <rect x="${x}" y="${barH-hP}" width="${barW}" height="${hP}" rx="4" fill="#10b981"/>
+                    <text x="${x+barW/2}" y="${barH+14}" text-anchor="middle" font-size="10" fill="#94a3b8">Sett${wn}</text>
+                    <text x="${x+barW/2}" y="${barH-h-4}" text-anchor="middle" font-size="9" fill="#10b981" font-weight="700">${pct}%</text>
+                </g>`;
+            });
+            const svgW = weeks.length*(barW+barGap);
+            const chartPresenza = `<div>
+                <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">📅 Presenze per Settimana</div>
+                <div style="overflow-x:auto;">
+                <svg width="${Math.max(svgW,200)}" height="${barH+30}" style="display:block;">
+                    <line x1="0" y1="${barH}" x2="${Math.max(svgW,200)}" y2="${barH}" stroke="rgba(0,0,0,0.08)" stroke-width="1"/>
+                    ${weekBarsHtml || '<text x="80" y="50" fill="#94a3b8" font-size="12">Nessun dato</text>'}
+                </svg></div>
+            </div>`;
+
+            // 2. Grafico valutazioni radar / lineare (VEL TEC FIS RES COM)
+            const perfKeys = ['VEL','TEC','FIS','RES','COM'];
+            const perfColors = {'VEL':'#f59e0b','TEC':'#3b82f6','FIS':'#10b981','RES':'#8b5cf6','COM':'#ef4444'};
+            const perfLabels = {'VEL':'Velocità','TEC':'Tecnica','FIS':'Fisico','RES':'Resistenza','COM':'Comportamento'};
+
+            let chartValutazioni = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:20px;">Nessuna valutazione nel mese</div>';
+            if (perfByDate.length > 0) {
+                // Media per attributo nel mese
+                const perfSums = {}, perfCounts = {};
+                perfKeys.forEach(k => { perfSums[k]=0; perfCounts[k]=0; });
+                perfByDate.forEach(p => {
+                    perfKeys.forEach(k => {
+                        if (p[k] && !isNaN(p[k])) { perfSums[k]+=Number(p[k]); perfCounts[k]++; }
+                    });
+                });
+                const perfAvgs = {};
+                perfKeys.forEach(k => { perfAvgs[k] = perfCounts[k]>0 ? (perfSums[k]/perfCounts[k]).toFixed(1) : null; });
+
+                // Radar SVG (pentagono)
+                const cx=90, cy=80, r=60;
+                const angles = perfKeys.map((_,i) => (i*72-90)*Math.PI/180);
+                const polygonOuter = angles.map(a => `${(cx+r*Math.cos(a)).toFixed(1)},${(cy+r*Math.sin(a)).toFixed(1)}`).join(' ');
+                const polygonMid   = angles.map(a => `${(cx+r*0.5*Math.cos(a)).toFixed(1)},${(cy+r*0.5*Math.sin(a)).toFixed(1)}`).join(' ');
+                const polygonData  = angles.map((a,i) => {
+                    const v = perfAvgs[perfKeys[i]];
+                    const frac = v!=null ? Math.min(1, v/5) : 0;
+                    return `${(cx+r*frac*Math.cos(a)).toFixed(1)},${(cy+r*frac*Math.sin(a)).toFixed(1)}`;
+                }).join(' ');
+                const spokes = angles.map(a => `<line x1="${cx}" y1="${cy}" x2="${(cx+r*Math.cos(a)).toFixed(1)}" y2="${(cy+r*Math.sin(a)).toFixed(1)}" stroke="rgba(0,0,0,0.08)" stroke-width="1"/>`).join('');
+                const dots = angles.map((a,i) => {
+                    const v = perfAvgs[perfKeys[i]];
+                    const frac = v!=null ? Math.min(1, v/5) : 0;
+                    const px = (cx+r*frac*Math.cos(a)).toFixed(1);
+                    const py = (cy+r*frac*Math.sin(a)).toFixed(1);
+                    return v!=null ? `<circle cx="${px}" cy="${py}" r="3.5" fill="${perfColors[perfKeys[i]]}" stroke="white" stroke-width="1.5"/>` : '';
+                }).join('');
+                const labels = angles.map((a,i) => {
+                    const lx = (cx+(r+18)*Math.cos(a)).toFixed(1);
+                    const ly = (cy+(r+18)*Math.sin(a)).toFixed(1);
+                    const v  = perfAvgs[perfKeys[i]];
+                    return `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="${perfColors[perfKeys[i]]}" font-weight="700">${perfKeys[i]}${v!=null?' '+v:''}</text>`;
+                }).join('');
+
+                chartValutazioni = `<div>
+                    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px;">🎯 Valutazioni Medie (su ${perfByDate.length} sessioni)</div>
+                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                        <svg width="180" height="170" style="flex-shrink:0;">
+                            <polygon points="${polygonOuter}" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="1"/>
+                            <polygon points="${polygonMid}"   fill="none" stroke="rgba(0,0,0,0.05)" stroke-width="1"/>
+                            ${spokes}
+                            <polygon points="${polygonData}" fill="rgba(99,102,241,0.18)" stroke="#6366f1" stroke-width="2"/>
+                            ${dots}
+                            ${labels}
+                        </svg>
+                        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+                            ${perfKeys.map(k => {
+                                const v = perfAvgs[k];
+                                if (!v) return '';
+                                return `<div style="display:flex;align-items:center;gap:8px;">
+                                    <span style="font-size:0.65rem;font-weight:700;color:${perfColors[k]};width:28px;">${k}</span>
+                                    <div style="flex:1;height:7px;background:rgba(0,0,0,0.06);border-radius:99px;overflow:hidden;">
+                                        <div style="width:${Math.min(100,v/5*100)}%;height:100%;background:${perfColors[k]};border-radius:99px;"></div>
+                                    </div>
+                                    <span style="font-size:0.72rem;font-weight:700;color:var(--text-main);width:24px;text-align:right;">${v}</span>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            chartsTop.innerHTML = `
+                <div style="background:rgba(0,0,0,0.02);border-radius:10px;padding:14px 16px;">${chartPresenza}</div>
+                <div style="background:rgba(0,0,0,0.02);border-radius:10px;padding:14px 16px;">${chartValutazioni}</div>`;
+
+            // 3. Grafico andamento valutazione nel tempo (linea temporale del mese)
+            if (perfByDate.length >= 2 && chartsBot) {
+                const sorted = perfByDate.sort((a,b) => a.date.localeCompare(b.date));
+                const svgLW = 520, svgLH = 100, padL = 30, padR = 10, padT = 12, padB = 20;
+                const plotW = svgLW-padL-padR, plotH = svgLH-padT-padB;
+                const n = sorted.length;
+                const xOf = (i) => padL + (i/(n-1))*plotW;
+                const yOf = (v) => padT + plotH - Math.min(plotH, Math.max(0, ((v||0)/5)*plotH));
+
+                const lines = perfKeys.map(k => {
+                    const pts = sorted.map((p,i) => `${xOf(i).toFixed(1)},${yOf(p[k]||0).toFixed(1)}`).join(' ');
+                    const has = sorted.some(p => p[k] && p[k]>0);
+                    return has ? `<polyline points="${pts}" fill="none" stroke="${perfColors[k]}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>` : '';
+                }).join('');
+
+                const xLabels = sorted.map((p,i) => {
+                    if (i%(Math.ceil(n/6))!==0 && i!==n-1) return '';
+                    const d = new Date(p.date).getDate();
+                    return `<text x="${xOf(i).toFixed(1)}" y="${svgLH-4}" text-anchor="middle" font-size="9" fill="#94a3b8">${d}</text>`;
+                }).join('');
+
+                const legend = perfKeys.map(k =>
+                    `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.65rem;color:${perfColors[k]};font-weight:700;">
+                        <span style="width:14px;height:2px;background:${perfColors[k]};display:inline-block;border-radius:2px;"></span>${k}
+                    </span>`
+                ).join(' ');
+
+                chartsBot.innerHTML = `<div style="background:rgba(0,0,0,0.02);border-radius:10px;padding:14px 16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+                        <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">📈 Andamento Valutazioni nel Mese</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">${legend}</div>
+                    </div>
+                    <div style="overflow-x:auto;">
+                    <svg width="${svgLW}" height="${svgLH}" style="display:block;">
+                        <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${svgLH-padB}" stroke="rgba(0,0,0,0.08)" stroke-width="1"/>
+                        <line x1="${padL}" y1="${svgLH-padB}" x2="${svgLW-padR}" y2="${svgLH-padB}" stroke="rgba(0,0,0,0.08)" stroke-width="1"/>
+                        ${[1,2,3,4,5].map(v=>`<line x1="${padL}" y1="${yOf(v).toFixed(1)}" x2="${svgLW-padR}" y2="${yOf(v).toFixed(1)}" stroke="rgba(0,0,0,0.04)" stroke-width="1"/>
+                            <text x="${padL-4}" y="${(yOf(v)+3).toFixed(1)}" text-anchor="end" font-size="8" fill="#94a3b8">${v}</text>`).join('')}
+                        ${lines}
+                        ${xLabels}
+                    </svg></div>
+                </div>`;
+            } else if (chartsBot) {
+                chartsBot.innerHTML = '';
+            }
         };
 
         window._gMonthNav = function(dir) {
             _gCurrentMonth += dir;
-            if (_gCurrentMonth > 11) { _gCurrentMonth = 0; _gCurrentYear++; }
-            if (_gCurrentMonth < 0)  { _gCurrentMonth = 11; _gCurrentYear--; }
+            if (_gCurrentMonth>11) { _gCurrentMonth=0; _gCurrentYear++; }
+            if (_gCurrentMonth<0)  { _gCurrentMonth=11; _gCurrentYear--; }
             window._gRenderMonthCalendar();
         };
 
         window._gShowDayDetail = function(dateStr) {
             const det = document.getElementById('g-month-day-detail');
             if (!det) return;
-            const evs = [...(eventsByDate[dateStr] || []), ...((_gTestEvents[dateStr] || []).map(e => ({...e, type:'test'})))];
-            if (!evs.length) { det.style.display = 'none'; return; }
-
+            const evs = [...(eventsByDate[dateStr]||[]), ...((_gTestEvents[dateStr]||[]).map(e=>({...e,type:'test'})))];
+            if (!evs.length) { det.style.display='none'; return; }
             const d = new Date(dateStr);
-            const fmt = d.toLocaleDateString('it-IT', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+            const fmt = d.toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
             const rows = evs.map(e => {
-                const col = e.type === 'test' ? '#8b5cf6' : e.type === 'partita' ? '#2563eb' : e.status === 'presente' ? '#10b981' : '#ef4444';
-                const icon = e.type === 'test' ? '🧪' : e.type === 'partita' ? '⚽' : e.status === 'presente' ? '✅' : '❌';
-                return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05);">
-                    <span>${icon}</span>
-                    <span style="font-size:0.82rem;color:${col};font-weight:600;">${e.label}</span>
-                    ${e.status && e.type !== 'test' ? '<span style="font-size:0.72rem;color:var(--text-muted);">· ' + e.status + '</span>' : ''}
-                    ${e.opponent ? '<span style="font-size:0.72rem;color:var(--text-muted);">vs ' + e.opponent + '</span>' : ''}
-                    ${e.score ? '<span style="font-size:0.72rem;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--text-main);">' + e.score + '</span>' : ''}
+                const col   = e.type==='test'?'#8b5cf6':e.type==='partita'?'#2563eb':e.status==='presente'?'#10b981':'#ef4444';
+                const icon  = e.type==='test'?'🧪':e.type==='partita'?'⚽':e.status==='presente'?'✅':'❌';
+                const perfHtml = (e.perf && Object.keys(e.perf).length) ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">'
+                    + Object.entries(e.perf).filter(([,v])=>v>0).map(([k,v])=>
+                        `<span style="font-size:0.65rem;padding:1px 6px;border-radius:99px;background:rgba(0,0,0,0.05);color:var(--text-sub);font-weight:600;">${k}: ${v}/5</span>`
+                    ).join('') + '</div>' : '';
+                const ratingHtml = e.rating ? `<span style="font-size:0.65rem;padding:1px 6px;border-radius:99px;background:rgba(245,158,11,0.1);color:#f59e0b;font-weight:700;">⭐ ${e.rating}/10</span>` : '';
+                return `<div style="padding:7px 0;border-bottom:1px solid rgba(0,0,0,0.05);">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span>${icon}</span>
+                        <span style="font-size:0.82rem;color:${col};font-weight:600;">${e.label}</span>
+                        ${e.status&&e.type!=='test'?'<span style="font-size:0.72rem;color:var(--text-muted);">· '+e.status+'</span>':''}
+                        ${ratingHtml}
+                    </div>
+                    ${perfHtml}
                 </div>`;
             }).join('');
 
             det.innerHTML = `<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--primary);margin-bottom:8px;">${fmt}</div>${rows}`;
-            det.style.display = 'block';
+            det.style.display='block';
         };
 
-        // Popola eventi partita nel calendario
-        (matchesData || []).forEach(m => {
-            // Cerca la data dalle sessioni di presenze
-            const pres = (attendances || []).find(a => {
-                const typeN = (a.sessions?.session_types?.name || '').toLowerCase();
-                return typeN.includes('gara') || typeN.includes('partita') || typeN.includes('torneo');
-            });
-        });
-
-        // Render calendario con il mese corrente
+        // Render iniziale
         window._gRenderMonthCalendar();
 
-        // ── Filtro presenze sessioni lato client ──
+
+                // ── Filtro presenze sessioni lato client ──
         window._filterGPresenze = function() {
             const tipo    = document.getElementById('g-pres-tipo')?.value || '';
             const dateFrom = document.getElementById('g-pres-date-from')?.value || '';
