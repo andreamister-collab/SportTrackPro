@@ -836,6 +836,7 @@
 
             <div class="sidebar-group-label">Atleti</div>
             <a data-section="anagrafica-pura" id="nav-anagrafica-pura">👤 Anagrafica Atleti</a>
+            <a data-section="visite-mediche" id="nav-visite-mediche">🏥 Visite Mediche</a>
             <a data-section="assegnazioni" id="nav-assegnazioni">📋 Assegnazioni Tecniche</a>
             <a data-section="atleti" id="nav-atleti">🔗 Anagrafica Squadra</a>
 
@@ -976,7 +977,7 @@
         window._effectiveRole = effectiveRole;
 
         const allNavIds = ['nav-stagioni','nav-sport','nav-societa','nav-categoria','nav-squadra',
-                           'nav-staff','nav-genitori','nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
+                           'nav-staff','nav-genitori','nav-anagrafica-pura','nav-visite-mediche','nav-assegnazioni','nav-atleti',
                            'nav-sessioni','nav-partite','nav-test','nav-tornei','nav-genitore-mensile','nav-import','nav-group-admin'];
 
         // GERARCHIA VISIBILITÀ MENU:
@@ -989,14 +990,14 @@
             admin:        allNavIds,
             manager:      allNavIds,
             presidente:   ['nav-categoria','nav-squadra','nav-staff',
-                           'nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
+                           'nav-anagrafica-pura','nav-visite-mediche','nav-assegnazioni','nav-atleti',
                            'nav-sessioni','nav-partite','nav-test','nav-tornei','nav-import','nav-group-admin'],
             segretario:   ['nav-categoria','nav-squadra','nav-staff',
-                           'nav-anagrafica-pura','nav-assegnazioni','nav-atleti',
+                           'nav-anagrafica-pura','nav-visite-mediche','nav-assegnazioni','nav-atleti',
                            'nav-sessioni','nav-partite','nav-test','nav-tornei','nav-import','nav-group-admin'],
-            responsabile: ['nav-anagrafica-pura','nav-atleti','nav-group-admin'],
-            dirigente:    ['nav-atleti','nav-sessioni','nav-partite','nav-test','nav-tornei'],
-            allenatore:   ['nav-atleti','nav-sessioni','nav-partite','nav-test','nav-tornei'],
+            responsabile: ['nav-anagrafica-pura','nav-visite-mediche','nav-atleti','nav-group-admin'],
+            dirigente:    ['nav-visite-mediche','nav-atleti','nav-sessioni','nav-partite','nav-test','nav-tornei'],
+            allenatore:   ['nav-visite-mediche','nav-atleti','nav-sessioni','nav-partite','nav-test','nav-tornei'],
             'preparatore atletico': ['nav-test'],
             genitore:     ['nav-genitore-mensile'],
         };
@@ -1201,6 +1202,11 @@
             case 'anagrafica-pura':
                 content.innerHTML = templateAnagraficaPura();
                 initAnagraficaPura();
+                break;
+
+            case 'visite-mediche':
+                content.innerHTML = templateVisiteMediche();
+                initVisiteMediche();
                 break;
 
             case 'assegnazioni':
@@ -2343,6 +2349,399 @@ window.handleDeleteStaff = async function(id) {
     `;
     document.head.appendChild(style);
 
+    // ═══════════════════════════════════════════════════════════════════════
+    //  SEZIONE VISITE MEDICHE
+    // ═══════════════════════════════════════════════════════════════════════
+    window.templateVisiteMediche = function() {
+        return `
+        <div style="padding:24px;max-width:1200px;margin:0 auto;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                <div>
+                    <h2 style="font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--text-main);margin:0;">🏥 Visite Mediche</h2>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-top:3px;">Atleti con visita medica scaduta o in scadenza</div>
+                </div>
+                <button onclick="window.initVisiteMediche()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:0.8rem;color:var(--text-muted);">🔄 Aggiorna</button>
+            </div>
+
+            <!-- KPI pills -->
+            <div id="vm-kpi" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;"></div>
+
+            <!-- Filtri -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;background:rgba(0,0,0,0.03);padding:14px;border-radius:10px;border:1px solid var(--border);margin-bottom:16px;">
+                <div>
+                    <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">Stato</label>
+                    <select id="vm-f-stato" onchange="window.applyVmFilters()" style="width:100%;padding:8px;border-radius:7px;border:1px solid var(--border);">
+                        <option value="">Tutti (scaduti + in scadenza)</option>
+                        <option value="expired">⚠️ Solo scadute</option>
+                        <option value="expiring30">⏳ Scadono entro 30gg</option>
+                        <option value="expiring60">⏳ Scadono entro 60gg</option>
+                        <option value="missing">— Nessuna data</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">Società</label>
+                    <select id="vm-f-soc" onchange="window.applyVmFilters()" style="width:100%;padding:8px;border-radius:7px;border:1px solid var(--border);">
+                        <option value="">Tutte</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">Categoria</label>
+                    <select id="vm-f-cat" onchange="window.applyVmFilters()" style="width:100%;padding:8px;border-radius:7px;border:1px solid var(--border);">
+                        <option value="">Tutte</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">Squadra</label>
+                    <select id="vm-f-team" onchange="window.applyVmFilters()" style="width:100%;padding:8px;border-radius:7px;border:1px solid var(--border);">
+                        <option value="">Tutte</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">Cerca atleta</label>
+                    <input type="text" id="vm-f-search" oninput="window.applyVmFilters()" placeholder="Cognome o nome..." style="width:100%;box-sizing:border-box;padding:8px;border-radius:7px;border:1px solid var(--border);">
+                </div>
+            </div>
+
+            <!-- Tabella -->
+            <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;" id="vm-table">
+                <thead>
+                    <tr style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:2px solid var(--border);background:rgba(0,0,0,0.02);">
+                        <th style="padding:10px 12px;text-align:left;">Atleta</th>
+                        <th style="padding:10px 12px;text-align:left;">Scadenza VM</th>
+                        <th style="padding:10px 12px;text-align:left;">Società</th>
+                        <th style="padding:10px 12px;text-align:left;">Categoria</th>
+                        <th style="padding:10px 12px;text-align:left;">Squadra</th>
+                        <th style="padding:10px 12px;text-align:left;">Allenatore</th>
+                        <th style="padding:10px 12px;text-align:left;">Responsabile</th>
+                    </tr>
+                </thead>
+                <tbody id="vm-body">
+                    <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">⏳ Caricamento...</td></tr>
+                </tbody>
+            </table>
+            </div>
+        </div>`;
+    };
+
+    window._vmAllRows = [];
+
+    window.initVisiteMediche = async function() {
+        const effRole  = (window._effectiveRole || window._userRole || '').toLowerCase();
+        const mySocId  = window._currentSocietyId;
+        const userId   = window._currentUserId;
+        const now = new Date(); now.setHours(0,0,0,0);
+
+        // ── Scope tiers ────────────────────────────────────────────────────
+        // Global   : admin, manager → tutto
+        // Società  : presidente, segretario → solo propria società
+        // Team     : responsabile, dirigente, allenatore → solo team assegnati
+        const isGlobal  = ['admin','manager'].includes(effRole);
+        const isSociety = ['presidente','segretario'].includes(effRole);
+        const isTeam    = ['responsabile','dirigente','allenatore','preparatore atletico'].includes(effRole);
+
+        // Per ruoli team-scoped: carica i team assegnati
+        let scopedTeamIds = null;
+        if (isTeam) {
+            scopedTeamIds = await window.loadUserAssignedTeams() || [];
+            if (!scopedTeamIds.length) {
+                // Nessun team assegnato → mostra avviso
+                const tbody = document.getElementById('vm-body');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">Nessun team assegnato al tuo profilo.</td></tr>';
+                return;
+            }
+        }
+
+        // ── 1. Fetch active seasons ────────────────────────────────────────
+        const { data: activeSeas } = await client.from('seasons').select('id').eq('is_active', true);
+        const activeSeaIds = (activeSeas||[]).map(s => s.id);
+
+        // ── 2. Fetch assignments first (source of truth for scope) ─────────
+        let assQ = client.from('athlete_team_seasons')
+            .select('athlete_id, society_id, team_id, category_id, teams(name), categories(name), societies(name)');
+        if (activeSeaIds.length) assQ = assQ.in('season_id', activeSeaIds);
+        if (isSociety && mySocId) assQ = assQ.eq('society_id', mySocId);
+        if (isTeam && scopedTeamIds.length) assQ = assQ.in('team_id', scopedTeamIds);
+        const { data: assignments } = await assQ;
+
+        // Collect visible athlete IDs from assignments (for team/society scope)
+        const visibleAthleteIds = isGlobal
+            ? null   // no restriction
+            : [...new Set((assignments||[]).map(a => a.athlete_id).filter(Boolean))];
+
+        // ── 3. Fetch athletes with medical_expiry ──────────────────────────
+        let athQ = client.from('athletes')
+            .select('id, name, surname, medical_expiry, society_id, societies(name)')
+            .order('surname');
+        if (isSociety && mySocId) athQ = athQ.eq('society_id', mySocId);
+        if (isTeam && visibleAthleteIds?.length) athQ = athQ.in('id', visibleAthleteIds);
+        // Edge: team scope with 0 visible athletes already handled above
+        const { data: athletes } = await athQ;
+
+        // ── 4. Fetch staff (allenatore + responsabile) per team ────────────
+        let staffQ = client.from('user_category_seasons')
+            .select('team_id, category_id, role, users!fk_staff_user(name)');
+        if (isSociety && mySocId) staffQ = staffQ.eq('society_id', mySocId);
+        if (isTeam && scopedTeamIds.length) staffQ = staffQ.in('team_id', scopedTeamIds);
+        if (activeSeaIds.length) staffQ = staffQ.in('season_id', activeSeaIds);
+        const { data: staffRaw } = await staffQ;
+
+        // Build team → allenatori/responsabili map
+        const staffByTeam = {};
+        (staffRaw||[]).forEach(s => {
+            const key = s.team_id || s.category_id;
+            if (!key) return;
+            if (!staffByTeam[key]) staffByTeam[key] = { allenatori: [], responsabili: [] };
+            const r = (s.role||'').toLowerCase();
+            const n = s.users?.name || '';
+            if (!n) return;
+            if (r.includes('allenatore')) staffByTeam[key].allenatori.push(n);
+            else if (r.includes('responsabile')) staffByTeam[key].responsabili.push(n);
+        });
+
+        // ── 4. Build assignment map athlete_id → [assignments] ────────────
+        const assMap = {};
+        (assignments||[]).forEach(a => {
+            if (!assMap[a.athlete_id]) assMap[a.athlete_id] = [];
+            assMap[a.athlete_id].push(a);
+        });
+
+        // ── 5. Build rows — only athletes with issues ──────────────────────
+        // For team scope: further filter assignments to only show relevant teams
+        const rows = [];
+        (athletes||[]).forEach(ath => {
+            const exp = ath.medical_expiry ? new Date(ath.medical_expiry) : null;
+            const diff = exp ? Math.ceil((exp - now) / (1000*60*60*24)) : null;
+            // Include: scaduta, in scadenza 60gg, o senza data
+            const status = !exp ? 'missing'
+                         : diff < 0 ? 'expired'
+                         : diff <= 60 ? 'expiring'
+                         : null;
+            if (!status) return; // skip valid
+
+            // For team-scoped roles: only show assignments for their teams
+            const rawAssigns = assMap[ath.id] || [];
+            const athAssigns = (isTeam && scopedTeamIds?.length)
+                ? rawAssigns.filter(a => scopedTeamIds.includes(a.team_id))
+                : rawAssigns.length ? rawAssigns : [{}];
+            athAssigns.forEach(ass => {
+                const staffKey = ass.team_id || ass.category_id;
+                const st = staffByTeam[staffKey] || { allenatori:[], responsabili:[] };
+                rows.push({
+                    ath_id:       ath.id,
+                    surname:      ath.surname || '',
+                    name:         ath.name    || '',
+                    medical_expiry: ath.medical_expiry,
+                    status,
+                    diff,
+                    soc_id:   ass.society_id || ath.society_id,
+                    soc_name: ass.societies?.name || ath.societies?.name || '—',
+                    cat_name: ass.categories?.name || '—',
+                    team_id:  ass.team_id || null,
+                    team_name: ass.teams?.name || '—',
+                    allenatori:   st.allenatori,
+                    responsabili: st.responsabili,
+                });
+            });
+        });
+
+        window._vmAllRows = rows;
+
+        // ── 6. Populate filter dropdowns ───────────────────────────────────
+        const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+        const socs  = uniq(rows.map(r => r.soc_name));
+        const cats  = uniq(rows.map(r => r.cat_name).filter(n => n !== '—'));
+        const teams = uniq(rows.map(r => r.team_name).filter(n => n !== '—'));
+
+        const setOpts = (id, vals) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const cur = el.value;
+            el.innerHTML = '<option value="">Tutte</option>';
+            vals.forEach(v => el.innerHTML += `<option value="${v}" ${v===cur?'selected':''}>${v}</option>`);
+        };
+        setOpts('vm-f-soc',  socs);
+        setOpts('vm-f-cat',  cats);
+        setOpts('vm-f-team', teams);
+
+        // Hide società filter if user can only see their own society
+        const socFilterWrap = document.getElementById('vm-f-soc')?.closest('div');
+        if (socFilterWrap) socFilterWrap.style.display = isGlobal ? '' : 'none';
+
+        // ── 7. KPI pills ───────────────────────────────────────────────────
+        const expired  = rows.filter(r => r.status === 'expired');
+        const expiring = rows.filter(r => r.status === 'expiring');
+        const missing  = rows.filter(r => r.status === 'missing');
+        // Deduplicate by ath_id for KPI counts
+        const uniqAth = (arr) => [...new Map(arr.map(r=>[r.ath_id,r])).values()];
+        // Build per-type deduplicated sets for popup
+        const _byType = {
+            expired:  rows.filter(r => r.status === 'expired'),
+            expiring: rows.filter(r => r.status === 'expiring'),
+            missing:  rows.filter(r => r.status === 'missing'),
+            all:      rows,
+        };
+
+        const kpiDefs = [
+            { key:'expired',  v: uniqAth(expired).length,  label:'Scadute',            bg:'rgba(239,68,68,0.1)',    color:'#dc2626', icon:'⚠️', cursor:true },
+            { key:'expiring', v: uniqAth(expiring).length, label:'In scadenza (60gg)', bg:'rgba(245,158,11,0.1)',   color:'#d97706', icon:'⏳', cursor:true },
+            { key:'missing',  v: uniqAth(missing).length,  label:'Senza data',         bg:'rgba(100,116,139,0.1)', color:'#475569', icon:'—',  cursor:true },
+            { key:'all',      v: uniqAth(rows).length,     label:'Totale atleti',      bg:'rgba(99,102,241,0.1)',   color:'#6366f1', icon:'👤', cursor:false },
+        ];
+
+        // Store for popup use
+        window._vmRowsByType = _byType;
+
+        const kpi = document.getElementById('vm-kpi');
+        if (kpi) kpi.innerHTML = kpiDefs.map(k => {
+            const clickable = k.cursor && k.v > 0;
+            return `<div onclick="${clickable ? "window._vmOpenPopup('"+k.key+"')" : ''}"
+                style="padding:10px 18px;border-radius:10px;background:${k.bg};border:1px solid ${k.color}33;
+                       ${clickable ? 'cursor:pointer;transition:box-shadow 0.15s,transform 0.15s;' : ''}
+                       position:relative;"
+                ${clickable ? `onmouseenter="this.style.boxShadow='0 4px 16px ${k.color}22';this.style.transform='translateY(-1px)'"
+                               onmouseleave="this.style.boxShadow='';this.style.transform=''"` : ''}>
+                <div style="font-size:1.3rem;font-weight:800;color:${k.color};font-family:'DM Mono',monospace;line-height:1;">${k.icon} ${k.v}</div>
+                <div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-top:3px;">${k.label}</div>
+                ${clickable ? `<div style="position:absolute;top:6px;right:8px;font-size:0.6rem;color:${k.color};opacity:0.55;">&#9654; dettaglio</div>` : ''}
+            </div>`;
+        }).join('');
+
+        // ── Popup opener ──────────────────────────────────────────────────
+        window._vmOpenPopup = function(type) {
+            const overlay = document.getElementById('monthly-chart-popup-overlay');
+            const box     = document.getElementById('monthly-chart-popup-content');
+            if (!overlay || !box) return;
+
+            const rows2  = (window._vmRowsByType || {})[type] || [];
+            const labels = { expired:'Visite Scadute', expiring:'In Scadenza (60gg)', missing:'Senza Data Visita' };
+            const colors = { expired:'#dc2626', expiring:'#d97706', missing:'#475569' };
+            const icons  = { expired:'⚠️', expiring:'⏳', missing:'—' };
+            const col    = colors[type] || '#6366f1';
+            const lbl    = labels[type] || 'Elenco';
+
+            // Deduplicate rows by ath_id keeping all team rows separate
+            const tableRows = rows2.map(r => {
+                const exp  = r.medical_expiry ? new Date(r.medical_expiry).toLocaleDateString('it-IT') : null;
+                const diff = r.diff;
+                let badge = '';
+                if (!exp) {
+                    badge = '<span style="padding:2px 8px;border-radius:99px;background:rgba(100,116,139,0.1);color:#475569;font-size:0.72rem;font-weight:700;">— Nessuna data</span>';
+                } else if (diff < 0) {
+                    badge = '<span style="padding:2px 8px;border-radius:99px;background:rgba(239,68,68,0.12);color:#dc2626;font-size:0.72rem;font-weight:700;">Scaduta il ' + exp + '</span>'
+                           +'<div style="font-size:0.68rem;color:#dc2626;">da ' + Math.abs(diff) + ' gg</div>';
+                } else {
+                    const c = diff <= 30 ? '#d97706' : '#0284c7';
+                    const b = diff <= 30 ? 'rgba(245,158,11,0.1)' : 'rgba(2,132,199,0.08)';
+                    badge = '<span style="padding:2px 8px;border-radius:99px;background:'+b+';color:'+c+';font-size:0.72rem;font-weight:700;">Scade il ' + exp + '</span>'
+                           +'<div style="font-size:0.68rem;color:'+c+';">tra ' + diff + ' gg</div>';
+                }
+                const all  = r.allenatori?.length  ? r.allenatori.join(', ')  : '<span style="color:var(--text-muted);">—</span>';
+                const resp = r.responsabili?.length ? r.responsabili.join(', ') : '<span style="color:var(--text-muted);">—</span>';
+                return '<tr style="border-bottom:1px solid var(--border);">'
+                    + '<td style="padding:9px 10px;font-weight:700;font-size:0.85rem;white-space:nowrap;">' + r.surname + ' ' + r.name + '</td>'
+                    + '<td style="padding:9px 10px;">' + badge + '</td>'
+                    + '<td style="padding:9px 10px;font-size:0.78rem;color:var(--text-sub);">' + r.soc_name + '</td>'
+                    + '<td style="padding:9px 10px;font-size:0.78rem;color:var(--text-sub);">' + r.cat_name + '</td>'
+                    + '<td style="padding:9px 10px;font-size:0.78rem;font-weight:600;">' + r.team_name + '</td>'
+                    + '<td style="padding:9px 10px;font-size:0.78rem;color:#2563eb;">' + all + '</td>'
+                    + '<td style="padding:9px 10px;font-size:0.78rem;color:#7c3aed;">' + resp + '</td>'
+                    + '</tr>';
+            }).join('');
+
+            box.innerHTML = `
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                    <div style="width:4px;height:38px;background:${col};border-radius:3px;flex-shrink:0;"></div>
+                    <div>
+                        <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);">🏥 VISITE MEDICHE</div>
+                        <div style="font-size:1.2rem;font-weight:800;color:var(--text-main);font-family:'Syne',sans-serif;">${icons[type]} ${lbl}</div>
+                    </div>
+                    <div style="margin-left:auto;padding:6px 14px;border-radius:99px;background:${col}15;border:1px solid ${col}33;font-size:1rem;font-weight:800;color:${col};font-family:'DM Mono',monospace;">
+                        ${rows2.length} atleti
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.82rem;min-width:600px;">
+                    <thead><tr style="font-size:0.63rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:2px solid var(--border);background:rgba(0,0,0,0.02);">
+                        <th style="padding:8px 10px;text-align:left;">Atleta</th>
+                        <th style="padding:8px 10px;text-align:left;">Visita Medica</th>
+                        <th style="padding:8px 10px;text-align:left;">Società</th>
+                        <th style="padding:8px 10px;text-align:left;">Categoria</th>
+                        <th style="padding:8px 10px;text-align:left;">Squadra</th>
+                        <th style="padding:8px 10px;text-align:left;color:#2563eb;">Allenatore</th>
+                        <th style="padding:8px 10px;text-align:left;color:#7c3aed;">Responsabile</th>
+                    </tr></thead>
+                    <tbody>${tableRows || '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">Nessun atleta in questa categoria</td></tr>'}</tbody>
+                </table></div>`;
+
+            overlay.style.display = 'flex';
+        };
+
+        window.applyVmFilters();
+    };
+
+    window.applyVmFilters = function() {
+        const stato  = document.getElementById('vm-f-stato')?.value || '';
+        const soc    = document.getElementById('vm-f-soc')?.value   || '';
+        const cat    = document.getElementById('vm-f-cat')?.value   || '';
+        const team   = document.getElementById('vm-f-team')?.value  || '';
+        const search = (document.getElementById('vm-f-search')?.value || '').toLowerCase();
+        const now    = new Date(); now.setHours(0,0,0,0);
+
+        const filtered = (window._vmAllRows || []).filter(r => {
+            if (stato === 'expired'    && r.status !== 'expired') return false;
+            if (stato === 'expiring30' && (r.status !== 'expiring' || r.diff < 0 || r.diff > 30)) return false;
+            if (stato === 'expiring60' && (r.status !== 'expiring' || r.diff > 60)) return false;
+            if (stato === 'missing'    && r.status !== 'missing') return false;
+            if (!stato && r.status === null) return false;
+            if (soc  && r.soc_name  !== soc)  return false;
+            if (cat  && r.cat_name  !== cat)  return false;
+            if (team && r.team_name !== team) return false;
+            if (search && !(r.surname + ' ' + r.name).toLowerCase().includes(search)) return false;
+            return true;
+        });
+
+        const tbody = document.getElementById('vm-body');
+        if (!tbody) return;
+
+        if (!filtered.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">✅ Nessun atleta con visita medica problematica nei filtri selezionati</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(r => {
+            const exp  = r.medical_expiry ? new Date(r.medical_expiry).toLocaleDateString('it-IT') : null;
+            const diff = r.diff;
+            let badge = '';
+            if (r.status === 'missing') {
+                badge = '<span style="padding:3px 9px;border-radius:99px;background:rgba(100,116,139,0.1);color:#475569;font-size:0.72rem;font-weight:700;">— Nessuna data</span>';
+            } else if (r.status === 'expired') {
+                badge = '<span style="padding:3px 9px;border-radius:99px;background:rgba(239,68,68,0.12);color:#dc2626;font-size:0.72rem;font-weight:700;">⚠️ Scaduta ' + exp + '</span>'
+                       +'<div style="font-size:0.68rem;color:#dc2626;margin-top:2px;">da ' + Math.abs(diff) + ' giorni</div>';
+            } else {
+                const col = diff <= 30 ? '#d97706' : '#0284c7';
+                const bg  = diff <= 30 ? 'rgba(245,158,11,0.1)' : 'rgba(2,132,199,0.08)';
+                badge = '<span style="padding:3px 9px;border-radius:99px;background:'+bg+';color:'+col+';font-size:0.72rem;font-weight:700;">⏳ Scade ' + exp + '</span>'
+                       +'<div style="font-size:0.68rem;color:'+col+';margin-top:2px;">tra ' + diff + ' giorni</div>';
+            }
+
+            const all  = r.allenatori.length  ? r.allenatori.join(', ')  : '<span style="color:var(--text-muted);font-size:0.75rem;">—</span>';
+            const resp = r.responsabili.length ? r.responsabili.join(', ') : '<span style="color:var(--text-muted);font-size:0.75rem;">—</span>';
+
+            return `<tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:10px 12px;">
+                    <div style="font-weight:700;font-size:0.88rem;color:var(--text-main);">${r.surname} ${r.name}</div>
+                </td>
+                <td style="padding:10px 12px;">${badge}</td>
+                <td style="padding:10px 12px;font-size:0.8rem;color:var(--text-sub);">${r.soc_name}</td>
+                <td style="padding:10px 12px;font-size:0.8rem;color:var(--text-sub);">${r.cat_name}</td>
+                <td style="padding:10px 12px;font-size:0.8rem;font-weight:600;color:var(--text-main);">${r.team_name}</td>
+                <td style="padding:10px 12px;font-size:0.8rem;color:#2563eb;">${all}</td>
+                <td style="padding:10px 12px;font-size:0.8rem;color:#7c3aed;">${resp}</td>
+            </tr>`;
+        }).join('');
+    };
+
     // 2. TEMPLATE PRINCIPALE
     window.templateAnagraficaPura = function() {
         return `
@@ -2365,7 +2764,18 @@ window.handleDeleteStaff = async function(id) {
                     <label style="font-size: 11px; color: var(--text-sub); font-weight:bold;">Anno di Nascita</label>
                     <input type="number" id="f-bp-year" placeholder="es. 2008" oninput="window.applyAnagraficaFilters()" style="width:100%">
                 </div>
+                <div>
+                    <label style="font-size: 11px; color: var(--text-sub); font-weight:bold;">Visita Medica</label>
+                    <select id="f-bp-medical" onchange="window.applyAnagraficaFilters()" style="width:100%">
+                        <option value="">Tutte</option>
+                        <option value="expired">⚠️ Scadute</option>
+                        <option value="expiring">⏳ In scadenza (30gg)</option>
+                        <option value="valid">✅ Valide</option>
+                        <option value="missing">— Nessuna data</option>
+                    </select>
+                </div>
             </div>
+            <div id="medical-alert-banner" style="display:none;margin-bottom:12px;"></div>
 
             <div style="overflow-x:auto;">
                 <table style="width:100%; border-collapse: collapse;">
@@ -2373,6 +2783,7 @@ window.handleDeleteStaff = async function(id) {
                         <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 12px; text-transform: uppercase;">
                             <th style="text-align:left; padding:15px;">Atleta</th>
                             <th style="text-align:left; padding:15px;">Nascita</th>
+                            <th style="text-align:left; padding:15px;">Visita Medica</th>
                             <th style="text-align:left; padding:15px;">Società</th>
                             <th style="text-align:right; padding:15px;">Azioni</th>
                         </tr>
@@ -2384,6 +2795,17 @@ window.handleDeleteStaff = async function(id) {
     };
 
     // 3. CARICAMENTO DATI
+    // ── Migration check: ensure medical_expiry column exists ──
+    // Run once in Supabase: ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS medical_expiry date;
+    window._checkMedicalColumn = async function() {
+        try {
+            await client.from('athletes').select('medical_expiry').limit(1);
+        } catch(e) {
+            console.warn('medical_expiry column missing — run: ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS medical_expiry date;');
+        }
+    };
+    window._checkMedicalColumn();
+
     window.initAnagraficaPura = async function() {
         const effRole = (window._effectiveRole || window._userRole || '').toLowerCase();
         const mySocId = window._currentSocietyId;
@@ -2412,6 +2834,29 @@ window.handleDeleteStaff = async function(id) {
         }
         
         renderAnagraficaTable(_atletiBase);
+
+        // Alert banner for expired/expiring medical visits
+        const now2 = new Date(); now2.setHours(0,0,0,0);
+        const expired  = _atletiBase.filter(a => a.medical_expiry && new Date(a.medical_expiry) < now2);
+        const expiring = _atletiBase.filter(a => {
+            if (!a.medical_expiry) return false;
+            const d = new Date(a.medical_expiry); const diff = Math.ceil((d-now2)/(1000*60*60*24));
+            return diff >= 0 && diff <= 30;
+        });
+        const banner = document.getElementById('medical-alert-banner');
+        if (banner) {
+            const parts = [];
+            if (expired.length)  parts.push('<span style="padding:4px 12px;border-radius:99px;background:rgba(239,68,68,0.1);color:#dc2626;font-weight:700;font-size:0.8rem;">⚠️ ' + expired.length  + ' visite scadute</span>');
+            if (expiring.length) parts.push('<span style="padding:4px 12px;border-radius:99px;background:rgba(245,158,11,0.1);color:#d97706;font-weight:700;font-size:0.8rem;">⏳ ' + expiring.length + ' in scadenza (30gg)</span>');
+            if (parts.length) {
+                banner.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;background:rgba(239,68,68,0.04);border:1px solid rgba(239,68,68,0.15);border-radius:8px;">'
+                    + '<span style="font-size:0.78rem;color:var(--text-muted);">📋 Visita medica:</span>'
+                    + parts.join('') + '</div>';
+                banner.style.display = 'block';
+            } else {
+                banner.style.display = 'none';
+            }
+        }
     };
 
     // 4. RENDER TABELLA
@@ -2425,6 +2870,16 @@ window.handleDeleteStaff = async function(id) {
                     <div style="color:var(--text-muted); font-size:13px;">${a.name}</div>
                 </td>
                 <td style="padding:15px;">${a.born_date ? new Date(a.born_date).toLocaleDateString('it-IT') : '-'}</td>
+                <td style="padding:15px;">${(() => {
+                    if (!a.medical_expiry) return '<span style="color:var(--text-muted);font-size:0.82rem;">—</span>';
+                    const exp = new Date(a.medical_expiry);
+                    const now = new Date();
+                    const diff = Math.ceil((exp - now) / (1000*60*60*24));
+                    const label = exp.toLocaleDateString('it-IT');
+                    if (diff < 0)    return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:rgba(239,68,68,0.12);color:#dc2626;font-size:0.75rem;font-weight:700;">⚠️ Scaduta ' + label + '</span>';
+                    if (diff <= 30)  return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:rgba(245,158,11,0.12);color:#d97706;font-size:0.75rem;font-weight:700;">⏳ Scade ' + label + '</span>';
+                    return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:rgba(16,185,129,0.1);color:#059669;font-size:0.75rem;font-weight:700;">✅ ' + label + '</span>';
+                })()}</td>
                 <td style="padding:15px;"><span style="background:var(--card-raised); padding:5px 10px; border-radius:15px; font-size:11px;">${_socLook[a.society_id] || 'N.D.'}</span></td>
                 <td style="padding:15px; text-align:right; white-space:nowrap;">
                     <button class="btn-icon-atleta link" onclick="window.openAssociaGiocatoreModal('${a.id}')" title="Associa">🔗</button>
@@ -2534,14 +2989,25 @@ window.handleDeleteStaff = async function(id) {
 
     // 6. FILTRI E MODAL ANAGRAFICA BASE
     window.applyAnagraficaFilters = function() {
-        const search = document.getElementById('f-bp-search').value.toLowerCase();
-        const socId = document.getElementById('f-bp-soc').value;
-        const year = document.getElementById('f-bp-year').value;
+        const search    = document.getElementById('f-bp-search').value.toLowerCase();
+        const socId     = document.getElementById('f-bp-soc').value;
+        const year      = document.getElementById('f-bp-year').value;
+        const medFilter = document.getElementById('f-bp-medical')?.value || '';
+        const now = new Date(); now.setHours(0,0,0,0);
         const filtered = _atletiBase.filter(a => {
             const matchesName = (a.surname + ' ' + a.name).toLowerCase().includes(search);
-            const matchesSoc = !socId || a.society_id === socId;
+            const matchesSoc  = !socId || a.society_id === socId;
             const matchesYear = !year || (a.born_date && a.born_date.startsWith(year));
-            return matchesName && matchesSoc && matchesYear;
+            const matchesMed  = !medFilter || (() => {
+                if (!a.medical_expiry) return medFilter === 'missing';
+                const exp = new Date(a.medical_expiry);
+                const diff = Math.ceil((exp - now) / (1000*60*60*24));
+                if (medFilter === 'expired')  return diff < 0;
+                if (medFilter === 'expiring') return diff >= 0 && diff <= 30;
+                if (medFilter === 'valid')    return diff > 30;
+                return false;
+            })();
+            return matchesName && matchesSoc && matchesYear && matchesMed;
         });
         renderAnagraficaTable(filtered);
     };
@@ -2556,6 +3022,10 @@ window.handleDeleteStaff = async function(id) {
                 <input type="text" id="m-bp-surname" value="${atleta.surname || ''}" placeholder="COGNOME" style="padding:10px; border-radius:8px; border:1px solid rgba(0,0,0,0.1); text-transform:uppercase;">
                 <input type="text" id="m-bp-name" value="${atleta.name || ''}" placeholder="NOME" style="padding:10px; border-radius:8px; border:1px solid rgba(0,0,0,0.1);">
                 <input type="date" id="m-bp-date" value="${atleta.born_date || ''}" style="padding:10px; border-radius:8px; border:1px solid rgba(0,0,0,0.1);">
+                <div>
+                    <label style="font-size:0.73rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">📋 Scadenza Visita Medica</label>
+                    <input type="date" id="m-bp-medical" value="${atleta.medical_expiry || ''}" style="padding:10px; border-radius:8px; border:1px solid rgba(0,0,0,0.1); width:100%; box-sizing:border-box;">
+                </div>
                 ${isGlobal
                     ? `<select id="m-bp-soc" style="padding:10px; border-radius:8px; border:1px solid rgba(0,0,0,0.1);">
                         <option value="">-- Seleziona Società --</option>
@@ -2573,6 +3043,7 @@ window.handleDeleteStaff = async function(id) {
                 name: document.getElementById('m-bp-name').value.trim(), 
                 surname: document.getElementById('m-bp-surname').value.trim().toUpperCase(), 
                 born_date: document.getElementById('m-bp-date').value || null, 
+                medical_expiry: document.getElementById('m-bp-medical').value || null,
                 society_id: document.getElementById('m-bp-soc').value 
             };
             if(!data.name || !data.surname || !data.society_id) return alert("Tutti i campi sono obbligatori!");
@@ -3467,6 +3938,10 @@ window.handleDeleteStaff = async function(id) {
                 <div><label>Nome *</label><input type="text" id="m-atleta-name" value="${editData?.athletes?.name || ''}" required></div>
                 <div><label>N° Maglia</label><input type="number" id="m-atleta-jersey" value="${editData?.jersey_number || ''}"></div>
                 <div><label>Ruolo</label><input type="text" id="m-atleta-role" value="${editData?.role || ''}"></div>
+                <div style="grid-column:span 2;">
+                    <label style="font-size:0.73rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">📋 Scadenza Visita Medica</label>
+                    <input type="date" id="m-atleta-medical" value="${editData?.athletes?.medical_expiry || ''}" style="padding:10px;border-radius:8px;border:1px solid var(--border);width:100%;box-sizing:border-box;">
+                </div>
             </div>
         `);
 
@@ -3526,7 +4001,9 @@ window.handleDeleteStaff = async function(id) {
         document.getElementById('btn-modal-save').onclick = async () => {
             const cog = document.getElementById('m-atleta-surname').value.trim(), nom = document.getElementById('m-atleta-name').value.trim(), sId = mSoc.value;
             if(!cog || !nom || !sId) return alert("Dati mancanti!");
-            let aId = isEdit ? editData.athlete_id : (await client.from('athletes').insert([{surname:cog, name:nom, society_id:sId}]).select().single()).data.id;
+            const medVal = document.getElementById('m-atleta-medical')?.value || null;
+            let aId = isEdit ? editData.athlete_id : (await client.from('athletes').insert([{surname:cog, name:nom, society_id:sId, medical_expiry:medVal}]).select().single()).data.id;
+            if (isEdit && aId) await client.from('athletes').update({ surname:cog, name:nom, medical_expiry:medVal }).eq('id', aId);
             const payload = { athlete_id:aId, society_id:sId, season_id:activeSea, category_id:document.getElementById('m-atleta-cat').value, team_id:document.getElementById('m-atleta-team').value||null, role:document.getElementById('m-atleta-role').value, jersey_number:document.getElementById('m-atleta-jersey').value||null };
             const { error } = isEdit ? await client.from('athlete_team_seasons').update(payload).eq('id', editData.id) : await client.from('athlete_team_seasons').insert(payload);
             if(!error) { modal.close(); _fetchAtletiData(); }
@@ -3564,6 +4041,9 @@ window.handleDeleteStaff = async function(id) {
 
         const assigns = allAssigns || [];
         const athlete = ref.athletes;
+        // Fetch full athlete data including medical_expiry
+        const { data: athleteFull } = await client.from('athletes').select('id,name,surname,born_date,medical_expiry').eq('id', athleteId).single();
+        const athleteMedical = athleteFull || athlete;
 
         const effRole2 = (window._effectiveRole || window._userRole || '').toLowerCase();
         const isGlobal2 = ['admin','manager'].includes(effRole2);
@@ -3609,6 +4089,11 @@ window.handleDeleteStaff = async function(id) {
                         <input type="text" id="mma-surname" value="${athlete?.surname||''}" style="width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1px solid var(--border);"></div>
                     <div><label style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">Nome *</label>
                         <input type="text" id="mma-name" value="${athlete?.name||''}" style="width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1px solid var(--border);"></div>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">📋 Scadenza Visita Medica</label>
+                    <input type="date" id="mma-medical" value="${athleteMedical?.medical_expiry||''}" style="width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1px solid var(--border);">
+                    <div style="font-size:0.68rem;color:var(--text-muted);margin-top:3px;">Lascia vuoto se non disponibile</div>
                 </div>
 
                 <!-- Assegnazioni correnti -->
@@ -3657,7 +4142,8 @@ window.handleDeleteStaff = async function(id) {
             const sur = document.getElementById('mma-surname').value.trim().toUpperCase();
             const nom = document.getElementById('mma-name').value.trim();
             if (!sur || !nom) return alert('Nome e Cognome obbligatori!');
-            const { error } = await client.from('athletes').update({ surname: sur, name: nom }).eq('id', athleteId);
+            const medExp = document.getElementById('mma-medical')?.value || null;
+            const { error } = await client.from('athletes').update({ surname: sur, name: nom, medical_expiry: medExp }).eq('id', athleteId);
             if (!error) { modal.close(); _fetchAtletiData(); }
             else alert('Errore salvataggio: ' + error.message);
         };
@@ -6111,9 +6597,12 @@ function templateImportAtleti() {
             <h4 style="margin:0 0 10px 0; color: #ffd166; font-size: 14px; font-weight: 800;">⚠️ ISTRUZIONI FILE EXCEL</h4>
             <p style="margin:0; font-size: 13px; color: #c9a84c; line-height: 1.5;">
                 Il file deve essere in formato <b style="color:#92400e;">.xlsx</b> e contenere nella prima riga queste colonne: <br>
-                <b style="color:#92400e;">nome</b> | <b style="color:#92400e;">cognome</b> | <b style="color:#92400e;">data_nascita</b> <br>
+                <b style="color:#92400e;">nome</b> | <b style="color:#92400e;">cognome</b> | <b style="color:#92400e;">data_nascita</b> | <b style="color:#ffd166;">visita_medica</b> <span style="color:#c9a84c;font-size:11px;">(facoltativa)</span><br>
                 <span style="display:inline-block; margin-top:5px; background:rgba(255,209,102,0.1); padding:2px 8px; border-radius:4px; border: 1px solid rgba(255,209,102,0.2);">
-                    💡 La data deve essere nel formato: <b style="color:#92400e;">AAAA-MM-GG</b> (es: 2012-05-24)
+                    💡 Le date devono essere nel formato: <b style="color:#92400e;">AAAA-MM-GG</b> (es: 2012-05-24)
+                </span>
+                <span style="display:inline-block; margin-top:5px; background:rgba(16,185,129,0.08); padding:2px 8px; border-radius:4px; border: 1px solid rgba(16,185,129,0.2);color:#065f46;">
+                    📋 <b>visita_medica</b>: data di scadenza della visita medica (es: 2026-12-31) — accettate anche intestazioni: <i>scadenza_visita, medical_expiry, medical, scadenza_vm</i>
                 </span>
             </p>
         </div>
@@ -6226,6 +6715,7 @@ async function initImportAtleti() {
                         const nome = getVal(row, ['nome', 'name']);
                         const cognome = getVal(row, ['cognome', 'surname']);
                         const rawDate = getVal(row, ['data_nascita', 'nascita', 'data', 'born_date', 'birth_date']);
+                        const rawMedical = getVal(row, ['visita_medica', 'scadenza_visita', 'medical_expiry', 'visita', 'scadenza_vm', 'vm_scadenza', 'medical']);
 
                         if (!nome || !cognome) continue;
 
@@ -6255,10 +6745,12 @@ async function initImportAtleti() {
                         const dataNascita = parseDate(rawDate);
 
                         // A. Inserimento Anagrafica
+                        const dataMedica = parseDate(rawMedical);
                         const { data: ath, error: aErr } = await client.from('athletes').insert({
                             name: nome,
                             surname: cognome,
-                            born_date: dataNascita
+                            born_date: dataNascita,
+                            medical_expiry: dataMedica
                         }).select().single();
 
                         if (aErr) {
